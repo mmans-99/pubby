@@ -1,0 +1,127 @@
+# DEVLOG — Pubby
+
+Newest entries at the top. One entry per session, added before each commit.
+
+---
+
+## 2026-11-06 — Plan approved, first commit
+
+**Done**
+- User approved the full plan in writing.
+- Local git repo at `/home/claude/pubby` (branch `main`) committed with the five MD files.
+- Could not create the GitHub repo from this session: the session is bound to its configured repositories, so the repo has to be attached (or created by the user) before pushing.
+
+**Next**
+- Attach or create `mmans-99/pubby`, then push `main`.
+
+**Done (revision 11)**
+- Stats export format confirmed: CSV only. No open questions remain in `PROJECT.md`.
+- Added a proposed stats export: session stats from the results screen, and profile stats from the profile screen. Uses the phone's share sheet, works offline. Format is open (text, CSV, or JSON).
+- Updated `PROJECT.md`, `CODE.md`, and `TODO.md`.
+- Still waiting for explicit approval before creating the GitHub repo and pushing.
+
+**Done (revision 10)**
+- User decided: local profiles for v1. Accounts deferred.
+- `PROJECT.md` now has no open questions. `TODO.md` marks the open-question step done.
+- Waiting for the user's explicit approval of the full plan before creating the GitHub repo and pushing.
+
+**Done (revision 9)**
+- Profile history confirmed.
+- Added per-player slap stats: "slapped by most" and "slapped most", shown per session on the results screen and overall on profiles.
+- Explained accounts. Added `CODE.md` section 6b with three options. Recommended local profiles for v1, with hosted sign-in as a later option. Added a Phase 6 to `TODO.md`.
+- Updated `PROJECT.md`, `CODE.md`, and `TODO.md`.
+
+**Done (revision 8)**
+- Confirmed: target fails → session ends, highest score wins. No target and no Ultimate → host ends from results screen, scores recorded from there.
+- Dropped the host export. Each phone keeps its own game record.
+- Confirmed: pending pause requests are cleared while paused.
+- Confirmed: host phone holds all hands in memory (accepted for v1).
+- Proposed profile history: each game is added to each player's profile on that phone (games, points, wins, Ultimate titles, bottom-two count, slaps given and received). Limit: profiles are per-phone, no accounts. Marked as open for confirmation.
+- Updated `CODE.md` and `TODO.md`.
+
+**Done (revision 7)**
+- Votes only happen before a round (reshuffle) or on the results screen (target, Ultimate). No votes in progress during a pause.
+- Results screen: no timer. Players can ready up. Host moves on.
+- Catch-phrases are random.
+- Ultimate Round is the final round and ends the session. Target score defined as the points goal agreed by vote.
+- Trivia: removed "most jokers". Added "always fighting for survival" (most rounds in the bottom two). Rivals show all tied pairs.
+- Host's phone: the screen never shows other hands, but the data is in memory, so it could be read technically. Documented in `PROJECT.md` and `CODE.md`.
+- Host export is now an open question (each phone already keeps its own record).
+- Updated `CODE.md` (actions, trivia events) and `TODO.md`.
+
+**Done (revision 6)**
+- Clarified pause requests (only pause requests and Ultimate Round triggers are requests). Added two proposed defaults to confirm: requests clear while paused, and votes freeze during a pause.
+- Added the game record: saved when the session ends, with profile and session names, round results, totals, Ultimate Round labels, final standings, and trivia. Saved on each phone; host can export.
+- Added the results screen trivia: most slapped, most slapper, rivals, plus optional fun stats for the user to pick.
+- Slap emoji reduced to 😂 only. Added the catch-phrase "You got slapped by a kiiid".
+- Explained the host trust issue: the host's phone must hold every hand to run the game. Updated `CODE.md`, section 5, to say so.
+- Added `CODE.md` section 6a (game record and trivia from an event log), and new `TODO.md` tasks.
+
+**Done (revision 5)**
+- Removed peek and take-cards entirely. The only card exchange is the hidden swap.
+- Ultimate Loser label now ranks below every score, as well as the Ultimate Winner label outranking scores.
+- Auto deal is clockwise. The dealer can switch to manual during the animation; the stop option was dropped.
+- Any player can call the reshuffle vote.
+- Reaction Tap false start counts as the slowest time.
+- Jokers are dealt from the player deck. Total joker count is shown at game start. Host can turn the joker rule off at setup.
+- Order of reshuffle vote and hidden swap is fixed as stated, since the user said order doesn't matter.
+- Updated `CODE.md` (actions, tests) and `TODO.md`.
+
+**Done (revision 4)**
+- Applied the user's answers to `PROJECT.md`:
+  - Reshuffle: the dealer of that round reshuffles and redeals when it passes.
+  - Ultimate Round: any player can trigger it; everyone votes; majority rules. Reaching the target score starts an Ultimate Round vote.
+  - Labels: the Ultimate Winner label outweighs scores. The Ultimate Round itself adds no points.
+  - Dealing: auto deal (first-name tap, animated, dealer can intervene) and manual deal, switchable at any time. Uneven hands are fine.
+  - Jokers count as playing cards. Playing a last card, including a joker, means going out.
+  - Hidden swap: players choose up to 4 of their own cards (or none), and receive random hidden cards. Given cards leave the game. Not a peek or take.
+  - Pause: no time limit by default. The host can optionally set one.
+  - Target score vote: majority rule.
+  - Voting rule for all votes: majority, otherwise the host decides.
+  - Reaction Tap: the slowest reactor leads. Ties replay between the tied players.
+  - Forfeit: last place score.
+- Peek and take-cards kept as separate mechanics from the original notes, with a question to confirm.
+- Updated `CODE.md` (actions, tests) and `TODO.md`.
+
+**Done (revision 3)**
+- Applied the user's answers to `PROJECT.md`:
+  - Round 1: host shuffles, deals, and leads. Claim buttons removed. Later rounds: loser shuffles and deals; winner picks the leader.
+  - Missing-suit player leads regardless. Two or more missing-suit players: mini-game decides, loser leads.
+  - Hidden swap: given-away cards leave the game entirely.
+  - Reshuffle vote: all game sizes, before every round, majority vote, locked once the round begins.
+  - Pause: players request, host approves.
+  - Ultimate Round: requested on any results screen after a round, never mid-round; host approves.
+  - Ace of Spades has no special rule. The leader plays any card.
+  - Mini-game chosen: Reaction Tap.
+- Updated `CODE.md` (actions, tests) and `TODO.md` to match.
+
+**Done (revision 2)**
+- Applied the user's corrections to `PROJECT.md`:
+  - 2-player scoring keeps +2 / +1. 8-player 4th place is +1.
+  - Joker count: 2 for 2–5 players, 3 for 6–8 players.
+  - Final-two rule: the last card of a trick decides; the higher card picks up the waste pile or forfeits.
+  - Ultimate Round is outside the score. It sets Ultimate Winner (1st) and Ultimate Loser (last) for bragging rights only.
+  - Hidden swap happens once per game, before round 1, not every round. Up to 4 cards can be swapped; opt-out allowed.
+  - Reshuffle vote added: once per game, after everyone looks at their cards, before round 1. Locked once round 1 starts.
+  - Host can pause and resume; the pause freezes every phone.
+  - Phones only for now.
+- Rechecked the game-start rules against the user's notes. The shuffle/deal and go-first claims are separate, and the later-round rules match. Added the claim-tie case as an open question.
+- Updated `CODE.md` (game phases, new actions, tests) and `TODO.md` (new tasks).
+
+**Done (revision 1)**
+- Captured the full game spec from the user's notes: setup, hidden decks for 2–3 players, slap mechanic, missing-suit declaration, final-two waste-pile rule, joker rule, peek and take-cards requests, scoring tables for 2–8 players, target score and Ultimate Round, and feedback (SLAP! pop-up, emojis, catch-phrases).
+- Named the game **Pubby**.
+- Set working rules in `CLAUDE.md`: plan first, no code without approval, commit and push only after approval, update all five MD files before each commit and push.
+- Drafted `CODE.md` with architecture (pure rules engine, session layer, UI layer), stack options, multiplayer options (LAN host, WebRTC with QR handshake, pass-and-play first), and the hidden-information trust model.
+- Listed 18 Open Questions in `PROJECT.md`, including several scoring and joker edge cases in the notes that need confirmation.
+
+**Decisions**
+- Multiplayer offline via local network with QR join (path to choose).
+- Build pass-and-play before networking.
+
+**Not done**
+- No game code written.
+- No GitHub repo created and nothing committed or pushed (waiting for approval).
+
+**Next**
+- User answers Open Questions and approves the plan.
