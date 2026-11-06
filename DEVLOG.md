@@ -4,6 +4,28 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-06 — Round start and trick play
+
+**Done**
+- User decided: full deck every round; hidden decks set aside every round (swap still round 1 only); if the top card's player is out, the next highest card of the led suit leads; a joker led as the first card passes the lead to the next player clockwise.
+- `src/rules/round.ts`: dealer by round, fresh shuffled deal (also used for a reshuffle), hidden swap, missing-suit players, Reaction Tap result, who leads.
+- `src/rules/play.ts`: legal cards, follow suit, slaps, jokers, next leader, going out, round end and finishing order, with events for the UI and trivia.
+- 43 tests passing; rules and tests pass a strict type check.
+- `PROJECT.md`: new rules recorded; six open questions added (final-two rule, joker timing, edge cases). `CODE.md` module table and `TODO.md` updated. `CLAUDE.md` checked, no changes.
+
+**Done (later in the session)**
+- User answered all six open questions and changed the swap: it is now offered every round in 2 and 3 player games.
+- Final-two rule built for all game sizes: a higher last card must pick up the waste pile (forfeit stays available) or forfeit; a lower last card, a joker, or a slap wins; both out in one trick: lower card, joker or slapper wins; both down to a single joker: shared second-last place points, and both Ultimate Loser in the Ultimate Round.
+- A joker as your last card takes you out at that moment.
+- `scoreRound` supports shared second-last place.
+- 59 tests passing; strict type check clean.
+- `PROJECT.md` sections 2, 3, 6, 7 and 9 updated; no open questions. Quick rules updated. `CODE.md`, `TODO.md` updated. `CLAUDE.md` checked, no changes.
+
+**Next**
+- The session layer: ties rounds, votes, pause, results, target score, Ultimate Round and the event log together.
+
+---
+
 ## 2026-11-06 — Scaffold and first rules
 
 **Done**

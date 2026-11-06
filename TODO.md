@@ -20,26 +20,30 @@ Status key: `[ ]` not started, `[~]` in progress, `[x]` done, `[!]` blocked on a
 - [x] Hidden decks dealt first, automatically in the background; dealer deals only to players
 - [ ] Test that player views never include hidden decks (needs the session layer)
 - [ ] `voteResolved` event with `decidedBy` (majority or host) for the result pop-up
-- [ ] Round-1 host shuffle/deal and host lead, later-round loser shuffle/deal, winner chooses leader
-- [ ] Trick play: follow suit, slap, trick resolution, leading
-- [ ] Missing-suit declaration and the tie-break mini-game hook
-- [ ] Final-two waste-pile rule and forfeit
-- [ ] Joker rule, including the final-two joker cases
+- [x] Round-1 host shuffle/deal and host lead, later-round loser shuffle/deal, winner chooses leader
+- [x] Full fresh deck every round; hidden decks every round (2 and 3 players)
+- [x] Trick play: follow suit, slap, trick resolution, leading (next highest if the top card's player is out)
+- [x] Going out, finishing order, round end and loser
+- [x] Missing-suit declaration and Reaction Tap result (slowest leads, false start slowest, ties replay)
+- [x] Final-two rule (all game sizes): higher last card picks up the waste pile or forfeits; lower card, joker or slap wins; forfeit stays available after a pick-up
+- [x] Joker rule: own turn even when able to follow, joker leads, joker last card out at once, final-two joker cases, shared second-last place
 - [ ] Reshuffle vote (any player can call; majority; before every round; locked once the round begins)
-- [ ] Hidden swap (2 and 3 players, round 1 only, choose up to 4 cards or none, given cards leave the game)
+- [x] Hidden swap (2 and 3 players, every round, choose up to 4 cards or none, given cards leave the round)
+- [~] Reshuffle vote: tally and fresh redeal done; wiring into the game flow comes with the session layer
 - [ ] Joker rule: on by default, host can turn off at setup; total jokers shown at game start
 - [x] Dealing: auto deal (first-name tap, clockwise, step by step for the animation, dealer can switch to manual) and manual deal, switchable at any time
 - [x] Voting: majority rule, majority of no fails, host decides on a tie or too few votes (used by reshuffle, target, and Ultimate)
 - [ ] Host pause and resume; player pause requests approved by host; optional host time limit (default none)
-- [ ] Forfeit scores last place
+- [x] Forfeit scores last place
+- [x] Shared second-last place scoring (final two both out on jokers)
 - [ ] Event log (slaps, reaction times, forfeits, jokers, reshuffle votes) for trivia and the game record
 - [ ] Game record saved on each phone when the session ends (no host export)
 - [ ] Profile history: per-profile totals updated once per game at session end
 - [ ] Stats export: session stats (results screen) and profile stats (profile screen), via phone share sheet (CSV)
 - [x] Scoring tables for 2 to 8 players
 - [ ] Target score vote; reaching the target starts an Ultimate Round vote
-- [ ] Ultimate Round (any player can trigger from a results screen; majority vote; outside the score; Ultimate Winner and Loser labels outrank scores)
-- [~] Unit tests for every rule above (23 passing: cards, deal, scoring, voting)
+- [ ] Ultimate Round (any player can trigger from a results screen; majority vote; outside the score; Ultimate Winner and Loser labels outrank scores; both Ultimate Loser if the final two share second-last on jokers)
+- [~] Unit tests for every rule above (59 passing: cards, deal, scoring, voting, round start, trick play, final two)
 - [ ] Run `npm install` and confirm the Svelte build on a machine with network access
 
 ## Phase 2 — Pass-and-play UI (one device, offline)

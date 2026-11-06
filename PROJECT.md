@@ -42,7 +42,7 @@ A **game** is a match made of several **rounds**. Each round ends when one playe
 1. Deal (section 2b).
 2. Every player looks at their own cards.
 3. **Reshuffle vote** (section 2a). Happens before every round.
-4. **Hidden swap** (section 3). 2 and 3 player games, round 1 only.
+4. **Hidden swap** (section 3). 2 and 3 player games, every round.
 5. Missing-suit declarations and mini-game (section 5).
 6. The round begins.
 
@@ -57,6 +57,8 @@ The order of steps 3 and 4 does not matter to the players, so the order above is
 
 ### 2b. Dealing
 - **The deck:** One standard 52-card deck for every player count, plus jokers when the joker rule is on (section 7).
+- **Full deck every round:** Every round starts with all 52 cards and all jokers again. Cards swapped out and jokers used only leave the game for that round.
+- **Hidden decks every round:** In 2 and 3 player games, hidden decks are set aside every round (so nobody can count cards), and the hidden swap is offered every round.
 - **Hidden decks first (2 and 3 player games):** Before the dealer starts, the game deals the hidden decks automatically in the background. **They are never shown on any screen, not even during the deal.** There is no hidden-deck pile, count, or animation. The only sign they exist is the swap option (section 3). Each hidden deck gets one player's share: the number of cards divided by (players + hidden decks), rounded down. Example: 2 players with jokers on is 54 cards, so each hidden deck gets 13 and 28 are left for the players.
 - **The dealer deals only to players.** The remaining cards go to the players, never to the hidden decks.
 - **Remainder cards:** Not an issue. Hands can end up uneven, and that's fine.
@@ -81,9 +83,9 @@ The order of steps 3 and 4 does not matter to the players, so the order above is
   - 3 players: 1 hidden deck.
   - 4 to 8 players: no hidden decks.
   - They are dealt automatically in the background before the dealer deals the players (section 2b).
-  - **Never shown.** No screen ever displays the hidden decks. Players only see a "Swap cards" option in round 1 of 2 and 3 player games.
+  - **Never shown.** No screen ever displays the hidden decks. Players only see a "Swap cards" option at the start of each round in 2 and 3 player games.
 - **Purpose:** Players cannot work out exactly what the others hold.
-- **Timing:** Round 1 only, after the reshuffle vote.
+- **Timing:** At the start of every round, after the reshuffle vote. Each player can swap once per round.
 - **How it works:**
   1. Each player looks at their cards.
   2. The player chooses up to 4 of their own cards to swap, or none.
@@ -98,7 +100,7 @@ The order of steps 3 and 4 does not matter to the players, so the order above is
 2. Clockwise, each player must play a card of the led suit if they have one.
 3. **Slap (the cut):** If a player has no card of the led suit, they may play any card of any suit. This is a **slap**, and it stops the trick (see section 4.1).
 4. When every player has played or the trick is stopped, the trick is resolved.
-5. The player who played the highest card of the led suit leads the next trick.
+5. The player who played the highest card of the led suit leads the next trick. If that player has gone out, whoever played the **next highest** card of the led suit leads instead.
 6. A player who empties their hand is **out** and can watch the rest of the round.
 7. Cards from completed tricks go to the **waste pile** (see section 6 for the exception).
 
@@ -140,11 +142,14 @@ The Ace of Spades has no special rule. It is an ordinary card.
 ## 6. Waste pile and the final two
 
 - The waste pile is normally out of play. Cards go there after a trick and are not picked up again.
-- **Exception (last two players only):** When only two players still hold cards, and the last card of the trick is played, the player with the higher card may either:
-  - **Forfeit**, or
-  - **Pick up the whole waste pile** and continue playing.
-- **Forfeit:** The forfeiting player takes last place for the round's scoring (the same as a Bhabhi). The other player takes 1st place. The round ends.
-- A player in this position may forfeit at any time while there are two players left.
+- **Exception (final two, every game size):** When only two players still hold cards, the rule applies when one of them plays their **last card**. In a 2-player game this is from the very first trick. Tricks where nobody plays their last card follow the normal rules.
+- **Last card lower** than the other player's card, **a joker**, or **a slap**: that player goes out and **wins** the round.
+- **Last card higher** than the other player's card: that player must choose:
+  - **Pick up the whole waste pile** (including this trick) and play on. They lead next. They keep the option to forfeit at any time while two players are left.
+  - **Forfeit:** they take last place (the same as a Bhabhi) and the other player takes the higher place. The round ends.
+- **Last card answered with a joker:** there is no card to compare, so the last card wins.
+- **Both go out in the same trick:** the lower card, the joker, or the slapper wins. The other takes last place.
+- **Only the player who played their last card** can face the pick-up-or-forfeit choice.
 
 ---
 
@@ -157,11 +162,13 @@ The Ace of Spades has no special rule. It is an ordinary card.
 - **Dealt from the player deck.** Jokers are part of the normal deal, not set aside.
 - **Joker count shown:** The game shows the total number of jokers in the deck to all players at the start of the game. It is not updated during play. It is there to make players aware that jokers are in play somewhere.
 - **Jokers are playing cards.** They count as cards in a player's hand, for everything, including going out.
-- **Use:** A joker is a wild card. A player may play it at any time, and playing it skips their turn.
+- **Use:** A joker is a wild card. A player may play it on their own turn, even if they could follow suit. Playing it skips their turn.
+- **Joker as the lead:** If the leader plays a joker as the first card of a trick, the joker is gone and the next player clockwise starts the trick with any card.
 - **After use:** The joker leaves the game. It does not go into the waste pile.
-- **Going out with a joker:** If a player plays their last card, including a joker, they go out and do not come last.
+- **Going out with a joker:** A joker as your last card takes you out **at that moment**, and you take your place in the standings. In the final two, it beats a normal last card.
 - **Last two players, one joker played:** If one of the two players plays a joker first, the other player may play any card they want, then they lead.
-- **Last two players, both play a joker in the same round:** This counts as a missed round. The player who played first leads again.
+- **Last two players, both play a joker in the same trick:** This counts as a missed round. The player who played first leads again.
+- **Last two players, both down to a single joker:** Both go out on jokers. They share second-last place and both get the points for it (in a 2-player game that is 1st place, +2 each). In the Ultimate Round, both are Ultimate Loser.
 
 ---
 
@@ -210,7 +217,7 @@ After each round, points are awarded by finishing position. The first player out
 - **Session ends:** The session ends after the Ultimate Round.
 - **Titles:**
   - **Ultimate Winner:** 1st place in that round.
-  - **Ultimate Loser:** Last place in that round.
+  - **Ultimate Loser:** Last place in that round. If the final two both go out on jokers, both are Ultimate Loser.
 - **The titles have no number, but they outweigh scores.**
   - The **Ultimate Winner** beats the highest score when deciding the game winner.
   - The **Ultimate Loser** ranks last overall, below every score.
@@ -327,6 +334,16 @@ Answer these in any order. Each one unblocks part of the build.
 None. The spec has no open questions.
 
 ### Decided (for reference)
+- Final two (all game sizes): the pick-up-or-forfeit choice only applies to a player whose last card is higher than the other player's. A lower last card, a joker, or a slap wins. After picking up, the forfeit option stays.
+- Jokers are played on your own turn, even if you could follow suit.
+- If nobody who played the led suit still holds cards, the next player clockwise still holding cards leads.
+- Going out is checked at the end of the trick: a player who played their last card and is then slapped picks up and stays in.
+- Both final players go out in the same trick: lower card, joker, or slapper wins. Both on jokers: shared second-last place points; both Ultimate Loser in the Ultimate Round.
+- A joker as your last card takes you out at that moment.
+- The hidden swap is offered every round in 2 and 3 player games.
+- Every round starts with the full deck. Hidden decks (2 and 3 players) are set aside every round, and the swap is offered every round.
+- If the highest card's player is out, the next highest card of the led suit leads.
+- A joker led as the first card of a trick: the next player clockwise starts the trick with any card.
 - A majority of no votes fails the vote; the host only decides on a tie or too few votes. Every vote result shows a "Majority says… / Host says…" pop-up.
 - Hidden decks are never shown on any screen. Only the swap option appears.
 - Any player can open the quick rules at any time, on their own phone only (section 13).

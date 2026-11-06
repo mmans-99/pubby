@@ -26,6 +26,13 @@ test('scoreRound awards by finishing order and totals add up', () => {
   assert.deepEqual(addScores({ a: 1, e: 2 }, r), { a: 4, b: 2, c: 1, d: 0, e: 1 });
 });
 
+test('final two both out on jokers share second-last place points', () => {
+  assert.deepEqual(scoreRound(['a', 'b', 'c', 'd', 'e'], ['d', 'e']), { a: 3, b: 2, c: 1, d: 0, e: 0 });
+  // 2 players: second last is 1st place, so both get +2.
+  assert.deepEqual(scoreRound(['a', 'b'], ['a', 'b']), { a: 2, b: 2 });
+  assert.throws(() => scoreRound(['a', 'b', 'c'], ['a', 'c']));
+});
+
 test('scoring rejects bad input', () => {
   assert.throws(() => pointsFor(4, 5));
   assert.throws(() => pointsFor(9, 1));

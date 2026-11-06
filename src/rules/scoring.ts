@@ -29,7 +29,10 @@ export function pointsFor(players: number, place: number): number {
  * Points for one round. `finishingOrder` lists player ids from 1st to last.
  * Every player in the round must appear exactly once.
  */
-export function scoreRound(finishingOrder: readonly string[]): Record<string, number> {
+export function scoreRound(
+  finishingOrder: readonly string[],
+  sharedSecondLast: readonly string[] | null = null,
+): Record<string, number> {
   const n = finishingOrder.length;
   assertPlayerCount(n);
   if (new Set(finishingOrder).size !== n) throw new Error('A player appears twice in the order');
@@ -37,6 +40,14 @@ export function scoreRound(finishingOrder: readonly string[]): Record<string, nu
   finishingOrder.forEach((id, i) => {
     out[id] = pointsFor(n, i + 1);
   });
+  // Final two both went out on jokers: both get second-last place points.
+  if (sharedSecondLast) {
+    const lastTwo = finishingOrder.slice(-2);
+    if (sharedSecondLast.length !== 2 || !sharedSecondLast.every((p) => lastTwo.includes(p))) {
+      throw new Error('Shared second-last place must be the last two players');
+    }
+    for (const p of sharedSecondLast) out[p] = pointsFor(n, n - 1);
+  }
   return out;
 }
 

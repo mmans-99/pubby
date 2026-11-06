@@ -12,16 +12,19 @@ The leader plays any card. Going clockwise, everyone must play the same suit if 
 No card of the led suit? Play any other card. That's a SLAP! The trick stops, and whoever played the highest card of the led suit picks up every card in the trick, then leads.
 
 ## Jokers
-Wild. Play one at any time. It skips your turn and then leaves the game. Going out on a joker counts. 2 jokers with 2 to 5 players, 3 with 6 to 8. The host can turn jokers off.
+Wild. Play one on your turn, even if you could follow suit. It skips your turn and then leaves the game. If you lead with a joker, the next player starts the trick. A joker as your last card takes you out straight away. 2 jokers with 2 to 5 players, 3 with 6 to 8. The host can turn jokers off.
 
 ## Missing a suit
 No cards of a suit after the deal? Say so. You lead first. If more than one player is missing a suit, play Reaction Tap: the slowest tapper leads. Tapping early counts as slowest.
 
 ## The last two players
-With two players left, whoever plays the higher last card of a trick chooses: pick up the whole waste pile and keep playing, or forfeit and take last place.
+When only two players hold cards and you play your last card:
+- Lower than theirs, a joker, or a slap: you win the round.
+- Higher than theirs: pick up the whole waste pile and keep playing (you can still forfeit later), or forfeit and take last place.
+Both go out in the same trick? Lower card, joker, or slapper wins. Both on jokers? You share second-last place.
 
 ## Hidden swap (2 and 3 players)
-Once, before round 1: swap up to 4 of your cards for random unseen ones, or keep your hand. Swapped-out cards leave the game.
+At the start of every round: swap up to 4 of your cards for random unseen ones, or keep your hand. Swapped-out cards leave the round.
 
 ## Votes
 More than half wins. A tie goes to the host. Votes happen before a round (reshuffle) or on the results screen (target score, Ultimate Round).

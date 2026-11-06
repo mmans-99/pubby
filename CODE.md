@@ -137,7 +137,8 @@ The `content/` folder keeps catch-phrases and emojis in one editable place, sinc
 - **Voting:** Tests that a majority passes, and that no majority hands the decision to the host.
 - **Dealing:** Tests for auto deal (every card dealt, uneven hands allowed) and manual deal, and that the dealer can switch modes mid-deal. Hidden decks get one share each before the deal, and the dealer cannot deal to them.
 - **Reaction Tap:** Tests that the slowest reactor leads, that a false start counts as the slowest time, and that tied slowest players replay until one is decided.
-- **Forfeit:** Tests that a forfeit scores last place and gives the other player 1st.
+- **Forfeit:** Tests that a forfeit scores last place and gives the other player the higher place, straight away or later after a pick-up.
+- **Final two:** Tests for every last-card case: lower, higher (pick up or forfeit), slap, joker, joker answer, both out in one trick, both on jokers (shared second-last), missed round, and that it applies from the first trick in a 2-player game.
 - **Manual:** Pass-and-play playthroughs at 2, 3, 5, and 8 players before each release.
 
 ## 9a. Rules engine modules (built so far)
@@ -149,7 +150,13 @@ The `content/` folder keeps catch-phrases and emojis in one editable place, sinc
 | `src/rules/deal.ts` | Hidden decks dealt first (face down, one share each), then auto deal (clockwise from the tapped player) and manual deal to players only, switchable at any time |
 | `src/rules/scoring.ts` | Points table for 2 to 8 players, round scoring, running totals |
 | `src/rules/voting.ts` | Majority vote tally; no majority goes to the host |
+| `src/rules/round.ts` | Dealer by round, full fresh deck each round (also used for a reshuffle), hidden swap, missing-suit players, Reaction Tap result, who leads |
+| `src/rules/play.ts` | Trick play: legal cards, follow suit, slaps, jokers (including joker leads and joker last cards), next leader, going out, the final-two rule (`pickUpWastePile`, `forfeit`), round end with finishing order and shared second-last place. Returns `PlayEvent`s (`cardPlayed`, `jokerPlayed`, `slapped`, `trickResolved`, `playerOut`, `finalTwoChoice`, `wastePilePickedUp`, `forfeited`, `roundEnded`) for the UI and the trivia log |
 | `src/rules/types.ts` | Draft `Game`, `Player`, `Trick`, `Vote` and `Action` types |
+
+`scoring.ts` `scoreRound` takes an optional `sharedSecondLast` pair: both get the points for place (players − 1).
+
+Next to build: the session layer (rounds, votes, pause, results, target score, Ultimate Round, event log).
 
 Every function is pure: it returns a new state and never changes the one passed in.
 
