@@ -1,6 +1,6 @@
 # CODE.md — Technical plan for Pubby
 
-**Status:** Proposal only. Nothing here is built or approved yet. Items marked **DECIDE** need the user's choice.
+**Status:** Plan approved. Stack decided (section 3). Nothing built yet. Items marked **DECIDE** need the user's choice.
 
 ---
 
@@ -21,15 +21,21 @@ Split the code into three layers. Each layer only talks to the one below it.
 
 Keeping the rules engine pure means the same logic runs in pass-and-play, in multiplayer, and in tests.
 
-## 3. Proposed stack (DECIDE)
+## 3. Stack (decided: Svelte + Vite + TypeScript)
+
+**Chosen by the user on 2026-11-06: option C, Svelte + Vite, with TypeScript.**
 
 | Option | Pros | Cons |
 |---|---|---|
-| **A. Vanilla TypeScript + Vite, no framework** (recommended) | Small, fast, easy to keep offline, no framework lock-in | More manual UI work |
+| A. Vanilla TypeScript + Vite, no framework | Small, fast, easy to keep offline, no framework lock-in | More manual UI work |
 | B. React + Vite | Familiar component model, lots of tooling | Heavier bundle, more to keep offline |
-| C. Svelte + Vite | Small bundle, nice animations for popups | Less familiar, smaller ecosystem |
+| **C. Svelte + Vite (chosen)** | Small bundle, built-in transitions and animations for the SLAP! pop-up, deal animation, and trick resolution | Smaller ecosystem, fewer examples online |
 
-Recommended: **A**. It suits a small phone-first game and keeps the offline build simple.
+How it fits the architecture (section 2):
+- **Rules engine** (`src/rules/`): plain TypeScript, no Svelte imports, so it stays pure and testable.
+- **Session layer** (`src/session/`): plain TypeScript. Exposes state to the UI through Svelte stores.
+- **UI layer** (`src/ui/`): Svelte components. Uses Svelte's built-in transitions for pop-ups and animations.
+- Exact versions (Svelte, Vite, plugins) are fixed when the scaffold is approved, not before.
 
 Other choices:
 - **Offline:** Service worker (via Workbox or a hand-written one) to cache the app shell.

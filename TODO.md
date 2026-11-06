@@ -5,13 +5,12 @@ Status key: `[ ]` not started, `[~]` in progress, `[x]` done, `[!]` blocked on a
 ## Phase 0 — Planning (current)
 
 - [x] Write the five MD files (`CLAUDE.md`, `PROJECT.md`, `CODE.md`, `TODO.md`, `DEVLOG.md`)
-- [ ] User answers the Open Questions in `PROJECT.md`
-- [ ] User picks the stack (`CODE.md` section 3)
-- [ ] User picks the multiplayer path (`CODE.md` section 4)
-- [ ] User picks the missing-suit mini-game (`PROJECT.md` section 6)
 - [x] User answers the open questions (none remaining; local profiles for v1)
+- [x] User picks the stack: Svelte + Vite + TypeScript (`CODE.md` section 3)
+- [ ] User picks the multiplayer path (`CODE.md` section 4)
+- [x] User picks the missing-suit mini-game: Reaction Tap (`PROJECT.md` section 5)
 - [x] User approves the full plan in writing
-- [ ] Create the GitHub repo and make the first commit and push (only after approval)
+- [x] Create the GitHub repo (`mmans-99/pubby`) and make the first commit and push
 
 ## Phase 1 — Rules engine (no UI)
 
@@ -87,5 +86,5 @@ Status key: `[ ]` not started, `[~]` in progress, `[x]` done, `[!]` blocked on a
 
 ## Blocked
 
-- [!] Open Questions in `PROJECT.md` (blocks Phase 1)
-- [!] Stack choice in `CODE.md` (blocks Phase 1 scaffold)
+- [!] Multiplayer path in `CODE.md` section 4 (blocks Phase 4 only; Phases 1 to 3 can start)
+- [!] Approval to scaffold the Svelte + Vite project (blocks Phase 1 code)

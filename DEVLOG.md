@@ -4,6 +4,20 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-06 — Stack chosen
+
+**Done**
+- GitHub repo `mmans-99/pubby` is live with the first commit.
+- User chose the stack: **Svelte + Vite + TypeScript** (`CODE.md` section 3). Rules engine and session layer stay plain TypeScript; Svelte is the UI layer only.
+- Tidied `TODO.md`: removed the duplicate open-questions line, marked the mini-game (Reaction Tap) and repo creation done, updated the Blocked list.
+- Checked `CLAUDE.md` and `PROJECT.md`: no changes needed.
+
+**Next**
+- User picks the multiplayer path (`CODE.md` section 4).
+- Ask for approval to scaffold the project and start Phase 1.
+
+---
+
 ## 2026-11-06 — Plan approved, first commit
 
 **Done**
