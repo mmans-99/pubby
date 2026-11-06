@@ -4,6 +4,31 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-06 — Scaffold and first rules
+
+**Done**
+- User approved the scaffold and the start of Phase 1.
+- User decided: one 52-card deck for every player count; Ace high; hidden decks are dealt first, automatically and face down, and the dealer deals only to players. Each hidden deck gets one player's share (from the earlier answer "deal them like a player").
+- Scaffolded Svelte + Vite + TypeScript: `package.json`, `tsconfig.json`, `vite.config.ts`, `svelte.config.js`, `index.html`, `src/main.ts`, placeholder `src/ui/App.svelte`.
+- Rules engine: `cards.ts`, `rng.ts`, `deal.ts`, `scoring.ts`, `voting.ts`, draft `types.ts`.
+- Tests: 23 passing with Node's built-in test runner via `tsx`. Rules engine passes a strict type check.
+- Updated `PROJECT.md` (deck, ranking, hidden-deck dealing), `CODE.md` (test runner, randomness, module table), `TODO.md`. `CLAUDE.md` checked, no changes.
+
+**Done (later in the session)**
+- Hidden decks are never shown on any screen, even during the deal. Only the swap option appears. (`PROJECT.md` sections 2b and 3, `CODE.md` section 5a.)
+- Vote question answered: a majority of no fails; the host only decides on a tie or too few votes. Added the "Majority says… / Host says…" result pop-up. `PROJECT.md` has no open questions again.
+- Added Quick rules (`PROJECT.md` section 13): any player can open it any time, on their own phone only, without affecting the game. Drafted the content in `src/content/quick-rules.md`.
+- Added the matching Phase 1 and Phase 2 tasks to `TODO.md`. `CLAUDE.md` checked, no changes.
+- User approved commit and push.
+
+**Not done**
+- `npm install` could not run here (no network for packages), so the Svelte build is untested. Rules tests ran with locally available tools.
+
+**Next**
+- Continue Phase 1: round start (who shuffles, deals, leads), trick play and slaps.
+
+---
+
 ## 2026-11-06 — Stack chosen
 
 **Done**

@@ -1,6 +1,6 @@
 # CODE.md — Technical plan for Pubby
 
-**Status:** Plan approved. Stack decided (section 3). Nothing built yet. Items marked **DECIDE** need the user's choice.
+**Status:** Plan approved. Stack decided (section 3). Project scaffolded; Phase 1 rules engine in progress (section 10). Items marked **DECIDE** need the user's choice.
 
 ---
 
@@ -39,7 +39,9 @@ How it fits the architecture (section 2):
 
 Other choices:
 - **Offline:** Service worker (via Workbox or a hand-written one) to cache the app shell.
-- **Tests:** Vitest for the rules engine.
+- **Tests:** Node's built-in test runner (`node:test` and `node:assert`), run on TypeScript with `tsx`. Command: `npm test`. Chosen over Vitest because the rules engine needs no browser and this adds no extra test library. Vitest can be added later for Svelte component tests if needed.
+- **Type check:** `npm run check` checks the rules engine and tests in strict mode.
+- **Randomness:** The rules engine never calls `Math.random`. It takes an `Rng` function, so tests use a fixed seed (`seededRng`) and real games use the phone's crypto random source (`defaultRng`).
 - **QR codes:** A small QR generator library for display, and a camera-based scanner for joining (DECIDE which library).
 
 ## 4. Multiplayer transport (DECIDE)
@@ -65,13 +67,19 @@ Options:
 
 Recommended: **1** for v1, with **2** planned. Each client should only ever receive its own hand and public state, so a player who inspects their own network traffic still cannot see others' hands.
 
+## 5a. What each screen may show
+
+- **Hidden decks:** Never sent to any player view, never rendered, no count or animation, including on the host's phone. The rules engine keeps them in `DealState.hiddenDecks`, separate from the seats. The only UI is the "Swap cards" option in round 1 of 2 and 3 player games.
+- **Quick rules:** Pure UI state on one phone (`src/ui/`). Opening it sends no action to the session, so it cannot pause or affect other players. Content is loaded from `src/content/quick-rules.md`.
+- **Vote result pop-up:** Driven by a `voteResolved` event carrying the vote kind, the result, and whether it was a majority or the host. Every phone shows "Majority says… YES/NO" or "Host says… YES/NO".
+
 ## 6. Data model (draft)
 
 - `Player`: `id`, `profileName`, `sessionName`, `hand`, `status` (`active` / `out`), `missingSuits`.
 - `Game`: `players`, `turnOrder`, `leader`, `currentTrick`, `wastePile`, `hiddenDecks`, `jokersInPlay`, `round`, `scores`, `target`, `ultimateRound`, `pendingRequests`, `phase` (`setup` / `reshuffleVote` / `swap` / `missingSuit` / `playing` / `roundEnd` / `paused` / `gameOver`), `paused`, `gameStarted` (locks the reshuffle vote once true).
 - `Action` (examples): `chooseLeader` (round winner), `setDealMode` (auto / manual, switchable any time), `autoDealStart`, `manualDealCard`, `switchToManual` (during auto-deal animation), `readyUp` (results screen), `advanceFromResults` (host only), `voteReshuffle`, `playCard`, `slap` (off-suit play), `playJoker`, `declareMissingSuit`, `reactionTap` (mini-game), `swapHidden` (choose up to 4 cards, possibly zero), `forfeit`, `requestPause`, `respondPause`, `pause` (host only), `resume` (host only), `setPauseTimeLimit` (host only, optional), `voteTarget`, `triggerUltimate` (any player, results screen), `voteUltimate`, `hostDecides` (used when a vote has no majority).
 - `Game` also tracks `dealMode`, `dealDirection` (fixed to clockwise), `jokerRuleEnabled` (host setup option), `jokerTotal` (shown at game start), `ultimateTriggered`, `ultimateLabels` (`winner`, `loser`), `pauseTimeLimit` (optional).
-- `Event` (examples): `trickResolved`, `slapped`, `playerOut`, `roundEnded`, `scoreUpdated`, `requestPending`, `gamePaused`, `gameResumed`.
+- `Event` (examples): `trickResolved`, `slapped`, `playerOut`, `roundEnded`, `scoreUpdated`, `requestPending`, `gamePaused`, `gameResumed`, `voteResolved` (kind, result, `decidedBy`: `majority` or `host`).
 
 Final field names are for the Phase 1 design review, not fixed yet.
 
@@ -127,10 +135,23 @@ The `content/` folder keeps catch-phrases and emojis in one editable place, sinc
 - **Round-start order:** Tests that the reshuffle vote happens before every round, the hidden swap only in 2–3 player games and only in round 1, and that the reshuffle vote is locked once the round begins.
 - **Ultimate Round:** Tests that any player can trigger it from a results screen only, that it is decided by majority vote, that it does not change scores, that the Ultimate Winner label outranks the highest score, and that the Ultimate Loser label ranks below every score.
 - **Voting:** Tests that a majority passes, and that no majority hands the decision to the host.
-- **Dealing:** Tests for auto deal (every card dealt, uneven hands allowed) and manual deal, and that the dealer can switch modes mid-deal.
+- **Dealing:** Tests for auto deal (every card dealt, uneven hands allowed) and manual deal, and that the dealer can switch modes mid-deal. Hidden decks get one share each before the deal, and the dealer cannot deal to them.
 - **Reaction Tap:** Tests that the slowest reactor leads, that a false start counts as the slowest time, and that tied slowest players replay until one is decided.
 - **Forfeit:** Tests that a forfeit scores last place and gives the other player 1st.
 - **Manual:** Pass-and-play playthroughs at 2, 3, 5, and 8 players before each release.
+
+## 9a. Rules engine modules (built so far)
+
+| File | What it does |
+|---|---|
+| `src/rules/cards.ts` | Suits, ranks (Ace high = 14), the 52-card deck, joker count by player count, missing suits |
+| `src/rules/rng.ts` | Seeded and crypto random sources, Fisher-Yates shuffle |
+| `src/rules/deal.ts` | Hidden decks dealt first (face down, one share each), then auto deal (clockwise from the tapped player) and manual deal to players only, switchable at any time |
+| `src/rules/scoring.ts` | Points table for 2 to 8 players, round scoring, running totals |
+| `src/rules/voting.ts` | Majority vote tally; no majority goes to the host |
+| `src/rules/types.ts` | Draft `Game`, `Player`, `Trick`, `Vote` and `Action` types |
+
+Every function is pure: it returns a new state and never changes the one passed in.
 
 ## 9. Conventions
 

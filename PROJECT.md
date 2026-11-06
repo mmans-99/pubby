@@ -1,6 +1,6 @@
 # Pubby — Game Spec
 
-**Status:** Planning. No code yet. Items marked **OPEN** need a decision before they are built.
+**Status:** Phase 1 (rules engine) in progress. Items marked **OPEN** need a decision before they are built.
 
 Pubby is a multiplayer shedding card game based on Bhabhi (also called Get Away). It is played as a phone-only, offline-capable web app. The goal of each round is to get rid of all your cards. The last player holding cards is the round loser (the "Bhabhi").
 
@@ -17,7 +17,12 @@ Pubby is a multiplayer shedding card game based on Bhabhi (also called Get Away)
 
 ### 1.1 Voting (applies to every vote in the game)
 - A vote passes with a **majority**: more than half of the players.
-- If no majority is reached, **the host decides**.
+- If more than half vote no, the vote **fails**. The host is not asked.
+- If no majority is reached either way (a tie, or too few votes), **the host decides**.
+- **Result pop-up:** Every vote ends with a bold pop-up on every phone showing the decision, for example:
+  - "Majority says… YES!" or "Majority says… NO!"
+  - "Host says… YES!" or "Host says… NO!" when the host decided.
+  - It names what was decided (for example "Reshuffle!", "Target: 15 points", "Ultimate Round!").
 - **Votes only happen outside a round.** There are two places they can happen:
   - Before a round starts: the reshuffle vote (section 2a).
   - On the results screen after a round: the target score vote and the Ultimate Round vote (section 9).
@@ -51,6 +56,9 @@ The order of steps 3 and 4 does not matter to the players, so the order above is
 - **If it passes:** The dealer of that round shuffles the cards again and deals them again. This includes the hidden decks.
 
 ### 2b. Dealing
+- **The deck:** One standard 52-card deck for every player count, plus jokers when the joker rule is on (section 7).
+- **Hidden decks first (2 and 3 player games):** Before the dealer starts, the game deals the hidden decks automatically in the background. **They are never shown on any screen, not even during the deal.** There is no hidden-deck pile, count, or animation. The only sign they exist is the swap option (section 3). Each hidden deck gets one player's share: the number of cards divided by (players + hidden decks), rounded down. Example: 2 players with jokers on is 54 cards, so each hidden deck gets 13 and 28 are left for the players.
+- **The dealer deals only to players.** The remaining cards go to the players, never to the hidden decks.
 - **Remainder cards:** Not an issue. Hands can end up uneven, and that's fine.
 - **Two deal modes.** The dealer can switch between them at any time, including during an auto deal.
 
@@ -69,9 +77,11 @@ The order of steps 3 and 4 does not matter to the players, so the order above is
 
 - **Players:** 2 or 3 only.
 - **Hidden decks:**
-  - 2 players: 2 hidden decks are drawn alongside the player deck.
-  - 3 players: 1 hidden deck is drawn alongside the player deck.
+  - 2 players: 2 hidden decks.
+  - 3 players: 1 hidden deck.
   - 4 to 8 players: no hidden decks.
+  - They are dealt automatically in the background before the dealer deals the players (section 2b).
+  - **Never shown.** No screen ever displays the hidden decks. Players only see a "Swap cards" option in round 1 of 2 and 3 player games.
 - **Purpose:** Players cannot work out exactly what the others hold.
 - **Timing:** Round 1 only, after the reshuffle vote.
 - **How it works:**
@@ -91,6 +101,8 @@ The order of steps 3 and 4 does not matter to the players, so the order above is
 5. The player who played the highest card of the led suit leads the next trick.
 6. A player who empties their hand is **out** and can watch the rest of the round.
 7. Cards from completed tricks go to the **waste pile** (see section 6 for the exception).
+
+**Card ranking:** Ace is high. Within a suit, 2 is lowest, then 3 to 10, J, Q, K, and A is highest.
 
 The Ace of Spades has no special rule. It is an ordinary card.
 
@@ -289,6 +301,25 @@ The trivia shows on the results screen after every round. It has no effect on sc
 
 ---
 
+## 13. Quick rules (in-game help)
+
+- **What it is:** A short, simplified rules guide inside the app.
+- **When:** Any player can open it at any time: in the lobby, during the deal, mid-round, during a vote, or on the results screen.
+- **Private and real time:** It opens only on that player's own phone. It does not pause the game, notify anyone, or change anything for other players. The game carries on underneath, and the player's turn prompt still appears if it becomes their turn.
+- **Layout:** One short card per topic, so a player can jump straight to what they need. Topics:
+  - How to win a round
+  - Playing a trick and following suit
+  - Slaps
+  - Jokers
+  - Missing a suit and Reaction Tap
+  - The last two players and the waste pile
+  - Hidden swap (2 and 3 player games only)
+  - Votes, the target score, and the Ultimate Round
+  - Scoring table
+- **Content:** Kept in `src/content/quick-rules.md` so it is easy to edit. It must match this spec.
+
+---
+
 ## Open questions (summary)
 
 Answer these in any order. Each one unblocks part of the build.
@@ -296,6 +327,11 @@ Answer these in any order. Each one unblocks part of the build.
 None. The spec has no open questions.
 
 ### Decided (for reference)
+- A majority of no votes fails the vote; the host only decides on a tie or too few votes. Every vote result shows a "Majority says… / Host says…" pop-up.
+- Hidden decks are never shown on any screen. Only the swap option appears.
+- Any player can open the quick rules at any time, on their own phone only (section 13).
+- One standard 52-card deck for every player count. Ace is high.
+- Hidden decks are dealt first, automatically and face down, one player's share each. The dealer deals only to players.
 - Peek and take-cards are not in the game. The only card exchange is the hidden swap.
 - Votes happen only before a round (reshuffle) or on the results screen (target score, Ultimate Round). No votes during a round or a pause.
 - The results screen has no timer. The host moves on. Players can ready up.

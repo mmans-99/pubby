@@ -14,9 +14,13 @@ Status key: `[ ]` not started, `[~]` in progress, `[x]` done, `[!]` blocked on a
 
 ## Phase 1 — Rules engine (no UI)
 
-- [ ] Define the game state and action types (`CODE.md` section 6)
-- [ ] Deck creation, joker handling, and hidden decks by player count
-- [ ] Deal, round-1 host shuffle/deal and host lead, later-round loser shuffle/deal, winner chooses leader
+- [x] Scaffold Svelte + Vite + TypeScript project (placeholder screen only)
+- [~] Define the game state and action types (`CODE.md` section 6) — draft in `src/rules/types.ts`
+- [x] Deck creation (one 52-card deck, Ace high), joker count, and hidden decks by player count
+- [x] Hidden decks dealt first, automatically in the background; dealer deals only to players
+- [ ] Test that player views never include hidden decks (needs the session layer)
+- [ ] `voteResolved` event with `decidedBy` (majority or host) for the result pop-up
+- [ ] Round-1 host shuffle/deal and host lead, later-round loser shuffle/deal, winner chooses leader
 - [ ] Trick play: follow suit, slap, trick resolution, leading
 - [ ] Missing-suit declaration and the tie-break mini-game hook
 - [ ] Final-two waste-pile rule and forfeit
@@ -24,18 +28,19 @@ Status key: `[ ]` not started, `[~]` in progress, `[x]` done, `[!]` blocked on a
 - [ ] Reshuffle vote (any player can call; majority; before every round; locked once the round begins)
 - [ ] Hidden swap (2 and 3 players, round 1 only, choose up to 4 cards or none, given cards leave the game)
 - [ ] Joker rule: on by default, host can turn off at setup; total jokers shown at game start
-- [ ] Dealing: auto deal (first-name tap, clockwise, animated, dealer can switch to manual during the animation) and manual deal, switchable at any time
-- [ ] Voting: majority rule, host decides if no majority (used by reshuffle, target, and Ultimate)
+- [x] Dealing: auto deal (first-name tap, clockwise, step by step for the animation, dealer can switch to manual) and manual deal, switchable at any time
+- [x] Voting: majority rule, majority of no fails, host decides on a tie or too few votes (used by reshuffle, target, and Ultimate)
 - [ ] Host pause and resume; player pause requests approved by host; optional host time limit (default none)
 - [ ] Forfeit scores last place
 - [ ] Event log (slaps, reaction times, forfeits, jokers, reshuffle votes) for trivia and the game record
 - [ ] Game record saved on each phone when the session ends (no host export)
 - [ ] Profile history: per-profile totals updated once per game at session end
 - [ ] Stats export: session stats (results screen) and profile stats (profile screen), via phone share sheet (CSV)
-- [ ] Scoring tables for 2 to 8 players
+- [x] Scoring tables for 2 to 8 players
 - [ ] Target score vote; reaching the target starts an Ultimate Round vote
 - [ ] Ultimate Round (any player can trigger from a results screen; majority vote; outside the score; Ultimate Winner and Loser labels outrank scores)
-- [ ] Unit tests for every rule above
+- [~] Unit tests for every rule above (23 passing: cards, deal, scoring, voting)
+- [ ] Run `npm install` and confirm the Svelte build on a machine with network access
 
 ## Phase 2 — Pass-and-play UI (one device, offline)
 
@@ -46,7 +51,9 @@ Status key: `[ ]` not started, `[~]` in progress, `[x]` done, `[!]` blocked on a
 - [ ] SLAP! pop-up, emoji bar, and catch-phrases (content in `src/content/`)
 - [ ] Missing-suit prompt and mini-game
 - [ ] Peek and take-cards prompts
-- [ ] Reshuffle vote and hidden-swap screens (phone layout)
+- [ ] Reshuffle vote and hidden-swap screens (phone layout); hidden decks never drawn, only the "Swap cards" option
+- [ ] Vote result pop-up on every phone: "Majority says… YES/NO" or "Host says… YES/NO", naming what was decided
+- [ ] Quick rules: button on every screen, opens on that phone only, game keeps running underneath (content in `src/content/quick-rules.md`, draft written)
 - [ ] Pause overlay for all players, and pause-request button for non-host players
 - [ ] Reaction Tap mini-game screen (chosen; slowest reactor leads, ties replay)
 - [ ] Auto-deal animation with switch-to-manual control; manual deal taps
@@ -87,4 +94,3 @@ Status key: `[ ]` not started, `[~]` in progress, `[x]` done, `[!]` blocked on a
 ## Blocked
 
 - [!] Multiplayer path in `CODE.md` section 4 (blocks Phase 4 only; Phases 1 to 3 can start)
-- [!] Approval to scaffold the Svelte + Vite project (blocks Phase 1 code)
