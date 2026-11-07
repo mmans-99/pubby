@@ -77,16 +77,20 @@ Built in slices; each slice gets a test link and a checklist.
 - [x] Winner picks who leads (round 2 on)
 - [x] Basic results screen (places, points, totals, "X is the winner"), next round, end game, game over standings
 - [x] Stand-ins until slice 3: host starts the round (no reshuffle vote), everyone keeps their hand (no swap), random pick (no Reaction Tap)
-- [ ] Slice 3: round start (reshuffle vote, hidden swap, missing suits, Reaction Tap); replaces the slice 2 stand-ins
+- [x] **Slice 3: round start** (approved by the user, committed)
+- [x] Reshuffle vote: any player calls it, pass the phone to vote in secret with your hand shown, host can count early, host decides with no majority, result pop-up
+- [x] Hidden swap (2 and 3 players): pick up to 4 cards or keep, see new cards marked
+- [x] Reaction Tap: red then green pad, times in ms, false starts, tie replays, slowest leads
+- [x] Slice 2 stand-ins removed
 - [ ] Slice 4: between tricks and rounds (results, trivia, votes, take-cards, pause)
 - [x] Table view and turn indicator
 - [x] SLAP! pop-up, emoji bar, and catch-phrases (content in `src/content/catch-phrases.md`)
-- [ ] Missing-suit prompt and mini-game
-- [ ] Reshuffle vote and hidden-swap screens (phone layout); hidden decks never drawn, only the "Swap cards" option
-- [ ] Vote result pop-up on every phone: "Majority says… YES/NO" or "Host says… YES/NO", naming what was decided
+- [x] Missing-suit prompt and mini-game
+- [x] Reshuffle vote and hidden-swap screens (phone layout); hidden decks never drawn, only the "Swap cards" option
+- [x] Vote result pop-up: "Majority says… YES/NO" or "Host says… YES/NO", naming what was decided
 - [ ] Pause overlay for all players, and pause-request button for non-host players
 - [ ] Take-cards request: button, request prompt for the asked player, "cards taken" pop-up
-- [ ] Reaction Tap mini-game screen (chosen; slowest reactor leads, ties replay)
+- [x] Reaction Tap mini-game screen (chosen; slowest reactor leads, ties replay)
 - [x] Auto-deal animation with switch-to-manual control; manual deal taps
 - [x] Joker count banner at game start; host setup toggle for the joker rule
 - [ ] Results screen after every round: scores, trivia, per-player "slapped by most" and "slapped most", no timer, ready-up for players, host moves on

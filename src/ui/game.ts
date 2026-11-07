@@ -12,8 +12,8 @@
  *
  * Slice 2: dealing (auto with animation, manual, switchable), trick play,
  * slaps, jokers, the final two, going-out and last-two pop-ups, winner picks
- * the leader, and a basic results screen. Stand-ins (marked) for the slice 3
- * steps: reshuffle vote, hidden swap and Reaction Tap.
+ * the leader, and a basic results screen. Slice 3 (roundstart.ts): votes,
+ * the hidden swap and Reaction Tap.
  */
 
 import catchPhrasesMd from '../content/catch-phrases.md';
@@ -26,6 +26,7 @@ import { cardFace, cardFaceFromId, ordinal, shortLabel, sortHand, SUIT_NAME, SUI
 import { h, type Child } from './dom.ts';
 import type { GameStage, LastTrick, SavedGame, TrickPlay } from './storage.ts';
 import { getState, say, update, type Popup } from './store.ts';
+import { reshuffleStage, roundStartHolder, roundStartScreen, voteOutcome } from './roundstart.ts';
 
 const rng = defaultRng();
 const AUTO_DEAL_MS = 150;
@@ -49,7 +50,7 @@ export function nameOf(s: Session, id: PlayerId | null | undefined): string {
   return s.players.find((p) => p.id === id)?.sessionName ?? id;
 }
 
-function nextClockwise(s: Session, id: PlayerId): PlayerId {
+export function nextClockwise(s: Session, id: PlayerId): PlayerId {
   const i = s.order.indexOf(id);
   return s.order[(i + 1) % s.order.length]!;
 }
@@ -60,7 +61,7 @@ function actorOf(s: Session): PlayerId | null {
   return s.play.pendingFinalTwo ?? s.play.turn;
 }
 
-function publicView(s: Session): PlayerView {
+export function publicView(s: Session): PlayerView {
   // Any player's view has the same public parts. The host's is used for table screens.
   return playerView(s, s.hostId);
 }
@@ -118,10 +119,12 @@ export function send(actions: readonly SessionAction[], opts: { stage?: GameStag
   // Who holds the phone next.
   let stage: GameStage = opts.stage ?? 'table';
   let holder = opts.holder ?? g.holder;
-  if (!opts.stage && session.phase === 'playing') {
-    const next = actorOf(session);
+  if (!opts.stage) {
+    const rs = roundStartHolder(session);
+    const next = rs ?? actorOf(session);
     if (next) {
-      stage = g.stage === 'hand' && next === g.holder ? 'hand' : 'handoff';
+      // During play the same player keeps their cards up; private round-start steps always pass the phone.
+      stage = !rs && session.phase === 'playing' && g.stage === 'hand' && next === g.holder ? 'hand' : 'handoff';
       holder = next;
     }
   }
@@ -159,6 +162,18 @@ function popupsFor(s: Session, events: readonly SessionEvent[]): Popup[] {
       case 'roundEnded':
         out.push({ kind: 'lastTwo', order: e.finishingOrder, shared: e.sharedSecondLast, forfeitedBy: e.forfeitedBy });
         break;
+      case 'voteCalled':
+        if (e.by) out.push({ kind: 'info', icon: '🗳️', title: 'Vote!', text: `${nameOf(s, e.by)} called a ${e.kind === 'reshuffle' ? 'reshuffle' : e.kind === 'target' ? `target (${e.value} points)` : 'Ultimate Round'} vote. Pass the phone round to vote.` });
+        break;
+      case 'voteNeedsHost':
+        out.push({ kind: 'info', icon: '⚖️', title: 'No majority', text: `${nameOf(s, s.hostId)} (host) decides.` });
+        break;
+      case 'voteResolved':
+        out.push({ kind: 'vote', decidedBy: e.decidedBy, result: e.result, text: voteOutcome(s, e.kind, e.result, e.value) });
+        break;
+      case 'reactionTapReplay':
+        out.push({ kind: 'info', icon: '🔁', title: 'Tie for slowest!', text: `${e.players.map((x) => nameOf(s, x)).join(' and ')} tap again.` });
+        break;
       case 'leaderChosen': {
         const who = nameOf(s, e.leader);
         const lines = missing.map((m) => m.type === 'missingSuitDeclared'
@@ -188,7 +203,10 @@ export function gameScreen(g: SavedGame): HTMLElement {
   const s = g.session;
   const st = getState();
   let body: Child;
-  if (s.phase === 'playing') {
+  const rs = roundStartScreen(g);
+  if (rs) {
+    body = rs;
+  } else if (s.phase === 'playing') {
     body = g.stage === 'hand' ? playHandStage(g) : playHandoffStage(g);
   } else if (g.stage === 'hand' && s.phase !== 'dealing' && s.phase !== 'results' && s.phase !== 'gameOver') {
     body = lookHandStage(g);
@@ -225,7 +243,7 @@ function gameMenu(): HTMLElement {
 // Table pieces (public information only)
 // ---------------------------------------------------------------------------
 
-function seatStrip(s: Session, v: PlayerView, opts: { highlight?: PlayerId | null; onTap?: (id: PlayerId) => void; tapLabel?: string } = {}): HTMLElement {
+export function seatStrip(s: Session, v: PlayerView, opts: { highlight?: PlayerId | null; onTap?: (id: PlayerId) => void; tapLabel?: string } = {}): HTMLElement {
   return h('div', { class: 'seat-strip' }, s.order.map((id) => {
     const p = v.players.find((x) => x.id === id)!;
     const out = p.place !== null;
@@ -281,9 +299,9 @@ function tableStage(g: SavedGame): Child {
   const s = g.session;
   switch (s.phase) {
     case 'dealing': return dealingStage(g);
-    case 'reshuffle': return reshuffleStandIn(g);
-    case 'swap': return swapStandIn(g);
-    case 'reactionTap': return reactionTapStandIn(g);
+    case 'reshuffle': return reshuffleStage(g);
+    case 'swap':
+    case 'reactionTap': return roundStartScreen(g) ?? h('p', null, 'Waiting…');
     case 'chooseLeader': return chooseLeaderStage(g);
     case 'results': return resultsStage(g);
     case 'gameOver': return gameOverStage(g);
@@ -333,54 +351,6 @@ function dealingStage(g: SavedGame): Child {
 
 function standInNote(text: string): HTMLElement {
   return h('p', { class: 'standin' }, h('b', null, 'Stand-in: '), text);
-}
-
-function reshuffleStandIn(g: SavedGame): Child {
-  const s = g.session;
-  const v = publicView(s);
-  return h('div', { class: 'stack' },
-    h('h2', null, 'Cards dealt'),
-    seatStrip(s, v),
-    h('section', { class: 'panel' },
-      h('h2', null, 'Look at your cards'),
-      h('p', { class: 'muted' }, 'Pass the phone round so everyone can see their own hand before the round starts.'),
-      h('button', { class: 'secondary', onclick: () => update({ game: { ...g, stage: 'handoff', holder: nextClockwise(s, s.dealer) } }) }, 'Pass the phone round'),
-    ),
-    standInNote('the reshuffle vote comes in the next build. For now the host starts the round.'),
-    h('button', { class: 'big', onclick: () => send([{ type: 'startRound', by: s.hostId }]) }, `Start the round (${nameOf(s, s.hostId)})`),
-  );
-}
-
-function swapStandIn(g: SavedGame): Child {
-  const s = g.session;
-  return h('div', { class: 'stack' },
-    h('h2', null, 'Hidden swap'),
-    standInNote('the hidden swap comes in the next build. For now everyone keeps their hand.'),
-    h('button', {
-      class: 'big',
-      onclick: () => send(s.order.filter((p) => !s.swapDone.includes(p)).map((p) => ({ type: 'swap' as const, by: p, cardIds: [] }))),
-    }, 'Everyone keeps their hand'),
-  );
-}
-
-function reactionTapStandIn(g: SavedGame): Child {
-  const s = g.session;
-  const players = s.tap?.players ?? [];
-  const run = (): void => {
-    // Random "reaction times" until one slowest player is decided.
-    let guard = 0;
-    while (getState().game?.session.phase === 'reactionTap' && guard++ < 20) {
-      const cur = getState().game!.session;
-      const todo = cur.tap!.players.filter((p) => !cur.tap!.results[p]);
-      if (!send(todo.map((p) => ({ type: 'reactionTap' as const, by: p, ms: 150 + Math.floor(Math.random() * 400), falseStart: false })))) break;
-    }
-  };
-  return h('div', { class: 'stack' },
-    h('h2', null, 'Missing suits'),
-    h('p', null, `${players.map((p) => nameOf(s, p)).join(' and ')} are missing a suit. The slowest in Reaction Tap leads.`),
-    standInNote('Reaction Tap comes in the next build. For now the game picks one of them at random.'),
-    h('button', { class: 'big', onclick: run }, 'Pick who leads'),
-  );
 }
 
 function chooseLeaderStage(g: SavedGame): Child {
@@ -503,10 +473,21 @@ function playHandoffStage(g: SavedGame): Child {
   );
 }
 
-function handBlock(s: Session, v: PlayerView, onTap: ((c: Card) => void) | null): HTMLElement {
+/**
+ * A player's hand. With `onTap`, legal cards are lit and tappable (during play).
+ * `opts.all` makes every card tappable (hidden swap); `opts.picked` marks cards
+ * as raised; `opts.mark` puts a star on them instead (new cards after a swap).
+ */
+export function handBlock(
+  s: Session,
+  v: PlayerView,
+  onTap: ((c: Card) => void) | null,
+  opts: { picked?: ReadonlySet<string>; all?: boolean; mark?: boolean } = {},
+): HTMLElement {
   const hand = sortHand(v.myHand);
-  const legal = new Set(v.legalCardIds);
+  const legal = new Set(opts.all ? v.myHand.map((c) => c.id) : v.legalCardIds);
   const selected = getState().selected;
+  const raised = (id: string): boolean => (opts.picked ? opts.picked.has(id) && !opts.mark : selected === id);
   const key = `${s.round}:${v.me}:${s.phase}`;
   const fresh = key !== shownHandKey;
   shownHandKey = key;
@@ -518,7 +499,7 @@ function handBlock(s: Session, v: PlayerView, onTap: ((c: Card) => void) | null)
     hand.length
       ? h('div', { class: fresh ? 'hand fresh' : 'hand' }, hand.map((c, i) => {
         const playable = onTap !== null && legal.has(c.id);
-        const el = cardFace(c, [onTap && !playable ? 'dim' : '', selected === c.id ? 'selected' : '', playable ? 'playable' : ''].join(' '));
+        const el = cardFace(c, [onTap && !playable ? 'dim' : '', raised(c.id) ? 'selected' : '', playable ? 'playable' : '', opts.mark && opts.picked?.has(c.id) ? 'new-card' : ''].join(' '));
         el.style.setProperty('--i', String(i));
         if (playable) {
           el.setAttribute('role', 'button');
@@ -628,6 +609,13 @@ export function popupLayer(): HTMLElement | null {
     ];
   } else if (p.kind === 'lastTwo') {
     body = lastTwoBody(s, p);
+  } else if (p.kind === 'vote') {
+    cls += ' vote-pop';
+    body = [
+      h('div', { class: 'vote-says' }, p.decidedBy === 'host' ? 'Host says…' : 'Majority says…'),
+      h('div', { class: p.result ? 'vote-word yes' : 'vote-word no' }, p.result ? 'YES!' : 'NO!'),
+      h('div', { class: 'popup-title small-title' }, p.text),
+    ];
   } else {
     body = [
       h('div', { class: 'popup-icon' }, p.icon),

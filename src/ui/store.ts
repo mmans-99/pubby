@@ -30,6 +30,7 @@ export type Popup =
       shared: readonly PlayerId[] | null;
       forfeitedBy: PlayerId | null;
     }
+  | { kind: 'vote'; decidedBy: 'majority' | 'host'; result: boolean; text: string }
   | { kind: 'info'; icon: string; title: string; text: string };
 
 export type Screen = 'home' | 'profiles' | 'setup' | 'game';

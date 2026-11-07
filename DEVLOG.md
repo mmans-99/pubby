@@ -4,6 +4,24 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-07 — Phase 2 slice 3: reshuffle vote, hidden swap, Reaction Tap
+
+**Done**
+- User approved slice 3. New `src/ui/roundstart.ts` (`CODE.md` 9c); the slice 2 stand-ins are gone.
+- Reshuffle vote: after the deal, "Call a reshuffle vote" asks who is calling (any player), then the phone goes to each player clockwise from the caller. Each votes YES or NO in secret, with their own hand on screen so they can judge the deal. The host can count the votes early (two taps). A majority decides at once; with no majority the host decides. Result pop-up: "Majority says…" or "Host says…" with a big YES!/NO! and what it means ("Reshuffle! X shuffles and deals again." / "No reshuffle. The round goes on."). Passed: the dealer deals again, then the round moves straight on. Once per round. The host can still just tap "Start the round".
+- Hidden swap (2 and 3 players, every round): the phone goes to each player; pick up to 4 cards (tap to raise) and "Swap N cards", or "Keep my hand". Then the player sees their hand with the new cards starred, hides it and passes on.
+- Reaction Tap (two or more players missing a suit): each in turn taps Start; the pad shows red "Wait…" for a random 1.5 to 4 seconds, then green "TAP!". Time is measured from when the green pad is on screen. Tapping on red is "Too early!" (slowest). Each player sees their time, then passes on. Ties for slowest replay (pop-up). The slowest leads (pop-up says why).
+- Checks: strict type check; 97 tests passing; automated phone-browser playthroughs at 2, 3, 4, 7 and 8 players: reshuffle votes passed and failed, host deciding, counting early, swaps of 0 to 4 cards (new cards checked against the number swapped), Reaction Taps with false starts, no errors.
+- Test link republished.
+- `CODE.md`, `TODO.md` updated. `PROJECT.md` checked: no rule changes. `CLAUDE.md` checked, no changes.
+
+- User approved commit and push.
+
+**Next**
+- Slice 4 (results screen with trivia and ready up, target and Ultimate votes, take-cards requests, pause).
+
+---
+
 ## 2026-11-07 — Reactions drawer, longer SLAP!
 
 **Done**

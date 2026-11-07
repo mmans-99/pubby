@@ -496,3 +496,45 @@ table.results { width: 100%; border-collapse: collapse; }
 
 .popup.seen, .popup.seen.slap { animation: none; }
 .overlay:has(.popup.seen) { animation: none; }
+
+/* ===== Slice 3: votes, hidden swap, Reaction Tap ===== */
+
+.vote-panel { border-color: var(--gold); }
+.vote-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.vote-yes { background: #43a047; color: #fff; font-size: 1.4rem; }
+.vote-no { background: var(--danger); color: #fff; font-size: 1.4rem; }
+
+.popup.vote-pop { gap: 4px; }
+.vote-says { font-size: 1.2rem; font-weight: 800; color: #5d5646; }
+.vote-word { font-size: 4rem; font-weight: 900; line-height: 1; letter-spacing: 0.02em; animation: stamp 0.4s cubic-bezier(.2, 1.8, .4, 1) 0.25s both; }
+.vote-word.yes { color: #2e7d32; }
+.vote-word.no { color: var(--red); }
+.popup.seen .vote-word { animation: none; }
+.small-title { font-size: 1.1rem; }
+@keyframes stamp { from { transform: scale(2.4) rotate(-10deg); opacity: 0; } }
+
+/* New cards after a swap */
+.card.new-card { box-shadow: 0 0 0 3px var(--gold), 0 4px 10px rgba(0, 0, 0, 0.4); position: relative; }
+.card.new-card::after {
+  content: '★';
+  position: absolute; top: -8px; right: -8px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--gold); color: var(--ink);
+  font-size: 0.8rem; display: grid; place-items: center;
+}
+
+/* Reaction Tap */
+.tap-start { min-height: 120px; font-size: 1.6rem; }
+.tap-pad {
+  min-height: 52vh;
+  border-radius: 24px;
+  display: grid; place-items: center;
+  font-size: 3rem; font-weight: 900;
+  user-select: none; -webkit-user-select: none;
+  touch-action: none;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 6px rgba(0, 0, 0, 0.15), 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+.tap-pad.wait { background: #c62828; color: #fff; }
+.tap-pad.go { background: #00e676; color: var(--ink); }
+.tap-result { font-size: 3.4rem; font-weight: 900; color: var(--gold); }
