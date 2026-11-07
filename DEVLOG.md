@@ -4,6 +4,33 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-07 (evening) — Multiplayer path chosen
+
+**Done**
+- User asked "What's next?" (20:29). Answer: test v1.2 on the phone (version, back gesture, airplane mode, a real game), and choose the multiplayer path.
+- **User chose B only (20:32):** WebRTC with a QR handshake, phones only, no local server and no fallback to A.
+- `CODE.md` section 4 marked decided; new section 4a: Phase 4 plan (star layout with the host's phone running the session, two scans per player, risks, slices 0 to 5, automated tests). Draft, awaiting approval.
+- `PROJECT.md` section 12 updated (joining by two scans); five new multiplayer open questions (mixed games, dropped phones, late joining, host dropping, secret votes).
+- `TODO.md` Phase 4 split into slices. `CLAUDE.md` checked, no changes.
+- **User answered (20:36):** own phones only; dropped phone pauses the game and rejoins; host can remove a player who doesn't return, their cards leave play (not the waste pile); no late joining, only rejoining; votes open. User asked whether the host can be transferred if the host's phone drops.
+- Three follow-up questions added to `PROJECT.md` (removed player's place, later rounds after a removal, host transfer or saved game).
+- **User answered (20:38):** saved game only (no host transfer); removed player takes last place unless they rejoin; game carries on with fewer players. All recorded in `PROJECT.md` section 12; no open questions left.
+- **User approved the plan and slice 0 (20:39).**
+- Built the connection test (version 1.3, `CODE.md` 9f): QR maker (`src/net/qr.ts`, no package), short codes (`src/net/signal.ts`, about 130 characters instead of 1,000+), the link (`src/net/peer.ts`), camera scanner (`src/net/scan.ts`, the browser's built-in reader), and the screen (`src/ui/nettest.ts`), opened from a new small link on the home screen.
+- UI choices not in the spec, flagged to the user: the home-screen link, what the test shows (round trip, lost messages, addresses), 😂 button, screen kept awake while connected.
+- Checks: QR maker against OpenCV (116 codes, versions 1 to 15, all decode); 124 unit tests (6 new); strict type check; `net_check.py` 25 of 25 (two pages connect by reading each other's on-screen QR codes from screenshots); offline check 20 of 20; back check 14 of 14; 2-player playthrough 11 of 11.
+- Found in the check: once the camera is allowed, Chrome shows the phone's real local address instead of a hidden `.local` name. Good for phones finding each other.
+- Not covered by automated checks: the real camera scan (headless Chromium has no QR reader), real Wi-Fi and hotspots, phones locking. That's what the user's two-phone test is for.
+- The test needs the camera and HTTPS, which the private test page doesn't allow, so GitHub Pages is the test build again (`CLAUDE.md` rule 5: explained before asking to push).
+- **User (20:49):** has one Android and one iPhone, asked for the test to work between them. iPhone Safari can't read QR codes in a page, so the host's QR code is now a join link: the iPhone Camera app opens Pubby in Safari already joining, and the iPhone shows its code for the Android host to scan. Phones with no reader get Camera app steps instead of the camera. The host now allows the camera before making its code (may give the real local address). `net_check.py` 29 of 29 (new: join link path with a third page), 125 unit tests, offline 20 of 20, back 14 of 14.
+- `CLAUDE.md` checked, no changes.
+
+**Next**
+- User approves pushing v1.3, then tests Android (host) + iPhone (joins by Camera app): home Wi-Fi, then the Android's hotspot with mobile data off.
+- Go / no-go for slices 1 to 5.
+
+---
+
 ## 2026-11-07 — Phase 3: offline app
 
 **Done**

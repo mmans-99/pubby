@@ -44,9 +44,11 @@ Other choices:
 - **Randomness:** The rules engine never calls `Math.random`. It takes an `Rng` function, so tests use a fixed seed (`seededRng`) and real games use the phone's crypto random source (`defaultRng`).
 - **QR codes:** A small QR generator library for display, and a camera-based scanner for joining (DECIDE which library).
 
-## 4. Multiplayer transport (DECIDE)
+## 4. Multiplayer transport (decided 2026-11-07: B only)
 
-Joining must work with no internet. Three options:
+**Decision (user, 2026-11-07 20:32): B, WebRTC with a QR handshake, phones only. No local server (A) and no fallback to A.** C (pass-and-play) is already built and stays as a separate mode. The Phase 4 plan is in section 4a.
+
+Joining must work with no internet. The options that were considered:
 
 | Option | How it works | Pros | Cons |
 |---|---|---|---|
@@ -54,7 +56,39 @@ Joining must work with no internet. Three options:
 | B. WebRTC with QR handshake | Phones connect directly. Each join exchanges connection info through a QR code scanned between devices. | No server needed, works on phones alone | Harder to build, fragile with many players, manual handshake steps |
 | C. Pass-and-play only at first | No networking yet | Lowest risk, lets rules be finished first | No online-ish play until a later phase |
 
-**Recommended path:** Build **C** first (Phase 2 in `TODO.md`) to finish the rules. Then add **B** (WebRTC with a phone as host, star layout) so phones can play with no extra hardware. Keep **A** as a fallback if B is too fragile with 8 players.
+**Recommended path:** Build **C** first (Phase 2 in `TODO.md`) to finish the rules. Then add **B** (WebRTC with a phone as host, star layout) so phones can play with no extra hardware. Keep **A** as a fallback if B is too fragile with 8 players. (Superseded: the user chose B only.)
+
+## 4a. Phase 4 plan: WebRTC over QR (approved 2026-11-07 20:39)
+
+**Layout: star.** The host's phone runs the session layer (as in pass-and-play) and is also a player. Every other phone connects only to the host over a WebRTC data channel. Phones send actions to the host; after every change the host sends each phone its own `playerView` plus the events (pop-ups, reactions). Nothing else changes in the rules engine or the session layer.
+
+**Network.** All phones on the same Wi-Fi, or on the host's phone hotspot. No internet, no STUN or TURN server: phones connect using their local addresses only.
+
+**Joining (two scans per player).**
+1. The host taps "Add player". The host's phone shows QR code 1 (the connection offer).
+2. The joining phone scans it and shows QR code 2 (its answer).
+3. The host's phone scans QR code 2. The phones connect, and the new player appears in the lobby.
+(An iPhone does step 2 with its Camera app: QR code 1 is a link that opens Pubby joining.) Each player needs their own pair of scans (a 3-player game: 4 scans; 8 players: 14). The offer and answer are cut down to the few fields WebRTC needs (about 150 to 250 characters), so the QR codes stay small and scan quickly.
+
+**Risks the first test must answer (slice 0).**
+- Some Wi-Fi networks block phone-to-phone traffic (often guest or public networks). A phone hotspot normally allows it.
+- Browsers hide local addresses behind `.local` names unless the page has camera permission. Pubby asks for the camera to scan, which should help, but this has to be checked on real phones (Samsung Internet and Chrome).
+- QR scanning: Chrome and Samsung Internet on Android have a built-in barcode reader; iPhone Safari does not. Instead (user's request, 2026-11-07 20:49: they have one Android and one iPhone), the host's QR code is a **join link** (`<Pubby address>#join=<code>`): the iPhone Camera app reads it and opens Pubby in Safari already joining; the iPhone shows its own code for the host to scan. So an iPhone can join but can't be the host. A bundled decoder would let iPhones host; not planned unless asked. QR codes are drawn by a small bundled generator. No internet is needed.
+- A phone that locks its screen or switches apps drops the connection. Pubby keeps the screen awake (Wake Lock) during a game and lets a phone rejoin its seat.
+
+**Slices (each gets a test link and a checklist, `CLAUDE.md` rule 5).**
+- **Slice 0: connection test (go / no-go).** Built 2026-11-07 (version 1.3, section 9f); waiting for the user's test on two phones. A "Connection test" screen: two phones do the two scans, then send pings and show the round-trip time. Test on home Wi-Fi, on a phone hotspot, and with mobile data off. If phones can't connect, stop and talk before building more.
+- **Slice 1: network lobby.** Host or join from the home screen, scan to add players, names and profiles from each phone, seat order, host settings, start the game.
+- **Slice 2: play over the network.** Every phone shows its own hand and the table; turns, slaps, final two, pop-ups on every phone. No pass-the-phone screens in network games.
+- **Slice 3: everything between tricks and rounds.** Votes on each player's own phone (secret by default), reshuffle, hidden swap, Reaction Tap on every phone at once, take-cards requests, pause requests, reactions on every phone from the sender's side, results and Ultimate Round.
+- **Slice 4: drops and rejoining.** Lost connection, rejoining a seat, the host's phone dropping, screen kept awake, game saved on the host's phone.
+- **Slice 5: playtest with 2 to 8 phones.** Release as version 2.0 (a new phase: major bump).
+
+**Automated tests.** Two or more headless browser pages on one computer, joined over WebRTC by passing the QR text directly, then the bot playthrough on each page. Real QR scanning and real networks are only checked on phones.
+
+**Decisions (user, 2026-11-07 20:36 and 20:38).** Own phones only; dropped phone pauses the game and rejoins its seat; host can remove a player who doesn't return (cards leave play, last place that round, game carries on with fewer players); no late joining; open votes; no host transfer, the game is saved on the host's phone. `PROJECT.md` section 12.
+
+**Reaction Tap fairness.** Each phone measures its own reaction time from when it showed green, so network delay doesn't count against anyone.
 
 ## 5. Hidden information (DECIDE trust model)
 
@@ -118,15 +152,17 @@ pubby/
     rules/        # pure rules engine
     session/      # state, turns, hidden info, join/leave
     ui/           # rendering, popups, emojis
-    net/          # LAN/WebRTC transport (later phase)
+    net/          # WebRTC link (peer.ts), short QR codes (signal.ts), QR maker (qr.ts), camera scanner (scan.ts)
     content/      # catch-phrases, emoji set, text (easy to edit)
     pwa/          # icon.svg (+ pre-rendered PNGs), manifest.webmanifest, sw.js template
     index.html    # page template (styles and script are inlined by build.mjs)
     main.ts       # starts the app
   build.mjs       # builds dist/ (index.html, sw.js, manifest, icons)
-  testbed/        # rules test page (Phase 1), playthrough script (bot.js, playthrough.py), offline_check.py
+  testbed/        # rules test page (Phase 1), playthrough script (bot.js, playthrough.py), offline_check.py, back_check.py, net_check.py
   tests/
     rules/
+    session/
+    net/          # short codes and QR maker
   .github/workflows/pages.yml   # builds and deploys dist/ to GitHub Pages on push to main
 ```
 
@@ -146,6 +182,7 @@ The `content/` folder keeps catch-phrases and emojis in one editable place, sinc
 - **Reaction Tap:** Tests that the slowest reactor leads, that a false start counts as the slowest time, and that tied slowest players replay until one is decided.
 - **Forfeit:** Tests that a forfeit scores last place and gives the other player the higher place, straight away or later after a pick-up.
 - **Final two:** Tests for every last-card case: lower, higher (pick up or forfeit), slap, both out in one trick, missed round (both play jokers), no jokers while the other player is on their last normal card, last normal card with jokers left (jokers thrown away, also on pick-up), and that it applies from the first trick in a 2-player game.
+- **Network (Phase 4):** `tests/net/` unit tests for the short codes (pack, unpack, rebuilt SDP, wrong codes) and the QR maker. `testbed/net_check.py` opens two phone-sized pages, reads each on-screen QR code from a screenshot with OpenCV (like a camera), feeds it to the other page, and checks the link, pings, 😂, wrong codes, Disconnect and Back, plus the iPhone path: a third page opened at the host's join link (29 checks). The camera scan itself only runs on real phones (headless Chromium has no QR reader).
 - **Manual:** Pass-and-play playthroughs at 2, 3, 5, and 8 players before each release.
 
 ## 9a. Rules engine modules (built so far)
@@ -229,10 +266,18 @@ Every function is pure: it returns a new state and never changes the one passed 
 
 ## 9e. Version number and touch behaviour
 
-- **Version:** `package.json` `version` (`MAJOR.MINOR.0`) is the single source. `build.mjs` passes `MAJOR.MINOR` into the bundle as `__PUBBY_VERSION__`; `src/ui/version.ts` exports it as `VERSION` ("dev" if missing). Shown as "Version 1.0" at the bottom of the home screen and "Pubby version 1.0" at the bottom of the quick rules sheet (reachable from every screen, including mid-game). Rules for bumping: `CLAUDE.md` rule 8. History: 1.0 = Phase 3 offline app with version number, no zoom, no pull-to-refresh. 1.1 = back gesture. 1.2 = back gesture fix for the installed app.
+- **Version:** `package.json` `version` (`MAJOR.MINOR.0`) is the single source. `build.mjs` passes `MAJOR.MINOR` into the bundle as `__PUBBY_VERSION__`; `src/ui/version.ts` exports it as `VERSION` ("dev" if missing). Shown as "Version 1.0" at the bottom of the home screen and "Pubby version 1.0" at the bottom of the quick rules sheet (reachable from every screen, including mid-game). Rules for bumping: `CLAUDE.md` rule 8. History: 1.0 = Phase 3 offline app with version number, no zoom, no pull-to-refresh. 1.1 = back gesture. 1.2 = back gesture fix for the installed app. 1.3 = connection test screen (Phase 4 slice 0).
 - **No zoom:** viewport tag `maximum-scale=1.0, user-scalable=no`; CSS `touch-action: pan-x pan-y` on `html, body` (no pinch or double-tap zoom, scrolling kept); `src/ui/nozoom.ts` `blockZoom()` cancels iPhone Safari gesture events and two-finger moves, which Safari otherwise allows despite the viewport tag.
 - **Back gesture (v1.1, fixed in v1.2, `src/ui/back.ts`):** Pubby keeps two "guard" entries in the browser history (`{ pubby: 1 }`, `{ pubby: 2 }`); a back gesture pops one (`popstate`) and Pubby does its own back step. v1.1 still closed the installed app: Chrome's back gesture skips history entries added without a real tap, and v1.1 added them at start-up and inside `popstate`, and listened to `pointerdown` (not a tap on touch screens). v1.2 only adds guards inside `click` / `touchend` / `keydown`, keeps two so two quick backs stay inside Pubby, and tops them up on the next tap. Opening Pubby and swiping back before touching the screen still closes it (no tap yet, so no guards). The exit question jumps back over the remaining guards (`history.go`, that `popstate` ignored), so the next back gesture leaves; "Stay" tops the guards up. Order: close an open sheet (quick rules, CSV sheet, in-game menu, exit question); in a game do nothing (user choice); close an opened profile or past game; profiles, past games and setup go to the main menu; on the main menu show "Exit Pubby?" (Stay / Exit, "Swipe back again to exit"). "Exit" tries `window.close()`, then says "Swipe back to close Pubby." if still open. Check: `python3 testbed/back_check.py` (14 checks, including the history entries themselves).
 - **No pull-to-refresh:** CSS `overscroll-behavior: none` on `html, body` (also stops the bounce at the ends of the page). An installed Pubby has no pull-to-refresh anyway.
+
+## 9f. Network modules (Phase 4)
+
+- **`src/net/qr.ts`:** QR code maker written for Pubby (no package, works offline): byte mode, versions 1 to 40, error correction L or M, all eight masks scored with the standard penalty. `qrSvg()` draws black on white with a 4-module quiet zone. Checked by decoding 116 codes (1 to 400 characters, versions 1 to 15) with OpenCV.
+- **`src/net/signal.ts`:** `joinLink()` / `codeFromText()`: the host's QR code is `<page address>#join=<code>` (also undoes `%` escapes); `src/ui/app.ts` opens the test screen joining when the page starts with `#join=`, then removes it from the address with `history.replaceState`. Short codes, `PUBBY1~o|a~ufrag~pwd~fingerprint(base64url)~addr:port,...`. Keeps up to 4 UDP host candidates (IPv4 first, then hidden `.local` names, then IPv6) and rebuilds a full data-channel SDP from them (`a=setup:actpass` for offers, `active` for answers). About 100 to 140 characters, so QR version 6 or 7.
+- **`src/net/peer.ts`:** `Peer` wraps one `RTCPeerConnection` with no ICE servers and one ordered data channel `pubby` made by the host. Waits for ICE gathering to finish (4 s at most) before making a code, since there's no way to send more candidates later. JSON messages. `path()` reads the selected candidate pair from `getStats()`.
+- **`src/net/scan.ts`:** back camera plus the browser's `BarcodeDetector` (Chrome and Samsung Internet on Android), checked every 150 ms. No reader on iPhone: a joining iPhone gets Camera app steps instead of the camera. Camera permission also stops Chrome hiding the phone's local address behind a `.local` name which should help phones find each other (not confirmed: headless Chromium kept hidden names).
+- **`src/ui/nettest.ts`:** the Connection test screen. Keeps its own element and state so the camera and link survive the app's re-renders; `stopNetTest()` (called when the app leaves the screen, including by the back gesture) stops the camera and closes the link. The host allows the camera before making its code (`warmCamera()`), hoping Chrome then puts the real local address in the code; headless Chromium kept the hidden name either way, so this is checked on phones. Pings every second both ways; a ping with no reply after 3 s counts as lost. Keeps the screen awake while connected (Wake Lock, where allowed). `window.pubbyNetTest` lets `net_check.py` feed scanned codes.
 
 ## 8a. Playable test builds (required before every commit)
 

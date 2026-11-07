@@ -23,6 +23,7 @@ import { pauseLayer } from './between.ts';
 import { afterRender, gameScreen, popupLayer, reactionsLayer } from './game.ts';
 import { csvSheetLayer, pastGamesScreen, profileDetails } from './history.ts';
 import { renderMarkdown } from './markdown.ts';
+import { joinFromLink, netTestScreen, stopNetTest } from './nettest.ts';
 import { addProfile, deleteProfile, findProfile, loadGame, loadProfiles, loadRecords, saveProfiles } from './storage.ts';
 import { getState, initState, say, update, type SetupSeat, type SetupState, type State } from './store.ts';
 
@@ -57,8 +58,15 @@ export function startApp(target: HTMLElement): void {
     csvSheet: null,
     exitAsk: false,
   };
+  // Opened from a host's QR code (iPhone Camera app): go straight to joining.
+  const link = location.hash.startsWith('#join=') ? location.href : null;
+  if (link) {
+    history.replaceState(history.state, '', location.pathname + location.search);
+    initial.screen = 'nettest';
+  }
   initState(initial, render);
   render();
+  if (link) joinFromLink(link);
   setupBack();
 }
 
@@ -77,7 +85,9 @@ function render(): void {
     : st.screen === 'history' ? pastGamesScreen(() => update({ screen: 'home', armed: null, openRecord: null }))
     : st.screen === 'setup' ? setupScreen()
     : st.screen === 'game' && st.game ? gameScreen(st.game)
+    : st.screen === 'nettest' ? netTestScreen(() => update({ screen: 'home' }))
     : homeScreen();
+  if (st.screen !== 'nettest') stopNetTest();
   const parts: (HTMLElement | null)[] = [
     screen,
     h('button', { class: 'rules-btn', 'aria-label': 'Quick rules', onclick: () => update({ rulesOpen: true }) }, '?'),
@@ -146,6 +156,7 @@ function homeScreen(): HTMLElement {
       h('button', { class: 'big secondary', onclick: () => update({ screen: 'history', armed: null, openRecord: null }) },
         `Past games (${loadRecords().length})`),
     ),
+    h('button', { class: 'ghost small net-test-btn', onclick: () => update({ screen: 'nettest' }) }, 'Connection test (two phones)'),
     h('p', { class: 'muted small center' }, 'Pass-and-play on one phone. Test build: the full game on one phone.'),
     h('p', { class: 'muted small center version' }, `Version ${VERSION}`),
   );

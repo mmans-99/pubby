@@ -628,3 +628,25 @@ table.trivia-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; 
 /* "Exit Pubby?" sheet (back gesture on the main menu) */
 .exit-sheet h2 { margin: 0 0 4px; }
 .exit-sheet button.secondary { background: #e9e1cc; }
+
+/* ----- Connection test (nettest.ts, Phase 4 slice 0) ----- */
+
+.net-test-btn { align-self: center; color: var(--muted); text-decoration: underline; }
+.net-big { font-size: 1.25rem; font-weight: 700; }
+.net-big.ok { color: #9be39b; }
+.net-big.bad { color: var(--danger); }
+.net-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.qr { width: min(86vw, 380px); align-self: center; background: #fff; border-radius: 12px; padding: 4px; }
+.qr svg { display: block; width: 100%; height: auto; }
+.scan-box { position: relative; width: min(86vw, 380px); aspect-ratio: 1; align-self: center; border-radius: 14px; overflow: hidden; background: #000; }
+.scan-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.scan-frame { position: absolute; inset: 12%; border: 3px solid var(--gold); border-radius: 12px; box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.35); pointer-events: none; }
+.net-laugh {
+  position: fixed; left: 50%; bottom: 20%; font-size: 4rem; pointer-events: none; z-index: 60;
+  animation: net-laugh 1.6s ease-out forwards;
+}
+@keyframes net-laugh {
+  from { transform: translate(-50%, 0) scale(0.6); opacity: 0; }
+  20% { transform: translate(-50%, -20px) scale(1.2); opacity: 1; }
+  to { transform: translate(-50%, -220px) scale(1); opacity: 0; }
+}

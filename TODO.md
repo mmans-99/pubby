@@ -7,7 +7,7 @@ Status key: `[ ]` not started, `[~]` in progress, `[x]` done, `[!]` blocked on a
 - [x] Write the five MD files (`CLAUDE.md`, `PROJECT.md`, `CODE.md`, `TODO.md`, `DEVLOG.md`)
 - [x] User answers the open questions (none remaining; local profiles for v1)
 - [x] User picks the stack: Svelte + Vite + TypeScript (`CODE.md` section 3); changed 2026-11-07 to plain TypeScript with esbuild
-- [ ] User picks the multiplayer path (`CODE.md` section 4)
+- [x] User picks the multiplayer path: B, WebRTC with QR handshake, phones only (2026-11-07, `CODE.md` section 4)
 - [x] User picks the missing-suit mini-game: Reaction Tap (`PROJECT.md` section 5)
 - [x] User approves the full plan in writing
 - [x] Create the GitHub repo (`mmans-99/pubby`) and make the first commit and push
@@ -141,10 +141,18 @@ Built in slices; each slice gets a test link and a checklist.
 - [x] Push v1.2 (user approved 18:10)
 - [~] Confirmed working with no network (automated check passes; user's own test on the phone still to do)
 
-## Phase 4 — Multiplayer over local network
+## Phase 4 — Multiplayer over local network (WebRTC, phones only)
 
-- [ ] Choose transport (`CODE.md` section 4)
-- [ ] QR code: host display and camera scanner
+- [x] Choose transport: B, WebRTC with QR handshake, no server (`CODE.md` section 4)
+- [x] User approves the Phase 4 plan (`CODE.md` section 4a, 20:39)
+- [x] User answers the multiplayer open questions (2026-11-07, `PROJECT.md` section 12)
+- [~] **Slice 0: connection test** (go / no-go): built as version 1.3 (`net_check.py` 29 of 29), iPhone joins with the Camera app; user's test (Android host + iPhone) on home Wi-Fi and a hotspot still to do
+- [ ] **Slice 1: network lobby**
+- [ ] **Slice 2: play over the network**
+- [ ] **Slice 3: votes, swap, Reaction Tap, requests, pause, reactions, results on every phone**
+- [ ] **Slice 4: drops, rejoining, screen kept awake**
+- [x] QR code: host display and camera scanner (bundled maker; Android built-in reader; iPhone joins by Camera app link)
+- [ ] Optional: bundled QR decoder so an iPhone can host (only if the user asks)
 - [ ] Host session, join flow, and reconnection
 - [ ] Per-player private views (hidden hands never leave the device)
 - [ ] Reactions sent to every phone, showing who sent them and floating in from the sender's side of the table
@@ -164,4 +172,4 @@ Built in slices; each slice gets a test link and a checklist.
 
 ## Blocked
 
-- [!] Multiplayer path in `CODE.md` section 4 (blocks Phase 4 only; Phases 1 to 3 can start)
+- [!] Phase 4 slices 1 to 5 wait for the slice 0 result on real phones
