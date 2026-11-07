@@ -4,6 +4,27 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-07 — Phase 3: offline app
+
+**Done**
+- User approved starting Phase 3 (17:03).
+- Icon: new original design in `src/pwa/icon.svg` (felt green, two cards with a P, gold star), rendered to 192, 512 and 180 (iPhone) PNGs. The 512 is also the maskable icon.
+- `src/pwa/manifest.webmanifest`: Pubby, standalone, portrait, felt colours. Head tags in `src/index.html` (manifest, icons, iPhone home-screen tags).
+- `src/pwa/sw.js` + `src/ui/offline.ts`: service worker caches every app file under a versioned cache; the app opens from the cache with no network; a new build downloads in the background and shows next open; old caches are deleted. Does nothing on `file://` and inside the private test link.
+- `build.mjs` now writes `dist/` with `index.html`, `sw.js` (version and file list filled in), manifest and icons.
+- `.github/workflows/pages.yml`: type check, tests, build and deploy to GitHub Pages on every push to `main`.
+- `testbed/offline_check.py`: 20 of 20 checks (see `CODE.md` 9d). 118 unit tests passing, strict type check clean, 2-player playthrough 11 of 11.
+- UI choices not in the spec, flagged to the user: the icon design, silent updates (no "new version" pop-up), portrait lock.
+- No private test link this time: the published test page blocks service workers, so it can't show installing or offline play. GitHub Pages is the test build (`CLAUDE.md` rule 5: explained before asking to commit).
+- `CODE.md` (7, 8a, 9d), `PROJECT.md` (12), `TODO.md` updated. `CLAUDE.md` checked, no changes.
+- User approved commit and push (17:13).
+
+**Next**
+- User turns on GitHub Pages if not done, then tests install and airplane mode on the phone.
+- Decide the multiplayer path (`CODE.md` section 4) before Phase 4.
+
+---
+
 ## 2026-11-07 — Phase 2 slice 5: saved games and profile history
 
 **Done**

@@ -55,7 +55,7 @@ Status key: `[ ]` not started, `[~]` in progress, `[x]` done, `[!]` blocked on a
 - [~] Unit tests for every rule above (118 passing: cards, deal, scoring, voting, round start, trick play, final two, session flow, votes, pause, results, Ultimate Round, player views, take-cards requests, trivia, game record, profiles, CSV, saved games storage)
 - [ ] Run `npm install` on a machine with network access and confirm `npm run build` (only esbuild, tsx and TypeScript are needed now)
 
-## Phase 2 — Pass-and-play UI (one device, offline) (current)
+## Phase 2 — Pass-and-play UI (one device, offline)
 
 Built in slices; each slice gets a test link and a checklist.
 
@@ -123,11 +123,16 @@ Built in slices; each slice gets a test link and a checklist.
 - [x] Round end, scoreboard, and vote screens (slice 4)
 - [~] Playtest at 2, 3, 5, and 8 players (automated runs pass; user's own playtest still to do)
 
-## Phase 3 — Offline PWA
+## Phase 3 — Offline PWA (current)
 
-- [ ] Manifest and icons
-- [ ] Service worker caches the app shell
-- [ ] Confirmed working with no network
+- [x] Manifest and icons (`src/pwa/`; original Pubby icon, maskable)
+- [x] Service worker caches the app (versioned cache, silent update on next open, old caches deleted)
+- [x] Build writes `dist/` with `index.html`, `sw.js`, manifest and icons
+- [x] GitHub Pages workflow (`.github/workflows/pages.yml`)
+- [x] Automated offline check (`testbed/offline_check.py`: 20 of 20)
+- [ ] User turns on GitHub Pages (Settings > Pages > Source: GitHub Actions)
+- [x] Commit and push (user approved 17:13; the private test link blocks service workers, so Pages is the test build)
+- [~] Confirmed working with no network (automated check passes; user's own test on the phone still to do)
 
 ## Phase 4 — Multiplayer over local network
 

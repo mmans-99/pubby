@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Pubby app icon. Full-bleed felt so it also works as a maskable icon;
+       the cards sit inside the central safe zone (80% circle). -->
+  <defs>
+    <radialGradient id="felt" cx="50%" cy="42%" r="70%">
+      <stop offset="0" stop-color="#2a7432"/>
+      <stop offset="0.6" stop-color="#1d5a24"/>
+      <stop offset="1" stop-color="#14421a"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#felt)"/>
+  <!-- back card -->
+  <g transform="rotate(-14 256 270)">
+    <rect x="150" y="140" width="190" height="260" rx="22" fill="#fbf6e9" stroke="#1d1d1b" stroke-width="6"/>
+    <path d="M190 195 c0 -18 22 -26 30 -10 c8 -16 30 -8 30 10 c0 20 -30 34 -30 44 c0 -10 -30 -24 -30 -44z" fill="#c62828"/>
+  </g>
+  <!-- front card with P -->
+  <g transform="rotate(10 256 270)">
+    <rect x="186" y="128" width="190" height="260" rx="22" fill="#fbf6e9" stroke="#1d1d1b" stroke-width="6"/>
+    <text x="281" y="320" text-anchor="middle" font-family="Georgia, 'DejaVu Serif', serif" font-weight="bold" font-size="190" fill="#1d1d1b">P</text>
+    <path d="M214 160 l12 -20 l12 20 c8 10 -4 22 -12 12 l4 12 h-8 l4 -12 c-8 10 -20 -2 -12 -12z" fill="#1d1d1b"/>
+  </g>
+  <!-- gold slap star -->
+  <path d="M392 120 l12 26 l28 4 l-20 20 l5 28 l-25 -13 l-25 13 l5 -28 l-20 -20 l28 -4z" fill="#f2c14e" stroke="#1d1d1b" stroke-width="5" stroke-linejoin="round"/>
+</svg>
