@@ -47,6 +47,8 @@ export interface State {
   popups: Popup[];
   /** Card the player has tapped once (tap again or press Play to play it). */
   selected: string | null;
+  /** Reactions drawer (😂 and catch-phrases) is slid open. */
+  reactionsOpen: boolean;
 }
 
 let state: State;

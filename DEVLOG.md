@@ -4,6 +4,22 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-07 — Reactions drawer, longer SLAP!
+
+**Done**
+- User asked for the reactions bar to be there all the time: a 😂 button (bottom left of every game screen) now slides it open; it stays open until put away. It works during the SLAP! pop-up too. The after-slap-only bar is gone.
+- SLAP! pop-up now stays up 4 seconds (was 3), "to infuriate the other player".
+- User's idea for multiplayer: reactions should show who sent them, coming from that side of the table. Recorded in `PROJECT.md` (4.1 and multiplayer section), `CODE.md` 9c (send as a network message, float in from the sender's seat) and a Phase 4 task in `TODO.md`. Not built yet.
+- Checked in automated 4-player playthroughs: drawer opens and closes, reactions float and fade, drawer usable during the SLAP!, SLAP! closes after about 4 seconds, no errors. 97 tests passing.
+- Test link republished. `CLAUDE.md` checked, no changes.
+
+- User approved commit and push.
+
+**Next**
+- Slice 3 (reshuffle vote, hidden swap, Reaction Tap).
+
+---
+
 ## 2026-11-07 — Phase 2 slice 2: dealing, table and play
 
 **Done**

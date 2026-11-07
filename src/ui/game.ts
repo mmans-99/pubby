@@ -38,7 +38,7 @@ const CATCH_PHRASES = catchPhrasesMd
   .filter(Boolean);
 
 /** The SLAP! pop-up closes by itself after this long. */
-const SLAP_MS = 3000;
+const SLAP_MS = 4000;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -495,7 +495,6 @@ function playHandoffStage(g: SavedGame): Child {
   return h('div', { class: 'stack' },
     seatStrip(s, v, { highlight: actor }),
     trickArea(s, g, v),
-    g.lastTrick?.slap && g.trickLog.length === 0 ? reactionBar() : null,
     h('div', { class: 'handoff compact' },
       h('p', { class: 'muted' }, choosing ? 'Decision time. Pass the phone to' : 'Pass the phone to'),
       h('h1', { class: 'handoff-name' }, who),
@@ -678,15 +677,32 @@ function lastTwoBody(s: Session, p: Extract<Popup, { kind: 'lastTwo' }>): Child[
 }
 
 /**
- * Reactions after a slap: anyone can spam 😂 and the catch-phrases. Each tap
- * floats up from where it was tapped and fades out.
+ * Reactions: anyone can spam 😂 and the catch-phrases at any time in a game.
+ * A button slides the drawer open; it stays open until it's put away, and it
+ * sits above pop-ups so people can react while the SLAP! is on screen. Each
+ * tap floats up from where it was tapped and fades out.
+ * Multiplayer (Phase 4): each reaction will show who sent it and come from
+ * that player's side of the table (CODE.md section 9c).
  */
-function reactionBar(): HTMLElement {
-  return h('section', { class: 'reactions', 'aria-label': 'Reactions' },
+let drawerWasOpen = false;
+
+export function reactionsLayer(): HTMLElement[] {
+  const open = getState().reactionsOpen;
+  const opening = open && !drawerWasOpen;
+  drawerWasOpen = open;
+  const toggle = h('button', {
+    class: open ? 'reactions-toggle on' : 'reactions-toggle',
+    'aria-label': open ? 'Put reactions away' : 'Open reactions',
+    'aria-expanded': open ? 'true' : 'false',
+    onclick: () => update({ reactionsOpen: !open }),
+  }, open ? '✕' : '😂');
+  if (!open) return [toggle];
+  const drawer = h('section', { class: opening ? 'reactions-drawer opening' : 'reactions-drawer', 'aria-label': 'Reactions' },
     h('button', { class: 'emoji-btn', 'aria-label': 'Laugh', onclick: (e) => floatText('😂', e as MouseEvent, true) }, '😂'),
     h('div', { class: 'phrase-chips' }, CATCH_PHRASES.map((ph) =>
       h('button', { class: 'phrase-chip', onclick: (e) => floatText(ph, e as MouseEvent, false) }, ph))),
   );
+  return [drawer, toggle];
 }
 
 function floatText(text: string, e: MouseEvent, emoji: boolean): void {

@@ -121,8 +121,9 @@ The Ace of Spades has no special rule. It is an ordinary card.
 - **Effect:** The trick stops immediately. The player who holds the highest card of the led suit picks up **all the cards played in that trick**, including the slap card, and adds them to their hand. That player is the **slapped** player. They then lead the next trick.
 - **Feedback:**
   - A comic-book style **"SLAP!"** pop-up appears on every screen. It must be big and hard to miss. Underneath, in a smaller font: who slapped who (for example "Speedy slapped Ferrari") and how many cards were picked up.
-  - **The pop-up has no emoji or catch-phrase on it.** It closes by itself after about 3 seconds (a countdown bar shows this); nobody has to tap it.
-  - **After the pop-up**, the screen shows a reactions bar: everyone can spam the laughing-with-tears emoji 😂 and the catch-phrases. Each tap appears, floats up and fades out. No other emoji for now. The bar stays until the next card is played.
+  - **The pop-up has no emoji or catch-phrase on it.** It stays up for 4 seconds (a countdown bar shows this; long enough to rub it in), then closes by itself. Nobody has to tap it.
+  - **Reactions, any time:** a 😂 button on every game screen slides open a reactions bar. Everyone can spam the laughing-with-tears emoji 😂 and the catch-phrases, including while the SLAP! pop-up is up. Each tap appears, floats up and fades out. The bar stays open until it's put away. No other emoji for now.
+  - **Multiplayer (later):** each reaction shows who sent it and comes from that player's side of the table.
   - Catch-phrases (tap to send). Starting set:
     - "Don't let the cards control you, you control the cards."
     - "Craftyyyy"
@@ -333,6 +334,7 @@ The trivia shows on the results screen after every round. It has no effect on sc
 - **Joining:** The host shows a **QR code** that other players scan to join. See `CODE.md` for the technical options.
 - **What's shown on screen:** Each phone shows only its own hand and public information, including the host's phone. The host's screen never displays other players' hands.
 - **What's held in memory:** The host's phone holds every hand in memory, because it runs the game. This is accepted for v1 (see `CODE.md`, section 5).
+- **Reactions in multiplayer:** 😂 and catch-phrases sent from one phone appear on every phone, showing who sent them and floating in from that player's side of the table (section 4.1).
 
 ---
 

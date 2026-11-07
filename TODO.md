@@ -69,6 +69,7 @@ Built in slices; each slice gets a test link and a checklist.
 - [x] Quick rules: button on every screen (content from `src/content/quick-rules.md`)
 - [x] **Slice 2: table and play** (tested by the user, committed)
 - [x] SLAP! pop-up closes itself after 3 seconds, no emoji or catch-phrase on it; reactions bar (😂 and catch-phrases that float up and fade) after the slap
+- [x] Reactions drawer: 😂 button slides it open any time, stays until put away; SLAP! stays up 4 seconds
 - [x] Dealing screen: auto deal with animation (tap first name, clockwise), manual deal taps, switch any time, deal the rest now
 - [x] Table: seat strip with card counts, turn highlight and place badges; the felt with the current trick, led suit, waste pile, last trick
 - [x] Hand: legal cards lit, tap a card then Play; jokers playable on your turn
@@ -108,6 +109,7 @@ Built in slices; each slice gets a test link and a checklist.
 - [ ] QR code: host display and camera scanner
 - [ ] Host session, join flow, and reconnection
 - [ ] Per-player private views (hidden hands never leave the device)
+- [ ] Reactions sent to every phone, showing who sent them and floating in from the sender's side of the table
 - [ ] Multiplayer playtest with 2 to 8 devices
 
 ## Phase 5 — Polish

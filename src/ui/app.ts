@@ -17,7 +17,7 @@ import { jokerCount, MAX_PLAYERS, MIN_PLAYERS } from '../rules/cards.ts';
 import { defaultRng } from '../rules/rng.ts';
 import { createSession } from '../session/session.ts';
 import { h } from './dom.ts';
-import { afterRender, gameScreen, popupLayer } from './game.ts';
+import { afterRender, gameScreen, popupLayer, reactionsLayer } from './game.ts';
 import { renderMarkdown } from './markdown.ts';
 import { addProfile, deleteProfile, findProfile, loadGame, loadProfiles, saveProfiles } from './storage.ts';
 import { getState, initState, say, update, type SetupSeat, type SetupState, type State } from './store.ts';
@@ -47,6 +47,7 @@ export function startApp(target: HTMLElement): void {
     message: null,
     popups: [],
     selected: null,
+    reactionsOpen: false,
   };
   initState(initial, render);
   render();
@@ -71,6 +72,7 @@ function render(): void {
     screen,
     h('button', { class: 'rules-btn', 'aria-label': 'Quick rules', onclick: () => update({ rulesOpen: true }) }, '?'),
     st.screen === 'game' ? popupLayer() : null,
+    ...(st.screen === 'game' && st.game ? reactionsLayer() : []),
     st.rulesOpen ? rulesOverlay() : null,
     st.message ? h('div', { class: 'toast', role: 'status' }, st.message) : null,
   ];
