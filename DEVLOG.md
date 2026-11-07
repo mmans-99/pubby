@@ -4,6 +4,25 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-07 — Phase 2 slice 1: lobby and setup (plain TypeScript)
+
+**Done**
+- Note: the session layer, take-cards request and testbed (entry below) were committed and pushed as `78962b7`, even though that entry still says "not committed".
+- User approved Phase 2 slice 1 (lobby and setup).
+- Svelte could not be installed here (network for packages is off). The user chose to drop Svelte and build the UI in plain TypeScript. `CODE.md` section 3 updated. Removed `svelte.config.js`, `vite.config.ts`, the root `index.html` and `src/ui/App.svelte`; `package.json` now needs only esbuild, tsx, TypeScript and the Node types. New `build.mjs` builds one self-contained page, `dist/index.html`.
+- Built slice 1 (`src/ui/`, `CODE.md` section 9c): home screen; profiles (add, delete, saved on the phone, names unique ignoring case); game setup with 2 to 8 seats from saved profiles or new names, optional name for this game, seat order arrows, "Make host", joker rule toggle with the joker count, pause time limit; game start with the joker banner and seat list; a temporary quick deal (host taps who gets the first card); pass-the-phone (hand-off screen with just a name, then that player's hand from `playerView`, then pass clockwise); menu to go home (game kept) or end the game; game in progress saved on the phone; quick rules on every screen.
+- One UI check added: two players can't show the same name in one game. Not a game rule, just to keep names clear. Flagged to the user.
+- Checks: strict type check of all of `src/`; 97 tests passing; headless phone-browser playthroughs at 2, 3, 5, 6 and 8 players, jokers on and off: correct card totals (hidden decks never shown: 28 cards seen at 2 players, 39 at 3 with no jokers), carry on after reload, quick rules, duplicate checks, no errors.
+- Published as a private test link (new artifact "Pubby").
+- `PROJECT.md` status line, `CODE.md`, `TODO.md` updated. `CLAUDE.md` checked, no changes.
+
+- User tested slice 1 on their phone: everything worked. Approved commit and push.
+
+**Next**
+- Slice 2 (table and hand: dealing screen, trick play, slaps, going out).
+
+---
+
 ## 2026-11-07 — Session layer
 
 **Done**

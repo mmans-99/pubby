@@ -6,23 +6,23 @@ Status key: `[ ]` not started, `[~]` in progress, `[x]` done, `[!]` blocked on a
 
 - [x] Write the five MD files (`CLAUDE.md`, `PROJECT.md`, `CODE.md`, `TODO.md`, `DEVLOG.md`)
 - [x] User answers the open questions (none remaining; local profiles for v1)
-- [x] User picks the stack: Svelte + Vite + TypeScript (`CODE.md` section 3)
+- [x] User picks the stack: Svelte + Vite + TypeScript (`CODE.md` section 3); changed 2026-11-07 to plain TypeScript with esbuild
 - [ ] User picks the multiplayer path (`CODE.md` section 4)
 - [x] User picks the missing-suit mini-game: Reaction Tap (`PROJECT.md` section 5)
 - [x] User approves the full plan in writing
 - [x] Create the GitHub repo (`mmans-99/pubby`) and make the first commit and push
 
-## Phase 1 — Rules engine and session layer (no UI) (current)
+## Phase 1 — Rules engine and session layer (no UI)
 
 - [x] **Testbed page** (`testbed/index.html`, `CODE.md` section 8a): deal, reshuffle vote, swap, missing suits, Reaction Tap result, winner picks leader, tricks, slaps, jokers, final two, scoring across rounds. Published as a private link.
 - [x] User play-tests the rules built so far (round start, tricks, slaps, jokers, final two)
 - [x] **Session layer** (`src/session/`, `CODE.md` section 9b) ties rounds, votes, pause, results, target score, Ultimate Round and the event log together
-- [~] User play-tests the session layer in the testbed
+- [~] User play-tests the session layer in the testbed (committed in `78962b7`)
 - [x] User answers the four new open questions (all as proposed)
 - [x] Target vote also before round 1 starts; hidden once a target or the Ultimate Round is agreed
 - [x] Take-cards request (`PROJECT.md` section 4.2): rules, session layer, player views, tests, testbed
 
-- [x] Scaffold Svelte + Vite + TypeScript project (placeholder screen only)
+- [x] Scaffold Svelte + Vite + TypeScript project (placeholder screen only); replaced by the plain TypeScript build in Phase 2
 - [x] Define the game state and action types (`src/session/types.ts`)
 - [x] Deck creation (one 52-card deck, Ace high), joker count, and hidden decks by player count
 - [x] Hidden decks dealt first, automatically in the background; dealer deals only to players
@@ -53,24 +53,33 @@ Status key: `[ ]` not started, `[~]` in progress, `[x]` done, `[!]` blocked on a
 - [x] Ultimate Round (any player can trigger from a results screen; majority vote; outside the score; Ultimate Winner and Loser labels outrank scores; both Ultimate Loser if the final two share second-last on jokers)
 - [x] Results screen trivia from the event log (`computeTrivia`)
 - [~] Unit tests for every rule above (97 passing: cards, deal, scoring, voting, round start, trick play, final two, session flow, votes, pause, results, Ultimate Round, player views, take-cards requests, trivia, game record, profiles, CSV)
-- [ ] Run `npm install` and confirm the Svelte build on a machine with network access
+- [ ] Run `npm install` on a machine with network access and confirm `npm run build` (only esbuild, tsx and TypeScript are needed now)
 
-## Phase 2 — Pass-and-play UI (one device, offline)
+## Phase 2 — Pass-and-play UI (one device, offline) (current)
 
-- [ ] Profile setup and per-session names
-- [ ] Lobby: 2 to 8 players
-- [ ] Hot-seat hand screen (hide cards between turns)
+Built in slices; each slice gets a test link and a checklist.
+
+- [x] Switch the UI to plain TypeScript (no Svelte): `build.mjs` with esbuild, one-file `dist/index.html`
+- [x] **Slice 1: lobby and setup** (tested by the user on their phone, committed)
+- [x] Home screen: new game, carry on game, profiles
+- [x] Profile setup (saved on the phone) and per-session names
+- [x] Lobby: 2 to 8 players, seat order, host choice, joker rule toggle, pause time limit
+- [x] Game saved on the phone, so closing the page doesn't lose it
+- [x] Hot-seat hand screen (pass-the-phone screen, hide cards between players)
+- [x] Quick rules: button on every screen (content from `src/content/quick-rules.md`)
+- [ ] Slice 2: table and hand (dealing screen, trick play, slaps, going out)
+- [ ] Slice 3: round start (reshuffle vote, hidden swap, missing suits, Reaction Tap, winner picks leader)
+- [ ] Slice 4: between tricks and rounds (results, trivia, votes, take-cards, pause)
 - [ ] Table view and turn indicator
 - [ ] SLAP! pop-up, emoji bar, and catch-phrases (content in `src/content/`)
 - [ ] Missing-suit prompt and mini-game
 - [ ] Reshuffle vote and hidden-swap screens (phone layout); hidden decks never drawn, only the "Swap cards" option
 - [ ] Vote result pop-up on every phone: "Majority says… YES/NO" or "Host says… YES/NO", naming what was decided
-- [ ] Quick rules: button on every screen, opens on that phone only, game keeps running underneath (content in `src/content/quick-rules.md`, draft written)
 - [ ] Pause overlay for all players, and pause-request button for non-host players
 - [ ] Take-cards request: button, request prompt for the asked player, "cards taken" pop-up
 - [ ] Reaction Tap mini-game screen (chosen; slowest reactor leads, ties replay)
 - [ ] Auto-deal animation with switch-to-manual control; manual deal taps
-- [ ] Joker count banner at game start; host setup toggle for the joker rule
+- [x] Joker count banner at game start; host setup toggle for the joker rule
 - [ ] Results screen after every round: scores, trivia, per-player "slapped by most" and "slapped most", no timer, ready-up for players, host moves on
 - [ ] Target score vote and Ultimate Round vote on the results screen
 - [ ] Slap pop-up: big SLAP!, who slapped who underneath in a smaller font, 😂 spam and catch-phrases, including "You got slapped by a kiiid"

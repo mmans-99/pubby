@@ -1,6 +1,6 @@
 # CODE.md — Technical plan for Pubby
 
-**Status:** Plan approved. Stack decided (section 3). Project scaffolded. Phase 1: rules engine built (section 9a), session layer built (section 9b). Items marked **DECIDE** need the user's choice.
+**Status:** Plan approved. Stack: plain TypeScript, no framework (section 3, changed 2026-11-07). Phase 1: rules engine built (section 9a), session layer built (section 9b). Phase 2: UI in progress (section 9c). Items marked **DECIDE** need the user's choice.
 
 ---
 
@@ -21,27 +21,26 @@ Split the code into three layers. Each layer only talks to the one below it.
 
 Keeping the rules engine pure means the same logic runs in pass-and-play, in multiplayer, and in tests.
 
-## 3. Stack (decided: Svelte + Vite + TypeScript)
+## 3. Stack (decided: plain TypeScript, no framework)
 
-**Chosen by the user on 2026-11-06: option C, Svelte + Vite, with TypeScript.**
+**Changed by the user on 2026-11-07: plain TypeScript, no UI framework, built with esbuild.** It replaces Svelte + Vite (chosen 2026-11-06). Reason: Svelte could not be installed in the cloud workspace (no network for packages), and the user preferred building now in plain TypeScript. The app is still an ordinary offline web app for phones, hosted on GitHub Pages.
 
 | Option | Pros | Cons |
 |---|---|---|
-| A. Vanilla TypeScript + Vite, no framework | Small, fast, easy to keep offline, no framework lock-in | More manual UI work |
+| **A. Plain TypeScript, no framework (chosen)** | Small, fast, easy to keep offline, nothing extra to install, no framework lock-in | Screens, redraws and animations are written by hand |
 | B. React + Vite | Familiar component model, lots of tooling | Heavier bundle, more to keep offline |
-| **C. Svelte + Vite (chosen)** | Small bundle, built-in transitions and animations for the SLAP! pop-up, deal animation, and trick resolution | Smaller ecosystem, fewer examples online |
+| C. Svelte + Vite (was chosen, dropped) | Built-in transitions, tidy components | Needs packages this workspace can't install |
 
 How it fits the architecture (section 2):
-- **Rules engine** (`src/rules/`): plain TypeScript, no Svelte imports, so it stays pure and testable.
-- **Session layer** (`src/session/`): plain TypeScript. Exposes state to the UI through Svelte stores.
-- **UI layer** (`src/ui/`): Svelte components. Uses Svelte's built-in transitions for pop-ups and animations.
-- Exact versions (Svelte, Vite, plugins) are fixed when the scaffold is approved, not before.
+- **Rules engine** (`src/rules/`) and **session layer** (`src/session/`): plain TypeScript, unchanged.
+- **UI layer** (`src/ui/`): plain TypeScript and the browser DOM. One `state` object; every change goes through `update()`, which saves and redraws the screen. Screens are functions that return DOM nodes, built with a tiny `h()` helper (`src/ui/dom.ts`). Animations use CSS animations and transitions (later the browser's Web Animations API for cards moving between places). Animations look the same as they would with Svelte.
+- **Build:** `npm run build` runs `build.mjs`: esbuild bundles `src/main.ts` (with the rules engine and session layer), inlines `src/ui/styles.css` into `src/index.html`, and writes one self-contained page, `dist/index.html`. Markdown files in `src/content/` are bundled as text.
 
 Other choices:
 - **Offline:** Service worker (via Workbox or a hand-written one) to cache the app shell.
-- **Tests:** Node's built-in test runner (`node:test` and `node:assert`), run on TypeScript with `tsx`. Command: `npm test`. Chosen over Vitest because the rules engine needs no browser and this adds no extra test library. Vitest can be added later for Svelte component tests if needed.
-- **Type check:** `npm run check` checks the rules engine, the session layer and the tests in strict mode. (In this cloud workspace `@types/node` can't be installed, so the check is run on `src/` alone, and on the tests with a small stand-in for the Node test types.)
-- **Testbed build here:** esbuild is not installed through npm in this workspace (no network for packages); `node_modules/esbuild` is linked to a copy already on the machine. On a normal machine, `npm install` provides it.
+- **Tests:** Node's built-in test runner (`node:test` and `node:assert`), run on TypeScript with `tsx`. Command: `npm test`. Chosen over Vitest because the rules engine needs no browser and this adds no extra test library. The UI is checked by automated playthroughs in a headless phone-sized browser before each test build.
+- **Type check:** `npm run check` checks the rules engine, the session layer and the tests (`tsconfig.rules.json`), then all of `src/` including the UI (`tsconfig.json`), in strict mode. (In this cloud workspace `@types/node` can't be installed, so the check is run on `src/` alone, and on the tests with a small stand-in for the Node test types.)
+- **esbuild here:** esbuild is not installed through npm in this workspace (no network for packages); `node_modules/esbuild` is linked to a copy already on the machine (`ln -s /opt/npm-tools/node_modules/esbuild node_modules/esbuild`). On a normal machine, `npm install` provides it. esbuild is the only build tool (app and testbed).
 - **Randomness:** The rules engine never calls `Math.random`. It takes an `Rng` function, so tests use a fixed seed (`seededRng`) and real games use the phone's crypto random source (`defaultRng`).
 - **QR codes:** A small QR generator library for display, and a camera-based scanner for joining (DECIDE which library).
 
@@ -121,6 +120,10 @@ pubby/
     ui/           # rendering, popups, emojis
     net/          # LAN/WebRTC transport (later phase)
     content/      # catch-phrases, emoji set, text (easy to edit)
+    index.html    # page template (styles and script are inlined by build.mjs)
+    main.ts       # starts the app
+  build.mjs       # builds dist/index.html
+  testbed/        # rules test page (Phase 1)
   tests/
     rules/
   public/         # icons, manifest, service worker
@@ -183,15 +186,30 @@ Plain TypeScript in `src/session/`, no Svelte. It ties the rules together into a
 
 Every function is pure: it returns a new state and never changes the one passed in.
 
+## 9c. UI modules (Phase 2, in progress)
+
+| File | What it does |
+|---|---|
+| `src/ui/app.ts` | The app: state, `update()` and `render()`, and every screen. Slice 1: home, profiles, game setup (lobby), game start (joker banner, seats), a temporary quick deal, and pass-the-phone (hand-off screen and hand screen). Quick rules button on every screen. |
+| `src/ui/dom.ts` | `h(tag, props, ...children)`: builds DOM elements. Props starting with `on` become event listeners. |
+| `src/ui/storage.ts` | Phone storage (local storage, every call wrapped): profiles (`pubby.profiles`, `ProfileStats` keyed by profile name, names unique ignoring case) and the game in progress (`pubby.currentGame`: session, pass-and-play stage, who holds the phone), so a closed page can carry on. |
+| `src/ui/markdown.ts` | Renders the small markdown files in `src/content/` (headings, paragraphs, lists, bold, code) as DOM nodes, never as HTML. Quick rules skip the file's title and developer note. |
+| `src/ui/styles.css` | All styles. Phone first, card-table green, 48px tap targets, respects reduced motion. |
+
+- **Hidden information:** the hand screen only uses `playerView(session, holder)`. Hidden decks are never rendered. The pass-the-phone screen shows only a name.
+- **Text input:** typing in a box does not redraw the screen (so the keyboard stays open); leaving the box does.
+- **Setup checks (UI only):** 2 to 8 players; one profile per seat; two players can't show the same name in one game (case ignored). The host is chosen with "Make host" (first player by default).
+- **Seat ids:** `p1` to `p8` by seat order when the game starts.
+
 ## 8a. Playable test builds (required before every commit)
 
 `CLAUDE.md` rule 5: the user tests every change on their phone before approving a commit.
 
-- **Until the Svelte UI exists (Phase 1):** a single self-contained test page, `testbed/index.html`. It bundles the real rules engine (`src/rules/`) with esbuild into one file, so it runs the same code the game will use. It is published as a private link the user opens on their phone.
+- **Phase 1 (rules only):** a single self-contained test page, `testbed/index.html`. It bundles the real rules engine (`src/rules/`) with esbuild into one file, so it runs the same code the game will use. It is published as a private link the user opens on their phone.
 - **Files:** `testbed/main.ts` (test UI), `testbed/template.html` (styles), `testbed/build.mjs` (bundles them into `testbed/index.html`). Build with `npm run testbed`. Before publishing, it is played through automatically in a headless browser across 2 to 8 players.
 - **Testbed features (session layer version):** runs the real session layer, so every rule goes through the same code the app will use. Adds: votes for every player (reshuffle, target, Ultimate) with host close and host decide, pause and resume, pause requests, the optional pause time limit with a countdown, the results screen (ready up, trivia, per-player stats), the target and Ultimate flow, the end of the session with standings, titles, the game record, saved profiles, CSV (copied to the clipboard and shown, because the share sheet and downloads are blocked inside a published page), and a "What a player's phone receives" panel that checks the hidden decks never reach a player.
 - **Earlier testbed features:** pick 2 to 8 players and the joker rule; see every hand (it is a test tool, so all hands are visible, but hidden decks show only a count, to check sizes); deal; swap; play cards with illegal moves blocked; slaps, jokers, final-two pick-up or forfeit; a log of every event; round scores. A seed box so the same deal can be replayed when reporting a bug.
-- **From Phase 2:** the real app, built with Vite and published to GitHub Pages (or a preview link) for each change.
+- **From Phase 2:** the real app, `dist/index.html` built with `npm run build`, published as a private test link for each change (GitHub Pages once the app is pushed). Before publishing it is played through automatically in a headless phone-sized browser.
 - Every test build comes with a short checklist: what to try and what should happen.
 
 ## 9. Conventions

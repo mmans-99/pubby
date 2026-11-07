@@ -1,6 +1,6 @@
 # Pubby — Game Spec
 
-**Status:** Phase 1 (rules engine and session layer) in progress. Each change is play-tested by the user before it is committed (see `CLAUDE.md`). Items marked **OPEN** need a decision before they are built.
+**Status:** Phase 1 (rules engine and session layer) done. Phase 2 (pass-and-play UI) in progress. Each change is play-tested by the user before it is committed (see `CLAUDE.md`). Items marked **OPEN** need a decision before they are built.
 
 Pubby is a multiplayer shedding card game based on Bhabhi (also called Get Away). It is played as a phone-only, offline-capable web app. The goal of each round is to get rid of all your cards. The last player holding cards is the round loser (the "Bhabhi").
 
