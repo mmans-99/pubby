@@ -190,13 +190,20 @@ Every function is pure: it returns a new state and never changes the one passed 
 
 | File | What it does |
 |---|---|
-| `src/ui/app.ts` | The app: state, `update()` and `render()`, and every screen. Slice 1: home, profiles, game setup (lobby), game start (joker banner, seats), a temporary quick deal, and pass-the-phone (hand-off screen and hand screen). Quick rules button on every screen. |
+| `src/ui/app.ts` | Starts the app and draws every frame (`render`). Home, profiles and game setup (lobby) screens. Quick rules button on every screen. |
+| `src/ui/store.ts` | App state, `update()` (save and redraw), `say()` (short message), the `Popup` types. |
+| `src/ui/game.ts` | The game on one phone. `send()` runs actions through the session layer, turns events into pop-ups and the "last trick" record, and decides who holds the phone next. Screens: dealing (auto with a flying-card animation, manual taps, switch any time, "Deal the rest now"), looking at hands, winner picks the leader, play (seat strip, the felt with the current trick, led suit, waste pile, last trick; hand with legal cards lit; tap a card then Play), final-two choice (pick up or forfeit), forfeit, basic results, game over. Stand-ins for slice 3: "Start the round" (reshuffle vote), "Everyone keeps their hand" (hidden swap), random pick (Reaction Tap). |
+| `src/ui/cards.ts` | Card faces, sorting a hand (jokers, then ♠ ♥ ♣ ♦, low to high), labels, `ordinal`. |
 | `src/ui/dom.ts` | `h(tag, props, ...children)`: builds DOM elements. Props starting with `on` become event listeners. |
-| `src/ui/storage.ts` | Phone storage (local storage, every call wrapped): profiles (`pubby.profiles`, `ProfileStats` keyed by profile name, names unique ignoring case) and the game in progress (`pubby.currentGame`: session, pass-and-play stage, who holds the phone), so a closed page can carry on. |
+| `src/ui/storage.ts` | Phone storage (local storage, every call wrapped): profiles (`pubby.profiles`, `ProfileStats` keyed by profile name, names unique ignoring case) and the game in progress (`pubby.currentGame`: session, stage, who holds the phone, current trick log, last trick), so a closed page can carry on. Older saved games are upgraded on load. |
 | `src/ui/markdown.ts` | Renders the small markdown files in `src/content/` (headings, paragraphs, lists, bold, code) as DOM nodes, never as HTML. Quick rules skip the file's title and developer note. |
 | `src/ui/styles.css` | All styles. Phone first, card-table green, 48px tap targets, respects reduced motion. |
 
-- **Hidden information:** the hand screen only uses `playerView(session, holder)`. Hidden decks are never rendered. The pass-the-phone screen shows only a name.
+- **Pass-and-play stages:** `table` (shared screen: dealing, round start, results), `handoff` ("Pass the phone to X", public information only), `hand` (X's cards). During play the phone goes to whoever must act: the final-two chooser, otherwise whose turn it is. If that's the player already holding it, their cards stay up.
+- **Pop-ups (queue):** SLAP! (big, who slapped who, cards picked up; no emoji or catch-phrase; closes by itself after 3 seconds with a countdown bar that keeps time through redraws). The others wait for a tap: joker played, player out with place, one last-two pop-up at round end (second last and the loser; 2 players: winner and loser; both out on jokers: shared place), waste pile picked up, who leads and why (missing suit, Reaction Tap, host, winner's choice).
+- **Reactions after a slap:** the hand-off screen after a slap shows a reactions bar (😂 and every catch-phrase from `src/content/catch-phrases.md`) until the next card is played. Each tap floats up from where it was tapped and fades out.
+- **Animations:** only new things animate. A hand animates when it's first shown, and only the newest card on the felt drops in. Redraws don't replay pop-up entrances. The deal animation uses the Web Animations API (a card back flies from the deck to the seat).
+- **Hidden information:** hand screens only use `playerView(session, holder)`; table and hand-off screens use public parts only. Hidden decks are never rendered (no pile, count or animation). The pass-the-phone screen shows only public information.
 - **Text input:** typing in a box does not redraw the screen (so the keyboard stays open); leaving the box does.
 - **Setup checks (UI only):** 2 to 8 players; one profile per seat; two players can't show the same name in one game (case ignored). The host is chosen with "Make host" (first player by default).
 - **Seat ids:** `p1` to `p8` by seat order when the game starts.

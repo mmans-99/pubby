@@ -4,6 +4,31 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-07 — Phase 2 slice 2: dealing, table and play
+
+**Done**
+- User approved slice 2.
+- Dealing screen: auto deal (dealer taps who gets the first card, a card flies from the deck to each seat in turn, clockwise), manual deal (tap a name for one card), switch either way at any time, and "Deal the rest now". Hidden decks never appear.
+- Play on one phone: the phone goes to whoever must act. "Pass the phone to X" shows only the table; X then sees their hand with legal cards lit, taps a card and presses Play (or taps it twice). Seat strip with card counts, turn highlight and place badges. The felt shows the current trick, led suit and waste pile count, plus the last trick and how it ended.
+- Final two: the player whose last card was higher picks up the waste pile or forfeits; forfeit stays available after a pick-up (two taps to confirm).
+- Pop-ups in a queue: SLAP! (comic style, who slapped who, cards picked up, random catch-phrase, 😂 button), joker played, going out with place, one last-two pop-up at round end, waste pile pick-up, who leads and why.
+- Catch-phrases moved to `src/content/catch-phrases.md` (one per line, easy to add).
+- Round 2 on: last round's winner picks who leads.
+- Basic results (places, points, totals, "X is the winner", who deals next), next round, end game, game over standings.
+- Stand-ins (clearly marked on screen) so a round can be played before slice 3: host taps "Start the round" instead of the reshuffle vote; "Everyone keeps their hand" instead of the hidden swap; a random pick instead of Reaction Tap. "Pass the phone round" lets everyone look at their cards before the round.
+- Animations only play for new things (a hand when first shown, the newest card on the felt), so tapping cards doesn't make the screen flicker.
+- Code split into `store.ts`, `game.ts`, `cards.ts` (`CODE.md` section 9c).
+- Checks: strict type check; 97 tests passing; automated phone-browser playthroughs of 18 full games (2 to 8 players, jokers on and off, 3 rounds each, about 4,000 cards played, 750+ slaps, pick-ups and forfeits, manual dealing), no errors and no blocked moves.
+- Test link republished.
+- `CODE.md`, `TODO.md`, `src/content/README.md` updated. `PROJECT.md` checked: no rule changes. `CLAUDE.md` checked, no changes.
+
+- User tested slice 2: fine, with one change to the SLAP! pop-up. Now: no emoji or catch-phrase on the pop-up; it closes by itself after 3 seconds (countdown bar, no tap needed). After it, the hand-off screen shows a reactions bar where everyone can spam 😂 and the catch-phrases; each one appears, floats up and fades out. Bar stays until the next card. `PROJECT.md` 4.1 updated. Checked in automated playthroughs at 3 and 4 players: the pop-up has no buttons, closes after about 3 seconds, reactions float and are gone after 2.5 seconds, no errors. Test link republished. User asked to commit and push after this change.
+
+**Next**
+- Slice 3: reshuffle vote, hidden swap, Reaction Tap (replacing the stand-ins).
+
+---
+
 ## 2026-11-07 — Phase 2 slice 1: lobby and setup (plain TypeScript)
 
 **Done**

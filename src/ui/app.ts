@@ -13,25 +13,14 @@
  */
 
 import quickRulesMd from '../content/quick-rules.md';
-import { jokerCount, MAX_PLAYERS, MIN_PLAYERS, type Card, type Suit } from '../rules/cards.ts';
+import { jokerCount, MAX_PLAYERS, MIN_PLAYERS } from '../rules/cards.ts';
 import { defaultRng } from '../rules/rng.ts';
-import { applyAction, createSession } from '../session/session.ts';
-import type { PlayerId, Session, SessionAction } from '../session/types.ts';
-import { playerView } from '../session/view.ts';
-import { h, type Child } from './dom.ts';
+import { createSession } from '../session/session.ts';
+import { h } from './dom.ts';
+import { afterRender, gameScreen, popupLayer } from './game.ts';
 import { renderMarkdown } from './markdown.ts';
-import {
-  addProfile,
-  deleteProfile,
-  findProfile,
-  loadGame,
-  loadProfiles,
-  saveGame,
-  saveProfiles,
-  type GameStage,
-  type Profiles,
-  type SavedGame,
-} from './storage.ts';
+import { addProfile, deleteProfile, findProfile, loadGame, loadProfiles, saveProfiles } from './storage.ts';
+import { getState, initState, say, update, type SetupSeat, type SetupState, type State } from './store.ts';
 
 const NAME_MAX = 16;
 const PAUSE_LIMITS: readonly { label: string; sec: number | null }[] = [
@@ -42,50 +31,24 @@ const PAUSE_LIMITS: readonly { label: string; sec: number | null }[] = [
   { label: '5 minutes', sec: 300 },
 ];
 
-interface SetupSeat {
-  profileName: string;
-  /** Optional name for this game only. Empty means use the profile name. */
-  sessionName: string;
-}
-
-interface SetupState {
-  seats: SetupSeat[];
-  hostIndex: number;
-  jokers: boolean;
-  pauseLimit: number | null;
-}
-
-type Screen = 'home' | 'profiles' | 'setup' | 'game';
-
-interface State {
-  screen: Screen;
-  profiles: Profiles;
-  setup: SetupState;
-  game: SavedGame | null;
-  rulesOpen: boolean;
-  menuOpen: boolean;
-  /** Something that needs a second tap to confirm (e.g. "delete:Sam"). */
-  armed: string | null;
-  message: string | null;
-}
-
 const rng = defaultRng();
 let root: HTMLElement;
-let state: State;
 
 export function startApp(target: HTMLElement): void {
   root = target;
-  const game = loadGame();
-  state = {
+  const initial: State = {
     screen: 'home',
     profiles: loadProfiles(),
     setup: freshSetup(),
-    game: game && game.session && game.stage && !game.session.ended ? game : null,
+    game: loadGame(),
     rulesOpen: false,
     menuOpen: false,
     armed: null,
     message: null,
+    popups: [],
+    selected: null,
   };
+  initState(initial, render);
   render();
 }
 
@@ -93,38 +56,26 @@ function freshSetup(): SetupState {
   return { seats: [], hostIndex: 0, jokers: true, pauseLimit: null };
 }
 
-/** Change state, save the game if it changed, and redraw. */
-function update(change: Partial<State>, redraw = true): void {
-  const gameChanged = 'game' in change;
-  state = { ...state, ...change };
-  if (gameChanged) saveGame(state.game);
-  if (redraw) render();
-}
-
-function say(message: string): void {
-  update({ message });
-  window.setTimeout(() => {
-    if (state.message === message) update({ message: null });
-  }, 2600);
-}
-
 // ---------------------------------------------------------------------------
 // Render
 // ---------------------------------------------------------------------------
 
 function render(): void {
+  const st = getState();
   const screen =
-    state.screen === 'profiles' ? profilesScreen()
-    : state.screen === 'setup' ? setupScreen()
-    : state.screen === 'game' && state.game ? gameScreen(state.game)
+    st.screen === 'profiles' ? profilesScreen()
+    : st.screen === 'setup' ? setupScreen()
+    : st.screen === 'game' && st.game ? gameScreen(st.game)
     : homeScreen();
   const parts: (HTMLElement | null)[] = [
     screen,
     h('button', { class: 'rules-btn', 'aria-label': 'Quick rules', onclick: () => update({ rulesOpen: true }) }, '?'),
-    state.rulesOpen ? rulesOverlay() : null,
-    state.message ? h('div', { class: 'toast', role: 'status' }, state.message) : null,
+    st.screen === 'game' ? popupLayer() : null,
+    st.rulesOpen ? rulesOverlay() : null,
+    st.message ? h('div', { class: 'toast', role: 'status' }, st.message) : null,
   ];
   root.replaceChildren(...parts.filter((p): p is HTMLElement => p !== null));
+  afterRender();
 }
 
 function rulesOverlay(): HTMLElement {
@@ -146,7 +97,7 @@ function rulesOverlay(): HTMLElement {
 // ---------------------------------------------------------------------------
 
 function homeScreen(): HTMLElement {
-  const g = state.game;
+  const g = getState().game;
   return h('main', { class: 'screen home' },
     h('div', { class: 'logo' },
       h('div', { class: 'logo-cards', 'aria-hidden': 'true' },
@@ -162,15 +113,15 @@ function homeScreen(): HTMLElement {
         `Carry on game (round ${g.session.round})`) : null,
       h('button', { class: g ? 'big secondary' : 'big', onclick: startSetup }, 'New game'),
       h('button', { class: 'big secondary', onclick: () => update({ screen: 'profiles', armed: null }) },
-        `Profiles (${Object.keys(state.profiles).length})`),
+        `Profiles (${Object.keys(getState().profiles).length})`),
     ),
     h('p', { class: 'muted small center' }, 'Pass-and-play on one phone. Test build: lobby and setup.'),
   );
 }
 
 function startSetup(): void {
-  if (state.game) {
-    if (state.armed !== 'newgame') {
+  if (getState().game) {
+    if (getState().armed !== 'newgame') {
       update({ armed: 'newgame' });
       say('A game is in progress. Tap New game again to end it and start a new one.');
       return;
@@ -189,21 +140,21 @@ function profileNameProblem(name: string): string | null {
   const clean = name.trim();
   if (!clean) return 'Type a name first.';
   if (clean.length > NAME_MAX) return `Names can be up to ${NAME_MAX} letters.`;
-  if (findProfile(state.profiles, clean)) return `There's already a profile called ${findProfile(state.profiles, clean)}.`;
+  if (findProfile(getState().profiles, clean)) return `There's already a profile called ${findProfile(getState().profiles, clean)}.`;
   return null;
 }
 
 function createProfile(name: string): string | null {
   const problem = profileNameProblem(name);
   if (problem) { say(problem); return null; }
-  const profiles = addProfile(state.profiles, name);
+  const profiles = addProfile(getState().profiles, name);
   if (!saveProfiles(profiles)) say('Could not save to this phone. Profiles will be lost when the page closes.');
-  state = { ...state, profiles };
+  update({ profiles }, false);
   return name.trim();
 }
 
 function profilesScreen(): HTMLElement {
-  const names = Object.keys(state.profiles).sort((a, b) => a.localeCompare(b));
+  const names = Object.keys(getState().profiles).sort((a, b) => a.localeCompare(b));
   const input = h('input', { type: 'text', maxlength: NAME_MAX, placeholder: 'New profile name', 'aria-label': 'New profile name', autocomplete: 'off' });
   const add = (): void => {
     if (createProfile(input.value)) { update({}); }
@@ -216,9 +167,9 @@ function profilesScreen(): HTMLElement {
     names.length === 0
       ? h('p', { class: 'empty' }, 'No profiles yet. Add one above, or add players straight from New game.')
       : h('ul', { class: 'list' }, names.map((n) => {
-        const p = state.profiles[n]!;
+        const p = getState().profiles[n]!;
         const key = `delete:${n}`;
-        const armed = state.armed === key;
+        const armed = getState().armed === key;
         return h('li', { class: 'list-row' },
           h('div', { class: 'grow' },
             h('div', { class: 'name' }, n),
@@ -230,7 +181,7 @@ function profilesScreen(): HTMLElement {
             class: armed ? 'danger small-btn' : 'ghost small-btn',
             onclick: () => {
               if (!armed) { update({ armed: key }); return; }
-              const profiles = deleteProfile(state.profiles, n);
+              const profiles = deleteProfile(getState().profiles, n);
               saveProfiles(profiles);
               update({ profiles, armed: null });
             },
@@ -245,7 +196,7 @@ function profilesScreen(): HTMLElement {
 // ---------------------------------------------------------------------------
 
 function setSetup(change: Partial<SetupState>, redraw = true): void {
-  update({ setup: { ...state.setup, ...change } }, redraw);
+  update({ setup: { ...getState().setup, ...change } }, redraw);
 }
 
 function seatName(seat: SetupSeat): string {
@@ -264,35 +215,35 @@ function setupProblems(s: SetupState): string[] {
 }
 
 function addSeat(profileName: string): void {
-  const s = state.setup;
+  const s = getState().setup;
   if (s.seats.length >= MAX_PLAYERS) { say(`Pubby is for up to ${MAX_PLAYERS} players.`); return; }
   if (s.seats.some((x) => x.profileName === profileName)) return;
   setSetup({ seats: [...s.seats, { profileName, sessionName: '' }] });
 }
 
 function moveSeat(i: number, by: -1 | 1): void {
-  const seats = [...state.setup.seats];
+  const seats = [...getState().setup.seats];
   const j = i + by;
   if (j < 0 || j >= seats.length) return;
   [seats[i], seats[j]] = [seats[j]!, seats[i]!];
-  let hostIndex = state.setup.hostIndex;
+  let hostIndex = getState().setup.hostIndex;
   if (hostIndex === i) hostIndex = j;
   else if (hostIndex === j) hostIndex = i;
   setSetup({ seats, hostIndex });
 }
 
 function removeSeat(i: number): void {
-  const seats = state.setup.seats.filter((_, k) => k !== i);
-  let hostIndex = state.setup.hostIndex;
+  const seats = getState().setup.seats.filter((_, k) => k !== i);
+  let hostIndex = getState().setup.hostIndex;
   if (hostIndex === i) hostIndex = 0;
   else if (hostIndex > i) hostIndex -= 1;
   setSetup({ seats, hostIndex });
 }
 
 function setupScreen(): HTMLElement {
-  const s = state.setup;
+  const s = getState().setup;
   const seated = new Set(s.seats.map((x) => x.profileName));
-  const free = Object.keys(state.profiles).filter((n) => !seated.has(n)).sort((a, b) => a.localeCompare(b));
+  const free = Object.keys(getState().profiles).filter((n) => !seated.has(n)).sort((a, b) => a.localeCompare(b));
   const full = s.seats.length >= MAX_PLAYERS;
   const problems = setupProblems(s);
 
@@ -357,7 +308,7 @@ function setupScreen(): HTMLElement {
 }
 
 function seatRow(seat: SetupSeat, i: number): HTMLElement {
-  const s = state.setup;
+  const s = getState().setup;
   const isHost = s.hostIndex === i;
   const nameInput = h('input', {
     type: 'text', maxlength: NAME_MAX, value: seat.sessionName,
@@ -388,7 +339,7 @@ function seatRow(seat: SetupSeat, i: number): HTMLElement {
 }
 
 function startGame(): void {
-  const s = state.setup;
+  const s = getState().setup;
   if (setupProblems(s).length) return;
   const players = s.seats.map((seat, i) => ({
     id: `p${i + 1}`,
@@ -402,158 +353,10 @@ function startGame(): void {
       jokerRuleEnabled: s.jokers,
       pauseTimeLimitSec: s.pauseLimit,
     }, rng);
-    update({ game: { session, stage: 'start', holder: session.hostId }, screen: 'game', menuOpen: false, armed: null });
+    update({ game: { session, stage: 'table', holder: session.hostId, trickLog: [], lastTrick: null }, screen: 'game', menuOpen: false, armed: null, popups: [] });
   } catch (e) {
     say(e instanceof Error ? e.message : 'Could not start the game.');
   }
-}
-
-// ---------------------------------------------------------------------------
-// Game (slice 1: start, quick deal, pass the phone)
-// ---------------------------------------------------------------------------
-
-function nameOf(s: Session, id: PlayerId): string {
-  return s.players.find((p) => p.id === id)?.sessionName ?? id;
-}
-
-function nextClockwise(s: Session, id: PlayerId): PlayerId {
-  const i = s.order.indexOf(id);
-  return s.order[(i + 1) % s.order.length]!;
-}
-
-function send(g: SavedGame, actions: readonly SessionAction[], after: { stage: GameStage; holder: PlayerId }): void {
-  try {
-    let session = g.session;
-    for (const a of actions) session = applyAction(session, a, rng).session;
-    update({ game: { session, ...after } });
-  } catch (e) {
-    say(e instanceof Error ? e.message : 'Not allowed.');
-  }
-}
-
-function gameScreen(g: SavedGame): HTMLElement {
-  const body =
-    g.stage === 'start' ? startStage(g)
-    : g.stage === 'hand' ? handStage(g)
-    : handoffStage(g);
-  return h('main', { class: 'screen game' },
-    h('div', { class: 'game-bar' },
-      h('button', { class: 'ghost', onclick: () => update({ menuOpen: !state.menuOpen, armed: null }) }, '☰ Menu'),
-      h('span', { class: 'muted' }, `Round ${g.session.round}`),
-    ),
-    state.menuOpen ? gameMenu() : null,
-    body,
-  );
-}
-
-function gameMenu(): HTMLElement {
-  const armed = state.armed === 'endgame';
-  return h('div', { class: 'panel menu' },
-    h('button', { class: 'secondary', onclick: () => update({ screen: 'home', menuOpen: false }) }, 'Home (game is kept)'),
-    h('button', {
-      class: armed ? 'danger' : 'secondary',
-      onclick: () => {
-        if (!armed) { update({ armed: 'endgame' }); return; }
-        update({ game: null, screen: 'home', menuOpen: false, armed: null });
-      },
-    }, armed ? 'Tap again to end the game' : 'End this game'),
-  );
-}
-
-function startStage(g: SavedGame): HTMLElement {
-  const s = g.session;
-  const dealer = s.dealer;
-  const dealt = s.phase !== 'dealing';
-  return h('div', { class: 'stack' },
-    h('div', { class: 'banner' },
-      h('div', { class: 'banner-big' }, s.jokerRuleEnabled ? `🃏 ${s.jokerTotal} jokers this game` : 'No jokers this game'),
-      h('div', { class: 'small' }, `${s.order.length} players · Host: ${nameOf(s, s.hostId)}`),
-    ),
-    h('section', { class: 'panel' },
-      h('h2', null, 'Seats (clockwise)'),
-      h('ol', { class: 'seat-list' }, s.order.map((id) =>
-        h('li', null, nameOf(s, id),
-          id === s.hostId ? h('span', { class: 'tag' }, 'Host') : null,
-          id === dealer ? h('span', { class: 'tag gold' }, 'Deals') : null))),
-    ),
-    dealt
-      ? h('button', { class: 'big', onclick: () => update({ game: { ...g, stage: 'handoff', holder: s.hostId } }) }, 'Look at hands')
-      : h('section', { class: 'panel' },
-        h('h2', null, `${nameOf(s, dealer)} deals`),
-        h('p', { class: 'muted' }, 'Tap who gets the first card. Cards go clockwise from them.'),
-        h('p', { class: 'note' }, 'Quick deal for this test build. The real dealing screen, with the animation and manual dealing, comes in the next build.'),
-        h('div', { class: 'chips' }, s.order.map((id) =>
-          h('button', {
-            class: 'chip big-chip',
-            onclick: () => send(g, [
-              { type: 'autoDealStart', by: dealer, firstSeat: id },
-              { type: 'autoDealAll', by: dealer },
-            ], { stage: 'handoff', holder: s.hostId }),
-          }, nameOf(s, id)))),
-      ),
-  );
-}
-
-function handoffStage(g: SavedGame): HTMLElement {
-  const s = g.session;
-  const who = nameOf(s, g.holder);
-  return h('div', { class: 'handoff' },
-    h('div', { class: 'handoff-icon', 'aria-hidden': 'true' }, '📱'),
-    h('p', { class: 'muted' }, 'Pass the phone to'),
-    h('h1', { class: 'handoff-name' }, who),
-    h('p', { class: 'muted small' }, 'Everyone else, look away.'),
-    h('button', { class: 'big', onclick: () => update({ game: { ...g, stage: 'hand' } }) }, `I'm ${who}, show my cards`),
-    h('button', { class: 'ghost', onclick: () => update({ game: { ...g, stage: 'start' } }) }, 'Back to the seats'),
-  );
-}
-
-const SUIT_ORDER: readonly Suit[] = ['spades', 'hearts', 'clubs', 'diamonds'];
-const SUIT_SYMBOL: Record<Suit, string> = { clubs: '♣', diamonds: '♦', hearts: '♥', spades: '♠' };
-const RANK_LABEL: Record<number, string> = { 11: 'J', 12: 'Q', 13: 'K', 14: 'A' };
-
-function sortHand(cards: readonly Card[]): Card[] {
-  const key = (c: Card): number => (c.kind === 'joker' ? -1 : SUIT_ORDER.indexOf(c.suit) * 100 + c.rank);
-  return [...cards].sort((a, b) => key(a) - key(b));
-}
-
-function cardEl(c: Card): HTMLElement {
-  if (c.kind === 'joker') {
-    return h('div', { class: 'card joker', 'aria-label': 'Joker' }, h('span', { class: 'rank' }, '🃏'), h('span', { class: 'suit small' }, 'Joker'));
-  }
-  const red = c.suit === 'hearts' || c.suit === 'diamonds';
-  const rank = RANK_LABEL[c.rank] ?? String(c.rank);
-  return h('div', { class: red ? 'card red' : 'card', 'aria-label': `${rank} of ${c.suit}` },
-    h('span', { class: 'rank' }, rank),
-    h('span', { class: 'suit' }, SUIT_SYMBOL[c.suit]));
-}
-
-function handStage(g: SavedGame): HTMLElement {
-  const s = g.session;
-  const view = playerView(s, g.holder);
-  const hand = sortHand(view.myHand);
-  const next = nextClockwise(s, g.holder);
-  const others: Child[] = view.players.filter((p) => p.id !== view.me).map((p) =>
-    h('li', null, h('span', { class: 'grow' }, p.sessionName, p.isHost ? h('span', { class: 'tag' }, 'Host') : null), h('span', { class: 'muted' }, `${p.cardCount} cards`)));
-  return h('div', { class: 'stack' },
-    h('div', { class: 'hand-head' },
-      h('h2', null, `${nameOf(s, view.me)}'s cards`),
-      h('span', { class: 'count' }, `${hand.length}`),
-    ),
-    hand.length
-      ? h('div', { class: 'hand' }, hand.map((c, i) => {
-        const el = cardEl(c);
-        el.style.setProperty('--i', String(i));
-        return el;
-      }))
-      : h('p', { class: 'empty' }, 'No cards yet. The dealer hasn’t dealt.'),
-    h('section', { class: 'panel' },
-      h('h2', null, 'Everyone else'),
-      h('ul', { class: 'counts' }, others),
-    ),
-    h('p', { class: 'note' }, 'Playing cards comes in the next build. For now, hide your cards and pass the phone on.'),
-    h('button', { class: 'big', onclick: () => update({ game: { ...g, stage: 'handoff', holder: next } }) },
-      `Hide my cards · pass to ${nameOf(s, next)}`),
-  );
 }
 
 // ---------------------------------------------------------------------------

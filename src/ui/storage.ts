@@ -60,18 +60,45 @@ export function deleteProfile(p: Profiles, name: string): Profiles {
 
 // ----- Game in progress (so closing the browser doesn't lose it) -----
 
-/** Where the phone is in pass-and-play: the seats screen, "pass to X", or X's cards. */
-export type GameStage = 'start' | 'handoff' | 'hand';
+/**
+ * Where the phone is in pass-and-play:
+ * - `table`: the shared screen everyone can see (dealing, votes, results).
+ * - `handoff`: "Pass the phone to X". Shows only public information.
+ * - `hand`: X's own cards. Only X should be looking.
+ */
+export type GameStage = 'table' | 'handoff' | 'hand';
+
+/** One card played in a trick, as shown in "Last trick". */
+export interface TrickPlay {
+  readonly player: string;
+  /** Card id, or "joker". */
+  readonly card: string;
+  readonly label: string;
+}
+
+export interface LastTrick {
+  readonly plays: readonly TrickPlay[];
+  readonly slap: { readonly slapper: string; readonly slapped: string } | null;
+  readonly nextLeader: string | null;
+}
 
 export interface SavedGame {
   readonly session: Session;
   readonly stage: GameStage;
   /** Who is holding the phone (pass-and-play). */
   readonly holder: string;
+  /** Cards played so far in the current trick, jokers included. */
+  readonly trickLog: readonly TrickPlay[];
+  /** The trick that just finished, so the next player knows what happened. */
+  readonly lastTrick: LastTrick | null;
 }
 
 export function loadGame(): SavedGame | null {
-  return read<SavedGame | null>(GAME_KEY, null);
+  const g = read<Partial<SavedGame> | null>(GAME_KEY, null);
+  if (!g || !g.session || g.session.ended) return null;
+  // Games saved by an older build: fill in what's missing.
+  const stage: GameStage = g.stage === 'hand' || g.stage === 'handoff' ? g.stage : 'table';
+  return { session: g.session, stage, holder: g.holder ?? g.session.hostId, trickLog: g.trickLog ?? [], lastTrick: g.lastTrick ?? null };
 }
 
 export function saveGame(g: SavedGame | null): boolean {

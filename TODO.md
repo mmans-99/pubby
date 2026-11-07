@@ -67,23 +67,31 @@ Built in slices; each slice gets a test link and a checklist.
 - [x] Game saved on the phone, so closing the page doesn't lose it
 - [x] Hot-seat hand screen (pass-the-phone screen, hide cards between players)
 - [x] Quick rules: button on every screen (content from `src/content/quick-rules.md`)
-- [ ] Slice 2: table and hand (dealing screen, trick play, slaps, going out)
-- [ ] Slice 3: round start (reshuffle vote, hidden swap, missing suits, Reaction Tap, winner picks leader)
+- [x] **Slice 2: table and play** (tested by the user, committed)
+- [x] SLAP! pop-up closes itself after 3 seconds, no emoji or catch-phrase on it; reactions bar (😂 and catch-phrases that float up and fade) after the slap
+- [x] Dealing screen: auto deal with animation (tap first name, clockwise), manual deal taps, switch any time, deal the rest now
+- [x] Table: seat strip with card counts, turn highlight and place badges; the felt with the current trick, led suit, waste pile, last trick
+- [x] Hand: legal cards lit, tap a card then Play; jokers playable on your turn
+- [x] Final two: pick up the waste pile or forfeit; forfeit stays available after a pick-up
+- [x] Winner picks who leads (round 2 on)
+- [x] Basic results screen (places, points, totals, "X is the winner"), next round, end game, game over standings
+- [x] Stand-ins until slice 3: host starts the round (no reshuffle vote), everyone keeps their hand (no swap), random pick (no Reaction Tap)
+- [ ] Slice 3: round start (reshuffle vote, hidden swap, missing suits, Reaction Tap); replaces the slice 2 stand-ins
 - [ ] Slice 4: between tricks and rounds (results, trivia, votes, take-cards, pause)
-- [ ] Table view and turn indicator
-- [ ] SLAP! pop-up, emoji bar, and catch-phrases (content in `src/content/`)
+- [x] Table view and turn indicator
+- [x] SLAP! pop-up, emoji bar, and catch-phrases (content in `src/content/catch-phrases.md`)
 - [ ] Missing-suit prompt and mini-game
 - [ ] Reshuffle vote and hidden-swap screens (phone layout); hidden decks never drawn, only the "Swap cards" option
 - [ ] Vote result pop-up on every phone: "Majority says… YES/NO" or "Host says… YES/NO", naming what was decided
 - [ ] Pause overlay for all players, and pause-request button for non-host players
 - [ ] Take-cards request: button, request prompt for the asked player, "cards taken" pop-up
 - [ ] Reaction Tap mini-game screen (chosen; slowest reactor leads, ties replay)
-- [ ] Auto-deal animation with switch-to-manual control; manual deal taps
+- [x] Auto-deal animation with switch-to-manual control; manual deal taps
 - [x] Joker count banner at game start; host setup toggle for the joker rule
 - [ ] Results screen after every round: scores, trivia, per-player "slapped by most" and "slapped most", no timer, ready-up for players, host moves on
 - [ ] Target score vote and Ultimate Round vote on the results screen
-- [ ] Slap pop-up: big SLAP!, who slapped who underneath in a smaller font, 😂 spam and catch-phrases, including "You got slapped by a kiiid"
-- [ ] Going-out pop-up with the place, place badge next to the name, one last-two pop-up (second last + the loser), results headline "X is the winner"
+- [x] Slap pop-up: big SLAP!, who slapped who underneath in a smaller font, 😂 spam and catch-phrases, including "You got slapped by a kiiid"
+- [x] Going-out pop-up with the place, place badge next to the name, one last-two pop-up (second last + the loser), results headline "X is the winner"
 - [ ] Ultimate Round button on the results screen and majority vote UI
 - [ ] Round end, scoreboard, and vote screens
 - [ ] Manual playtest at 2, 3, 5, and 8 players

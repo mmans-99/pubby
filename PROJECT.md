@@ -121,8 +121,9 @@ The Ace of Spades has no special rule. It is an ordinary card.
 - **Effect:** The trick stops immediately. The player who holds the highest card of the led suit picks up **all the cards played in that trick**, including the slap card, and adds them to their hand. That player is the **slapped** player. They then lead the next trick.
 - **Feedback:**
   - A comic-book style **"SLAP!"** pop-up appears on every screen. It must be big and hard to miss. Underneath, in a smaller font: who slapped who (for example "Speedy slapped Ferrari") and how many cards were picked up.
-  - All players can spam the laughing-with-tears emoji 😂. No other emoji for now.
-  - A random catch-phrase appears with the pop-up. Starting set:
+  - **The pop-up has no emoji or catch-phrase on it.** It closes by itself after about 3 seconds (a countdown bar shows this); nobody has to tap it.
+  - **After the pop-up**, the screen shows a reactions bar: everyone can spam the laughing-with-tears emoji 😂 and the catch-phrases. Each tap appears, floats up and fades out. No other emoji for now. The bar stays until the next card is played.
+  - Catch-phrases (tap to send). Starting set:
     - "Don't let the cards control you, you control the cards."
     - "Craftyyyy"
     - "You got slapped"
