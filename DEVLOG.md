@@ -29,8 +29,12 @@ Newest entries at the top. One entry per session, added before each commit.
 
 - User asked for it to be committed and pushed (17:55): v1.1 pushed.
 
+- **User tested (18:07):** back still closed the installed app. Cause: Chrome's back gesture skips history entries a page adds without a real tap; v1.1 added its guard at start-up and inside `popstate`, and re-added it on `pointerdown`, which isn't a tap on a touch screen. Fixed in v1.2 (`CODE.md` 9e): guards only added inside `click` / `touchend` / `keydown`, two kept, exit question jumps over the rest. Back check 14 of 14 (now also checks the history entries).
+
+- User uses Samsung Internet (same engine as Chrome, same fix); install steps added to `PROJECT.md` 12. User approved push (18:10).
+
 **Next**
-- User tests v1.1 on the phone install and airplane mode on the phone.
+- User tests v1.2 on the phone install and airplane mode on the phone.
 - Decide the multiplayer path (`CODE.md` section 4) before Phase 4.
 
 ---

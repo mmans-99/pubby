@@ -32,6 +32,15 @@ with sync_playwright() as p:
     pg.goto('about:blank')            # the page before Pubby
     pg.goto(base)
     pg.wait_for_selector('h1')
+    hist = ctx.new_cdp_session(pg)
+
+    def entries():
+        h = hist.send('Page.getNavigationHistory')
+        return len(h['entries']), h['currentIndex']
+
+    check('no history entries added before the first tap', entries() == (2, 1), str(entries()))
+    pg.locator('h1').click()
+    check('first tap adds two guards', entries() == (4, 3), str(entries()))
 
     def back():
         try:
@@ -65,10 +74,19 @@ with sync_playwright() as p:
     check('quick rules open -> back closes it, stays on menu',
           on_home() and pg.locator('.sheet[aria-label="Quick rules"]').count() == 0)
 
+    tap('Profiles')
+    back()
+    back()  # two quick backs, no tap in between
+    check('two quick backs from profiles: menu, then "Exit Pubby?"',
+          on_home() and pg.locator('.exit-sheet').count() == 1)
+    tap('Stay')
+    pg.locator('h1').click()
     back()
     check('main menu -> back -> "Exit Pubby?"', pg.locator('.exit-sheet').count() == 1)
+    check('exit question drops the guards (next back leaves)', entries()[1] == 1, str(entries()))
     tap('Stay')
-    check('Stay closes the question', on_home() and pg.locator('.exit-sheet').count() == 0)
+    check('Stay closes the question and puts two guards back',
+          on_home() and pg.locator('.exit-sheet').count() == 0 and entries()[1] == 3, str(entries()))
 
     back()
     check('asks again after Stay', pg.locator('.exit-sheet').count() == 1)
@@ -78,7 +96,6 @@ with sync_playwright() as p:
     # Back during a game does nothing: start a 2-player game from setup.
     pg.goto(base)
     pg.wait_for_selector('h1')
-    pg.locator('body').click(position={'x': 5, 'y': 5})
     tap('New game')
     for n in ['Amy', 'Ben']:
         pg.fill('input[placeholder="New player name"]', n)
@@ -90,7 +107,8 @@ with sync_playwright() as p:
     if in_game:
         before = pg.content()
         back()
-        check('in a game -> back does nothing', pg.url.startswith(base) and pg.locator('.home').count() == 0
+        back()
+        check('in a game -> back (twice) does nothing', pg.url.startswith(base) and pg.locator('.home').count() == 0
               and pg.locator('.exit-sheet').count() == 0)
     else:
         check('in a game -> back does nothing (could not start a game in this check)', False,
