@@ -14,7 +14,7 @@
 
 import quickRulesMd from '../content/quick-rules.md';
 import { VERSION } from './version.ts';
-import { keepPubbyOpen, leavePubby, setupBack } from './back.ts';
+import { comeBack, isApplePhone, keepPubbyOpen, leavePubby, setupBack } from './back.ts';
 import { jokerCount, MAX_PLAYERS, MIN_PLAYERS } from '../rules/cards.ts';
 import { defaultRng } from '../rules/rng.ts';
 import { createSession } from '../session/session.ts';
@@ -68,6 +68,19 @@ export function startApp(target: HTMLElement): void {
   render();
   if (link) joinFromLink(link);
   setupBack();
+  // A join link tapped while Pubby is already open (iPhone Safari reuses the
+  // tab and only changes the #join=… part, so the page doesn't start again).
+  // Back from the app switcher after Exit: show the main menu again.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && getState().screen === 'bye') update({ screen: 'home' });
+  });
+  window.addEventListener('hashchange', () => {
+    if (!location.hash.startsWith('#join=')) return;
+    const again = location.href;
+    history.replaceState(history.state, '', location.pathname + location.search);
+    update({ screen: 'nettest', menuOpen: false, rulesOpen: false, exitAsk: false });
+    joinFromLink(again);
+  });
 }
 
 function freshSetup(): SetupState {
@@ -86,6 +99,7 @@ function render(): void {
     : st.screen === 'setup' ? setupScreen()
     : st.screen === 'game' && st.game ? gameScreen(st.game)
     : st.screen === 'nettest' ? netTestScreen(() => update({ screen: 'home' }))
+    : st.screen === 'bye' ? byeScreen()
     : homeScreen();
   if (st.screen !== 'nettest') stopNetTest();
   const parts: (HTMLElement | null)[] = [
@@ -107,7 +121,7 @@ function exitOverlay(): HTMLElement {
   return h('div', { class: 'overlay', onclick: (e) => { if (e.target === e.currentTarget) keepPubbyOpen(); } },
     h('div', { class: 'sheet exit-sheet', role: 'dialog', 'aria-label': 'Exit Pubby?' },
       h('h2', null, 'Exit Pubby?'),
-      h('p', { class: 'muted small' }, 'Swipe back again to exit.'),
+      getState().game ? h('p', { class: 'muted small' }, 'Your game is saved. Carry on from the main menu next time.') : null,
       h('div', { class: 'row' },
         h('button', { class: 'big secondary grow', onclick: keepPubbyOpen }, 'Stay'),
         h('button', { class: 'big grow', onclick: leavePubby }, 'Exit'),
@@ -156,9 +170,29 @@ function homeScreen(): HTMLElement {
       h('button', { class: 'big secondary', onclick: () => update({ screen: 'history', armed: null, openRecord: null }) },
         `Past games (${loadRecords().length})`),
     ),
+    h('button', { class: 'big secondary', onclick: () => update({ exitAsk: true }) }, 'Exit Pubby'),
     h('button', { class: 'ghost small net-test-btn', onclick: () => update({ screen: 'nettest' }) }, 'Connection test (two phones)'),
     h('p', { class: 'muted small center' }, 'Pass-and-play on one phone. Test build: the full game on one phone.'),
     h('p', { class: 'muted small center version' }, `Version ${VERSION}`),
+  );
+}
+
+/** After Exit, when the phone didn't let Pubby close itself. */
+function byeScreen(): HTMLElement {
+  const standalone = matchMedia('(display-mode: standalone)').matches
+    || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  const how = isApplePhone()
+    ? (standalone
+      ? 'iPhones don’t let apps close themselves. Swipe up from the bottom edge of the screen to leave Pubby.'
+      : 'iPhones don’t let pages close themselves. Close this Safari tab, or swipe up from the bottom edge to leave.')
+    : 'Swipe back, or tap the Home button, to leave Pubby.';
+  return h('main', { class: 'screen bye' },
+    h('div', { class: 'panel center' },
+      h('h1', null, 'See you next time!'),
+      h('p', null, how),
+      getState().game ? h('p', { class: 'muted small' }, 'Your game is saved.') : null,
+    ),
+    h('button', { class: 'big secondary', onclick: comeBack }, 'Open Pubby again'),
   );
 }
 

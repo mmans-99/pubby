@@ -4,6 +4,29 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-07 (late) — Connection test passed; version 1.4
+
+**Done**
+- **User tested v1.3 (22:18):** worked flawlessly on a phone hotspot, Android + Android and Android + iPhone, with mobile data on and off. Home Wi-Fi not tried. Slice 0 is a **go**.
+- User didn't like the iPhone path: no camera in Pubby, and the Camera app's yellow link sometimes needed more than one try. Cause found: Pubby only read `#join=` at start-up; when Pubby was already open in Safari, the link only changed the `#join=` part and the page didn't start again.
+- **User approved (22:23):** fix the link, write Pubby's own QR reader, and an "Exit Pubby" button on the main menu (iPhones have no back gesture). Asked for the network code as a separate file for another game.
+- Built version 1.4 (small change: fixes and a scanner for iPhones within slice 0, no new game rules):
+  - `src/net/qrread.ts`: Pubby's own QR reader (`CODE.md` 9f). `src/net/scan.ts` uses it wherever the browser has no reader. iPhones now scan inside Pubby and can host.
+  - `src/ui/app.ts`: `hashchange` listener, so the join link also works when Pubby is already open.
+  - Exit Pubby button, goodbye screen with how to leave on this phone, Open Pubby again (`CODE.md` 9e, `PROJECT.md`).
+  - Connection test wording updated for in-app scanning on every phone.
+- Checks: 132 unit tests (7 new for the reader), strict type check, `net_check.py` 37 of 37 (new: link while open, Exit Pubby, real fake-camera scan through Pubby's reader, read in 0.2 s), 60 of 60 OpenCV-made photos (OpenCV read 49), offline 20 of 20, back 14 of 14, playthroughs 2 and 3 players 22 of 22.
+- Network code for the user's other game: `pubby-link.js` (one file, ES module: QR maker, Pubby's reader, scanner, `Peer`, short codes, `warmCamera`), with notes on why it works with no internet. Sent in the chat; not part of the repo.
+- UI choices not in the spec, flagged to the user: where the Exit Pubby button sits (under Past games), the goodbye screen wording, coming back from the app switcher goes to the main menu.
+- `CLAUDE.md` checked, no changes. GitHub Pages is the test build again (camera needs HTTPS; `CLAUDE.md` rule 5, explained before asking to push).
+- User approved commit and push of v1.4 (22:44).
+
+**Next**
+- User tests v1.4 on GitHub Pages: iPhone scanning in Pubby (joining and hosting), the Camera app link with Pubby already open, Exit Pubby on both phones. Home Wi-Fi when convenient.
+- Then slice 1: network lobby.
+
+---
+
 ## 2026-11-07 (evening) — Multiplayer path chosen
 
 **Done**

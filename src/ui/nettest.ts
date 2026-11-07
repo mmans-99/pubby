@@ -10,7 +10,7 @@ import { h } from './dom.ts';
 import { makeQr, qrSvg } from '../net/qr.ts';
 import { Peer, type PathInfo } from '../net/peer.ts';
 import { joinLink } from '../net/signal.ts';
-import { hasQrReader, startScanner, type Scanner } from '../net/scan.ts';
+import { canScan, readerKind, startScanner, type Scanner } from '../net/scan.ts';
 
 type View = (HTMLElement | null)[];
 
@@ -128,14 +128,14 @@ function body(): View {
 }
 
 function pickView(): View {
-  const reader = hasQrReader();
+  const reader = canScan();
   return [
     h('p', null, 'Checks that two phones can play together with no internet. You need two phones on the same Wi-Fi, or one phone joined to the other’s hotspot.'),
     h('div', { class: 'panel' },
       h('h2', null, 'This phone'),
       h('p', null, reader
-        ? '✓ Can scan codes in Pubby, so it can be the host'
-        : '✗ Can’t scan codes in Pubby (iPhone). It can join using the Camera app; the other phone must be the host.'),
+        ? `✓ Can scan codes in Pubby (${readerKind() === 'built-in' ? 'browser’s reader' : 'Pubby’s reader'}), so it can host or join`
+        : '✗ Can’t use the camera here. It can join with the Camera app link; the other phone must be the host.'),
       h('p', null, 'RTCPeerConnection' in window ? '✓ Can make direct links' : '✗ Can’t make direct links'),
     ),
     h('div', { class: 'stack' },
@@ -144,7 +144,7 @@ function pickView(): View {
     ),
     h('ol', { class: 'net-steps muted small' },
       h('li', null, 'Host: tap “This phone is the host”. A QR code appears.'),
-      h('li', null, 'Other phone: tap “This phone is joining” and scan the host’s code (iPhone: use the Camera app instead). Its own code appears.'),
+      h('li', null, 'Other phone: tap “This phone is joining” and scan the host’s code. Its own code appears.'),
       h('li', null, 'Host: tap “Scan their code” and scan the other phone.'),
     ),
   ];
@@ -159,7 +159,7 @@ function codeView(role: 'host' | 'join'): View {
     h('p', { class: 'net-big center' }, role === 'host' ? 'Code 1: let the other phone scan this' : 'Code 2: let the host scan this'),
     qr,
     role === 'host'
-      ? h('p', { class: 'muted small center' }, 'Android: scan it in Pubby. iPhone: point the Camera app at it and tap the Pubby link that appears.')
+      ? h('p', { class: 'muted small center' }, 'Scan it in Pubby on the other phone (“This phone is joining”). Its Camera app works too: tap the Pubby link that appears.')
       : null,
     h('p', { class: 'muted small center' }, `Turn the screen brightness up if it won’t scan. (${content.length} characters)`),
     role === 'host'
@@ -171,7 +171,7 @@ function codeView(role: 'host' | 'join'): View {
 
 function scanView(role: 'host' | 'join'): View {
   if (linkPending) return [h('p', { class: 'net-big center' }, 'Reading the host’s code…')];
-  if (role === 'join' && !hasQrReader()) {
+  if (role === 'join' && !canScan()) {
     return [
       h('p', { class: 'net-big center' }, 'Join with the Camera app'),
       h('ol', { class: 'net-steps' },
@@ -295,7 +295,7 @@ function startJoin(): void {
 }
 
 async function warmCamera(): Promise<void> {
-  if (!hasQrReader() || !navigator.mediaDevices?.getUserMedia) return;
+  if (!canScan()) return;
   try {
     const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
     s.getTracks().forEach((t) => t.stop());

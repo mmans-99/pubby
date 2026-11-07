@@ -650,3 +650,7 @@ table.trivia-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; 
   20% { transform: translate(-50%, -20px) scale(1.2); opacity: 1; }
   to { transform: translate(-50%, -220px) scale(1); opacity: 0; }
 }
+
+/* Goodbye screen after Exit Pubby (v1.4) */
+.screen.bye { justify-content: center; gap: 16px; text-align: center; }
+.screen.bye h1 { margin: 0 0 8px; }

@@ -146,13 +146,14 @@ Built in slices; each slice gets a test link and a checklist.
 - [x] Choose transport: B, WebRTC with QR handshake, no server (`CODE.md` section 4)
 - [x] User approves the Phase 4 plan (`CODE.md` section 4a, 20:39)
 - [x] User answers the multiplayer open questions (2026-11-07, `PROJECT.md` section 12)
-- [~] **Slice 0: connection test** (go / no-go): built as version 1.3 (`net_check.py` 29 of 29), iPhone joins with the Camera app; user's test (Android host + iPhone) on home Wi-Fi and a hotspot still to do
+- [x] **Slice 0: connection test** (go / no-go): version 1.3; user's test passed on a hotspot (Android + Android, Android + iPhone, mobile data on and off), 2026-11-07 22:18. Home Wi-Fi not tried yet.
+- [~] **Version 1.4:** Pubby's own QR reader (iPhones scan in Pubby and can host), join link fixed when Pubby is already open, Exit Pubby button. Built and checked; user to test on phones after the push
 - [ ] **Slice 1: network lobby**
 - [ ] **Slice 2: play over the network**
 - [ ] **Slice 3: votes, swap, Reaction Tap, requests, pause, reactions, results on every phone**
 - [ ] **Slice 4: drops, rejoining, screen kept awake**
-- [x] QR code: host display and camera scanner (bundled maker; Android built-in reader; iPhone joins by Camera app link)
-- [ ] Optional: bundled QR decoder so an iPhone can host (only if the user asks)
+- [x] QR code: host display and camera scanner (bundled maker; Android built-in reader; Camera app join link)
+- [x] Bundled QR reader so an iPhone can scan in Pubby and host (v1.4, user asked 22:23)
 - [ ] Host session, join flow, and reconnection
 - [ ] Per-player private views (hidden hands never leave the device)
 - [ ] Reactions sent to every phone, showing who sent them and floating in from the sender's side of the table
@@ -172,4 +173,4 @@ Built in slices; each slice gets a test link and a checklist.
 
 ## Blocked
 
-- [!] Phase 4 slices 1 to 5 wait for the slice 0 result on real phones
+- (none)

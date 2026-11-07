@@ -62,15 +62,32 @@ export function keepPubbyOpen(): void {
   topUp();
 }
 
-/** "Exit" on the exit question. */
+/**
+ * "Exit" on the exit question (from the back gesture or the Exit Pubby
+ * button). Tries to close Pubby; a web app often isn't allowed to (never on
+ * iPhone), so then it shows the goodbye screen, which says how to close it on
+ * this phone. The guards are dropped, so on Android the next back gesture
+ * leaves.
+ */
 export function leavePubby(): void {
   update({ exitAsk: false });
+  dropGuards();
   try { window.close(); } catch { /* ignore */ }
-  // An installed app can't always close itself from a button; there are no
-  // guards left now, so the next back gesture closes it.
   window.setTimeout(() => {
-    if (!document.hidden) update({ message: 'Swipe back to close Pubby.' });
-  }, 400);
+    if (!document.hidden) update({ screen: 'bye', menuOpen: false, rulesOpen: false });
+  }, 300);
+}
+
+/** "Open Pubby again" on the goodbye screen (a tap). */
+export function comeBack(): void {
+  update({ screen: 'home' });
+  topUp();
+}
+
+/** True on iPhones and iPads (including iPads that say they are Macs). */
+export function isApplePhone(): boolean {
+  return /iPhone|iPad|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 }
 
 /** Pubby's own back step. Returns false when it asked "Exit Pubby?". */

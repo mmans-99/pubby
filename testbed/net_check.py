@@ -6,9 +6,12 @@ Checks: both pages connect over WebRTC, pings get replies, 😂 arrives, wrong
 codes are refused with a message, Disconnect shows "Connection lost" on the
 other phone, and leaving the screen with Back closes the link.
 
-Headless Chromium has no built-in QR reader (BarcodeDetector), so it takes the
-iPhone path (Camera app steps, then the join link). The camera scan itself is
-only checked on real phones.
+Headless Chromium has no built-in QR reader (BarcodeDetector), like an iPhone,
+so it uses Pubby's own reader (src/net/qrread.ts). Part 2 checks that reader
+end to end: a second browser's fake camera is fed a video of the host's
+on-screen code, and the joining page must read it through the camera and
+connect. Also checks the join link (opened fresh, and tapped while Pubby is
+already open). Real cameras and networks are only checked on phones.
 
 Usage: npm run build && python3 testbed/net_check.py
 """
@@ -59,6 +62,24 @@ def read_qr(page):
     return text
 
 
+def write_camera_video(png, path, w=640, h=480):
+    """A short Y4M video of the QR screenshot, a little turned and blurred, like a camera."""
+    img = cv2.imdecode(np.frombuffer(png, np.uint8), cv2.IMREAD_GRAYSCALE)
+    side = 300
+    img = cv2.resize(img, (side, side), interpolation=cv2.INTER_AREA)
+    with open(path, 'wb') as f:
+        f.write(f'YUV4MPEG2 W{w} H{h} F10:1 Ip A1:1 C420jpeg\n'.encode())
+        for k in range(10):
+            frame = np.full((h, w), 170, np.uint8)
+            src = np.float32([[0, 0], [side, 0], [side, side], [0, side]])
+            jig = 6 * np.sin(k)
+            dst = np.float32([[170 + jig, 90], [470, 80 + jig], [480, 400], [160, 390 - jig]])
+            m = cv2.getPerspectiveTransform(src, dst)
+            frame = cv2.warpPerspective(img, m, (w, h), dst=frame, borderMode=cv2.BORDER_TRANSPARENT)
+            frame = cv2.GaussianBlur(frame, (0, 0), 0.8)
+            f.write(b'FRAME\n' + frame.tobytes() + bytes([128]) * (w * h // 2))
+
+
 def step(page):
     return page.evaluate('window.pubbyNetTest.step()')
 
@@ -103,9 +124,8 @@ def main():
         check('code 1 holds what the host made', code1.endswith(host.evaluate('window.pubbyNetTest.code()')))
 
         join.get_by_role('button', name='This phone is joining').click()
-        # Headless Chromium has no QR reader, like an iPhone: Camera-app steps, no camera.
-        check('phone with no QR reader gets the Camera app steps', 'Join with the Camera app' in join.inner_text('main'))
-        check('and no camera is started', join.locator('video').count() == 0)
+        # Headless Chromium has no built-in reader, like an iPhone: Pubby's own reader and camera.
+        check('and gets the in-app camera', join.locator('video').count() == 1 and 'Hold the code inside the box' in join.inner_text('main'))
 
         join.evaluate('window.pubbyNetTest.scan("hello")')
         time.sleep(0.3)
@@ -177,6 +197,59 @@ def main():
         host.get_by_role('button', name='‹ Back').click()
         cams = host.evaluate('Array.from(document.querySelectorAll("video")).filter(v => v.srcObject).length')
         check('camera is off after leaving', cams == 0)
+
+        # Join link tapped while Pubby is already open (iPhone Safari reuses the tab).
+        host.get_by_role('button', name='Connection test (two phones)').click()
+        host.get_by_role('button', name='This phone is the host').click()
+        host.wait_for_selector('.qr')
+        link = read_qr(host)
+        phone3.goto(url)
+        phone3.wait_for_selector('h1')
+        phone3.evaluate(f'location.hash = {link[link.index("#"):]!r}')
+        check('join link works when Pubby is already open', wait_step(phone3, 'join-code', 10))
+        check('and is removed from the address bar again', '#join' not in phone3.url, phone3.url)
+        host.get_by_role('button', name='Scan their code').click()
+        host.evaluate(f'window.pubbyNetTest.scan({read_qr(phone3)!r})')
+        check('that phone connects', wait_step(host, 'connected', 20) and wait_step(phone3, 'connected', 20))
+        phone3.get_by_role('button', name='Disconnect').click()
+        wait_step(host, 'lost', 15)
+        host.get_by_role('button', name='‹ Back').click()
+
+        # Exit Pubby button on the main menu.
+        phone3.get_by_role('button', name='‹ Back').click()
+        phone3.get_by_role('button', name='Exit Pubby').click()
+        check('Exit Pubby asks first', 'Exit Pubby?' in phone3.inner_text('body'))
+        phone3.get_by_role('button', name='Stay').click()
+        check('Stay keeps Pubby open', phone3.inner_text('main h1') == 'Pubby')
+        phone3.get_by_role('button', name='Exit Pubby').click()
+        phone3.get_by_role('button', name='Exit', exact=True).click()
+        phone3.wait_for_selector('.screen.bye', timeout=3000)
+        check('Exit shows how to close it here', 'See you next time' in phone3.inner_text('main') and 'Swipe back' in phone3.inner_text('main'))
+        phone3.get_by_role('button', name='Open Pubby again').click()
+        check('Open Pubby again goes to the main menu', phone3.inner_text('main h1') == 'Pubby')
+
+        # Part 2: the camera really reads the code with Pubby's reader.
+        host.get_by_role('button', name='Connection test (two phones)').click()
+        host.get_by_role('button', name='This phone is the host').click()
+        host.wait_for_selector('.qr')
+        png = host.locator('.qr').screenshot()
+        video = pathlib.Path(tempfile.mkdtemp()) / 'host-code.y4m'
+        write_camera_video(png, video)
+        cam_browser = p.chromium.launch(args=['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
+                                              f'--use-file-for-fake-video-capture={video}'])
+        cctx = cam_browser.new_context(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True)
+        cctx.grant_permissions(['camera'])
+        cam = cctx.new_page()
+        cam.on('pageerror', lambda e: errors.append(str(e)))
+        cam.goto(url)
+        cam.get_by_role('button', name='Connection test (two phones)').click()
+        cam.get_by_role('button', name='This phone is joining').click()
+        t0 = time.time()
+        check('camera + Pubby’s reader reads the host’s code', wait_step(cam, 'join-code', 20), f'{time.time() - t0:.1f} s')
+        host.get_by_role('button', name='Scan their code').click()
+        host.evaluate(f'window.pubbyNetTest.scan({read_qr(cam)!r})')
+        check('and connects', wait_step(host, 'connected', 20) and wait_step(cam, 'connected', 20))
+        cam_browser.close()
 
         check('no page errors', not errors, '; '.join(errors))
         browser.close()
