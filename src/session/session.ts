@@ -31,7 +31,7 @@ import {
   swapAllowed,
 } from '../rules/round.ts';
 import { addScores, scoreRound } from '../rules/scoring.ts';
-import { tallyVote } from '../rules/voting.ts';
+import { tallyVote, type Ballot } from '../rules/voting.ts';
 import type {
   ActionResult,
   LogEntry,
@@ -243,6 +243,8 @@ function reduce(s: Session, a: SessionAction, rng: Rng, out: Out): Session {
       const tally = tallyVote(v.ballots, s.order.length);
       if (tally === 'passed') return resolveVote(s, true, 'majority', rng, out);
       if (tally === 'failed') return resolveVote(s, false, 'majority', rng, out);
+      // Two players: no host decision. Closed without both agreeing: not agreed.
+      if (s.order.length === 2) return resolveVote(s, false, 'majority', rng, out);
       return needHost(s, out);
     }
     case 'hostDecides': {
@@ -400,7 +402,7 @@ function reduce(s: Session, a: SessionAction, rng: Rng, out: Out): Session {
       assertHost(s, a.by, 'end the session');
       assertPhase(s, 'results');
       if (s.vote) fail('Finish the vote first');
-      return endSession(s, 'hostEnded', out);
+      return endOrOfferDraw(s, 'hostEnded', 1, out);
   }
 }
 
@@ -438,6 +440,7 @@ function callVote(
   kind: 'reshuffle' | 'target' | 'ultimate',
   value: number | null,
   out: Out,
+  draw?: 1 | 2,
 ): Session {
   if (s.vote) fail('A vote is already in progress');
   if (kind === 'reshuffle') {
@@ -451,17 +454,51 @@ function callVote(
       fail('A target vote can only happen before round 1 starts or on the results screen');
     }
     if (value === null || !Number.isInteger(value) || value < 1) fail('The target must be a whole number of points, 1 or more');
+    const min = minimumTarget(s);
+    if (value < min) fail(`The target can't be lower than the highest score (${min})`);
   } else {
     if (s.phase !== 'results') fail('This vote can only happen on the results screen');
     if (s.ultimateRound) fail('The Ultimate Round has already been agreed');
     value = null;
   }
   out.emit(s, { type: 'voteCalled', kind, by, value });
+  // Two players: asking counts as agreeing; only the other player answers.
+  const ballots: Record<PlayerId, Ballot> = s.order.length === 2 && by !== null ? { [by]: 'yes' } : {};
   return {
     ...s,
     reshuffleUsed: kind === 'reshuffle' ? true : s.reshuffleUsed,
-    vote: { kind, calledBy: by, ballots: {}, value, awaitingHost: false },
+    vote: { kind, calledBy: by, ballots, value, awaitingHost: false, ...(draw ? { draw } : {}) },
   };
+}
+
+/** Highest score in the game so far (0 before any round). */
+export function highestScore(s: Pick<Session, 'order' | 'scores'>): number {
+  return Math.max(0, ...s.order.map((p) => s.scores[p] ?? 0));
+}
+
+/** Lowest target that can be proposed: the current highest score, and at least 1. */
+export function minimumTarget(s: Pick<Session, 'order' | 'scores'>): number {
+  return Math.max(1, highestScore(s));
+}
+
+/** Players sharing the top score when the game would end on points (none: no draw). */
+function drawnTop(s: Session): PlayerId[] {
+  if (s.ultimateLabels?.winner) return [];
+  const f = finalStandings(s);
+  return f.winners.length > 1 ? f.winners : [];
+}
+
+/**
+ * The game would end on points. If the top score is a draw, offer an Ultimate
+ * Round instead (everyone votes). `offer` 2 is the second chance after
+ * "Coward!". Otherwise, or after the second refusal, the session ends.
+ */
+function endOrOfferDraw(s: Session, reason: SessionEnd['reason'], offer: 1 | 2, out: Out): Session {
+  const tied = drawnTop(s);
+  if (tied.length === 0) return endSession(s, reason, out);
+  if (offer === 1) out.emit(s, { type: 'drawAtEnd', players: tied });
+  else out.emit(s, { type: 'drawCoward', players: tied });
+  return callVote({ ...s, phase: 'results' }, null, 'ultimate', null, out, offer);
 }
 
 /**
@@ -499,8 +536,13 @@ function resolveVote(s: Session, result: boolean, decidedBy: 'majority' | 'host'
     }
     case 'ultimate': {
       if (result) return { ...s2, ultimateRound: true };
-      // Target reached and the Ultimate vote failed: the session ends, highest score wins.
-      if (v.calledBy === null) return endSession(s2, 'ultimateVoteFailedAtTarget', out);
+      // Draw at the end, first offer refused: "Coward!" and a second chance.
+      if (v.draw === 1) return endOrOfferDraw(s2, 'drawDeclined', 2, out);
+      // Second chance refused: the game ends with the shared top score.
+      if (v.draw === 2) return endSession(s2, 'drawDeclined', out);
+      // Target reached and the Ultimate vote failed: the session ends, highest
+      // score wins. A drawn top score still gets the "Coward!" second chance.
+      if (v.calledBy === null) return endOrOfferDraw(s2, 'ultimateVoteFailedAtTarget', 2, out);
       return s2;
     }
   }

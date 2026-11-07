@@ -150,15 +150,57 @@ test('both go out in the same trick: the lower card wins', () => {
 
 
 
-test('other player on their last card: no jokers, must play a normal card', () => {
-  // c has one card: b can't lead a joker.
-  const s = finalTwo([J(1), c('hearts', 9), c('clubs', 3)], [c('hearts', 13)], 'b');
-  assert.deepEqual(ids(legalCards(s, 'b')), ['clubs-3', 'hearts-9']);
-  assert.throws(() => playCard(s, 'b', 'joker-1'), /No jokers now/);
-  // b leads, then c (one card) answers: b still can't joker next trick while c has one card.
-  const s2 = finalTwo([c('hearts', 13)], [J(1), c('hearts', 9), c('clubs', 3)], 'b');
-  const r = playCard(s2, 'b', 'hearts-13');
-  assert.deepEqual(ids(legalCards(r.state, 'c')), ['hearts-9']);
+test('joker led, other player now on their last normal card: a joker may still answer it', () => {
+  // b leads a joker and is then down to one normal card; c may answer with a joker.
+  const s = finalTwo([J(1), c('clubs', 2)], [J(2), c('hearts', 9), c('clubs', 3)], 'b');
+  const r1 = playCard(s, 'b', 'joker-1');
+  assert.ok(legalCards(r1.state, 'c').some((x) => x.id === 'joker-2'), 'c may answer the joker with a joker');
+  const { s: after } = run(s, [['b', 'joker-1'], ['c', 'joker-2']]);
+  assert.equal(after.turn, 'b', 'missed round: b played first, so b leads again');
+  // Next trick: b is on their last normal card, so c can't play a joker any more.
+  assert.equal(after.hands.c?.some((x) => x.id === 'joker-2'), false);
+});
+
+test('joker led: the other player may also play a normal card, then leads', () => {
+  const s = finalTwo([J(1), c('clubs', 2)], [J(2), c('hearts', 9), c('clubs', 3)], 'b');
+  const { s: after } = run(s, [['b', 'joker-1'], ['c', 'hearts-9']]);
+  assert.equal(after.turn, 'c');
+});
+
+// User's example (2026-11-07): both players on a joker and one normal card. No block.
+test('both on a joker and one normal card: either may lead a joker', () => {
+  const s = finalTwo([J(1), c('clubs', 2)], [J(2), c('hearts', 9)], 'b');
+  assert.deepEqual(ids(legalCards(s, 'b')), ['clubs-2', 'joker-1']);
+});
+
+test('joker led, the other plays their last normal card: their joker is thrown away and they win', () => {
+  const s = finalTwo([J(1), c('clubs', 2)], [J(2), c('hearts', 9)], 'b');
+  const { events } = run(s, [['b', 'joker-1'], ['c', 'hearts-9']]);
+  assert.ok(events.some((e) => e.type === 'jokersDiscarded' && e.player === 'c'));
+  const end = ended(events);
+  assert.ok(end && end.type === 'roundEnded');
+  assert.deepEqual(end.finishingOrder, ['a', 'c', 'b']);
+});
+
+test('both lead jokers, then both play their last normal card: the lower card wins', () => {
+  const s = finalTwo([J(1), c('hearts', 2)], [J(2), c('hearts', 9)], 'b');
+  const { s: mid } = run(s, [['b', 'joker-1'], ['c', 'joker-2']]);
+  assert.equal(mid.turn, 'b', 'missed round: b led first, so b leads again');
+  const { events } = run(mid, [['b', 'hearts-2'], ['c', 'hearts-9']]);
+  const end = ended(events);
+  assert.ok(end && end.type === 'roundEnded');
+  assert.deepEqual(end.finishingOrder, ['a', 'b', 'c']);
+});
+
+test('a last card answered by a joker goes out unopposed and wins', () => {
+  // b leads their last normal card (b's joker is thrown away); c answers with a joker.
+  const s = finalTwo([c('hearts', 13), J(1)], [J(2), c('hearts', 9), c('clubs', 3)], 'b');
+  const r = playCard(s, 'b', 'hearts-13');
+  assert.ok(legalCards(r.state, 'c').some((x) => x.id === 'joker-2'), 'jokers are never blocked');
+  const { events } = run(r.state, [['c', 'joker-2']]);
+  const end = ended(events);
+  assert.ok(end && end.type === 'roundEnded');
+  assert.deepEqual(end.finishingOrder, ['a', 'b', 'c']);
 });
 
 test('jokers allowed in the final two while both players have two or more normal cards', () => {

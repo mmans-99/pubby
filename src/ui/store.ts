@@ -4,6 +4,7 @@
  */
 
 import type { ProfileStats } from '../session/record.ts';
+import type { CsvSheet } from './history.ts';
 import type { PlayerId } from '../session/types.ts';
 import { saveGame, type SavedGame } from './storage.ts';
 
@@ -30,10 +31,10 @@ export type Popup =
       shared: readonly PlayerId[] | null;
       forfeitedBy: PlayerId | null;
     }
-  | { kind: 'vote'; decidedBy: 'majority' | 'host'; result: boolean; text: string }
+  | { kind: 'vote'; decidedBy: 'majority' | 'host' | 'both'; result: boolean; text: string }
   | { kind: 'info'; icon: string; title: string; text: string };
 
-export type Screen = 'home' | 'profiles' | 'setup' | 'game';
+export type Screen = 'home' | 'profiles' | 'history' | 'setup' | 'game';
 
 export interface State {
   screen: Screen;
@@ -50,6 +51,12 @@ export interface State {
   selected: string | null;
   /** Reactions drawer (😂 and catch-phrases) is slid open. */
   reactionsOpen: boolean;
+  /** Profile opened on the profiles screen (details and share). */
+  openProfile: string | null;
+  /** Game opened on the past games screen. */
+  openRecord: string | null;
+  /** CSV shown as text when the share sheet can't take a file. */
+  csvSheet: CsvSheet | null;
 }
 
 let state: State;

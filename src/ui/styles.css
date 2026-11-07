@@ -139,10 +139,23 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 .empty { color: var(--muted); font-style: italic; }
 .warn { background: rgba(224, 83, 61, 0.2); border: 1px solid var(--danger); border-radius: 12px; padding: 10px 12px; }
 .note { background: rgba(242, 193, 78, 0.14); border-left: 4px solid var(--gold); border-radius: 8px; padding: 8px 10px; font-size: 0.9rem; }
+.note.warn { background: rgba(224, 83, 61, 0.18); border-left-color: var(--danger); }
 
 .list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .list-row { display: flex; align-items: center; gap: 10px; background: var(--panel); border-radius: 12px; padding: 10px 12px; }
 .name { font-weight: 700; }
+
+/* Past games and profile details (history.ts) */
+.list-row.record, .list-row.profile { flex-wrap: wrap; }
+.list-row.record { flex-direction: column; align-items: stretch; }
+.record-head {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: transparent; color: inherit; text-align: left; font-weight: 400; padding: 0; min-height: var(--tap);
+}
+.list-row.profile .record-head { width: auto; flex: 1 1 0; min-width: 0; }
+.profile-details { flex-basis: 100%; display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid rgba(251, 246, 233, 0.15); }
+.stat-row { display: flex; gap: 10px; font-size: 0.95rem; }
+.csv-box { width: 100%; font: 0.75rem/1.35 ui-monospace, monospace; border-radius: 10px; padding: 8px; margin: 8px 0; color: var(--ink); background: #fff; border: 1px solid #d8cfb8; }
 
 .top-bar { display: flex; align-items: center; gap: 4px; padding-right: 48px; }
 .top-bar h1 { font-size: 1.4rem; }

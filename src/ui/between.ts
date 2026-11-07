@@ -17,12 +17,13 @@
  */
 
 import { betweenTricks, takeAllowed } from '../rules/play.ts';
-import { targetVoteAllowed } from '../session/session.ts';
+import { minimumTarget, targetVoteAllowed } from '../session/session.ts';
 import { computeTrivia, type Top } from '../session/trivia.ts';
 import type { PlayerId, RoundRecord, Session, SessionPhase } from '../session/types.ts';
 import { ordinal } from './cards.ts';
 import { h, type Child } from './dom.ts';
 import { nameOf, send } from './game.ts';
+import { gameOverSaved } from './history.ts';
 import { resetTap } from './roundstart.ts';
 import type { SavedGame } from './storage.ts';
 import { getState, update } from './store.ts';
@@ -138,17 +139,22 @@ export function targetPanel(s: Session): HTMLElement | null {
   if (!targetVoteAllowed(s)) return null;
   const st = getState();
   const choosing = st.armed === 'targetcaller';
-  const set = (n: number): void => { targetDraft = Math.max(1, Math.min(TARGET_MAX, n)); update({}); };
+  const min = minimumTarget(s);
+  if (targetDraft < min) targetDraft = Math.min(TARGET_MAX, min);
+  const set = (n: number): void => { targetDraft = Math.max(min, Math.min(TARGET_MAX, n)); update({}); };
   return h('section', { class: 'panel' },
     h('h2', null, '🎯 Target score'),
     h('p', { class: 'muted small' },
-      'Optional. Anyone can propose a points goal; everyone votes. Once agreed it’s fixed. When someone reaches it, an Ultimate Round vote starts.'),
+      s.order.length === 2
+        ? 'Optional. Either of you can propose a points goal; it’s set only if you both agree. Once agreed it’s fixed. When someone reaches it, you’re asked about the Ultimate Round.'
+        : 'Optional. Anyone can propose a points goal; everyone votes. Once agreed it’s fixed. When someone reaches it, an Ultimate Round vote starts.',
+      min > 1 ? ` It can’t be lower than the highest score (${min}). Choosing ${min} means the Ultimate Round vote starts straight away.` : ''),
     h('div', { class: 'stepper' },
       h('button', { class: 'secondary step', 'aria-label': 'One less', onclick: () => set(targetDraft - 1) }, '−'),
       h('span', { class: 'step-value', 'aria-live': 'polite' }, `${targetDraft} pts`),
       h('button', { class: 'secondary step', 'aria-label': 'One more', onclick: () => set(targetDraft + 1) }, '+'),
     ),
-    h('div', { class: 'chips' }, [5, 10, 15, 20].map((n) =>
+    h('div', { class: 'chips' }, [5, 10, 15, 20].filter((n) => n >= min).map((n) =>
       h('button', { class: n === targetDraft ? 'quick on' : 'quick', onclick: () => set(n) }, String(n)))),
     choosing
       ? [
@@ -166,14 +172,16 @@ function ultimatePanel(s: Session): HTMLElement | null {
   return h('section', { class: 'panel' },
     h('h2', null, '⚡ Ultimate Round'),
     h('p', { class: 'muted small' },
-      'One final round outside the score. The winner takes the game; the loser ranks last. Anyone can call the vote.'),
+      s.order.length === 2
+        ? 'One final round outside the score. The winner takes the game; the loser ranks last. Either of you can ask; it happens only if you both agree.'
+        : 'One final round outside the score. The winner takes the game; the loser ranks last. Anyone can call the vote.'),
     choosing
       ? [
         h('p', null, 'Who is calling the vote?'),
         nameChips(s, (id) => send([{ type: 'callVote', by: id, kind: 'ultimate' }]), { label: 'Called by' }),
         h('button', { class: 'ghost', onclick: () => update({ armed: null }) }, 'Cancel'),
       ]
-      : h('button', { class: 'secondary', onclick: () => update({ armed: 'ultimatecaller' }) }, 'Call an Ultimate Round vote'),
+      : h('button', { class: 'secondary', onclick: () => update({ armed: 'ultimatecaller' }) }, s.order.length === 2 ? 'Ask to play the Ultimate Round' : 'Call an Ultimate Round vote'),
   );
 }
 
@@ -244,10 +252,13 @@ export function gameOverStage(g: SavedGame): Child {
   const why =
     end.reason === 'ultimatePlayed' ? (labels?.winner ? 'The Ultimate Round decided it.' : 'No Ultimate Winner, so the highest score wins.')
     : end.reason === 'ultimateVoteFailedAtTarget' ? `Target reached and no Ultimate Round, so the highest score wins.`
+    : end.reason === 'drawDeclined' ? 'A draw, and nobody wanted the Ultimate Round. The top score is shared.'
     : `${nameOf(s, s.hostId)} (host) ended the game. Highest score wins.`;
   return h('div', { class: 'stack' },
     h('div', { class: 'banner' },
-      h('div', { class: 'banner-big' }, `🏆 ${names(s, end.winners)} ${end.winners.length > 1 ? 'win' : 'wins'} the game`),
+      h('div', { class: 'banner-big' }, end.reason === 'drawDeclined'
+        ? `🤝 Draw: ${names(s, end.winners)} share the top score`
+        : `🏆 ${names(s, end.winners)} ${end.winners.length > 1 ? 'win' : 'wins'} the game`),
       h('div', { class: 'small' }, why),
     ),
     labels
@@ -268,6 +279,7 @@ export function gameOverStage(g: SavedGame): Child {
     last?.ultimate ? [h('h2', { class: 'center' }, 'Ultimate Round'), resultsTable(s, last)] : null,
     triviaPanel(s),
     h('p', { class: 'muted small center' }, `${s.rounds.length} ${s.rounds.length === 1 ? 'round' : 'rounds'} played.`),
+    gameOverSaved(g.recordId),
     h('button', { class: 'big', onclick: () => update({ game: null, screen: 'home', popups: [] }) }, 'Back to home'),
   );
 }

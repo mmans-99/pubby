@@ -48,8 +48,14 @@ test('vote: more than half no fails', () => {
   assert.equal(tallyVote({ a: 'no', b: 'no', c: 'yes' }, 3), 'failed');
 });
 
+test('vote with 2 players: both must agree, the host never decides', () => {
+  assert.equal(tallyVote({ a: 'yes', b: 'no' }, 2), 'failed');
+  assert.equal(tallyVote({ a: 'no' }, 2), 'failed');
+  assert.equal(tallyVote({ a: 'yes' }, 2), 'hostDecides', 'still waiting for the other player');
+  assert.equal(tallyVote({ a: 'yes', b: 'yes' }, 2), 'passed');
+});
+
 test('vote: a tie or too few votes goes to the host', () => {
-  assert.equal(tallyVote({ a: 'yes', b: 'no' }, 2), 'hostDecides');
   assert.equal(tallyVote({ a: 'yes', b: 'yes', c: 'no', d: 'no' }, 4), 'hostDecides');
   assert.equal(tallyVote({ a: 'yes' }, 4), 'hostDecides');
   assert.equal(resolveVote('hostDecides', true), true);

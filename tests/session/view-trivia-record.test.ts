@@ -5,7 +5,7 @@ import { addGameToProfiles, buildGameRecord, profileCsv, profileRivals, sessionC
 import { computeTrivia } from '../../src/session/trivia.ts';
 import type { LogEntry, Session } from '../../src/session/types.ts';
 import { playerView } from '../../src/session/view.ts';
-import { act, dealAll, playRound, start, step } from './helpers.ts';
+import { act, dealAll, playRound, start, step, endGame } from './helpers.ts';
 
 /** Card ids a player must never see: other hands and hidden decks. */
 function secretIds(s: Session, me: string): string[] {
@@ -102,7 +102,7 @@ function finishedSession(seed: number): Session {
   let s = playRound(start(4, rng), rng);
   s = act(s, { type: 'advance', by: 'p1' }, rng);
   s = playRound(s, rng);
-  return act(s, { type: 'endSession', by: 'p1' }, rng);
+  return endGame(s, rng);
 }
 
 test('game record: built when the session ends, with every round and final standings', () => {

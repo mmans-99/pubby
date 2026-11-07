@@ -54,6 +54,11 @@ export interface VoteState {
   readonly value: number | null;
   /** No majority: waiting for the host to decide. */
   readonly awaitingHost: boolean;
+  /**
+   * Set on an Ultimate vote offered because the top score is a draw at the end
+   * of the game: 1 = first offer, 2 = the second chance after "Coward!".
+   */
+  readonly draw?: 1 | 2;
 }
 
 export interface RoundRecord {
@@ -82,7 +87,7 @@ export interface SessionEnd {
   readonly winners: readonly PlayerId[];
   readonly decidedBy: 'ultimate' | 'highestScore';
   /** Why the session ended. */
-  readonly reason: 'ultimatePlayed' | 'ultimateVoteFailedAtTarget' | 'hostEnded';
+  readonly reason: 'ultimatePlayed' | 'ultimateVoteFailedAtTarget' | 'hostEnded' | 'drawDeclined';
 }
 
 export interface TapEntry {
@@ -231,6 +236,10 @@ export type SessionEvent =
     }
   | { readonly type: 'ultimateLabels'; readonly winner: PlayerId | null; readonly losers: readonly PlayerId[] }
   | { readonly type: 'targetReached'; readonly players: readonly PlayerId[]; readonly target: number }
+  /** The game would end with the top score drawn: an Ultimate Round is offered. */
+  | { readonly type: 'drawAtEnd'; readonly players: readonly PlayerId[] }
+  /** The first draw offer was turned down: "No one's a winner! Coward!", then a second chance. */
+  | { readonly type: 'drawCoward'; readonly players: readonly PlayerId[] }
   | { readonly type: 'takeRequested'; readonly requester: PlayerId; readonly target: PlayerId }
   | { readonly type: 'takeAnswered'; readonly requester: PlayerId; readonly target: PlayerId; readonly accepted: boolean }
   | {

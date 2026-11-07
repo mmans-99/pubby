@@ -3,6 +3,8 @@
  *
  * A vote passes with a majority: more than half of the players.
  * If no majority is reached either way, the host decides.
+ * Two players (decided 2026-11-07): no real vote and no host decision. Both
+ * must agree: any "no" fails it, two "yes" pass it.
  */
 
 export type Ballot = 'yes' | 'no';
@@ -30,6 +32,10 @@ export function tallyVote(
     else no++;
   }
   if (yes + no > playerCount) throw new Error('More ballots than players');
+  if (playerCount === 2) {
+    if (no > 0) return 'failed';
+    return yes === 2 ? 'passed' : 'hostDecides'; // 'hostDecides' here just means "still waiting"
+  }
   if (yes * 2 > playerCount) return 'passed';
   if (no * 2 > playerCount) return 'failed';
   return 'hostDecides';

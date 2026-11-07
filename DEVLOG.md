@@ -4,6 +4,34 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-07 — Phase 2 slice 5: saved games and profile history
+
+**Done**
+- User approved step 1 of "what's next": save each game when it ends, then playtest at 2, 3, 5 and 8 players.
+- New `src/ui/history.ts` (`CODE.md` 9c). When the session ends, `send()` calls `saveFinishedGame()` once: game record saved on the phone (`pubby.gameRecords`, newest first, each id once) and added to the profile of every player whose profile is on this phone (a profile deleted mid-game is not brought back).
+- Game over: "Saved on this phone" panel (which profiles got the game, or a warning if storage is full or blocked) and "Share game stats (CSV)".
+- Home: new "Past games" screen. Tap a game for the final standings, share it, or delete it (two taps; profile totals don't change).
+- Profiles: tap a profile for its totals, slapped by most / slapped most, and "Share profile stats (CSV)".
+- Share: the phone share sheet with a .csv file. If the phone or browser can't share a file (the private test link blocks the share sheet and downloads), a sheet shows the CSV text with Copy and Download.
+- UI choices not in the spec, flagged to the user: the Past games screen, deleting a past game, and the profile details panel (`PROJECT.md` section 10 updated to describe them).
+- New automated playthrough: `testbed/bot.js` plays like a person, using only what's on screen; `testbed/playthrough.py` runs four full games in a phone-sized headless browser (2 players: manual deal, swaps, forfeits; 3: reshuffle vote, swap, Ultimate Round played; 5: manual deal, jokers off, Ultimate Round voted down; 8: reshuffle vote, Ultimate Round played; 1 normal round because every SLAP! holds the screen for 4 real seconds), then checks Past games, profile totals, both CSV sheets, deleting, and a page reload. Result: 52 of 52 checks passed, no page errors, no uneven manual deal, no turn without a playable card. A full run takes about 20 minutes.
+- **Rule change (user, afternoon):** in the final two, jokers are always allowed. The user hit the morning's "no jokers while the other player is on their last normal card" block in play (P1 led a joker, P2 couldn't answer with one). First change: a joker may answer a joker lead. Then the user asked for their example (both on a joker and one normal card) to play however they like, and chose to drop the block completely. Outcomes: joker + normal card, the normal-card player goes out and wins (joker thrown away); two jokers, missed round, then the normal cards decide; two normal cards, lower or slapper wins; a last card answered by a joker wins. `jokersBlocked()` and the "No jokers now" note removed; tests rewritten for these cases (107 passing).
+- **Wording (user approved):** the game already treated a joker lead in the final two as the same trick, but the screens said "The next player starts the trick" and "Lead any card". Now, in the final two: pop-up "P1 played a joker. P2 plays next, in the same trick.", a note on P2's screen, and the button says "Play any card". New "Missed round!" pop-up when both play jokers. Checked in the browser with a set-up final-two position.
+- **Spec review (user asked for weird or confusing moments):** answers and decisions: take-cards is meant to favour the asked player; jokers in the hidden decks are fine but now explained (round 1 banner and setup in 2 and 3 player games, new "Hidden decks and the swap" quick rules section); 2-player games ask instead of voting, both must agree, no host decision (user chose this over "either decides" and "keep votes"); target can't be lower than the highest score, equal starts the Ultimate vote; a drawn top score at the end gets an Ultimate vote (everyone votes), then "No one's a winner! Coward!" and a second chance (also after a failed target Ultimate vote), then shared scores; joker lead is the same trick in every game size (only wording changed: the engine already worked that way); warning before a joker that would hand the other player the win in the final two. User corrected my claim that high cards are good in normal tricks: low cards are usually the winning hand.
+- Joker warning uses card counts only, so it never reveals that the other player holds a joker (no warning when their hand is one normal card plus jokers).
+- Browser checks with set-up positions: draw flow (pop-ups, vote titles, "Coward!", game over "Draw: Amy & Ben share the top score"), target panel minimum, joker warning. Bot playthroughs at 2 players (asked for a reshuffle) and 3 players: 22 of 22 checks passed. 5 and 8 player runs not repeated (no changes affect them beyond wording).
+- Checks: strict type check; 118 tests passing (new: saved games newest first and never twice, delete, profile history survives a reload, full or blocked storage doesn't crash; final-two joker cases).
+- New test link (this session can't update the old one). Its saved profiles start empty, because each link keeps its own storage.
+- `PROJECT.md` (section 10), `CODE.md` (7, 8a, 9c), `TODO.md` updated. `CLAUDE.md` checked, no changes.
+
+- User tested the test link and approved commit and push (17:01).
+
+**Next**
+- Phase 3: offline app (manifest, icons, service worker, GitHub Pages).
+- Decide the multiplayer path (`CODE.md` section 4) before Phase 4.
+
+---
+
 ## 2026-11-07 — Rule changes: jokers, manual deal, take-cards before tricks
 
 **Done**

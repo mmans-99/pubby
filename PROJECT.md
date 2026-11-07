@@ -24,6 +24,7 @@ Pubby is a multiplayer shedding card game based on Bhabhi (also called Get Away)
   - "Majority says… YES!" or "Majority says… NO!"
   - "Host says… YES!" or "Host says… NO!" when the host decided.
   - It names what was decided (for example "Reshuffle!", "Target: 15 points", "Ultimate Round!").
+- **Two players: no votes (decided 2026-11-07).** With 2 players, every split vote used to go to the host. Instead, one player asks and the other agrees or refuses. It only happens if both agree; the host never decides. The asker counts as a yes. If the host stops waiting for an answer, that counts as no. This covers the reshuffle, the target score, the Ultimate Round (including the automatic one when the target is reached) and the draw offer. Pop-ups say "Both agree… YES!" or "Not agreed… NO!".
 - **Votes only happen outside a round.** There are two places they can happen:
   - Before a round starts: the reshuffle vote (section 2a).
   - On the results screen after a round: the target score vote and the Ultimate Round vote (section 9).
@@ -96,6 +97,7 @@ The order of steps 3 and 4 does not matter to the players, so the order above is
   2. The player chooses up to 4 of their own cards to swap, or none.
   3. The chosen cards leave the game. The player receives the same number of random, unknown cards from the hidden decks.
 - **Given-away cards** leave the game. They do not go into the hidden decks or the waste pile.
+- **Jokers can be hidden (decided 2026-11-07):** jokers can end up in the hidden decks or be swapped out, so fewer jokers than the count shown may be in play. That's fine. In 2 and 3 player games the joker count message adds a note that some jokers may be in the hidden decks, and the quick rules explain how the hidden decks work.
 
 ---
 
@@ -146,6 +148,7 @@ The Ace of Spades has no special rule. It is an ordinary card.
 - **Private:** Only the players involved see the request. The cards moving is shown to everyone (who took from whom, and how many), never which cards.
 - **On one phone (pass-and-play):** Before a trick, the "Pass the phone to (leader)" screen has a "Someone wants to take cards" button. Pick who is asking; the phone goes to them in private to choose a player. The leader can also ask from their own hand screen. The phone then goes to the asked player to answer.
 - **The player whose cards are taken** has no cards left, so they are **out**, by the normal rules, and take the next finishing place at that moment.
+- **Who it helps (confirmed 2026-11-07):** the asked player gets the advantage: they go out straight away with the next place. The asker gets a new hand (and more cards). This is intended.
 - **Who leads after:** If the player whose cards were taken was about to lead the next trick, the next player clockwise still holding cards leads instead.
 - **Not with two left:** Not allowed when only two players hold cards (it would just be a forfeit), so never in a 2-player game. Any waiting requests are cancelled when the round gets down to two players, or when either player goes out.
 
@@ -175,7 +178,7 @@ The Ace of Spades has no special rule. It is an ordinary card.
 - **Last card higher** than the other player's card: that player must choose:
   - **Pick up the whole waste pile** (including this trick) and play on. They lead next. They keep the option to forfeit at any time while two players are left.
   - **Forfeit:** they take last place (the same as a Bhabhi) and the other player takes the higher place. The round ends.
-- **No jokers against a last card:** While the other player is down to their last normal card, a player can't play a joker and must play a normal card (section 7).
+- **Jokers in the final two:** Jokers can always be played, including against a last card. A last card that meets only a joker (no normal card from the other player) goes out unopposed and **wins** (section 7).
 - **Both go out in the same trick:** the lower card, or the slapper, wins. The other takes last place.
 - **Only the player who played their last card** can face the pick-up-or-forfeit choice.
 
@@ -192,11 +195,17 @@ The Ace of Spades has no special rule. It is an ordinary card.
 - **Jokers are playing cards.** They count as cards in a player's hand (for card counts and taking cards).
 - **You can't hold only jokers:** When a player plays their **last normal card** and only jokers are left in their hand, those jokers are thrown away (they leave the game) and that normal card counts as their **last card**. This is the same when the last card is a slap. In the final two, the last card is compared as usual; if it was higher and the player picks up the waste pile, the jokers are still gone. A joker is never a last card.
 - **Use:** A joker is a wild card. A player may play it on their own turn, even if they could follow suit. Playing it skips their turn.
-- **Joker as the lead:** If the leader plays a joker as the first card of a trick, the joker is gone and the next player clockwise starts the trick with any card.
+- **Joker as the lead:** If the leader plays a joker as the first card of a trick, they have started the trick and are part of it, but nothing in it affects them: they can't be slapped and don't play again in that trick. The joker is gone and the next player clockwise plays any card, which sets the suit for the rest of the trick. This is the same in the final two. (Wording settled 2026-11-07: the screens say "same trick", not "starts the trick".)
 - **After use:** The joker leaves the game. It does not go into the waste pile.
-- **Last two players, other player on their last card:** While the other player is down to their last normal card (counted at the start of the trick; jokers don't count, since they'd be thrown away), a player can't play a joker and must play a normal card. This covers leading and answering.
-- **Last two players, one joker played:** If one of the two players plays a joker first, the other player may play any card they want, then they lead.
-- **Last two players, both play a joker in the same trick:** This counts as a missed round. The player who played first leads again.
+- **Warning (2026-11-07):** in the final two, if you pick a joker when it would hand the other player the win, the screen warns you: "Careful: if you play this joker, Ben can play their last card unopposed and win the round." It only uses what everyone can see (card counts), so it shows when you're leading and the other player holds one card, or when they've just played their last card. It doesn't show when the other player's hand is one normal card plus jokers, because that would give away that they hold a joker.
+- **Last two players, jokers always allowed (2026-11-07, afternoon):** There is no block on jokers in the final two; each player plays the trick how they like. Example, both players on a joker and one normal card:
+  - Joker then normal card: the player who played the normal card has played their last normal card, so their joker is thrown away and they go out and **win** (their last card met no normal card).
+  - Joker then joker: missed round; the first player leads again, and both then play their last normal card.
+  - Normal card then normal card: both play their last card in the same trick: the lower card, or the slapper, wins.
+  - Normal card then joker: the first player's last card met no normal card, so they go out and win.
+  - *Replaces* this morning's "no jokers while the other player is on their last normal card" and its joker-answers-joker exception.
+- **Last two players, one joker played:** If one of the two players starts the trick with a joker, it is still the same trick: the other player may play any card they want (or a joker, see below). If they play a normal card, they lead next. The screen says it's the same trick, and the button says "Play any card".
+- **Last two players, both play a joker in the same trick:** This counts as a missed round. The player who played first leads again. A "Missed round!" pop-up says so.
 - *Removed 2026-11-07:* "a joker as your last card takes you out" and "both down to a single joker share second-last place". Neither can happen now, because nobody can hold only jokers.
 
 ---
@@ -237,6 +246,7 @@ After each round, points are awarded by finishing position. The first player out
 - The vote happens on the results screen, between rounds. Majority rule.
 - **Who proposes it:** Any player can propose a target number, which starts the vote.
 - **When:** Before round 1 starts (during the deal, or before the host starts round 1), or on the results screen after any round.
+- **Minimum (decided 2026-11-07):** a proposed target can't be lower than the current highest score. If it equals the highest score, that player has reached it, so the Ultimate Round vote starts straight away (below).
 - **Once agreed, it's fixed.** After a target vote passes, no more target votes can be called for the rest of the session. A failed target vote can be tried again. No target votes once the Ultimate Round has been agreed.
 - If the target score is set and a player reaches it, a vote on the Ultimate Round starts.
 - If no target score is set, the game does not end because of points. The Ultimate Round can still be triggered (below).
@@ -258,6 +268,12 @@ After each round, points are awarded by finishing position. The first player out
 - **Ultimate Round played:** The session ends after it. The Ultimate Winner is the game winner. If no Ultimate Winner is recorded, the highest score wins.
 - **Target reached and the Ultimate vote fails:** The session ends and the highest score wins.
 - **No target, no Ultimate Round:** The host ends the session from the results screen. Scores are recorded from that point.
+- **A draw for the top score (decided 2026-11-07):** whenever the game would end on points with two or more players sharing the top score, it doesn't end straight away:
+  1. A pop-up says it's a draw, and **everyone votes** on an Ultimate Round to settle it (normal voting rules; with 2 players, both must agree).
+  2. If it's a no: a "**No one's a winner! Coward!**" pop-up, then one more vote on the Ultimate Round.
+  3. If it's a no again: the game ends and the tied players share the top score ("Draw: Amy & Ben share the top score").
+  - If the target was reached and the automatic Ultimate vote failed with a drawn top score, that failed vote counts as the first offer: the "Coward!" pop-up and the second chance come next.
+  - If the Ultimate Round is agreed, it's played as usual and its winner wins the game.
 
 ---
 
@@ -277,6 +293,7 @@ When a session ends, the full record is saved.
   - The trivia stats from section 11.
 - **Where it is saved:** Each player's phone keeps its own copy, so it works offline.
 - **No host export.** The host does not get a separate copy.
+- **On screen (built 2026-11-07):** the game over screen says the game was saved and which profiles it was added to, with a "Share game stats" button. A **Past games** screen on the home screen lists every finished game on this phone, newest first; tap one for the final standings, share, or delete it (two taps). Deleting a past game does not change the profile totals.
 
 ### Profile history (proposed)
 - When a session ends, each game is added to the profile of every player on that phone. The game is stored under the profile name, and the session name stays in the game record.
@@ -288,6 +305,7 @@ When a session ends, the full record is saved.
   - Times finished in the bottom two of a round.
   - Times slapped, and times slapped others.
   - Slapped by most, and slapped most (overall, across every saved session).
+- **On screen (built 2026-11-07):** tap a profile on the profiles screen to see its totals, slapped by most and slapped most, and a "Share profile stats" button.
 - **Limit:** Profiles are stored on each phone. A profile's history lives only on the phone that holds that profile. There are no accounts, so one person's history on another phone is separate.
 - **Confirmed.**
 
@@ -298,6 +316,7 @@ When a session ends, the full record is saved.
 - **How:** A button on the results screen (session stats) or on the profile (profile stats). It opens the phone's share sheet so the stats can be saved to Files, sent to a group chat, or shared elsewhere.
 - **Works offline.** Nothing is uploaded by Pubby. The phone's share sheet does the sending.
 - **Format:** CSV only (opens in a spreadsheet). Confirmed.
+- **If the phone can't share a file** (some browsers, and the private test link): the CSV is shown as text with Copy and Download buttons instead.
 
 ### Accounts (not in v1)
 - Accounts would let one person's history follow them across phones. This needs a hosted backend, a sign-in method, and cloud storage.
@@ -368,8 +387,8 @@ The testbed (`CODE.md` section 8a) is only a rules test tool and does not use th
   - Jokers
   - Missing a suit and Reaction Tap
   - The last two players and the waste pile
-  - Hidden swap (2 and 3 player games only)
-  - Votes, the target score, and the Ultimate Round
+  - Hidden decks and the swap (2 and 3 player games only): how the hidden decks work, and that jokers can be in them
+  - Votes (and asking instead of voting with 2 players), the target score minimum, the Ultimate Round, and a draw at the end
   - Scoring table
 - **Content:** Kept in `src/content/quick-rules.md` so it is easy to edit. It must match this spec.
 
@@ -379,9 +398,10 @@ The testbed (`CODE.md` section 8a) is only a rules test tool and does not use th
 
 Answer these in any order. Each one unblocks part of the build.
 
-None. The spec has no open questions.
+None. (2026-11-07: votes in a 2-player game and a draw at the end were decided; see sections 1.1 and 9.)
 
 ### Decided (for reference)
+- 2026-11-07 (late afternoon): take-cards help goes to the asked player (intended); jokers can be in the hidden decks (note on screen and in the quick rules); 2-player games ask instead of voting (both must agree); target can't be lower than the highest score; a drawn top score at the end gets an Ultimate Round vote, then "Coward!" and a second chance, then shared scores; joker lead is the same trick in every game size; warning before a joker that hands the other player the win in the final two.
 - Take-cards request (section 4.2): take all of another player's cards, unseen; only before a trick starts and decided before it starts (not shown during a trick); one request at a time per player; the asked player agrees or refuses (no host approval for now); if several ask the same player, that player chooses who gets them; no cost; the giver goes out with the next place; not with only two players left. (Changed 2026-11-07: was "any time, unlimited, moves between tricks".)
 - If nobody calls a reshuffle vote, the host taps "Start the round". After a reshuffle vote, the round carries on by itself.
 - A vote is decided as soon as more than half agree. The host can close a vote early; with no majority, the host decides.
@@ -393,7 +413,7 @@ None. The spec has no open questions.
 - Going out is checked at the end of the trick: a player who played their last card and is then slapped picks up and stays in.
 - Both final players go out in the same trick: lower card or slapper wins.
 - Nobody can hold only jokers: playing your last normal card throws away any jokers left, and that card is your last card (also when picking up the waste pile afterwards). A joker is never a last card. (2026-11-07: replaces "a joker as your last card takes you out" and the shared second-last place on jokers.)
-- Final two: while the other player is down to their last normal card, no jokers; play a normal card. (2026-11-07)
+- Final two: jokers are always allowed; a joker led is still the same trick; both jokers is a missed round and the first player leads again; a last card that meets only a joker wins. (2026-11-07, afternoon: replaces "no jokers while the other player is on their last normal card".)
 - Dealing starts in manual mode. Manual deal is even: a player who has had a card is greyed out until everyone has one, then all open up (never two in a row). (2026-11-07)
 - The hidden swap is offered every round in 2 and 3 player games.
 - Every round starts with the full deck. Hidden decks (2 and 3 players) are set aside every round, and the swap is offered every round.

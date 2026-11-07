@@ -45,14 +45,14 @@ Status key: `[ ]` not started, `[~]` in progress, `[x]` done, `[!]` blocked on a
 - [x] Forfeit scores last place
 - [x] Shared second-last place scoring (final two both out on jokers). No longer reachable since 2026-11-07; kept for old saved games
 - [x] Event log (slaps, reaction times, forfeits, jokers, reshuffle votes) for trivia and the game record
-- [x] Game record built when the session ends (`buildGameRecord`); saving to phone storage comes with the Phase 2 UI
+- [x] Game record built when the session ends (`buildGameRecord`); saved to phone storage in Phase 2 slice 5
 - [x] Profile history: per-profile totals updated once per game at session end (`addGameToProfiles`)
-- [x] Stats export: session and profile CSV (`sessionCsv`, `profileCsv`); the share sheet button comes with the Phase 2 UI
+- [x] Stats export: session and profile CSV (`sessionCsv`, `profileCsv`); share buttons added in Phase 2 slice 5
 - [x] Scoring tables for 2 to 8 players
 - [x] Target score vote; reaching the target starts an Ultimate Round vote
 - [x] Ultimate Round (any player can trigger from a results screen; majority vote; outside the score; Ultimate Winner and Loser labels outrank scores; both Ultimate Loser if the final two share second-last on jokers)
 - [x] Results screen trivia from the event log (`computeTrivia`)
-- [~] Unit tests for every rule above (97 passing: cards, deal, scoring, voting, round start, trick play, final two, session flow, votes, pause, results, Ultimate Round, player views, take-cards requests, trivia, game record, profiles, CSV)
+- [~] Unit tests for every rule above (118 passing: cards, deal, scoring, voting, round start, trick play, final two, session flow, votes, pause, results, Ultimate Round, player views, take-cards requests, trivia, game record, profiles, CSV, saved games storage)
 - [ ] Run `npm install` on a machine with network access and confirm `npm run build` (only esbuild, tsx and TypeScript are needed now)
 
 ## Phase 2 — Pass-and-play UI (one device, offline) (current)
@@ -96,7 +96,15 @@ Built in slices; each slice gets a test link and a checklist.
   - [x] Quick rules updated
   - [x] Deal starts in manual; even manual deal (greyed out until everyone has a card)
   - [x] More catch-phrases ("Hurry up!!", "Slap him!!" and more); slimmer reactions bar
-- [ ] Save the game record and profile history on the phone when a game ends (`buildGameRecord`, `addGameToProfiles`; Phase 1 built them)
+- [x] **Slice 5: saved games and profile history** (tested by the user, committed 2026-11-07)
+  - [x] Save the game record and profile history on the phone when a game ends (`buildGameRecord`, `addGameToProfiles`; Phase 1 built them)
+  - [x] Game over: "Saved on this phone" note (which profiles got the game) and "Share game stats (CSV)"
+  - [x] Past games screen (home): every finished game, newest first, standings, share, delete (two taps)
+  - [x] Profile details (tap a profile): overall totals, slapped by most / slapped most, "Share profile stats (CSV)"
+  - [x] Share: phone share sheet with a .csv file; if the phone can't, a sheet with the CSV text, Copy and Download
+  - [x] Final two: jokers always allowed ("no jokers against a last card" block dropped, user 2026-11-07); "same trick" wording (pop-up, note, "Play any card" button); "Missed round!" pop-up when both play jokers
+  - [x] Rule batch (user, late afternoon): 2-player games ask instead of voting (both must agree); target minimum = highest score; draw at the end → Ultimate vote, "Coward!", second chance, shared scores; joker lead "same trick" wording in all sizes; final-two joker warning; hidden-deck notes (round 1 banner, setup, quick rules)
+  - [x] Automated playthrough script (`testbed/playthrough.py`, `testbed/bot.js`): full games at 2, 3, 5 and 8 players through the real screens
 - [x] Table view and turn indicator
 - [x] SLAP! pop-up, emoji bar, and catch-phrases (content in `src/content/catch-phrases.md`)
 - [x] Missing-suit prompt and mini-game
@@ -113,7 +121,7 @@ Built in slices; each slice gets a test link and a checklist.
 - [x] Going-out pop-up with the place, place badge next to the name, one last-two pop-up (second last + the loser), results headline "X is the winner"
 - [x] Ultimate Round button on the results screen and majority vote UI (slice 4)
 - [x] Round end, scoreboard, and vote screens (slice 4)
-- [ ] Manual playtest at 2, 3, 5, and 8 players
+- [~] Playtest at 2, 3, 5, and 8 players (automated runs pass; user's own playtest still to do)
 
 ## Phase 3 — Offline PWA
 

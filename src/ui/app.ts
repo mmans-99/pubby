@@ -19,8 +19,9 @@ import { createSession } from '../session/session.ts';
 import { h } from './dom.ts';
 import { pauseLayer } from './between.ts';
 import { afterRender, gameScreen, popupLayer, reactionsLayer } from './game.ts';
+import { csvSheetLayer, pastGamesScreen, profileDetails } from './history.ts';
 import { renderMarkdown } from './markdown.ts';
-import { addProfile, deleteProfile, findProfile, loadGame, loadProfiles, saveProfiles } from './storage.ts';
+import { addProfile, deleteProfile, findProfile, loadGame, loadProfiles, loadRecords, saveProfiles } from './storage.ts';
 import { getState, initState, say, update, type SetupSeat, type SetupState, type State } from './store.ts';
 
 const NAME_MAX = 16;
@@ -49,6 +50,9 @@ export function startApp(target: HTMLElement): void {
     popups: [],
     selected: null,
     reactionsOpen: false,
+    openProfile: null,
+    openRecord: null,
+    csvSheet: null,
   };
   initState(initial, render);
   render();
@@ -66,6 +70,7 @@ function render(): void {
   const st = getState();
   const screen =
     st.screen === 'profiles' ? profilesScreen()
+    : st.screen === 'history' ? pastGamesScreen(() => update({ screen: 'home', armed: null, openRecord: null }))
     : st.screen === 'setup' ? setupScreen()
     : st.screen === 'game' && st.game ? gameScreen(st.game)
     : homeScreen();
@@ -76,6 +81,7 @@ function render(): void {
     st.screen === 'game' ? pauseLayer() : null,
     ...(st.screen === 'game' && st.game ? reactionsLayer() : []),
     st.rulesOpen ? rulesOverlay() : null,
+    csvSheetLayer(),
     st.message ? h('div', { class: 'toast', role: 'status' }, st.message) : null,
   ];
   root.replaceChildren(...parts.filter((p): p is HTMLElement => p !== null));
@@ -116,8 +122,10 @@ function homeScreen(): HTMLElement {
       g ? h('button', { class: 'big', onclick: () => update({ screen: 'game' }) },
         `Carry on game (round ${g.session.round})`) : null,
       h('button', { class: g ? 'big secondary' : 'big', onclick: startSetup }, 'New game'),
-      h('button', { class: 'big secondary', onclick: () => update({ screen: 'profiles', armed: null }) },
+      h('button', { class: 'big secondary', onclick: () => update({ screen: 'profiles', armed: null, openProfile: null }) },
         `Profiles (${Object.keys(getState().profiles).length})`),
+      h('button', { class: 'big secondary', onclick: () => update({ screen: 'history', armed: null, openRecord: null }) },
+        `Past games (${loadRecords().length})`),
     ),
     h('p', { class: 'muted small center' }, 'Pass-and-play on one phone. Test build: the full game on one phone.'),
   );
@@ -174,12 +182,19 @@ function profilesScreen(): HTMLElement {
         const p = getState().profiles[n]!;
         const key = `delete:${n}`;
         const armed = getState().armed === key;
-        return h('li', { class: 'list-row' },
-          h('div', { class: 'grow' },
-            h('div', { class: 'name' }, n),
-            h('div', { class: 'muted small' },
-              p.gamesPlayed === 1 ? '1 game' : `${p.gamesPlayed} games`, ' · ',
-              `${p.roundWins} round wins`, ' · ', `${p.points} points`),
+        const open = getState().openProfile === n;
+        return h('li', { class: open ? 'list-row profile open' : 'list-row profile' },
+          h('button', {
+            class: 'record-head grow', 'aria-expanded': open ? 'true' : 'false',
+            onclick: () => update({ openProfile: open ? null : n, armed: null }),
+          },
+            h('div', { class: 'grow' },
+              h('div', { class: 'name' }, n),
+              h('div', { class: 'muted small' },
+                p.gamesPlayed === 1 ? '1 game' : `${p.gamesPlayed} games`, ' · ',
+                `${p.roundWins} round wins`, ' · ', `${p.points} points`),
+            ),
+            h('span', { class: 'muted', 'aria-hidden': 'true' }, open ? '▲' : '▼'),
           ),
           h('button', {
             class: armed ? 'danger small-btn' : 'ghost small-btn',
@@ -187,9 +202,10 @@ function profilesScreen(): HTMLElement {
               if (!armed) { update({ armed: key }); return; }
               const profiles = deleteProfile(getState().profiles, n);
               saveProfiles(profiles);
-              update({ profiles, armed: null });
+              update({ profiles, armed: null, openProfile: null });
             },
           }, armed ? 'Tap to delete' : 'Delete'),
+          open ? profileDetails(p) : null,
         );
       })),
   );
@@ -291,7 +307,7 @@ function setupScreen(): HTMLElement {
         h('span', { class: 'toggle-ui', 'aria-hidden': 'true' }),
         h('span', { class: 'grow' }, 'Joker rule',
           h('span', { class: 'muted small block' },
-            s.jokers ? `${jokers} jokers in the deck with ${s.seats.length >= 6 ? '6 to 8' : '2 to 5'} players.` : 'Off: no jokers this game.')),
+            s.jokers ? `${jokers} jokers in the deck with ${s.seats.length >= 6 ? '6 to 8' : '2 to 5'} players.${s.seats.length <= 3 ? ' With 2 or 3 players some may end up in the hidden decks.' : ''}` : 'Off: no jokers this game.')),
       ),
       h('label', { class: 'field' },
         h('span', null, 'Pause time limit'),

@@ -82,3 +82,15 @@ export function playRound(s: Session, rng: Rng): Session {
   }
   throw new Error('Round did not finish');
 }
+
+/** Host ends the game; if the top score is a draw, everyone turns down both Ultimate offers. */
+export function endGame(s: Session, rng: Rng): Session {
+  s = act(s, { type: 'endSession', by: s.hostId }, rng);
+  while (s.vote && s.vote.draw) {
+    for (const p of s.order) {
+      if (!s.vote || s.vote.ballots[p]) continue;
+      s = act(s, { type: 'castVote', by: p, ballot: 'no' }, rng);
+    }
+  }
+  return s;
+}

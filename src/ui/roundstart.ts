@@ -90,11 +90,11 @@ function passStage(g: SavedGame, who: PlayerId, what: 'vote' | 'swap' | 'tap'): 
     : what === 'swap' ? 'Hidden swap'
     : 'Reaction Tap';
   const button =
-    what === 'vote' ? `I'm ${name}, let me vote`
+    what === 'vote' ? (s.order.length === 2 && v!.calledBy ? `I'm ${name}, let me answer` : `I'm ${name}, let me vote`)
     : what === 'swap' ? `I'm ${name}, show my cards`
     : `I'm ${name}, I'm ready`;
   const progress =
-    what === 'vote' ? `${Object.keys(v!.ballots).length} of ${s.order.length} have voted`
+    what === 'vote' ? (s.order.length === 2 && v!.calledBy ? `${nameOf(s, v!.calledBy)} asked` : `${Object.keys(v!.ballots).length} of ${s.order.length} have voted`)
     : what === 'swap' ? `${s.swapDone.length} of ${s.order.length} done`
     : tapProgress(s);
   const armed = getState().armed === 'closevote';
@@ -117,7 +117,9 @@ function passStage(g: SavedGame, who: PlayerId, what: 'vote' | 'swap' | 'tap'): 
           if (!armed) { update({ armed: 'closevote' }); return; }
           send([{ type: 'closeVote', by: s.hostId }]);
         },
-      }, armed ? `Tap again: ${nameOf(s, s.hostId)} counts the votes now` : `Host: count the votes now`)
+      }, s.order.length === 2
+        ? (armed ? 'Tap again: not agreed' : 'Host: stop waiting (counts as no)')
+        : armed ? `Tap again: ${nameOf(s, s.hostId)} counts the votes now` : `Host: count the votes now`)
       : null,
     resultsSummary(s),
   );
@@ -128,6 +130,13 @@ function passStage(g: SavedGame, who: PlayerId, what: 'vote' | 'swap' | 'tap'): 
 // ---------------------------------------------------------------------------
 
 export function voteTitle(s: Session, kind: VoteKind, value: number | null): string {
+  if (kind === 'ultimate' && s.vote?.draw === 1) return 'It’s a draw: Ultimate Round?';
+  if (kind === 'ultimate' && s.vote?.draw === 2) return 'Coward! Last chance: Ultimate Round?';
+  if (s.order.length === 2) {
+    if (kind === 'reshuffle') return 'Reshuffle? Both must agree';
+    if (kind === 'target') return `Target ${value} points? Both must agree`;
+    return 'Ultimate Round? Both must agree';
+  }
   if (kind === 'reshuffle') return 'Reshuffle vote';
   if (kind === 'target') return `Target vote: ${value} points`;
   return 'Ultimate Round vote';
@@ -144,14 +153,22 @@ export function voteOutcome(s: Session, kind: VoteKind, result: boolean, value: 
   if (kind === 'reshuffle') return result ? `Reshuffle! ${nameOf(s, s.dealer)} shuffles and deals again.` : 'No reshuffle. The round goes on.';
   if (kind === 'target') return result ? `Target: ${value} points` : 'No target.';
   if (result) return 'Ultimate Round! One last round, outside the score.';
-  return s.phase === 'gameOver' ? 'No Ultimate Round. Game over: the highest score wins.' : 'No Ultimate Round.';
+  if (s.phase !== 'gameOver') return s.vote?.draw ? 'No Ultimate Round… yet.' : 'No Ultimate Round.';
+  return s.ended?.reason === 'drawDeclined'
+    ? 'No Ultimate Round. Game over: the top score is shared.'
+    : 'No Ultimate Round. Game over: the highest score wins.';
 }
 
 function voteStage(g: SavedGame, me: PlayerId): Child {
   const s = g.session;
   const v = s.vote!;
   const view = playerView(s, me);
-  const caller = v.calledBy ? `${nameOf(s, v.calledBy)} called this vote.` : 'Someone reached the target, so the game called this vote.';
+  const caller =
+    v.draw === 1 ? 'The top score is a draw, so the game called this vote.'
+    : v.draw === 2 ? 'Coward! The top score is still a draw. Last chance: if it’s a no again, the top score is shared.'
+    : v.calledBy && s.order.length === 2 ? `${nameOf(s, v.calledBy)} asked. It only happens if you agree.`
+    : v.calledBy ? `${nameOf(s, v.calledBy)} called this vote.`
+    : 'Someone reached the target, so the game called this vote.';
   const cast = (yes: boolean): void => { send([{ type: 'castVote', by: me, ballot: yes ? 'yes' : 'no' }]); };
   return h('div', { class: 'stack' },
     h('section', { class: 'panel vote-panel' },
@@ -215,7 +232,7 @@ export function reshuffleStage(g: SavedGame): Child {
             seatStrip(s, v, { onTap: (id) => send([{ type: 'callVote', by: id, kind: 'reshuffle' }]), tapLabel: 'Called by' }),
             h('button', { class: 'ghost', onclick: () => update({ armed: null }) }, 'Cancel'),
           ]
-          : h('button', { class: 'secondary', onclick: () => update({ armed: 'reshufflecaller' }) }, 'Call a reshuffle vote'),
+          : h('button', { class: 'secondary', onclick: () => update({ armed: 'reshufflecaller' }) }, s.order.length === 2 ? 'Ask for a reshuffle' : 'Call a reshuffle vote'),
       )
       : null,
     targetPanel(s),

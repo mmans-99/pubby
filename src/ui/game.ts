@@ -26,9 +26,9 @@ import { cardFace, cardFaceFromId, ordinal, shortLabel, sortHand, SUIT_NAME, SUI
 import { h, type Child } from './dom.ts';
 import type { GameStage, LastTrick, SavedGame, TrickPlay } from './storage.ts';
 import { getState, say, update, type Popup } from './store.ts';
+import { saveFinishedGame } from './history.ts';
 import { reshuffleStage, roundStartHolder, roundStartScreen, voteOutcome } from './roundstart.ts';
 import { lockedSeats } from '../rules/deal.ts';
-import { jokersBlocked } from '../rules/play.ts';
 import {
   askToTake, gameOverStage, notesPanel, passOnButton, pauseButton, pausePanel, pauseRequestsBanner, pauseTick, resultsStage,
   takeControls, takeHolder, takePrompts, targetPanel,
@@ -50,6 +50,32 @@ const SLAP_MS = 4000;
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** The trick was started with a joker (or jokers) and nobody has played a normal card yet. */
+export function jokerLed(s: Session): boolean {
+  const t = s.play?.trick;
+  return !!t && t.acted.length > 0 && t.plays.length === 0;
+}
+
+/**
+ * Final two: would playing a joker now hand the other player the win?
+ * Uses only what everyone can see (card counts), never the other hand:
+ * - leading, and the other player holds one card (a single card is always
+ *   normal: nobody holds only jokers), so they can play it unopposed;
+ * - the other player has just played their last card in this trick.
+ */
+export function jokerGivesWin(s: Session, me: PlayerId): PlayerId | null {
+  const play = s.play;
+  if (!play || play.turn !== me) return null;
+  const t = play.trick;
+  if (t.participants.length !== 2 || !t.participants.includes(me)) return null;
+  const other = t.participants.find((p) => p !== me)!;
+  const count = play.hands[other]?.length ?? 0;
+  const otherActed = t.acted.includes(other);
+  if (!otherActed && t.acted.length === 0 && count === 1) return other;
+  if (otherActed && t.plays.some((x) => x.player === other) && count === 0) return other;
+  return null;
+}
 
 export function nameOf(s: Session, id: PlayerId | null | undefined): string {
   if (!id) return '';
@@ -156,8 +182,15 @@ export function send(actions: readonly SessionAction[], opts: { stage?: GameStag
     }
   }
 
+  // Game over: save the game record and add it to the profiles on this phone (once).
+  let recordId = g.recordId;
+  if (session.ended && !recordId && events.some((e) => e.type === 'sessionEnded')) {
+    const saved = saveFinishedGame(session);
+    if (saved.ok) recordId = saved.recordId;
+  }
+
   const popups = [...getState().popups, ...popupsFor(session, events)];
-  update({ game: { session, stage, holder, trickLog, lastTrick, notes }, popups, selected: null, armed: null });
+  update({ game: { session, stage, holder, trickLog, lastTrick, notes, recordId }, popups, selected: null, armed: null });
   return true;
 }
 
@@ -171,12 +204,25 @@ function popupsFor(s: Session, events: readonly SessionEvent[]): Popup[] {
       case 'slapped':
         out.push({ kind: 'slap', slapper: e.slapper, slapped: e.slapped, cards: e.cardsPickedUp });
         break;
-      case 'jokerPlayed':
+      case 'jokerPlayed': {
+        // Every card in the trick was a joker: missed round.
+        const resolved = events.find((x) => x.type === 'trickResolved');
+        if (resolved && resolved.type === 'trickResolved' && resolved.nextLeader
+          && s.play?.trick.participants.length === 2 && !events.some((x) => x.type === 'cardPlayed')) {
+          out.push({
+            kind: 'info', icon: '🃏', title: 'Missed round!',
+            text: `${nameOf(s, e.player)} answered with a joker too, so nobody played a card. ${nameOf(s, resolved.nextLeader)} played first, so they lead again.`,
+          });
+          break;
+        }
         out.push({
           kind: 'info', icon: '🃏', title: 'Joker!',
-          text: `${nameOf(s, e.player)} played a joker.${e.asLeader ? ' The next player starts the trick.' : ''}`,
+          text: `${nameOf(s, e.player)} played a joker.${!e.asLeader ? ''
+            : jokerLed(s) && s.play?.turn ? ` It's still the same trick: ${nameOf(s, s.play.turn)} plays next and any card sets the suit.`
+            : ''}`,
         });
         break;
+      }
       case 'playerOut':
         if (!lastTwo.includes(e.player)) out.push({ kind: 'out', player: e.player, place: e.place });
         break;
@@ -189,14 +235,34 @@ function popupsFor(s: Session, events: readonly SessionEvent[]): Popup[] {
       case 'roundEnded':
         out.push({ kind: 'lastTwo', order: e.finishingOrder, shared: e.sharedSecondLast, forfeitedBy: e.forfeitedBy });
         break;
-      case 'voteCalled':
-        if (e.by) out.push({ kind: 'info', icon: '🗳️', title: 'Vote!', text: `${nameOf(s, e.by)} called a ${e.kind === 'reshuffle' ? 'reshuffle' : e.kind === 'target' ? `target (${e.value} points)` : 'Ultimate Round'} vote. Pass the phone round to vote.` });
+      case 'voteCalled': {
+        if (!e.by) break;
+        const what = e.kind === 'reshuffle' ? 'a reshuffle' : e.kind === 'target' ? `a target of ${e.value} points` : 'the Ultimate Round';
+        if (s.order.length === 2) {
+          const other = s.order.find((p) => p !== e.by)!;
+          out.push({ kind: 'info', icon: '🤝', title: 'Do you agree?', text: `${nameOf(s, e.by)} wants ${what}. It only happens if ${nameOf(s, other)} agrees.` });
+        } else {
+          out.push({ kind: 'info', icon: '🗳️', title: 'Vote!', text: `${nameOf(s, e.by)} called a ${e.kind === 'reshuffle' ? 'reshuffle' : e.kind === 'target' ? `target (${e.value} points)` : 'Ultimate Round'} vote. Pass the phone round to vote.` });
+        }
+        break;
+      }
+      case 'drawAtEnd':
+        out.push({
+          kind: 'info', icon: '🤝', title: 'It\'s a draw!',
+          text: `${e.players.map((x) => nameOf(s, x)).join(' and ')} share the top score. Vote now: play the Ultimate Round to settle it?`,
+        });
+        break;
+      case 'drawCoward':
+        out.push({
+          kind: 'info', icon: '🐔', title: 'No one\'s a winner! Coward!',
+          text: `${e.players.map((x) => nameOf(s, x)).join(' and ')} are still level. One last chance: play the Ultimate Round? If it's a no again, you share the top score.`,
+        });
         break;
       case 'voteNeedsHost':
         out.push({ kind: 'info', icon: '⚖️', title: 'No majority', text: `${nameOf(s, s.hostId)} (host) decides.` });
         break;
       case 'voteResolved':
-        out.push({ kind: 'vote', decidedBy: e.decidedBy, result: e.result, text: voteOutcome(s, e.kind, e.result, e.value) });
+        out.push({ kind: 'vote', decidedBy: s.order.length === 2 ? 'both' : e.decidedBy, result: e.result, text: voteOutcome(s, e.kind, e.result, e.value) });
         break;
       case 'jokersDiscarded':
         out.push({
@@ -386,6 +452,9 @@ function dealingStage(g: SavedGame): Child {
     s.round === 1 ? h('div', { class: 'banner' },
       h('div', { class: 'banner-big' }, s.jokerRuleEnabled ? `🃏 ${s.jokerTotal} jokers this game` : 'No jokers this game'),
       h('div', { class: 'small' }, `${s.order.length} players · Host: ${nameOf(s, s.hostId)}`),
+      s.jokerRuleEnabled && s.order.length <= 3
+        ? h('div', { class: 'small' }, `This game has hidden decks (${s.order.length === 2 ? 'two' : 'one'}, face down, never shown), and jokers can end up in them. So fewer jokers may be in play. See the ? rules.`)
+        : null,
     ) : null,
     h('h2', { class: 'center' }, `${nameOf(s, dealer)} deals`),
     seatStrip(s, v, { highlight: manual || notStarted ? null : d.nextSeat, onTap: tap, tapLabel: notStarted ? 'First card to' : 'Deal a card to', disabled: manual && s.deal ? lockedSeats(s.deal) : [] }),
@@ -561,13 +630,19 @@ function playHandStage(g: SavedGame): Child {
     myTurn
       ? h('div', { class: 'play-bar' },
         h('button', { class: 'big grow', disabled: !selCard, onclick: () => selected && play(selected) },
-          selCard ? `Play ${shortLabel(selCard)}` : (v.trick.length ? (v.ledSuit ? `Play a card (follow ${SUIT_SYMBOL[v.ledSuit]} if you can)` : 'Play a card') : 'Lead any card')),
+          selCard ? `Play ${shortLabel(selCard)}`
+            : v.trick.length ? (v.ledSuit ? `Play a card (follow ${SUIT_SYMBOL[v.ledSuit]} if you can)` : 'Play a card')
+            : jokerLed(s) ? 'Play any card' : 'Lead any card'),
       )
       : null,
-    myTurn ? h('p', { class: 'muted small center' }, 'Tap a card, then Play. Or tap the same card twice.') : null,
-    myTurn && s.play && jokersBlocked(s.play, v.me) && v.myHand.some((c) => c.kind === 'joker')
-      ? h('p', { class: 'note' }, `No jokers now: ${nameOf(s, s.order.find((p) => p !== v.me && (s.play!.hands[p]?.length ?? 0) > 0))} is on their last card. Play a normal card.`)
+    myTurn && jokerLed(s) && s.play
+      ? h('p', { class: 'note' }, `${nameOf(s, s.play.trick.acted[0] as string)} started this trick with a joker. It's still the same trick: play any card.`)
       : null,
+    myTurn && selCard?.kind === 'joker' && jokerGivesWin(s, v.me)
+      ? h('p', { class: 'note warn' }, `Careful: if you play this joker, ${nameOf(s, jokerGivesWin(s, v.me))} ${
+        (s.play?.hands[jokerGivesWin(s, v.me)!]?.length ?? 0) === 0 ? 'goes out with their last card unopposed and wins' : 'can play their last card unopposed and win'} the round.`)
+      : null,
+    myTurn ? h('p', { class: 'muted small center' }, 'Tap a card, then Play. Or tap the same card twice.') : null,
     !choosing ? forfeitBtn : null,
     takeControls(s, v.me),
     !myTurn && !choosing && !s.takeRequests.some((r) => r.target === v.me && !r.agreed)
@@ -621,7 +696,7 @@ export function popupLayer(): HTMLElement | null {
   } else if (p.kind === 'vote') {
     cls += ' vote-pop';
     body = [
-      h('div', { class: 'vote-says' }, p.decidedBy === 'host' ? 'Host says…' : 'Majority says…'),
+      h('div', { class: 'vote-says' }, p.decidedBy === 'host' ? 'Host says…' : p.decidedBy === 'both' ? (p.result ? 'Both agree…' : 'Not agreed…') : 'Majority says…'),
       h('div', { class: p.result ? 'vote-word yes' : 'vote-word no' }, p.result ? 'YES!' : 'NO!'),
       h('div', { class: 'popup-title small-title' }, p.text),
     ];

@@ -15,8 +15,10 @@
  * - Nobody holds only jokers: when a player plays their last normal card, any
  *   jokers left in their hand are thrown away (they leave the game), so that
  *   card is their last card. A joker is never a last card.
- * - Final two: while the other player is down to their last normal card, a
- *   player can't play a joker and must play a normal card.
+ * - Final two: jokers can always be played (the "no jokers against a last
+ *   card" block was dropped on 2026-11-07). A joker led is still the same
+ *   trick: the other player plays any card, or a joker (missed round). A last
+ *   card answered or met only by a joker goes out unopposed and wins.
  * - Going out is checked when the trick ends (a player who played their last
  *   card and is then slapped picks up and stays in).
  * - Final two (any game size): when only two players hold cards and one of
@@ -210,30 +212,16 @@ export function startPlay(
   };
 }
 
-/**
- * Final two: true while the other player is down to their last normal card
- * (counted at the start of this trick). Then no jokers may be played.
- */
-export function jokersBlocked(state: PlayState, player: PlayerId): boolean {
-  const pair = state.trick.participants;
-  if (pair.length !== 2 || !pair.includes(player)) return false;
-  const other = otherOf(pair, player);
-  const playedNormal = state.trick.plays.some((p) => p.player === other) ? 1 : 0;
-  const normalNow = handOf(state, other).filter(isStandard).length;
-  return normalNow + playedNormal === 1;
-}
-
 /** Cards the player may legally play right now (empty if not their turn). */
 export function legalCards(state: PlayState, player: PlayerId): Card[] {
   if (state.over || state.turn !== player) return [];
   const hand = handOf(state, player);
-  const blocked = jokersBlocked(state, player);
-  const jokers = blocked ? [] : hand.filter(isJoker);
+  const jokers = hand.filter(isJoker);
   const normal = hand.filter(isStandard);
   const led = state.trick.ledSuit;
   if (led === null) return [...normal, ...jokers];
   const following = normal.filter((c) => c.suit === led);
-  // Must follow suit if able. Jokers can be played on your turn (unless blocked).
+  // Must follow suit if able. Jokers can always be played on your turn.
   if (following.length > 0) return [...following, ...jokers];
   return [...normal, ...jokers]; // any card: a slap (or a joker)
 }
@@ -250,7 +238,6 @@ export function playCard(state: PlayState, player: PlayerId, cardId: string): Pl
   const card = hand.find((c) => c.id === cardId);
   if (!card) throw new Error(`Card not in hand: ${cardId}`);
   if (!legalCards(state, player).some((c) => c.id === cardId)) {
-    if (isJoker(card)) throw new Error('No jokers now: the other player is on their last card');
     throw new Error('You must follow the led suit');
   }
 
@@ -367,8 +354,8 @@ function resolveFinalTwo(state: PlayState, events: PlayEvent[]): PlayResult {
   const o = otherOf(pair, x);
   const xp = playOf(x);
   const op = playOf(o);
-  // A lower last card wins. (The other player can't answer with a joker:
-  // jokers are blocked while the other player is on their last card.)
+  // A lower last card wins. A last card met only by a joker (no normal card
+  // from the other player) goes out unopposed and wins too.
   if (!xp || !op || xp.card.rank < op.card.rank) {
     const wastePile = [...state.wastePile, ...waste];
     return endRound(state, events, [...state.finished, x, o], wastePile);

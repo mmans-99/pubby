@@ -4,11 +4,12 @@
  * storage can be full, blocked (private browsing) or cleared by the phone.
  */
 
-import { emptyProfile, type ProfileStats } from '../session/record.ts';
+import { emptyProfile, type GameRecord, type ProfileStats } from '../session/record.ts';
 import type { Session } from '../session/types.ts';
 
 const PROFILES_KEY = 'pubby.profiles';
 const GAME_KEY = 'pubby.currentGame';
+const RECORDS_KEY = 'pubby.gameRecords';
 
 function read<T>(key: string, fallback: T): T {
   try {
@@ -93,6 +94,26 @@ export interface SavedGame {
   readonly lastTrick: LastTrick | null;
   /** Private messages per player (take-cards answers), shown only on their own hand screen. */
   readonly notes?: Readonly<Record<string, readonly string[]>>;
+  /** Set when the game has ended and its record was saved on this phone. */
+  readonly recordId?: string;
+}
+
+// ----- Finished games (game records, newest first) -----
+
+export function loadRecords(): GameRecord[] {
+  const r = read<GameRecord[]>(RECORDS_KEY, []);
+  return Array.isArray(r) ? r : [];
+}
+
+/** Adds a record (once: a record already saved is not added again). */
+export function saveRecord(rec: GameRecord): boolean {
+  const all = loadRecords();
+  if (all.some((r) => r.id === rec.id)) return true;
+  return write(RECORDS_KEY, [rec, ...all]);
+}
+
+export function deleteRecord(id: string): boolean {
+  return write(RECORDS_KEY, loadRecords().filter((r) => r.id !== id));
 }
 
 export function loadGame(): SavedGame | null {
