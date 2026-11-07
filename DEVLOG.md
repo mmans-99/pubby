@@ -4,6 +4,22 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-07 (night) — Version 1.5: zoom fix
+
+**Done**
+- **User (23:06):** v1.4 connection test worked on a hotspot with and without mobile data. Exit shows a second screen (wanted it to close once confirmed). Pinch zoom sometimes works in some spots after many attempts.
+- Explained Exit: iPhones never let a web app close itself; on Android Chrome refuses `window.close()` once the back-gesture guards are in the history. **User (23:12): leave Exit as it is.**
+- Zoom: happens only in Samsung Internet on Android, not on iPhone (user, 23:12; leave iPhone). Headless Chromium never zoomed. Likely causes: Samsung's "Manual zoom" setting (user to check), or a pinch whose first finger had already started a scroll, when a `touchmove` can't be cancelled any more. **User approved the fix (23:15).**
+- Built version 1.5 (small change: a fix): `touch-action: pan-x pan-y` on every element (scrolling areas start their own chain; the Reaction Tap pad keeps `none`), and `blockZoom()` also cancels a two-finger `touchstart` (`CODE.md` 9e).
+- Checks: 132 unit tests, strict type check, zoom check (touch-action inside the rules sheet, two-finger touchstart cancelled, one-finger not), back 14 of 14, offline 20 of 20, `net_check.py` 37 of 37, playthroughs 53 of 53.
+- `CLAUDE.md` checked, no changes. User approved building and pushing it (23:15); GitHub Pages is the test build (`CLAUDE.md` rule 5).
+
+**Next**
+- User checks Samsung Internet's Manual zoom setting and tries to pinch in v1.5 (quick rules, hand of cards, lists, the table).
+- Home Wi-Fi connection test when convenient, then slice 1: network lobby.
+
+---
+
 ## 2026-11-07 (late) — Connection test passed; version 1.4
 
 **Done**

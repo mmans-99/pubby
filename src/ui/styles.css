@@ -654,3 +654,9 @@ table.trivia-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; 
 /* Goodbye screen after Exit Pubby (v1.4) */
 .screen.bye { justify-content: center; gap: 16px; text-align: center; }
 .screen.bye h1 { margin: 0 0 8px; }
+
+/* v1.5: no pinch zoom on any part of the screen. touch-action isn't
+   inherited, and a scrolling area (quick rules, hand, lists) starts its own
+   chain, so the html/body rule alone let some spots zoom in Samsung
+   Internet. More specific rules (the Reaction Tap pad: none) still win. */
+*, *::before, *::after { touch-action: pan-x pan-y; }

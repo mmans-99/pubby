@@ -147,7 +147,8 @@ Built in slices; each slice gets a test link and a checklist.
 - [x] User approves the Phase 4 plan (`CODE.md` section 4a, 20:39)
 - [x] User answers the multiplayer open questions (2026-11-07, `PROJECT.md` section 12)
 - [x] **Slice 0: connection test** (go / no-go): version 1.3; user's test passed on a hotspot (Android + Android, Android + iPhone, mobile data on and off), 2026-11-07 22:18. Home Wi-Fi not tried yet.
-- [~] **Version 1.4:** Pubby's own QR reader (iPhones scan in Pubby and can host), join link fixed when Pubby is already open, Exit Pubby button. Built and checked; user to test on phones after the push
+- [x] **Version 1.4:** Pubby's own QR reader (iPhones scan in Pubby and can host), join link fixed when Pubby is already open, Exit Pubby button. Pushed 22:44; connection test passed again on a hotspot (23:06)
+- [~] **Version 1.5:** stop pinch zoom slipping through in Samsung Internet. Pushed; user to test on the Samsung phone
 - [ ] **Slice 1: network lobby**
 - [ ] **Slice 2: play over the network**
 - [ ] **Slice 3: votes, swap, Reaction Tap, requests, pause, reactions, results on every phone**
