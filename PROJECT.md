@@ -66,7 +66,7 @@ The order of steps 3 and 4 does not matter to the players, so the order above is
 - **Hidden decks first (2 and 3 player games):** Before the dealer starts, the game deals the hidden decks automatically in the background. **They are never shown on any screen, not even during the deal.** There is no hidden-deck pile, count, or animation. The only sign they exist is the swap option (section 3). Each hidden deck gets one player's share: the number of cards divided by (players + hidden decks), rounded down. Example: 2 players with jokers on is 54 cards, so each hidden deck gets 13 and 28 are left for the players.
 - **The dealer deals only to players.** The remaining cards go to the players, never to the hidden decks.
 - **Remainder cards:** Not an issue. Hands can end up uneven, and that's fine.
-- **Two deal modes.** The dealer can switch between them at any time, including during an auto deal.
+- **Two deal modes.** The dealer can switch between them at any time, including during an auto deal. **The deal starts in manual mode.**
 
 **Auto deal**
 - The dealer taps the first player's name.
@@ -76,6 +76,7 @@ The order of steps 3 and 4 does not matter to the players, so the order above is
 **Manual deal**
 - The dealer taps a player's name, and one card goes to that player.
 - The dealer repeats this for each card.
+- **Even deal:** once a player gets a card they are greyed out until every player has had one in that lap; then everyone opens up again, except the player who just got the last card (never two in a row). This keeps hands as even as possible. It also holds across switches: auto deal skips players who are greyed out.
 
 ---
 
@@ -138,11 +139,12 @@ The Ace of Spades has no special rule. It is an ordinary card.
   - The requester does not see the cards before taking them.
   - Nobody else is told which cards moved. Everyone can see the card counts change.
 - **Who can be asked:** Any other player still holding cards. This includes the player who keeps slapping them, or someone else whose cards would help.
-- **Always available, unlimited, no cost:** The request button is there all through the round. A player can ask as often as they like. Asking costs nothing.
-- **Timing:** A request can be tapped at any time. The cards only move **between tricks**: after one trick ends and before the first card of the next trick is played. If a trick is under way, an agreed request waits until that trick is over.
-- **The next trick waits:** Between tricks, the leader can't play the first card while a request is still waiting for an answer.
-- **Agreement:** Only the two players decide. The asked player agrees or refuses. The host does not approve (the user may add host approval back later). The requester can withdraw a request that hasn't happened yet.
-- **Private:** Only the two players see the request. The cards moving is shown to everyone (who took from whom, and how many), never which cards.
+- **Before a trick only:** Requests can only be made **before a trick starts**: after one trick ends and before the first card of the next trick is played. The option is not shown during a trick. It must be decided before the trick starts: the leader can't play the first card while a request is still waiting for an answer.
+- **One at a time, no cost:** A player can ask only one player at a time. Once that request is answered or withdrawn, they can ask again before a later trick. Asking costs nothing.
+- **Agreement:** The asked player agrees or refuses. The host does not approve (the user may add host approval back later). The requester can withdraw a request that hasn't happened yet.
+- **Asked by more than one player:** If two or more players ask the same player before a trick, that player chooses who gets their cards (or refuses everyone). The others are told no.
+- **Private:** Only the players involved see the request. The cards moving is shown to everyone (who took from whom, and how many), never which cards.
+- **On one phone (pass-and-play):** Before a trick, the "Pass the phone to (leader)" screen has a "Someone wants to take cards" button. Pick who is asking; the phone goes to them in private to choose a player. The leader can also ask from their own hand screen. The phone then goes to the asked player to answer.
 - **The player whose cards are taken** has no cards left, so they are **out**, by the normal rules, and take the next finishing place at that moment.
 - **Who leads after:** If the player whose cards were taken was about to lead the next trick, the next player clockwise still holding cards leads instead.
 - **Not with two left:** Not allowed when only two players hold cards (it would just be a forfeit), so never in a 2-player game. Any waiting requests are cancelled when the round gets down to two players, or when either player goes out.
@@ -169,12 +171,12 @@ The Ace of Spades has no special rule. It is an ordinary card.
 
 - The waste pile is normally out of play. Cards go there after a trick and are not picked up again.
 - **Exception (final two, every game size):** When only two players still hold cards, the rule applies when one of them plays their **last card**. In a 2-player game this is from the very first trick. Tricks where nobody plays their last card follow the normal rules.
-- **Last card lower** than the other player's card, **a joker**, or **a slap**: that player goes out and **wins** the round.
+- **Last card lower** than the other player's card, or **a slap**: that player goes out and **wins** the round.
 - **Last card higher** than the other player's card: that player must choose:
   - **Pick up the whole waste pile** (including this trick) and play on. They lead next. They keep the option to forfeit at any time while two players are left.
   - **Forfeit:** they take last place (the same as a Bhabhi) and the other player takes the higher place. The round ends.
-- **Last card answered with a joker:** there is no card to compare, so the last card wins.
-- **Both go out in the same trick:** the lower card, the joker, or the slapper wins. The other takes last place.
+- **No jokers against a last card:** While the other player is down to their last normal card, a player can't play a joker and must play a normal card (section 7).
+- **Both go out in the same trick:** the lower card, or the slapper, wins. The other takes last place.
 - **Only the player who played their last card** can face the pick-up-or-forfeit choice.
 
 ---
@@ -187,14 +189,15 @@ The Ace of Spades has no special rule. It is an ordinary card.
   - 3 jokers for 6 to 8 players.
 - **Dealt from the player deck.** Jokers are part of the normal deal, not set aside.
 - **Joker count shown:** The game shows the total number of jokers in the deck to all players at the start of the game. It is not updated during play. It is there to make players aware that jokers are in play somewhere.
-- **Jokers are playing cards.** They count as cards in a player's hand, for everything, including going out.
+- **Jokers are playing cards.** They count as cards in a player's hand (for card counts and taking cards).
+- **You can't hold only jokers:** When a player plays their **last normal card** and only jokers are left in their hand, those jokers are thrown away (they leave the game) and that normal card counts as their **last card**. This is the same when the last card is a slap. In the final two, the last card is compared as usual; if it was higher and the player picks up the waste pile, the jokers are still gone. A joker is never a last card.
 - **Use:** A joker is a wild card. A player may play it on their own turn, even if they could follow suit. Playing it skips their turn.
 - **Joker as the lead:** If the leader plays a joker as the first card of a trick, the joker is gone and the next player clockwise starts the trick with any card.
 - **After use:** The joker leaves the game. It does not go into the waste pile.
-- **Going out with a joker:** A joker as your last card takes you out **at that moment**, and you take your place in the standings. In the final two, it beats a normal last card.
+- **Last two players, other player on their last card:** While the other player is down to their last normal card (counted at the start of the trick; jokers don't count, since they'd be thrown away), a player can't play a joker and must play a normal card. This covers leading and answering.
 - **Last two players, one joker played:** If one of the two players plays a joker first, the other player may play any card they want, then they lead.
 - **Last two players, both play a joker in the same trick:** This counts as a missed round. The player who played first leads again.
-- **Last two players, both down to a single joker:** Both go out on jokers. They share second-last place and both get the points for it (in a 2-player game that is 1st place, +2 each). In the Ultimate Round, both are Ultimate Loser.
+- *Removed 2026-11-07:* "a joker as your last card takes you out" and "both down to a single joker share second-last place". Neither can happen now, because nobody can hold only jokers.
 
 ---
 
@@ -246,7 +249,7 @@ After each round, points are awarded by finishing position. The first player out
 - **Session ends:** The session ends after the Ultimate Round.
 - **Titles:**
   - **Ultimate Winner:** 1st place in that round.
-  - **Ultimate Loser:** Last place in that round. If the final two both go out on jokers, both are Ultimate Loser.
+  - **Ultimate Loser:** Last place in that round.
 - **The titles have no number, but they outweigh scores.**
   - The **Ultimate Winner** beats the highest score when deciding the game winner.
   - The **Ultimate Loser** ranks last overall, below every score.
@@ -379,17 +382,19 @@ Answer these in any order. Each one unblocks part of the build.
 None. The spec has no open questions.
 
 ### Decided (for reference)
-- Take-cards request (section 4.2): take all of another player's cards, unseen; agreed between the two players only (no host approval for now); unlimited; no cost; moves between tricks; the giver goes out with the next place; not with only two players left.
+- Take-cards request (section 4.2): take all of another player's cards, unseen; only before a trick starts and decided before it starts (not shown during a trick); one request at a time per player; the asked player agrees or refuses (no host approval for now); if several ask the same player, that player chooses who gets them; no cost; the giver goes out with the next place; not with only two players left. (Changed 2026-11-07: was "any time, unlimited, moves between tricks".)
 - If nobody calls a reshuffle vote, the host taps "Start the round". After a reshuffle vote, the round carries on by itself.
 - A vote is decided as soon as more than half agree. The host can close a vote early; with no majority, the host decides.
 - Any player can propose a target score. It can be voted on before round 1 starts or on any results screen. Once agreed it is fixed, and no more target votes appear (also none once the Ultimate Round is agreed).
 - The Ultimate Round is not counted in round wins, round losses, or bottom-two stats.
-- Final two (all game sizes): the pick-up-or-forfeit choice only applies to a player whose last card is higher than the other player's. A lower last card, a joker, or a slap wins. After picking up, the forfeit option stays.
+- Final two (all game sizes): the pick-up-or-forfeit choice only applies to a player whose last card is higher than the other player's. A lower last card or a slap wins. After picking up, the forfeit option stays.
 - Jokers are played on your own turn, even if you could follow suit.
 - If nobody who played the led suit still holds cards, the next player clockwise still holding cards leads.
 - Going out is checked at the end of the trick: a player who played their last card and is then slapped picks up and stays in.
-- Both final players go out in the same trick: lower card, joker, or slapper wins. Both on jokers: shared second-last place points; both Ultimate Loser in the Ultimate Round.
-- A joker as your last card takes you out at that moment.
+- Both final players go out in the same trick: lower card or slapper wins.
+- Nobody can hold only jokers: playing your last normal card throws away any jokers left, and that card is your last card (also when picking up the waste pile afterwards). A joker is never a last card. (2026-11-07: replaces "a joker as your last card takes you out" and the shared second-last place on jokers.)
+- Final two: while the other player is down to their last normal card, no jokers; play a normal card. (2026-11-07)
+- Dealing starts in manual mode. Manual deal is even: a player who has had a card is greyed out until everyone has one, then all open up (never two in a row). (2026-11-07)
 - The hidden swap is offered every round in 2 and 3 player games.
 - Every round starts with the full deck. Hidden decks (2 and 3 players) are set aside every round, and the swap is offered every round.
 - If the highest card's player is out, the next highest card of the led suit leads.

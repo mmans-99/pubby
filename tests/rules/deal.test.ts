@@ -9,6 +9,7 @@ import {
   hiddenDeckCount,
   hiddenDeckSize,
   isDealComplete,
+  lockedSeats,
   manualDealCard,
   setDealMode,
   startDeal,
@@ -85,13 +86,48 @@ test('dealer can switch to manual mid auto deal, and back', () => {
   s = setDealMode(s, 'manual');
   assert.throws(() => autoDealStep(s));
   s = manualDealCard(s, 'p4');
-  s = manualDealCard(s, 'p4');
-  assert.equal(s.hands['p4']?.length, 2);
+  s = manualDealCard(s, 'p3');
+  assert.equal(s.hands['p4']?.length, 1);
+  assert.equal(s.hands['p3']?.length, 1);
   s = setDealMode(s, 'auto');
   s = autoDealStep(s); // resumes at p2
   assert.equal(s.hands['p2']?.length, 1);
   s = autoDealAll(s);
   assert.ok(isDealComplete(s));
+});
+
+test('even deal: everyone gets a card before anyone gets another, never two in a row', () => {
+  let s = startDeal(ids(3), deckFor(3), 'manual');
+  s = manualDealCard(s, 'p2');
+  assert.throws(() => manualDealCard(s, 'p2'), /someone else/);
+  s = manualDealCard(s, 'p1');
+  assert.deepEqual(lockedSeats(s), ['p1', 'p2']);
+  assert.throws(() => manualDealCard(s, 'p2'), /Everyone gets a card/);
+  s = manualDealCard(s, 'p3'); // lap complete: open again, except p3 (just had one)
+  assert.deepEqual(lockedSeats(s), ['p3']);
+  s = manualDealCard(s, 'p2');
+  assert.deepEqual(lockedSeats(s), ['p2']);
+  // Auto after manual cards skips seats locked for this lap.
+  let a = autoDealStart(startDeal(ids(4), deckFor(4)), 'p1');
+  a = autoDealStep(a); // p1, next p2
+  a = setDealMode(a, 'manual');
+  a = manualDealCard(a, 'p2');
+  a = manualDealCard(a, 'p4');
+  a = setDealMode(a, 'auto');
+  a = autoDealStep(a); // p2 locked: p3
+  assert.equal(a.hands['p3']?.length, 1);
+  for (const p of ids(4)) assert.equal(a.hands[p]?.length, 1, `uneven at ${p}`); // lap complete
+  assert.ok(isDealComplete(autoDealAll(a)));
+});
+
+test('manual deal hands come out even (every lap)', () => {
+  let s = startDeal(ids(5), deckFor(5), 'manual');
+  while (!isDealComplete(s)) {
+    const open = s.seats.filter((x) => !lockedSeats(s).includes(x));
+    s = manualDealCard(s, open[open.length - 1]!);
+  }
+  const sizes = ids(5).map((p) => s.hands[p]!.length);
+  assert.ok(Math.max(...sizes) - Math.min(...sizes) <= 1, JSON.stringify(sizes));
 });
 
 test('manual deal rejects unknown seats and wrong mode', () => {

@@ -27,6 +27,12 @@ import { h, type Child } from './dom.ts';
 import type { GameStage, LastTrick, SavedGame, TrickPlay } from './storage.ts';
 import { getState, say, update, type Popup } from './store.ts';
 import { reshuffleStage, roundStartHolder, roundStartScreen, voteOutcome } from './roundstart.ts';
+import { lockedSeats } from '../rules/deal.ts';
+import { jokersBlocked } from '../rules/play.ts';
+import {
+  askToTake, gameOverStage, notesPanel, passOnButton, pauseButton, pausePanel, pauseRequestsBanner, pauseTick, resultsStage,
+  takeControls, takeHolder, takePrompts, targetPanel,
+} from './between.ts';
 
 const rng = defaultRng();
 const AUTO_DEAL_MS = 150;
@@ -116,12 +122,33 @@ export function send(actions: readonly SessionAction[], opts: { stage?: GameStag
     }
   }
 
+  // Private notes (take-cards answers): only the requester sees them, on their own hand screen.
+  const notes: Record<string, string[]> = {};
+  for (const [k, v] of Object.entries(g.notes ?? {})) notes[k] = v.slice();
+  const note = (p: PlayerId, text: string): void => { (notes[p] ??= []).push(text); };
+  const taken = new Set(events.filter((e) => e.type === 'cardsTaken').map((e) => e.type === 'cardsTaken' ? `${e.requester}>${e.target}` : ''));
+  for (const e of events) {
+    if (e.type === 'roundStarted') for (const k of Object.keys(notes)) notes[k] = [];
+    if (e.type === 'takeAnswered' && !e.accepted) {
+      const gaveTo = events.find((x) => x.type === 'cardsTaken' && x.target === e.target);
+      note(e.requester, gaveTo && gaveTo.type === 'cardsTaken'
+        ? `${nameOf(session, e.target)} gave their cards to ${nameOf(session, gaveTo.requester)} instead.`
+        : `${nameOf(session, e.target)} said no to your take-cards request.`);
+    }
+    if (e.type === 'takeAnswered' && e.accepted && !taken.has(`${e.requester}>${e.target}`)) {
+      note(e.requester, `${nameOf(session, e.target)} agreed. You take their cards when this trick is over.`);
+    }
+    if (e.type === 'takeCancelled' && e.reason === 'notPossible') {
+      note(e.requester, `Your request for ${nameOf(session, e.target)}'s cards was cancelled: it can't happen any more.`);
+    }
+  }
+
   // Who holds the phone next.
   let stage: GameStage = opts.stage ?? 'table';
   let holder = opts.holder ?? g.holder;
   if (!opts.stage) {
     const rs = roundStartHolder(session);
-    const next = rs ?? actorOf(session);
+    const next = rs ?? takeHolder(session) ?? actorOf(session);
     if (next) {
       // During play the same player keeps their cards up; private round-start steps always pass the phone.
       stage = !rs && session.phase === 'playing' && g.stage === 'hand' && next === g.holder ? 'hand' : 'handoff';
@@ -130,7 +157,7 @@ export function send(actions: readonly SessionAction[], opts: { stage?: GameStag
   }
 
   const popups = [...getState().popups, ...popupsFor(session, events)];
-  update({ game: { session, stage, holder, trickLog, lastTrick }, popups, selected: null, armed: null });
+  update({ game: { session, stage, holder, trickLog, lastTrick, notes }, popups, selected: null, armed: null });
   return true;
 }
 
@@ -170,6 +197,30 @@ function popupsFor(s: Session, events: readonly SessionEvent[]): Popup[] {
         break;
       case 'voteResolved':
         out.push({ kind: 'vote', decidedBy: e.decidedBy, result: e.result, text: voteOutcome(s, e.kind, e.result, e.value) });
+        break;
+      case 'jokersDiscarded':
+        out.push({
+          kind: 'info', icon: '🃏', title: 'Jokers thrown away',
+          text: `${nameOf(s, e.player)} played their last normal card, so their ${e.count === 1 ? 'joker is' : `${e.count} jokers are`} thrown away. That was their last card.`,
+        });
+        break;
+      case 'targetReached':
+        out.push({
+          kind: 'info', icon: '🎯', title: 'Target reached!',
+          text: `${e.players.map((x) => nameOf(s, x)).join(' and ')} reached ${e.target} points. Vote now: play the Ultimate Round? If the vote fails, the game ends and the highest score wins.`,
+        });
+        break;
+      case 'cardsTaken':
+        out.push({
+          kind: 'info', icon: '🤝', title: 'Cards taken!',
+          text: `${nameOf(s, e.requester)} took all ${e.count} of ${nameOf(s, e.target)}'s cards.`,
+        });
+        break;
+      case 'pauseDeclined':
+        out.push({ kind: 'info', icon: '▶️', title: 'No pause', text: `${nameOf(s, s.hostId)} (host) said no to ${nameOf(s, e.requester)}'s pause request.` });
+        break;
+      case 'resumed':
+        if (e.reason === 'timeLimit') out.push({ kind: 'info', icon: '⏰', title: 'Pause over', text: 'The pause time limit ran out. Back to the game.' });
         break;
       case 'reactionTapReplay':
         out.push({ kind: 'info', icon: '🔁', title: 'Tie for slowest!', text: `${e.players.map((x) => nameOf(s, x)).join(' and ')} tap again.` });
@@ -215,12 +266,21 @@ export function gameScreen(g: SavedGame): HTMLElement {
   } else {
     body = tableStage(g);
   }
+  const label = s.phase === 'gameOver' ? 'Game over'
+    : s.ultimateRound && s.phase !== 'results' ? '⚡ Ultimate Round'
+    : `Round ${s.round}`;
   return h('main', { class: 'screen game' },
     h('div', { class: 'game-bar' },
       h('button', { class: 'ghost', onclick: () => update({ menuOpen: !st.menuOpen, armed: null }) }, '☰ Menu'),
-      h('span', { class: 'muted' }, s.phase === 'gameOver' ? 'Game over' : `Round ${s.round}`),
+      h('span', { class: 'bar-right' },
+        h('span', { class: 'muted' }, label),
+        s.target !== null && s.phase !== 'gameOver' ? h('span', { class: 'tag gold' }, `🎯 ${s.target}`) : null,
+        pauseButton(s),
+      ),
     ),
     st.menuOpen ? gameMenu() : null,
+    pausePanel(g),
+    pauseRequestsBanner(g),
     body,
   );
 }
@@ -243,7 +303,7 @@ function gameMenu(): HTMLElement {
 // Table pieces (public information only)
 // ---------------------------------------------------------------------------
 
-export function seatStrip(s: Session, v: PlayerView, opts: { highlight?: PlayerId | null; onTap?: (id: PlayerId) => void; tapLabel?: string } = {}): HTMLElement {
+export function seatStrip(s: Session, v: PlayerView, opts: { highlight?: PlayerId | null; onTap?: (id: PlayerId) => void; tapLabel?: string; disabled?: readonly PlayerId[] } = {}): HTMLElement {
   return h('div', { class: 'seat-strip' }, s.order.map((id) => {
     const p = v.players.find((x) => x.id === id)!;
     const out = p.place !== null;
@@ -255,7 +315,7 @@ export function seatStrip(s: Session, v: PlayerView, opts: { highlight?: PlayerI
       p.isHost ? h('span', { class: 'seat-host', 'aria-label': 'Host' }, '★') : null,
     ];
     return opts.onTap
-      ? h('button', { class: cls, 'data-seat': id, 'aria-label': `${opts.tapLabel ?? ''} ${p.sessionName}`.trim(), onclick: () => opts.onTap!(id) }, inner)
+      ? h('button', { class: cls, 'data-seat': id, disabled: opts.disabled?.includes(id) ?? false, 'aria-label': `${opts.tapLabel ?? ''} ${p.sessionName}`.trim(), onclick: () => opts.onTap!(id) }, inner)
       : h('div', { class: cls, 'data-seat': id }, inner);
   }));
 }
@@ -328,7 +388,7 @@ function dealingStage(g: SavedGame): Child {
       h('div', { class: 'small' }, `${s.order.length} players · Host: ${nameOf(s, s.hostId)}`),
     ) : null,
     h('h2', { class: 'center' }, `${nameOf(s, dealer)} deals`),
-    seatStrip(s, v, { highlight: manual || notStarted ? null : d.nextSeat, onTap: tap, tapLabel: notStarted ? 'First card to' : 'Deal a card to' }),
+    seatStrip(s, v, { highlight: manual || notStarted ? null : d.nextSeat, onTap: tap, tapLabel: notStarted ? 'First card to' : 'Deal a card to', disabled: manual && s.deal ? lockedSeats(s.deal) : [] }),
     h('div', { class: 'deck-area' },
       h('div', { class: 'deck', id: 'deck', 'aria-label': `${d.remaining} cards left to deal` },
         h('div', { class: 'card-back' }), h('div', { class: 'card-back' }), h('div', { class: 'card-back top' }),
@@ -336,9 +396,9 @@ function dealingStage(g: SavedGame): Child {
       h('p', { class: 'muted small' }, `${total - d.remaining} of ${total} dealt`),
     ),
     notStarted
-      ? h('p', { class: 'note center' }, `${nameOf(s, dealer)}: tap who gets the first card. Cards go clockwise from them.`)
+      ? h('p', { class: 'note center' }, `${nameOf(s, dealer)}: tap who gets the ${total - d.remaining === 0 ? 'first' : 'next'} card. Cards go clockwise from them.`)
       : manual
-        ? h('p', { class: 'note center' }, 'Manual deal: tap a name to give them one card.')
+        ? h('p', { class: 'note center' }, 'Manual deal: tap a name to give them one card. Once someone has a card they’re greyed out until everyone has one, so the deal stays even.')
         : h('p', { class: 'muted center' }, 'Dealing clockwise…'),
     notStarted ? null : h('div', { class: 'row' },
       manual
@@ -346,11 +406,8 @@ function dealingStage(g: SavedGame): Child {
         : h('button', { class: 'secondary grow', onclick: () => send([{ type: 'setDealMode', by: dealer, mode: 'manual' }]) }, 'Switch to manual'),
       !manual ? h('button', { class: 'ghost', onclick: () => send([{ type: 'autoDealAll', by: dealer }]) }, 'Deal the rest now') : null,
     ),
+    targetPanel(s),
   );
-}
-
-function standInNote(text: string): HTMLElement {
-  return h('p', { class: 'standin' }, h('b', null, 'Stand-in: '), text);
 }
 
 function chooseLeaderStage(g: SavedGame): Child {
@@ -364,62 +421,6 @@ function chooseLeaderStage(g: SavedGame): Child {
     ),
     seatStrip(s, v, { onTap: (id) => send([{ type: 'chooseLeader', by: winner, leader: id }]), tapLabel: 'Leads:' }),
     h('p', { class: 'muted center small' }, 'Tap a name.'),
-  );
-}
-
-function resultsStage(g: SavedGame): Child {
-  const s = g.session;
-  const rec = s.rounds[s.rounds.length - 1];
-  if (!rec) return h('p', null, 'No results yet.');
-  const armed = getState().armed === 'endsession';
-  const n = rec.finishingOrder.length;
-  const loser = s.previous?.loser;
-  return h('div', { class: 'stack' },
-    h('div', { class: 'banner' },
-      h('div', { class: 'banner-big' }, `🏆 ${nameOf(s, rec.finishingOrder[0])} is the winner`),
-      h('div', { class: 'small' }, `Round ${rec.round}`),
-    ),
-    h('section', { class: 'panel' },
-      h('table', { class: 'results' },
-        h('thead', null, h('tr', null, h('th', null, ''), h('th', null, 'Player'), h('th', null, 'Round'), h('th', null, 'Total'))),
-        h('tbody', null, rec.finishingOrder.map((id, i) => {
-          const shared = rec.sharedSecondLast?.includes(id);
-          const place = shared ? n - 1 : i + 1;
-          const isLoser = !rec.sharedSecondLast && i === n - 1;
-          return h('tr', { class: isLoser ? 'loser-row' : '' },
-            h('td', null, ordinal(place)),
-            h('td', null, nameOf(s, id), isLoser ? h('span', { class: 'tag' }, 'loser') : null, rec.forfeitedBy === id ? h('span', { class: 'tag' }, 'forfeit') : null),
-            h('td', null, signed(rec.points[id] ?? 0)),
-            h('td', null, h('b', null, String(rec.totals[id] ?? 0))));
-        })),
-      ),
-    ),
-    loser ? h('p', { class: 'muted center small' }, `${nameOf(s, loser)} deals next round. ${nameOf(s, rec.finishingOrder[0])} picks who leads.`) : null,
-    standInNote('the full results screen (trivia, ready up, target and Ultimate votes) comes in a later build.'),
-    h('button', { class: 'big', onclick: () => send([{ type: 'advance', by: s.hostId }]) }, `Next round (${nameOf(s, s.hostId)})`),
-    h('button', {
-      class: armed ? 'danger' : 'secondary',
-      onclick: () => {
-        if (!armed) { update({ armed: 'endsession' }); return; }
-        send([{ type: 'endSession', by: s.hostId }]);
-      },
-    }, armed ? 'Tap again to end the game' : 'End the game'),
-  );
-}
-
-function gameOverStage(g: SavedGame): Child {
-  const s = g.session;
-  const end = s.ended!;
-  return h('div', { class: 'stack' },
-    h('div', { class: 'banner' },
-      h('div', { class: 'banner-big' }, `🏆 ${end.winners.map((w) => nameOf(s, w)).join(' and ')} ${end.winners.length > 1 ? 'win' : 'wins'} the game`),
-      h('div', { class: 'small' }, `${s.rounds.length} ${s.rounds.length === 1 ? 'round' : 'rounds'}`),
-    ),
-    h('section', { class: 'panel' },
-      h('ol', { class: 'standings' }, end.standings.map((id) =>
-        h('li', null, h('span', { class: 'grow' }, nameOf(s, id)), h('b', null, `${s.scores[id] ?? 0} pts`)))),
-    ),
-    h('button', { class: 'big', onclick: () => update({ game: null, screen: 'home', popups: [] }) }, 'Back to home'),
   );
 }
 
@@ -459,9 +460,10 @@ function lookHandStage(g: SavedGame): Child {
 function playHandoffStage(g: SavedGame): Child {
   const s = g.session;
   const v = publicView(s);
-  const actor = actorOf(s) ?? g.holder;
+  const asked = takeHolder(s);
+  const actor = asked ?? actorOf(s) ?? g.holder;
   const who = nameOf(s, actor);
-  const choosing = v.pendingFinalTwo === actor;
+  const choosing = !asked && v.pendingFinalTwo === actor;
   return h('div', { class: 'stack' },
     seatStrip(s, v, { highlight: actor }),
     trickArea(s, g, v),
@@ -469,7 +471,9 @@ function playHandoffStage(g: SavedGame): Child {
       h('p', { class: 'muted' }, choosing ? 'Decision time. Pass the phone to' : 'Pass the phone to'),
       h('h1', { class: 'handoff-name' }, who),
       h('button', { class: 'big', onclick: () => update({ game: { ...g, stage: 'hand', holder: actor } }) }, `I'm ${who}, show my cards`),
+      asked ? h('p', { class: 'muted small' }, `Something for ${who} only.`) : null,
     ),
+    askToTake(g),
   );
 }
 
@@ -541,6 +545,8 @@ function playHandStage(g: SavedGame): Child {
   return h('div', { class: 'stack' },
     seatStrip(s, v, { highlight: v.me }),
     trickArea(s, g, v),
+    notesPanel(g, v.me),
+    takePrompts(s, v.me),
     choosing
       ? h('section', { class: 'panel choice' },
         h('h2', null, 'Your last card was higher'),
@@ -559,17 +565,20 @@ function playHandStage(g: SavedGame): Child {
       )
       : null,
     myTurn ? h('p', { class: 'muted small center' }, 'Tap a card, then Play. Or tap the same card twice.') : null,
+    myTurn && s.play && jokersBlocked(s.play, v.me) && v.myHand.some((c) => c.kind === 'joker')
+      ? h('p', { class: 'note' }, `No jokers now: ${nameOf(s, s.order.find((p) => p !== v.me && (s.play!.hands[p]?.length ?? 0) > 0))} is on their last card. Play a normal card.`)
+      : null,
     !choosing ? forfeitBtn : null,
+    takeControls(s, v.me),
+    !myTurn && !choosing && !s.takeRequests.some((r) => r.target === v.me && !r.agreed)
+      ? passOnButton(g)
+      : null,
   );
 }
 
 // ---------------------------------------------------------------------------
 // Pop-ups
 // ---------------------------------------------------------------------------
-
-function signed(n: number): string {
-  return n > 0 ? `+${n}` : n < 0 ? `\u2212${-n}` : '0';
-}
 
 /** When each SLAP! pop-up first appeared, so its countdown bar survives a redraw. */
 const slapShownAt = new WeakMap<Popup, number>();
@@ -716,6 +725,7 @@ let dealTimer: number | null = null;
 let slapTimer: { popup: Popup; id: number } | null = null;
 
 export function afterRender(): void {
+  pauseTick();
   const top = getState().popups[0];
   if (top?.kind === 'slap' && slapTimer?.popup !== top) {
     if (slapTimer) window.clearTimeout(slapTimer.id);
@@ -732,7 +742,7 @@ export function afterRender(): void {
   }
   const st = getState();
   const s = st.game?.session;
-  const dealing = st.screen === 'game' && s?.phase === 'dealing' && s.deal?.mode === 'auto' && s.deal.nextSeat !== null && !s.vote;
+  const dealing = st.screen === 'game' && s?.phase === 'dealing' && s.deal?.mode === 'auto' && s.deal.nextSeat !== null && !s.vote && !s.paused;
   if (!dealing) {
     if (dealTimer !== null) { window.clearTimeout(dealTimer); dealTimer = null; }
     return;
@@ -741,7 +751,7 @@ export function afterRender(): void {
   dealTimer = window.setTimeout(() => {
     dealTimer = null;
     const cur = getState().game?.session;
-    if (!cur || cur.phase !== 'dealing' || cur.deal?.mode !== 'auto' || !cur.deal.nextSeat) { afterRender(); return; }
+    if (!cur || cur.paused || cur.phase !== 'dealing' || cur.deal?.mode !== 'auto' || !cur.deal.nextSeat) { afterRender(); return; }
     pendingFly = cur.deal.nextSeat;
     send([{ type: 'autoDealStep', by: cur.dealer }]);
   }, AUTO_DEAL_MS);

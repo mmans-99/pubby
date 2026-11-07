@@ -34,7 +34,7 @@ Status key: `[ ]` not started, `[~]` in progress, `[x]` done, `[!]` blocked on a
 - [x] Going out, finishing order, round end and loser
 - [x] Missing-suit declaration and Reaction Tap result (slowest leads, false start slowest, ties replay)
 - [x] Final-two rule (all game sizes): higher last card picks up the waste pile or forfeits; lower card, joker or slap wins; forfeit stays available after a pick-up
-- [x] Joker rule: own turn even when able to follow, joker leads, joker last card out at once, final-two joker cases, shared second-last place
+- [x] Joker rule: own turn even when able to follow, joker leads, final-two joker cases (2026-11-07: joker last card and shared second-last place removed; see below)
 - [x] Reshuffle vote (any player can call; majority; before every round; once per round; locked once the round begins)
 - [x] Hidden swap (2 and 3 players, every round, choose up to 4 cards or none, given cards leave the round)
 - [x] Reshuffle vote wired into the game flow (dealer deals again; the round then carries on)
@@ -43,7 +43,7 @@ Status key: `[ ]` not started, `[~]` in progress, `[x]` done, `[!]` blocked on a
 - [x] Voting: majority rule, majority of no fails, host decides on a tie or too few votes (used by reshuffle, target, and Ultimate)
 - [x] Host pause and resume; player pause requests approved by host; optional host time limit (default none)
 - [x] Forfeit scores last place
-- [x] Shared second-last place scoring (final two both out on jokers)
+- [x] Shared second-last place scoring (final two both out on jokers). No longer reachable since 2026-11-07; kept for old saved games
 - [x] Event log (slaps, reaction times, forfeits, jokers, reshuffle votes) for trivia and the game record
 - [x] Game record built when the session ends (`buildGameRecord`); saving to phone storage comes with the Phase 2 UI
 - [x] Profile history: per-profile totals updated once per game at session end (`addGameToProfiles`)
@@ -82,23 +82,37 @@ Built in slices; each slice gets a test link and a checklist.
 - [x] Hidden swap (2 and 3 players): pick up to 4 cards or keep, see new cards marked
 - [x] Reaction Tap: red then green pad, times in ms, false starts, tie replays, slowest leads
 - [x] Slice 2 stand-ins removed
-- [ ] Slice 4: between tricks and rounds (results, trivia, votes, take-cards, pause)
+- [x] **Slice 4: between tricks and rounds** (tested by the user, committed)
+  - [x] Results screen: places, points, totals, trivia, per-player slapped by most / slapped most, ready up, host moves on
+  - [x] Target score vote (before round 1 and on the results screen); target shown in the game bar
+  - [x] Ultimate Round vote (called by any player, or started by reaching the target); Ultimate Round flow; game over with titles
+  - [x] Take-cards request: ask, answer, withdraw, private notes, "Cards taken!" pop-up
+  - [x] Pause: host pause, player requests (approve / say no), pause screen, optional time limit with countdown
+- [x] **Rule changes 2026-11-07** (tested by the user, committed)
+  - [x] Final two: no jokers while the other player is on their last normal card
+  - [x] Nobody holds only jokers: last normal card throws away the jokers left (also on pick-up); joker-as-last-card and shared second-last rules removed
+  - [x] Manual deal: never two cards in a row to the same player (auto deal skips them too after a switch)
+  - [x] Take-cards: only before a trick, one request at a time, several askers -> the asked player chooses; "Someone wants to take cards" on the hand-off screen
+  - [x] Quick rules updated
+  - [x] Deal starts in manual; even manual deal (greyed out until everyone has a card)
+  - [x] More catch-phrases ("Hurry up!!", "Slap him!!" and more); slimmer reactions bar
+- [ ] Save the game record and profile history on the phone when a game ends (`buildGameRecord`, `addGameToProfiles`; Phase 1 built them)
 - [x] Table view and turn indicator
 - [x] SLAP! pop-up, emoji bar, and catch-phrases (content in `src/content/catch-phrases.md`)
 - [x] Missing-suit prompt and mini-game
 - [x] Reshuffle vote and hidden-swap screens (phone layout); hidden decks never drawn, only the "Swap cards" option
 - [x] Vote result pop-up: "Majority says… YES/NO" or "Host says… YES/NO", naming what was decided
-- [ ] Pause overlay for all players, and pause-request button for non-host players
-- [ ] Take-cards request: button, request prompt for the asked player, "cards taken" pop-up
+- [x] Pause overlay for all players, and pause-request button for non-host players (slice 4)
+- [x] Take-cards request: button, request prompt for the asked player, "cards taken" pop-up (slice 4)
 - [x] Reaction Tap mini-game screen (chosen; slowest reactor leads, ties replay)
 - [x] Auto-deal animation with switch-to-manual control; manual deal taps
 - [x] Joker count banner at game start; host setup toggle for the joker rule
-- [ ] Results screen after every round: scores, trivia, per-player "slapped by most" and "slapped most", no timer, ready-up for players, host moves on
-- [ ] Target score vote and Ultimate Round vote on the results screen
+- [x] Results screen after every round: scores, trivia, per-player "slapped by most" and "slapped most", no timer, ready-up for players, host moves on (slice 4)
+- [x] Target score vote and Ultimate Round vote on the results screen (slice 4)
 - [x] Slap pop-up: big SLAP!, who slapped who underneath in a smaller font, 😂 spam and catch-phrases, including "You got slapped by a kiiid"
 - [x] Going-out pop-up with the place, place badge next to the name, one last-two pop-up (second last + the loser), results headline "X is the winner"
-- [ ] Ultimate Round button on the results screen and majority vote UI
-- [ ] Round end, scoreboard, and vote screens
+- [x] Ultimate Round button on the results screen and majority vote UI (slice 4)
+- [x] Round end, scoreboard, and vote screens (slice 4)
 - [ ] Manual playtest at 2, 3, 5, and 8 players
 
 ## Phase 3 — Offline PWA

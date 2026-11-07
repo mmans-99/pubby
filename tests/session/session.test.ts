@@ -390,7 +390,9 @@ test('take-cards request: asked between tricks, agreed, cards move at once and t
   const target = s.order.find((p) => p !== req)!;
   const before = s.play!.hands[req]!.length + s.play!.hands[target]!.length;
   s = act(s, { type: 'requestTake', by: req, target }, rng);
-  assert.throws(() => act(s, { type: 'requestTake', by: req, target }, rng), /already/);
+  assert.throws(() => act(s, { type: 'requestTake', by: req, target }, rng), /one player at a time/);
+  const third = s.order.find((p) => p !== req && p !== target)!;
+  assert.throws(() => act(s, { type: 'requestTake', by: req, target: third }, rng), /one player at a time/);
   // The next trick waits until the request is answered.
   const turn = s.play!.turn!;
   assert.throws(() => act(s, { type: 'playCard', by: turn, cardId: s.play!.hands[turn]![0]!.id }, rng), /take-cards/);
@@ -415,24 +417,25 @@ test('take-cards request: refused, or withdrawn, nothing moves', () => {
   assert.deepEqual(s.takeRequests, []);
 });
 
-test('take-cards request: agreed during a trick, the cards move when the trick is over', () => {
+test('take-cards request: only before a trick starts, never during one', () => {
   let { s, rng } = playing(42);
   const leader = s.play!.turn!;
   s = act(s, { type: 'playCard', by: leader, cardId: s.play!.hands[leader]![0]!.id }, rng);
   const [req, target] = s.order.filter((p) => p !== leader) as [string, string];
-  s = act(s, { type: 'requestTake', by: req, target }, rng);
-  s = act(s, { type: 'answerTake', by: target, requester: req, accept: true }, rng);
-  assert.ok(s.play!.hands[target]!.length > 0 || s.play!.finished.includes(target));
-  const trickNo = s.log.filter((e) => e.event.type === 'trickResolved').length;
-  for (let i = 0; i < 20 && s.log.filter((e) => e.event.type === 'trickResolved').length === trickNo; i++) {
-    const t = s.play!.turn!;
-    const card = legalCards(s.play!, t)[0]!;
-    s = act(s, { type: 'playCard', by: t, cardId: card.id }, rng);
-  }
-  if (s.phase === 'playing' && s.order.filter((p) => s.play!.hands[p]!.length > 0).length >= 2) {
-    assert.ok(s.log.some((e) => e.event.type === 'cardsTaken' || (e.event.type === 'takeCancelled' && e.event.reason === 'notPossible')));
-    assert.deepEqual(s.takeRequests, []);
-  }
+  assert.throws(() => act(s, { type: 'requestTake', by: req, target }, rng), /before a trick starts/);
+});
+
+test('take-cards request: two players ask the same player, who gives to one; the other gets a no', () => {
+  let { s, rng } = playing(45);
+  const [a, b, target] = s.order.slice(0, 3) as [string, string, string];
+  s = act(s, { type: 'requestTake', by: a, target }, rng);
+  s = act(s, { type: 'requestTake', by: b, target }, rng);
+  const before = s.play!.hands[b]!.length + s.play!.hands[target]!.length;
+  s = act(s, { type: 'answerTake', by: target, requester: b, accept: true }, rng);
+  assert.equal(s.play!.hands[b]!.length, before);
+  assert.equal(s.play!.hands[target]!.length, 0);
+  assert.deepEqual(s.takeRequests, []);
+  assert.ok(s.log.some((e) => e.event.type === 'takeAnswered' && e.event.requester === a && !e.event.accepted));
 });
 
 test('take-cards request: not with only two players holding cards (and never in a 2-player game)', () => {

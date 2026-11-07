@@ -11,6 +11,9 @@
  *   clockwise, until every card is dealt. The UI calls autoDealStep once per
  *   animation frame and can switch to manual between steps.
  * - Manual deal: the dealer taps a seat and one card goes to it.
+ * - Even deal: once a seat gets a card it is locked until every seat has had
+ *   one in this lap, then all open again (except the seat that just got the
+ *   last card: never two in a row). Auto deal skips locked seats too.
  * - The dealer can switch between modes at any time. Uneven hands are fine.
  */
 
@@ -32,6 +35,10 @@ export interface DealState {
   readonly mode: DealMode;
   /** Seat that gets the next auto-dealt card. Null until auto deal starts. */
   readonly nextSeat: SeatId | null;
+  /** Seat that got the last card. The next card must go to someone else. */
+  readonly lastSeat?: SeatId | null;
+  /** Seats that have had a card in the current lap. Cleared once every seat has one. */
+  readonly lap?: readonly SeatId[];
 }
 
 /** Number of hidden decks for a player count. */
@@ -97,6 +104,8 @@ export function startDeal(
     hands,
     mode,
     nextSeat: null,
+    lastSeat: null,
+    lap: [],
   };
 }
 
@@ -111,11 +120,21 @@ function assertSeat(state: DealState, seat: SeatId): void {
 function giveTopCard(state: DealState, seat: SeatId): DealState {
   const [top, ...rest] = state.remaining;
   if (!top) throw new Error('No cards left to deal');
+  const lap = [...(state.lap ?? []).filter((x) => x !== seat), seat];
   return {
     ...state,
     remaining: rest,
     hands: { ...state.hands, [seat]: [...(state.hands[seat] ?? []), top] },
+    lastSeat: seat,
+    lap: lap.length >= state.seats.length ? [] : lap,
   };
+}
+
+/** Seats that can't get the next card: everyone dealt to this lap, and whoever got the last card. */
+export function lockedSeats(state: DealState): SeatId[] {
+  const locked = new Set(state.lap ?? []);
+  if (state.lastSeat) locked.add(state.lastSeat);
+  return state.seats.filter((x) => locked.has(x));
 }
 
 function nextClockwise(state: DealState, seat: SeatId): SeatId {
@@ -138,7 +157,10 @@ export function autoDealStart(state: DealState, firstSeat: SeatId): DealState {
 export function autoDealStep(state: DealState): DealState {
   if (state.mode !== 'auto') throw new Error('Not in auto deal mode');
   if (state.nextSeat === null) throw new Error('Auto deal has not started');
-  const seat = state.nextSeat;
+  // Skip seats locked for this lap (after manual cards), clockwise.
+  const locked = lockedSeats(state);
+  let seat = state.nextSeat;
+  for (let i = 0; i < state.seats.length && locked.includes(seat); i++) seat = nextClockwise(state, seat);
   const dealt = giveTopCard(state, seat);
   return { ...dealt, nextSeat: nextClockwise(dealt, seat) };
 }
@@ -157,5 +179,10 @@ export function autoDealAll(state: DealState): DealState {
 export function manualDealCard(state: DealState, seat: SeatId): DealState {
   if (state.mode !== 'manual') throw new Error('Not in manual deal mode');
   assertSeat(state, seat);
+  if (lockedSeats(state).includes(seat)) {
+    throw new Error(seat === state.lastSeat
+      ? 'The next card has to go to someone else'
+      : 'Everyone gets a card before anyone gets another');
+  }
   return giveTopCard(state, seat);
 }

@@ -121,7 +121,7 @@ export function createSession(setup: SessionSetup, rng: Rng): ActionResult {
     previous: null,
     dealer: setup.hostId,
     deal: null,
-    dealMode: 'auto',
+    dealMode: 'manual',
     hands: {},
     hiddenDecks: {},
     reshuffleUsed: false,
@@ -171,8 +171,9 @@ function startNextRound(prev: Session, rng: Rng, out: Out): Session {
     pauseRequests: [],
   };
   const dealer = dealerFor(roundSetup(s));
-  const deal = shuffleAndStartDeal(roundSetup(s), rng, 'auto');
-  s = { ...s, dealer, deal, dealMode: 'auto', hiddenDecks: deal.hiddenDecks };
+  // The deal starts in manual mode; the dealer can switch to auto at any time.
+  const deal = shuffleAndStartDeal(roundSetup(s), rng, 'manual');
+  s = { ...s, dealer, deal, dealMode: 'manual', hiddenDecks: deal.hiddenDecks };
   out.emit(s, { type: 'roundStarted', round: s.round, dealer, ultimate: s.ultimateRound });
   return s;
 }
@@ -315,10 +316,11 @@ function reduce(s: Session, a: SessionAction, rng: Rng, out: Out): Session {
     // ----- Take-cards request -----
     case 'requestTake': {
       assertPhase(s, 'playing');
+      if (!betweenTricks(s.play!)) fail('You can only ask before a trick starts');
       const why = takeAllowed(s.play!, a.by, a.target);
       if (why) fail(why);
-      if (s.takeRequests.some((r) => r.requester === a.by && r.target === a.target)) {
-        fail(`You have already asked ${nameOf(s, a.target)}`);
+      if (s.takeRequests.some((r) => r.requester === a.by)) {
+        fail('You can only ask one player at a time');
       }
       out.emit(s, { type: 'takeRequested', requester: a.by, target: a.target });
       return { ...s, takeRequests: [...s.takeRequests, { requester: a.by, target: a.target, agreed: false }] };
@@ -328,7 +330,14 @@ function reduce(s: Session, a: SessionAction, rng: Rng, out: Out): Session {
       const req = s.takeRequests.find((r) => r.requester === a.requester && r.target === a.by && !r.agreed);
       if (!req) fail('No take-cards request to answer');
       out.emit(s, { type: 'takeAnswered', requester: a.requester, target: a.by, accepted: a.accept });
-      const rest = s.takeRequests.filter((r) => r !== req);
+      let rest = s.takeRequests.filter((r) => r !== req);
+      if (a.accept) {
+        // Asked by more than one player: giving to one is a no to the others.
+        for (const r of rest.filter((x) => x.target === a.by && !x.agreed)) {
+          out.emit(s, { type: 'takeAnswered', requester: r.requester, target: a.by, accepted: false });
+        }
+        rest = rest.filter((x) => x.target !== a.by);
+      }
       const takeRequests = a.accept ? [...rest, { ...req, agreed: true }] : rest;
       return processTakes({ ...s, takeRequests }, out);
     }
@@ -480,9 +489,9 @@ function resolveVote(s: Session, result: boolean, decidedBy: 'majority' | 'host'
     case 'reshuffle': {
       if (!result) return afterReshuffleWindow(s2, out);
       // The dealer shuffles the full deck again and deals again, hidden decks included.
-      const deal = shuffleAndStartDeal(roundSetup(s2), rng, 'auto');
+      const deal = shuffleAndStartDeal(roundSetup(s2), rng, 'manual');
       out.emit(s2, { type: 'reshuffled', dealer: s2.dealer });
-      return { ...s2, phase: 'dealing', deal, dealMode: 'auto', hands: {}, hiddenDecks: deal.hiddenDecks };
+      return { ...s2, phase: 'dealing', deal, dealMode: 'manual', hands: {}, hiddenDecks: deal.hiddenDecks };
     }
     case 'target': {
       if (!result) return s2;

@@ -11,19 +11,21 @@
  *   out, the next highest card of the led suit leads.
  * - Joker: wild, played on your own turn, even if you could follow suit. It
  *   skips your turn and leaves the game. A joker led as the first card passes
- *   the lead to the next player clockwise. A joker as your last card takes
- *   you out at that moment.
+ *   the lead to the next player clockwise.
+ * - Nobody holds only jokers: when a player plays their last normal card, any
+ *   jokers left in their hand are thrown away (they leave the game), so that
+ *   card is their last card. A joker is never a last card.
+ * - Final two: while the other player is down to their last normal card, a
+ *   player can't play a joker and must play a normal card.
  * - Going out is checked when the trick ends (a player who played their last
  *   card and is then slapped picks up and stays in).
  * - Final two (any game size): when only two players hold cards and one of
  *   them plays their last card:
- *     - lower than the other player's card, a joker, or a slap: they win;
+ *     - lower than the other player's card, or a slap: they win;
  *     - higher than the other player's card: they must pick up the whole
  *       waste pile and play on, or forfeit (take last place). After picking
  *       up, they can forfeit at any time while two players are left;
- *     - the other player answered with a joker: the last card wins;
- *     - both go out in the same trick: lower card, joker, or slapper wins;
- *       both on jokers: they share second-last place.
+ *     - both go out in the same trick: the lower card, or the slapper, wins.
  *   Both play jokers in a trick without going out: missed round, the player
  *   who played first leads again.
  * - The round ends when one player is left holding cards: the loser.
@@ -73,7 +75,11 @@ export interface RoundEnd {
   /** Every player, first place to last place. */
   readonly finishingOrder: readonly PlayerId[];
   readonly loser: PlayerId | null;
-  /** Two players who both went out on jokers: they share second-last place. */
+  /**
+   * Two players who both went out on jokers shared second-last place. No
+   * longer possible (a joker is never a last card); always null. Kept so
+   * scoring and saved games still read.
+   */
   readonly sharedSecondLast: readonly PlayerId[] | null;
   readonly forfeitedBy: PlayerId | null;
 }
@@ -81,6 +87,8 @@ export interface RoundEnd {
 export type PlayEvent =
   | { readonly type: 'cardPlayed'; readonly player: PlayerId; readonly card: StandardCard }
   | { readonly type: 'jokerPlayed'; readonly player: PlayerId; readonly asLeader: boolean }
+  /** Last normal card played: the jokers left in the hand are thrown away. */
+  | { readonly type: 'jokersDiscarded'; readonly player: PlayerId; readonly count: number }
   | {
       readonly type: 'slapped';
       readonly slapper: PlayerId;
@@ -202,17 +210,32 @@ export function startPlay(
   };
 }
 
+/**
+ * Final two: true while the other player is down to their last normal card
+ * (counted at the start of this trick). Then no jokers may be played.
+ */
+export function jokersBlocked(state: PlayState, player: PlayerId): boolean {
+  const pair = state.trick.participants;
+  if (pair.length !== 2 || !pair.includes(player)) return false;
+  const other = otherOf(pair, player);
+  const playedNormal = state.trick.plays.some((p) => p.player === other) ? 1 : 0;
+  const normalNow = handOf(state, other).filter(isStandard).length;
+  return normalNow + playedNormal === 1;
+}
+
 /** Cards the player may legally play right now (empty if not their turn). */
 export function legalCards(state: PlayState, player: PlayerId): Card[] {
   if (state.over || state.turn !== player) return [];
   const hand = handOf(state, player);
+  const blocked = jokersBlocked(state, player);
+  const jokers = blocked ? [] : hand.filter(isJoker);
+  const normal = hand.filter(isStandard);
   const led = state.trick.ledSuit;
-  if (led === null) return hand.slice();
-  const following = hand.filter((c) => isStandard(c) && c.suit === led);
-  const jokers = hand.filter(isJoker);
-  // Must follow suit if able. Jokers can always be played on your turn.
+  if (led === null) return [...normal, ...jokers];
+  const following = normal.filter((c) => c.suit === led);
+  // Must follow suit if able. Jokers can be played on your turn (unless blocked).
   if (following.length > 0) return [...following, ...jokers];
-  return hand.slice(); // any card: a slap (or a joker)
+  return [...normal, ...jokers]; // any card: a slap (or a joker)
 }
 
 // ---------------------------------------------------------------------------
@@ -227,13 +250,13 @@ export function playCard(state: PlayState, player: PlayerId, cardId: string): Pl
   const card = hand.find((c) => c.id === cardId);
   if (!card) throw new Error(`Card not in hand: ${cardId}`);
   if (!legalCards(state, player).some((c) => c.id === cardId)) {
+    if (isJoker(card)) throw new Error('No jokers now: the other player is on their last card');
     throw new Error('You must follow the led suit');
   }
 
   const events: PlayEvent[] = [];
   const hands = { ...state.hands, [player]: hand.filter((c) => c.id !== cardId) };
   const trick = state.trick;
-  const finalTwo = trick.participants.length === 2;
 
   // Joker: skips this player's turn and leaves the game.
   if (isJoker(card)) {
@@ -241,30 +264,20 @@ export function playCard(state: PlayState, player: PlayerId, cardId: string): Pl
     events.push({ type: 'jokerPlayed', player, asLeader });
     const nextTrick: TrickState = { ...trick, acted: [...trick.acted, player] };
     const s: PlayState = { ...state, hands, trick: nextTrick, usedJokers: [...state.usedJokers, card] };
-    // Final two: a joker as your last card, before anything else in the trick,
-    // takes you out at once and you win the round. If the other player's only
-    // card is also a joker, both go out on jokers and share second-last place.
-    if (finalTwo && (hands[player] ?? []).length === 0 && trick.acted.length === 0) {
-      const other = otherOf(trick.participants, player);
-      const otherHand = hands[other] ?? [];
-      const order = [...state.finished, player, other];
-      if (otherHand.length === 1 && isJoker(otherHand[0] as Card)) {
-        const otherJoker = otherHand[0] as Card;
-        events.push({ type: 'jokerPlayed', player: other, asLeader: false });
-        const both: PlayState = {
-          ...s,
-          hands: { ...hands, [other]: [] },
-          usedJokers: [...s.usedJokers, otherJoker],
-        };
-        return endRound(both, events, order, state.wastePile, { sharedSecondLast: [player, other] });
-      }
-      return endRound(s, events, order, state.wastePile);
-    }
     return finishTurn(s, player, events);
   }
 
   const std = card as StandardCard;
   events.push({ type: 'cardPlayed', player, card: std });
+
+  // Last normal card: any jokers left are thrown away, so this is the last card.
+  const rest = hands[player] ?? [];
+  let base: PlayState = state;
+  if (rest.length > 0 && rest.every(isJoker)) {
+    hands[player] = [];
+    base = { ...state, usedJokers: [...state.usedJokers, ...rest] };
+    events.push({ type: 'jokersDiscarded', player, count: rest.length });
+  }
 
   // Leading card sets the suit.
   if (trick.ledSuit === null) {
@@ -274,7 +287,7 @@ export function playCard(state: PlayState, player: PlayerId, cardId: string): Pl
       plays: [{ player, card: std }],
       acted: [...trick.acted, player],
     };
-    return finishTurn({ ...state, hands, trick: nextTrick }, player, events);
+    return finishTurn({ ...base, hands, trick: nextTrick }, player, events);
   }
 
   const plays = [...trick.plays, { player, card: std }];
@@ -286,12 +299,12 @@ export function playCard(state: PlayState, player: PlayerId, cardId: string): Pl
     const afterHands = { ...hands, [high.player]: [...(hands[high.player] ?? []), ...pickup] };
     events.push({ type: 'slapped', slapper: player, slapped: high.player, cardsPickedUp: pickup.length });
     const resolvedTrick: TrickState = { ...trick, plays, acted: [...trick.acted, player] };
-    return resolveTrick({ ...state, hands: afterHands, trick: resolvedTrick }, high.player, [], events);
+    return resolveTrick({ ...base, hands: afterHands, trick: resolvedTrick }, high.player, [], events);
   }
 
   // Normal follow.
   const nextTrick: TrickState = { ...trick, plays, acted: [...trick.acted, player] };
-  return finishTurn({ ...state, hands, trick: nextTrick }, player, events);
+  return finishTurn({ ...base, hands, trick: nextTrick }, player, events);
 }
 
 /** After a play or joker that did not stop the trick: next turn, or resolve. */
@@ -325,16 +338,9 @@ function resolveFinalTwo(state: PlayState, events: PlayEvent[]): PlayResult {
   const emptied = pair.filter((p) => handOf(state, p).length === 0);
   const playOf = (p: PlayerId) => trick.plays.find((x) => x.player === p);
 
-  // Both played jokers.
+  // Both played jokers (nobody can go out on a joker): missed round, the
+  // player who played first leads again.
   if (trick.plays.length === 0) {
-    if (emptied.length === 2) {
-      // Both out on jokers: they share second-last place.
-      const [a, b] = trick.acted as [PlayerId, PlayerId];
-      return endRound(state, events, [...state.finished, a, b], state.wastePile, {
-        sharedSecondLast: [a, b],
-      });
-    }
-    // Missed round: the player who played first leads again.
     return resolveTrick(state, trick.acted[0] as PlayerId, [], events);
   }
 
@@ -344,7 +350,7 @@ function resolveFinalTwo(state: PlayState, events: PlayEvent[]): PlayResult {
   }
 
   if (emptied.length === 2) {
-    // Both went out in this trick. A joker beats a card; otherwise the lower card wins.
+    // Both went out in this trick: the lower card wins.
     const [a, b] = pair as [PlayerId, PlayerId];
     const pa = playOf(a);
     const pb = playOf(b);
@@ -361,7 +367,8 @@ function resolveFinalTwo(state: PlayState, events: PlayEvent[]): PlayResult {
   const o = otherOf(pair, x);
   const xp = playOf(x);
   const op = playOf(o);
-  // Joker as last card, the other answered with a joker, or a lower card: x wins.
+  // A lower last card wins. (The other player can't answer with a joker:
+  // jokers are blocked while the other player is on their last card.)
   if (!xp || !op || xp.card.rank < op.card.rank) {
     const wastePile = [...state.wastePile, ...waste];
     return endRound(state, events, [...state.finished, x, o], wastePile);

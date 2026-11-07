@@ -4,6 +4,54 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-07 — Rule changes: jokers, manual deal, take-cards before tricks
+
+**Done**
+- User asked for four changes after testing. Questions asked and answered first (CLAUDE.md rule 6):
+  - Leftover jokers when the last normal card is played: thrown away, even if the player then picks up the waste pile.
+  - Delete "joker as your last card takes you out" and "both down to a single joker share second-last place" (they can't happen any more).
+  - "Only ask one person" means one open request at a time.
+  - On one phone, others ask with a "Someone wants to take cards" button on the hand-off screen before a trick.
+- Rules engine (`play.ts`): `jokersBlocked` — in the final two, no jokers while the other player is down to their last normal card (counted at the start of the trick, jokers not counted). Last normal card with only jokers left: the jokers are thrown away (`jokersDiscarded` event) and that card is the last card (also for a slap). Joker-last-card and both-on-jokers code removed; `sharedSecondLast` is now always null.
+- Dealing (`deal.ts`): `lastSeat`; manual deal refuses the player who just got a card; auto deal skips them if they're next after a switch. The UI greys out that player.
+- Session (`session.ts`): `requestTake` only between tricks and one open request per player; agreeing to one requester answers no to the others asking the same player.
+- UI: take-cards only before a trick; "Someone wants to take cards" on the hand-off screen (pick who's asking, phone goes to them); asked player sees every asker ("Give them to X" / "Refuse everyone"); "gave their cards to X instead" note; "Hide my cards · pass to X" for a player holding the phone out of turn; "Jokers thrown away" pop-up; "No jokers now" note in the final two. Quick rules updated.
+- Interpretation flagged to the user: "one card" means one normal card (a player with a 5♥ and a joker is on their last card).
+- Checks: strict type check; 98 tests passing (new: no jokers against a last card, jokers allowed otherwise, jokers thrown away including slaps and pick-ups, manual deal lock, take only before a trick, two askers); automated phone-browser playthroughs (53 checks, no errors), including two players asking the same player, no take buttons mid-trick, the manual deal lock, and a jokers-held run that hit "Jokers thrown away" and "No jokers now".
+- Test link updated (same link as slice 4).
+- `PROJECT.md` (2b, 4.2, 6, 7, 9, decided list), `CODE.md`, `TODO.md` updated. `CLAUDE.md` checked, no changes.
+- Follow-up from the user: the deal now starts in manual mode. The "never two in a row" lock still let the dealer swap between two players, so it is now an even deal: anyone who has had a card is greyed out until everyone has one, then all open up again (except the player who just got one). Auto deal skips greyed-out players after a switch. New catch-phrases: "Hurry up!!", "Slap him!!", "Slap her!!", "Come on!!", "Too slow!!", "Get them!!", "Oof!!", "Revenge time!!". The reactions bar is now one slim strip beside the 😂 button that scrolls sideways. 99 tests passing; 56 phone-browser checks, no errors (including manual deal coming out even). Test link updated.
+
+- User tested and approved commit and push (slice 4 and these rule changes together).
+
+**Next**
+- Save the game record and profile history when a game ends; playtest at 2, 3, 5 and 8 players; Phase 3 (offline PWA).
+
+---
+
+## 2026-11-07 — Phase 2 slice 4: results, trivia, votes, take-cards, pause
+
+**Done**
+- User approved slice 4. New `src/ui/between.ts` (`CODE.md` 9c); the slice 2 stand-in results screen is gone.
+- Results screen after every round: winner banner, places, round points and totals, trivia (most slapped, most slapper, rivals, always fighting for survival, biggest pick-up, most forfeits, most reshuffle votes, slowest reaction) and a per-player table (slapped by most, slapped most). No timer. Ready up: tap your name, the count shows; the host still decides. Host buttons: Next round (or Start the Ultimate Round) and End the game (two taps).
+- Target score: panel with a stepper and quick picks (5, 10, 15, 20), pick who proposes, then the vote goes round the phone. Shown during the round 1 deal, before the host starts round 1, and on results screens; hidden once a target or the Ultimate Round is agreed. The target shows in the game bar (🎯).
+- Ultimate Round: any player calls the vote from the results screen. Reaching the target shows a "Target reached!" pop-up and starts the vote. Results-screen votes show the results table under "Pass the phone to". Passed: banner on results, the game bar says "⚡ Ultimate Round". Failed at the target: game over, highest score wins.
+- Game over: winners and why, Ultimate Winner and Loser titles, final standings with title tags, the Ultimate Round table, trivia.
+- Take-cards request (one phone): "Ask to take someone's cards" on your own hand screen, pick a player. Between tricks the phone goes straight to the asked player ("Something for X only"); mid-trick it waits for them. Agree or Refuse on their hand screen. The requester can withdraw. Private notes to the requester when refused, agreed but waiting, or cancelled. Everyone gets a "Cards taken!" pop-up when cards move.
+- Pause: "⏸ Pause" in the game bar during a round (not during a vote). The host pauses now, or a player asks (pick who); the host gets a banner (Pause / Say no; "No pause" pop-up). The pause screen covers everything, says who asked, has Resume, a countdown for a timed pause and the time-limit choice. The auto deal and a running Reaction Tap stop while paused. When the time limit runs out: "Pause over" pop-up.
+- Home screen note updated.
+- Checks: strict type check; 97 tests passing; automated phone-browser playthroughs (44 checks, no errors): target vote before round 1, ready up, target reached to Ultimate Round to game over, take-cards agree/refuse/withdraw, host pause, pause request declined and approved, timed pause running out, pause on a hand screen, Ultimate vote tie decided by the host, host ending the game, Ultimate vote failing at the target, and full random games at 2, 3, 6 and 8 players with swaps and take requests.
+- New test link published (the old one couldn't be updated from this session). Profiles saved on the old link don't carry over.
+- `CODE.md`, `TODO.md` updated. `PROJECT.md` checked: no rule changes. `CLAUDE.md` checked, no changes.
+
+**Not done**
+- Saving the game record and profile history when a game ends (added to `TODO.md`).
+
+**Next**
+- User tests slice 4 on their phone. Then: game record saving, playtest at 2, 3, 5 and 8 players, Phase 3 (offline PWA).
+
+---
+
 ## 2026-11-07 — Phase 2 slice 3: reshuffle vote, hidden swap, Reaction Tap
 
 **Done**

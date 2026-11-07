@@ -91,6 +91,8 @@ export interface SavedGame {
   readonly trickLog: readonly TrickPlay[];
   /** The trick that just finished, so the next player knows what happened. */
   readonly lastTrick: LastTrick | null;
+  /** Private messages per player (take-cards answers), shown only on their own hand screen. */
+  readonly notes?: Readonly<Record<string, readonly string[]>>;
 }
 
 export function loadGame(): SavedGame | null {
@@ -98,7 +100,7 @@ export function loadGame(): SavedGame | null {
   if (!g || !g.session || g.session.ended) return null;
   // Games saved by an older build: fill in what's missing.
   const stage: GameStage = g.stage === 'hand' || g.stage === 'handoff' ? g.stage : 'table';
-  return { session: g.session, stage, holder: g.holder ?? g.session.hostId, trickLog: g.trickLog ?? [], lastTrick: g.lastTrick ?? null };
+  return { session: g.session, stage, holder: g.holder ?? g.session.hostId, trickLog: g.trickLog ?? [], lastTrick: g.lastTrick ?? null, notes: g.notes ?? {} };
 }
 
 export function saveGame(g: SavedGame | null): boolean {

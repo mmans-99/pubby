@@ -16,6 +16,7 @@ import { h, type Child } from './dom.ts';
 import { handBlock, nameOf, nextClockwise, publicView, seatStrip, send } from './game.ts';
 import type { SavedGame } from './storage.ts';
 import { getState, update } from './store.ts';
+import { resultsSummary, targetPanel } from './between.ts';
 
 // ---------------------------------------------------------------------------
 // Who holds the phone next
@@ -118,6 +119,7 @@ function passStage(g: SavedGame, who: PlayerId, what: 'vote' | 'swap' | 'tap'): 
         },
       }, armed ? `Tap again: ${nameOf(s, s.hostId)} counts the votes now` : `Host: count the votes now`)
       : null,
+    resultsSummary(s),
   );
 }
 
@@ -141,14 +143,15 @@ function voteQuestion(s: Session, kind: VoteKind, value: number | null): string 
 export function voteOutcome(s: Session, kind: VoteKind, result: boolean, value: number | null): string {
   if (kind === 'reshuffle') return result ? `Reshuffle! ${nameOf(s, s.dealer)} shuffles and deals again.` : 'No reshuffle. The round goes on.';
   if (kind === 'target') return result ? `Target: ${value} points` : 'No target.';
-  return result ? 'Ultimate Round!' : 'No Ultimate Round.';
+  if (result) return 'Ultimate Round! One last round, outside the score.';
+  return s.phase === 'gameOver' ? 'No Ultimate Round. Game over: the highest score wins.' : 'No Ultimate Round.';
 }
 
 function voteStage(g: SavedGame, me: PlayerId): Child {
   const s = g.session;
   const v = s.vote!;
   const view = playerView(s, me);
-  const caller = v.calledBy ? `${nameOf(s, v.calledBy)} called this vote.` : 'The game called this vote.';
+  const caller = v.calledBy ? `${nameOf(s, v.calledBy)} called this vote.` : 'Someone reached the target, so the game called this vote.';
   const cast = (yes: boolean): void => { send([{ type: 'castVote', by: me, ballot: yes ? 'yes' : 'no' }]); };
   return h('div', { class: 'stack' },
     h('section', { class: 'panel vote-panel' },
@@ -215,6 +218,7 @@ export function reshuffleStage(g: SavedGame): Child {
           : h('button', { class: 'secondary', onclick: () => update({ armed: 'reshufflecaller' }) }, 'Call a reshuffle vote'),
       )
       : null,
+    targetPanel(s),
     h('button', { class: 'big', onclick: () => send([{ type: 'startRound', by: s.hostId }]) }, `Start the round (${nameOf(s, s.hostId)})`),
     h('p', { class: 'muted small center' }, 'Only the host starts the round.'),
   );
@@ -289,6 +293,12 @@ type TapState =
   | { step: 'done'; ms: number; falseStart: boolean };
 
 let tap: { player: PlayerId; state: TapState } = { player: '', state: { step: 'ready' } };
+
+/** A pause stops a Reaction Tap that is under way; the player starts again after. */
+export function resetTap(): void {
+  if (tap.state.step === 'wait') window.clearTimeout(tap.state.timer);
+  if (tap.state.step === 'wait' || tap.state.step === 'go') tap = { ...tap, state: { step: 'ready' } };
+}
 
 function tapProgress(s: Session): string {
   const t = s.tap;

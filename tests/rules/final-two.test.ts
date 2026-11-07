@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import type { Card, Suit } from '../../src/rules/cards.ts';
 import {
   forfeit,
+  legalCards,
   pickUpWastePile,
   playCard,
   startPlay,
@@ -115,36 +116,8 @@ test('last card is a slap: the slapper wins', () => {
   assert.deepEqual(end.finishingOrder, ['a', 'c', 'b']);
 });
 
-test('joker as last card when leading: out at once, wins', () => {
-  const s = finalTwo([J(1)], [c('hearts', 9), c('clubs', 3)], 'b');
-  const r = playCard(s, 'b', 'joker-1');
-  const end = ended(r.events);
-  assert.ok(end && end.type === 'roundEnded');
-  assert.deepEqual(end.finishingOrder, ['a', 'b', 'c']);
-  assert.equal(r.state.turn, null);
-});
 
-test('joker as last card when following: wins', () => {
-  const s = finalTwo([c('hearts', 9), c('clubs', 3)], [J(1)], 'b');
-  const { events } = run(s, [
-    ['b', 'hearts-9'],
-    ['c', 'joker-1'],
-  ]);
-  const end = ended(events);
-  assert.ok(end && end.type === 'roundEnded');
-  assert.deepEqual(end.finishingOrder, ['a', 'c', 'b']);
-});
 
-test('other player answers a last card with a joker: the last card wins', () => {
-  const s = finalTwo([c('hearts', 13)], [J(1), c('clubs', 3)], 'b');
-  const { events } = run(s, [
-    ['b', 'hearts-13'],
-    ['c', 'joker-1'],
-  ]);
-  const end = ended(events);
-  assert.ok(end && end.type === 'roundEnded');
-  assert.deepEqual(end.finishingOrder, ['a', 'b', 'c']);
-});
 
 test('one joker played first (not last card): the other plays any card, then leads', () => {
   const s = finalTwo([J(1), c('clubs', 2)], [c('hearts', 9), c('clubs', 3)], 'b');
@@ -156,7 +129,7 @@ test('one joker played first (not last card): the other plays any card, then lea
 });
 
 test('both play jokers without going out: missed round, first player leads again', () => {
-  const s = finalTwo([J(1), c('clubs', 2)], [J(2), c('clubs', 3)], 'b');
+  const s = finalTwo([J(1), c('clubs', 2), c('clubs', 5)], [J(2), c('clubs', 3), c('clubs', 6)], 'b');
   const { s: after } = run(s, [
     ['b', 'joker-1'],
     ['c', 'joker-2'],
@@ -175,36 +148,45 @@ test('both go out in the same trick: the lower card wins', () => {
   assert.deepEqual(end.finishingOrder, ['a', 'c', 'b']);
 });
 
-test('both go out, one on a joker: the joker wins', () => {
-  const s = finalTwo([c('hearts', 2)], [J(1)], 'b');
-  const { events } = run(s, [
-    ['b', 'hearts-2'],
-    ['c', 'joker-1'],
-  ]);
-  const end = ended(events);
-  assert.ok(end && end.type === 'roundEnded');
-  assert.deepEqual(end.finishingOrder, ['a', 'c', 'b']);
+
+
+test('other player on their last card: no jokers, must play a normal card', () => {
+  // c has one card: b can't lead a joker.
+  const s = finalTwo([J(1), c('hearts', 9), c('clubs', 3)], [c('hearts', 13)], 'b');
+  assert.deepEqual(ids(legalCards(s, 'b')), ['clubs-3', 'hearts-9']);
+  assert.throws(() => playCard(s, 'b', 'joker-1'), /No jokers now/);
+  // b leads, then c (one card) answers: b still can't joker next trick while c has one card.
+  const s2 = finalTwo([c('hearts', 13)], [J(1), c('hearts', 9), c('clubs', 3)], 'b');
+  const r = playCard(s2, 'b', 'hearts-13');
+  assert.deepEqual(ids(legalCards(r.state, 'c')), ['hearts-9']);
 });
 
-test('joker answered with a last-card joker (first joker not last): last joker wins', () => {
-  const s = finalTwo([J(1), c('clubs', 2)], [J(2)], 'b');
-  const { events } = run(s, [
-    ['b', 'joker-1'],
-    ['c', 'joker-2'],
-  ]);
-  const end = ended(events);
-  assert.ok(end && end.type === 'roundEnded');
-  assert.deepEqual(end.finishingOrder, ['a', 'c', 'b']);
-  assert.equal(end.sharedSecondLast, null);
+test('jokers allowed in the final two while both players have two or more normal cards', () => {
+  const s = finalTwo([J(1), c('hearts', 9), c('clubs', 3)], [c('hearts', 13), c('clubs', 4)], 'b');
+  assert.ok(legalCards(s, 'b').some((x) => x.id === 'joker-1'));
 });
 
-test('both final players down to a single joker: both out, shared second-last place', () => {
-  const s = finalTwo([J(1)], [J(2)], 'b');
-  const r = playCard(s, 'b', 'joker-1');
-  const end = ended(r.events);
+test('a last normal card with only jokers left counts as the last card (jokers thrown away)', () => {
+  // b holds a 5 and a joker; c has two normal cards so b's joker is not blocked, but b plays the 5.
+  const s = finalTwo([c('hearts', 5), J(1)], [c('hearts', 9), c('clubs', 3)], 'b');
+  const r = playCard(s, 'b', 'hearts-5');
+  assert.ok(r.events.some((e) => e.type === 'jokersDiscarded' && e.player === 'b' && e.count === 1));
+  assert.deepEqual(r.state.hands['b'], []);
+  assert.deepEqual(ids(r.state.usedJokers), ['joker-1']);
+  // c can't answer with a joker now anyway; lower last card: b wins.
+  const end = ended(playCard(r.state, 'c', 'hearts-9').events);
   assert.ok(end && end.type === 'roundEnded');
   assert.deepEqual(end.finishingOrder, ['a', 'b', 'c']);
-  assert.deepEqual(end.sharedSecondLast, ['b', 'c']);
-  assert.deepEqual(ids(r.state.usedJokers), ['joker-1', 'joker-2']);
-  assert.deepEqual(r.state.hands['c'], []);
+});
+
+test('last normal card higher: jokers still thrown away when picking up the waste pile', () => {
+  const s = finalTwo([c('hearts', 13), J(1)], [c('hearts', 9), c('clubs', 3)], 'b');
+  const { s: after } = run(s, [
+    ['b', 'hearts-13'],
+    ['c', 'hearts-9'],
+  ]);
+  assert.equal(after.pendingFinalTwo, 'b');
+  const up = pickUpWastePile(after, 'b').state;
+  assert.ok(!(up.hands['b'] ?? []).some((x) => x.kind === 'joker'));
+  assert.deepEqual(ids(up.usedJokers), ['joker-1']);
 });

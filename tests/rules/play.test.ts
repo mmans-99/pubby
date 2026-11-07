@@ -174,19 +174,34 @@ test('joker as the lead: next player clockwise starts the trick with any card', 
   assert.deepEqual(ids(after.wastePile), ['spades-3', 'spades-9']);
 });
 
-test('going out on a joker counts as going out', () => {
+test('last normal card with only jokers left: jokers thrown away, player goes out', () => {
   const s = startPlay(
     ['a', 'b', 'c'],
-    { a: [c('hearts', 5), c('clubs', 9)], b: [J(1)], c: [c('hearts', 3), c('clubs', 4)] },
+    { a: [c('hearts', 5), c('clubs', 9)], b: [c('hearts', 2), J(1), J(2)], c: [c('hearts', 3), c('clubs', 4)] },
+    'a',
+  );
+  const { s: after, events } = run(s, [
+    ['a', 'hearts-5'],
+    ['b', 'hearts-2'],
+    ['c', 'hearts-3'],
+  ]);
+  assert.ok(events.some((e) => e.type === 'jokersDiscarded' && e.player === 'b' && e.count === 2));
+  assert.deepEqual(after.finished, ['b']);
+  assert.deepEqual(ids(after.usedJokers), ['joker-1', 'joker-2']);
+});
+
+test('slap with the last normal card: jokers thrown away, the slapper goes out', () => {
+  const s = startPlay(
+    ['a', 'b', 'c'],
+    { a: [c('hearts', 5), c('clubs', 9)], b: [c('spades', 2), J(1)], c: [c('hearts', 3), c('clubs', 4)] },
     'a',
   );
   const { s: after } = run(s, [
     ['a', 'hearts-5'],
-    ['b', 'joker-1'],
-    ['c', 'hearts-3'],
+    ['b', 'spades-2'],
   ]);
   assert.deepEqual(after.finished, ['b']);
-  assert.equal(after.loser, null);
+  assert.equal(after.turn, 'a');
 });
 
 test('play functions never change the state passed in', () => {

@@ -1,4 +1,4 @@
-import { legalCards, takeAllowed } from '../../src/rules/play.ts';
+import { betweenTricks, legalCards, takeAllowed } from '../../src/rules/play.ts';
 import type { Rng } from '../../src/rules/rng.ts';
 import { applyAction, createSession } from '../../src/session/session.ts';
 import type { Session, SessionAction, SessionSetup } from '../../src/session/types.ts';
@@ -57,10 +57,10 @@ export function step(s: Session, rng: Rng): Session {
       if (pending) {
         return act(s, { type: 'answerTake', by: pending.target, requester: pending.requester, accept: rng() < 0.5 }, rng);
       }
-      if (rng() < 0.03) {
+      if (rng() < 0.03 && betweenTricks(play)) {
         const a = s.order[Math.floor(rng() * s.order.length)]!;
         const b = s.order[Math.floor(rng() * s.order.length)]!;
-        if (!takeAllowed(play, a, b) && !s.takeRequests.some((r) => r.requester === a && r.target === b)) {
+        if (!takeAllowed(play, a, b) && !s.takeRequests.some((r) => r.requester === a)) {
           return act(s, { type: 'requestTake', by: a, target: b }, rng);
         }
       }

@@ -17,6 +17,7 @@ import { jokerCount, MAX_PLAYERS, MIN_PLAYERS } from '../rules/cards.ts';
 import { defaultRng } from '../rules/rng.ts';
 import { createSession } from '../session/session.ts';
 import { h } from './dom.ts';
+import { pauseLayer } from './between.ts';
 import { afterRender, gameScreen, popupLayer, reactionsLayer } from './game.ts';
 import { renderMarkdown } from './markdown.ts';
 import { addProfile, deleteProfile, findProfile, loadGame, loadProfiles, saveProfiles } from './storage.ts';
@@ -72,6 +73,7 @@ function render(): void {
     screen,
     h('button', { class: 'rules-btn', 'aria-label': 'Quick rules', onclick: () => update({ rulesOpen: true }) }, '?'),
     st.screen === 'game' ? popupLayer() : null,
+    st.screen === 'game' ? pauseLayer() : null,
     ...(st.screen === 'game' && st.game ? reactionsLayer() : []),
     st.rulesOpen ? rulesOverlay() : null,
     st.message ? h('div', { class: 'toast', role: 'status' }, st.message) : null,
@@ -117,7 +119,7 @@ function homeScreen(): HTMLElement {
       h('button', { class: 'big secondary', onclick: () => update({ screen: 'profiles', armed: null }) },
         `Profiles (${Object.keys(getState().profiles).length})`),
     ),
-    h('p', { class: 'muted small center' }, 'Pass-and-play on one phone. Test build: lobby and setup.'),
+    h('p', { class: 'muted small center' }, 'Pass-and-play on one phone. Test build: the full game on one phone.'),
   );
 }
 
