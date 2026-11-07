@@ -17,6 +17,10 @@ const root = dirname(fileURLToPath(import.meta.url));
 const dist = join(root, 'dist');
 const pwa = join(root, 'src/pwa');
 
+// Version shown in the app: MAJOR.MINOR from package.json ("1.2.0" -> "1.2").
+const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+const appVersion = pkg.version.split('.').slice(0, 2).join('.');
+
 const result = await build({
   entryPoints: [join(root, 'src/main.ts')],
   bundle: true,
@@ -24,6 +28,7 @@ const result = await build({
   target: 'es2020',
   minify: true,
   loader: { '.md': 'text' },
+  define: { __PUBBY_VERSION__: JSON.stringify(appVersion) },
   write: false,
 });
 const js = result.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
@@ -56,4 +61,4 @@ const sw = readFileSync(join(pwa, 'sw.js'), 'utf8')
   .replace('__SHELL__', () => JSON.stringify(shell));
 writeFileSync(join(dist, 'sw.js'), sw);
 
-console.log(`dist/ written: index.html (${(html.length / 1024).toFixed(1)} KB), sw.js, manifest, ${icons.length} icons; version ${version}`);
+console.log(`Pubby v${appVersion}. dist/ written: index.html (${(html.length / 1024).toFixed(1)} KB), sw.js, manifest, ${icons.length} icons; version ${version}`);

@@ -130,8 +130,11 @@ Built in slices; each slice gets a test link and a checklist.
 - [x] Build writes `dist/` with `index.html`, `sw.js`, manifest and icons
 - [x] GitHub Pages workflow (`.github/workflows/pages.yml`)
 - [x] Automated offline check (`testbed/offline_check.py`: 20 of 20)
-- [ ] User turns on GitHub Pages (Settings > Pages > Source: GitHub Actions)
+- [x] User turns on GitHub Pages (Settings > Pages > Source: GitHub Actions)
 - [x] Commit and push (user approved 17:13; the private test link blocks service workers, so Pages is the test build)
+- [x] Version number on the home screen and quick rules (v1.0; bump rule in `CLAUDE.md` rule 8)
+- [x] No pinch zoom, no double-tap zoom, no pull-to-refresh
+- [x] Push v1.0 (user asked for it at 17:40)
 - [~] Confirmed working with no network (automated check passes; user's own test on the phone still to do)
 
 ## Phase 4 — Multiplayer over local network

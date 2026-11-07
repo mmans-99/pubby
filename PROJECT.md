@@ -352,6 +352,8 @@ The trivia shows on the results screen after every round. It has no effect on sc
 
 - **Platform:** Phones only. Web app, installable and usable offline (PWA).
 - **Offline play:** Single-device "pass and play" needs no network at all.
+- **Version number:** shown at the bottom of the home screen and the quick rules ("Version 1.0"). Big changes bump the first number (1.x → 2.0), small changes the second (1.0 → 1.1).
+- **Touch:** no pinch or double-tap zoom, and no pull-down-to-refresh.
 - **Installing (Phase 3):** Pubby is hosted on GitHub Pages. Open it once with internet, then add it to the home screen (Chrome: menu > Add to home screen or Install app; iPhone Safari: Share > Add to Home Screen). It opens full screen with the Pubby icon and works with no signal from then on. Updates download by themselves and show the next time Pubby is opened; saved games and profiles are kept.
 - **Multiplayer:** Players join from their own phones on the same local network (Wi-Fi or a phone hotspot). No internet is needed.
 - **Joining:** The host shows a **QR code** that other players scan to join. See `CODE.md` for the technical options.

@@ -227,6 +227,12 @@ Every function is pure: it returns a new state and never changes the one passed 
 - **Hosting:** `.github/workflows/pages.yml` runs on every push to `main` (and by hand): `npm install`, `npm run check`, `npm test`, `npm run build`, then deploys `dist/` to GitHub Pages. One-time repo setting: Settings > Pages > Source: GitHub Actions.
 - **Check:** `python3 testbed/offline_check.py` (after `npm run build`) serves `dist/` from a sub-path on localhost, opens it in a phone-sized headless browser and checks: service worker active with the right scope, every app file cached, manifest and icons, the app opens offline (plain, with a query string, with a hash), saved data kept, the new game screen works offline, and a new build replaces the old one on the next open with the old cache deleted.
 
+## 9e. Version number and touch behaviour
+
+- **Version:** `package.json` `version` (`MAJOR.MINOR.0`) is the single source. `build.mjs` passes `MAJOR.MINOR` into the bundle as `__PUBBY_VERSION__`; `src/ui/version.ts` exports it as `VERSION` ("dev" if missing). Shown as "Version 1.0" at the bottom of the home screen and "Pubby version 1.0" at the bottom of the quick rules sheet (reachable from every screen, including mid-game). Rules for bumping: `CLAUDE.md` rule 8. History: 1.0 = Phase 3 offline app with version number, no zoom, no pull-to-refresh.
+- **No zoom:** viewport tag `maximum-scale=1.0, user-scalable=no`; CSS `touch-action: pan-x pan-y` on `html, body` (no pinch or double-tap zoom, scrolling kept); `src/ui/nozoom.ts` `blockZoom()` cancels iPhone Safari gesture events and two-finger moves, which Safari otherwise allows despite the viewport tag.
+- **No pull-to-refresh:** CSS `overscroll-behavior: none` on `html, body` (also stops the bounce at the ends of the page). An installed Pubby has no pull-to-refresh anyway.
+
 ## 8a. Playable test builds (required before every commit)
 
 `CLAUDE.md` rule 5: the user tests every change on their phone before approving a commit.

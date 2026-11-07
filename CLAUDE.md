@@ -16,6 +16,7 @@ These rules apply to every session on this repo. Read this file first.
    - Doc-only changes (MD files only) don't need a test build.
 6. **Don't invent game rules.** If a rule is unclear or missing, add it to the Open Questions list in `PROJECT.md` and ask the user. Do not guess and build.
 7. **The game is called Pubby.** Use that name in code, UI, and docs unless the user changes it.
+8. **Bump the version with every code change pushed.** The version is in `package.json` and shows in the app as `MAJOR.MINOR` (home screen and quick rules). Major change (a new phase, a big feature, a rule overhaul): first number up, second back to 0 (1.4 → 2.0). Small change (fixes, tweaks, wording, small rules): second number up (1.0 → 1.1). Say which bump and why when asking to commit; the user has the final say. Doc-only changes don't bump the version.
 
 ## What each file is for
 

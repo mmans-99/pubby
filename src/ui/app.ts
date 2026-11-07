@@ -13,6 +13,7 @@
  */
 
 import quickRulesMd from '../content/quick-rules.md';
+import { VERSION } from './version.ts';
 import { jokerCount, MAX_PLAYERS, MIN_PLAYERS } from '../rules/cards.ts';
 import { defaultRng } from '../rules/rng.ts';
 import { createSession } from '../session/session.ts';
@@ -98,6 +99,7 @@ function rulesOverlay(): HTMLElement {
       ),
       h('p', { class: 'muted small' }, 'Only on this phone. The game carries on underneath.'),
       renderMarkdown(quickRulesMd, true),
+      h('p', { class: 'muted small center version' }, `Pubby version ${VERSION}`),
     ),
   );
 }
@@ -128,6 +130,7 @@ function homeScreen(): HTMLElement {
         `Past games (${loadRecords().length})`),
     ),
     h('p', { class: 'muted small center' }, 'Pass-and-play on one phone. Test build: the full game on one phone.'),
+    h('p', { class: 'muted small center version' }, `Version ${VERSION}`),
   );
 }
 

@@ -19,8 +19,13 @@ Newest entries at the top. One entry per session, added before each commit.
 - `CODE.md` (7, 8a, 9d), `PROJECT.md` (12), `TODO.md` updated. `CLAUDE.md` checked, no changes.
 - User approved commit and push (17:13).
 
+- First Pages deploy showed a 404: Pages was set to "Deploy from a branch". User switched Source to GitHub Actions (17:21); deploy re-run, succeeded.
+- **User asked (17:24):** a version number that shows a big change as a whole version and a small change as a point version; no pinch zoom; no pull-down-to-refresh. Built: `package.json` 1.0.0, shown as "Version 1.0" on the home screen and in the quick rules; proposed `CLAUDE.md` rule 8 (how to bump). Zoom blocked by the viewport tag, CSS `touch-action` and `src/ui/nozoom.ts` (iPhone gestures); pull-to-refresh by `overscroll-behavior: none`. Checks: zoom test (two-finger moves and gestures cancelled, one-finger scroll not), offline check 20 of 20, 118 tests, 3-player playthrough 12 of 12.
+
+- User asked whether it was pushed (17:40), taken as approval: v1.0 and `CLAUDE.md` rule 8 committed and pushed.
+
 **Next**
-- User turns on GitHub Pages if not done, then tests install and airplane mode on the phone.
+- User tests install and airplane mode on the phone.
 - Decide the multiplayer path (`CODE.md` section 4) before Phase 4.
 
 ---
