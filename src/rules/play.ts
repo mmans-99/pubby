@@ -92,6 +92,7 @@ export type PlayEvent =
   | { readonly type: 'finalTwoChoice'; readonly player: PlayerId }
   | { readonly type: 'wastePilePickedUp'; readonly player: PlayerId; readonly cards: number }
   | { readonly type: 'forfeited'; readonly player: PlayerId }
+  | { readonly type: 'cardsTaken'; readonly requester: PlayerId; readonly target: PlayerId; readonly count: number }
   | ({ readonly type: 'roundEnded' } & RoundEnd);
 
 export interface PlayResult {
@@ -468,4 +469,63 @@ export function forfeit(state: PlayState, player: PlayerId): PlayResult {
   const other = otherOf(remaining, player);
   const events: PlayEvent[] = [{ type: 'forfeited', player }];
   return endRound(state, events, [...state.finished, other, player], state.wastePile, { forfeitedBy: player });
+}
+
+// ---------------------------------------------------------------------------
+// Take-cards request (PROJECT.md section 4.2)
+// ---------------------------------------------------------------------------
+
+/** Players still holding cards. */
+export function playersHoldingCards(state: PlayState): PlayerId[] {
+  return state.order.filter((p) => handOf(state, p).length > 0);
+}
+
+/** True between tricks: the trick has started but nobody has played a card or a joker yet. */
+export function betweenTricks(state: PlayState): boolean {
+  return !state.over && state.pendingFinalTwo === null && state.trick.acted.length === 0;
+}
+
+/** A take is only possible while three or more players hold cards (with two left it would just be a forfeit). */
+export function takeAllowed(state: PlayState, requester: PlayerId, target: PlayerId): string | null {
+  if (state.over) return 'The round is over';
+  if (requester === target) return 'You cannot take your own cards';
+  if (!state.order.includes(requester) || !state.order.includes(target)) return 'Unknown player';
+  if (handOf(state, requester).length === 0) return 'You are out of this round';
+  if (handOf(state, target).length === 0) return 'That player is already out';
+  if (playersHoldingCards(state).length < 3) return 'Not allowed with only two players left';
+  return null;
+}
+
+/**
+ * The requester takes all of the target's cards, unseen. Only between tricks.
+ * The target has no cards left, so they go out and take the next place.
+ * If the target was about to lead, the next player clockwise still holding
+ * cards leads instead.
+ */
+export function takeCards(state: PlayState, requester: PlayerId, target: PlayerId): PlayResult {
+  const why = takeAllowed(state, requester, target);
+  if (why) throw new Error(why);
+  if (!betweenTricks(state)) throw new Error('Cards can only be taken between tricks');
+  const taken = handOf(state, target);
+  const hands = { ...state.hands, [requester]: [...handOf(state, requester), ...taken], [target]: [] };
+  const finished = [...state.finished, target];
+  const events: PlayEvent[] = [
+    { type: 'cardsTaken', requester, target, count: taken.length },
+    { type: 'playerOut', player: target, place: finished.length },
+  ];
+  let leader = state.turn as PlayerId;
+  if (leader === target) leader = activeFrom(state.order, hands, target)[0] as PlayerId;
+  const base = { order: state.order, hands };
+  const stillIn = state.order.filter((p) => (hands[p] ?? []).length > 0);
+  return {
+    state: {
+      ...state,
+      hands,
+      finished,
+      forfeitAllowed: state.forfeitAllowed.filter((p) => stillIn.includes(p)),
+      turn: leader,
+      trick: newTrick(base, leader),
+    },
+    events,
+  };
 }

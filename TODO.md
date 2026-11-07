@@ -2,7 +2,7 @@
 
 Status key: `[ ]` not started, `[~]` in progress, `[x]` done, `[!]` blocked on a decision.
 
-## Phase 0 — Planning (current)
+## Phase 0 — Planning
 
 - [x] Write the five MD files (`CLAUDE.md`, `PROJECT.md`, `CODE.md`, `TODO.md`, `DEVLOG.md`)
 - [x] User answers the open questions (none remaining; local profiles for v1)
@@ -12,17 +12,22 @@ Status key: `[ ]` not started, `[~]` in progress, `[x]` done, `[!]` blocked on a
 - [x] User approves the full plan in writing
 - [x] Create the GitHub repo (`mmans-99/pubby`) and make the first commit and push
 
-## Phase 1 — Rules engine (no UI)
+## Phase 1 — Rules engine and session layer (no UI) (current)
 
 - [x] **Testbed page** (`testbed/index.html`, `CODE.md` section 8a): deal, reshuffle vote, swap, missing suits, Reaction Tap result, winner picks leader, tricks, slaps, jokers, final two, scoring across rounds. Published as a private link.
-- [~] User play-tests the rules built so far (round start, tricks, slaps, jokers, final two)
+- [x] User play-tests the rules built so far (round start, tricks, slaps, jokers, final two)
+- [x] **Session layer** (`src/session/`, `CODE.md` section 9b) ties rounds, votes, pause, results, target score, Ultimate Round and the event log together
+- [~] User play-tests the session layer in the testbed
+- [x] User answers the four new open questions (all as proposed)
+- [x] Target vote also before round 1 starts; hidden once a target or the Ultimate Round is agreed
+- [x] Take-cards request (`PROJECT.md` section 4.2): rules, session layer, player views, tests, testbed
 
 - [x] Scaffold Svelte + Vite + TypeScript project (placeholder screen only)
-- [~] Define the game state and action types (`CODE.md` section 6) — draft in `src/rules/types.ts`
+- [x] Define the game state and action types (`src/session/types.ts`)
 - [x] Deck creation (one 52-card deck, Ace high), joker count, and hidden decks by player count
 - [x] Hidden decks dealt first, automatically in the background; dealer deals only to players
-- [ ] Test that player views never include hidden decks (needs the session layer)
-- [ ] `voteResolved` event with `decidedBy` (majority or host) for the result pop-up
+- [x] Test that player views never include hidden decks or other hands (`playerView`)
+- [x] `voteResolved` event with `decidedBy` (majority or host) for the result pop-up
 - [x] Round-1 host shuffle/deal and host lead, later-round loser shuffle/deal, winner chooses leader
 - [x] Full fresh deck every round; hidden decks every round (2 and 3 players)
 - [x] Trick play: follow suit, slap, trick resolution, leading (next highest if the top card's player is out)
@@ -30,23 +35,24 @@ Status key: `[ ]` not started, `[~]` in progress, `[x]` done, `[!]` blocked on a
 - [x] Missing-suit declaration and Reaction Tap result (slowest leads, false start slowest, ties replay)
 - [x] Final-two rule (all game sizes): higher last card picks up the waste pile or forfeits; lower card, joker or slap wins; forfeit stays available after a pick-up
 - [x] Joker rule: own turn even when able to follow, joker leads, joker last card out at once, final-two joker cases, shared second-last place
-- [ ] Reshuffle vote (any player can call; majority; before every round; once per round; locked once the round begins) — once-per-round is in the testbed, the session layer will enforce it
+- [x] Reshuffle vote (any player can call; majority; before every round; once per round; locked once the round begins)
 - [x] Hidden swap (2 and 3 players, every round, choose up to 4 cards or none, given cards leave the round)
-- [~] Reshuffle vote: tally and fresh redeal done; wiring into the game flow comes with the session layer
-- [ ] Joker rule: on by default, host can turn off at setup; total jokers shown at game start
+- [x] Reshuffle vote wired into the game flow (dealer deals again; the round then carries on)
+- [x] Joker rule: on by default, host can turn off at setup; total jokers shown at game start (`gameStarted` event)
 - [x] Dealing: auto deal (first-name tap, clockwise, step by step for the animation, dealer can switch to manual) and manual deal, switchable at any time
 - [x] Voting: majority rule, majority of no fails, host decides on a tie or too few votes (used by reshuffle, target, and Ultimate)
-- [ ] Host pause and resume; player pause requests approved by host; optional host time limit (default none)
+- [x] Host pause and resume; player pause requests approved by host; optional host time limit (default none)
 - [x] Forfeit scores last place
 - [x] Shared second-last place scoring (final two both out on jokers)
-- [ ] Event log (slaps, reaction times, forfeits, jokers, reshuffle votes) for trivia and the game record
-- [ ] Game record saved on each phone when the session ends (no host export)
-- [ ] Profile history: per-profile totals updated once per game at session end
-- [ ] Stats export: session stats (results screen) and profile stats (profile screen), via phone share sheet (CSV)
+- [x] Event log (slaps, reaction times, forfeits, jokers, reshuffle votes) for trivia and the game record
+- [x] Game record built when the session ends (`buildGameRecord`); saving to phone storage comes with the Phase 2 UI
+- [x] Profile history: per-profile totals updated once per game at session end (`addGameToProfiles`)
+- [x] Stats export: session and profile CSV (`sessionCsv`, `profileCsv`); the share sheet button comes with the Phase 2 UI
 - [x] Scoring tables for 2 to 8 players
-- [ ] Target score vote; reaching the target starts an Ultimate Round vote
-- [ ] Ultimate Round (any player can trigger from a results screen; majority vote; outside the score; Ultimate Winner and Loser labels outrank scores; both Ultimate Loser if the final two share second-last on jokers)
-- [~] Unit tests for every rule above (59 passing: cards, deal, scoring, voting, round start, trick play, final two)
+- [x] Target score vote; reaching the target starts an Ultimate Round vote
+- [x] Ultimate Round (any player can trigger from a results screen; majority vote; outside the score; Ultimate Winner and Loser labels outrank scores; both Ultimate Loser if the final two share second-last on jokers)
+- [x] Results screen trivia from the event log (`computeTrivia`)
+- [~] Unit tests for every rule above (97 passing: cards, deal, scoring, voting, round start, trick play, final two, session flow, votes, pause, results, Ultimate Round, player views, take-cards requests, trivia, game record, profiles, CSV)
 - [ ] Run `npm install` and confirm the Svelte build on a machine with network access
 
 ## Phase 2 — Pass-and-play UI (one device, offline)
@@ -57,11 +63,11 @@ Status key: `[ ]` not started, `[~]` in progress, `[x]` done, `[!]` blocked on a
 - [ ] Table view and turn indicator
 - [ ] SLAP! pop-up, emoji bar, and catch-phrases (content in `src/content/`)
 - [ ] Missing-suit prompt and mini-game
-- [ ] Peek and take-cards prompts
 - [ ] Reshuffle vote and hidden-swap screens (phone layout); hidden decks never drawn, only the "Swap cards" option
 - [ ] Vote result pop-up on every phone: "Majority says… YES/NO" or "Host says… YES/NO", naming what was decided
 - [ ] Quick rules: button on every screen, opens on that phone only, game keeps running underneath (content in `src/content/quick-rules.md`, draft written)
 - [ ] Pause overlay for all players, and pause-request button for non-host players
+- [ ] Take-cards request: button, request prompt for the asked player, "cards taken" pop-up
 - [ ] Reaction Tap mini-game screen (chosen; slowest reactor leads, ties replay)
 - [ ] Auto-deal animation with switch-to-manual control; manual deal taps
 - [ ] Joker count banner at game start; host setup toggle for the joker rule

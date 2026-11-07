@@ -4,6 +4,39 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-07 — Session layer
+
+**Done**
+- User approved starting the session layer.
+- Built `src/session/` (`CODE.md` section 9b): `createSession` and `applyAction` run a whole game on top of the rules engine. Covers the round flow, the reshuffle vote wired in (any player calls it, once per round, dealer deals again), target score and Ultimate Round votes (majority, host on no majority, host can close a vote early), target reached starting an automatic Ultimate vote (if it fails the session ends and the highest score wins), the Ultimate Round outside the score with its titles, final standings, host pause and resume, pause requests, the optional pause time limit, the results screen (ready up, host moves on or ends), the event log, trivia, the game record, profile history (once per game) and CSV export.
+- `playerView`: what each phone may see. Tested at every step of whole rounds at 2, 3, 5 and 8 players: no other hands, no hidden decks.
+- Removed the old draft `Game` and `Action` types from `src/rules/types.ts`; the real ones are in `src/session/types.ts`.
+- 86 tests passing (27 new). Rules engine, session layer and tests pass a strict type check.
+- Testbed rebuilt on the session layer (votes, pause, results, trivia, Ultimate Round, game over, profiles, CSV, player-view check). Automated phone-sized browser playthrough: 14 sessions, 2 to 8 players, jokers on and off, about 60 rounds, Ultimate Rounds, target endings, 40+ pauses, no errors and no blocked moves. Pause time limit checked: the game resumed on its own after 15 seconds.
+- The old testbed link could not be updated from this session (network access is off here), so the new testbed was published as a new private link.
+- Four choices came up that the spec didn't cover. Each is built with a proposed answer and listed in `PROJECT.md` Open questions: who starts the round when nobody calls a reshuffle vote (host), when a vote is counted (as soon as there's a majority; host can close early), who proposes a target (any player), and whether the Ultimate Round counts in round wins, losses and bottom-two stats (no).
+- `PROJECT.md`: removed a duplicated reshuffle line; marked the proposed answers. `CODE.md`, `TODO.md` updated. `CLAUDE.md` checked, no changes.
+
+**Done (later in the session)**
+- User accepted all four proposed answers. `PROJECT.md` has no open questions again; the answers are in "Decided".
+- User couldn't find the target and Ultimate votes. They were low on the results screen; moved into a "Votes" box straight under the round results, with a reminder during play.
+- User asked for the target vote before round 1 too, and for it to disappear once agreed (it was still offered after a target and the Ultimate Round were agreed). Now: target vote before round 1 starts (during the deal or before the host starts round 1) or on any results screen; once a target passes, no more target votes; none once the Ultimate Round is agreed. Dealing waits while a vote is open. 2 new tests (88 passing). Testbed republished; automated playthrough also checks the target vote is never offered after agreement.
+
+- User asked where the option to request another player's cards was. It was removed on purpose in the planning stage (revision 5: no peek or take-cards; the hidden swap is the only card exchange). Removed a leftover "Peek and take-cards prompts" task from `TODO.md` Phase 2.
+
+- User explained the real idea behind it: a take-cards request. The name "peek and take" had confused them, which is why it was removed. Written up in `PROJECT.md` section 4.2: take all of another player's cards without seeing them, nobody else told which cards; always available; tapped any time but dealt with only between tricks; the asked player can refuse; host approves; no cost to ask. Six questions added to Open questions (what happens to the giver, name, host involvement, limits, hand counts, final two). Not built yet.
+
+- User answered the questions: the giver goes out by the normal rules; name "take-cards request"; no host approval, just the two players; unlimited; card counts changing is fine; not allowed with two players left. Built it: `takeCards` in `play.ts`, `requestTake` / `answerTake` / `withdrawTake` in the session layer, private to the two players in `playerView`. One detail filled in: if the player whose cards are taken was about to lead, the next player clockwise leads (recorded in `PROJECT.md` 4.2). 9 new tests (97 passing), including full sessions with random requests at 3 to 8 players. Testbed has a take-cards panel; automated playthrough made 100 requests with no errors. Testbed republished.
+
+**Not done**
+- Not committed or pushed: waiting for the user to test and approve.
+
+**Next**
+- User play-tests the testbed and answers the four open questions.
+- After approval: commit and push. Then Phase 2 (pass-and-play UI) or the multiplayer path decision.
+
+---
+
 ## 2026-11-06 — New rule: test before commit
 
 **Done**

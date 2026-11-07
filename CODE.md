@@ -1,6 +1,6 @@
 # CODE.md — Technical plan for Pubby
 
-**Status:** Plan approved. Stack decided (section 3). Project scaffolded; Phase 1 rules engine in progress (section 10). Items marked **DECIDE** need the user's choice.
+**Status:** Plan approved. Stack decided (section 3). Project scaffolded. Phase 1: rules engine built (section 9a), session layer built (section 9b). Items marked **DECIDE** need the user's choice.
 
 ---
 
@@ -40,7 +40,8 @@ How it fits the architecture (section 2):
 Other choices:
 - **Offline:** Service worker (via Workbox or a hand-written one) to cache the app shell.
 - **Tests:** Node's built-in test runner (`node:test` and `node:assert`), run on TypeScript with `tsx`. Command: `npm test`. Chosen over Vitest because the rules engine needs no browser and this adds no extra test library. Vitest can be added later for Svelte component tests if needed.
-- **Type check:** `npm run check` checks the rules engine and tests in strict mode.
+- **Type check:** `npm run check` checks the rules engine, the session layer and the tests in strict mode. (In this cloud workspace `@types/node` can't be installed, so the check is run on `src/` alone, and on the tests with a small stand-in for the Node test types.)
+- **Testbed build here:** esbuild is not installed through npm in this workspace (no network for packages); `node_modules/esbuild` is linked to a copy already on the machine. On a normal machine, `npm install` provides it.
 - **Randomness:** The rules engine never calls `Math.random`. It takes an `Rng` function, so tests use a fixed seed (`seededRng`) and real games use the phone's crypto random source (`defaultRng`).
 - **QR codes:** A small QR generator library for display, and a camera-based scanner for joining (DECIDE which library).
 
@@ -72,7 +73,8 @@ Recommended: **1** for v1, with **2** planned. Each client should only ever rece
 - **Hidden decks:** Never sent to any player view, never rendered, no count or animation, including on the host's phone. The rules engine keeps them in `DealState.hiddenDecks`, separate from the seats. The only UI is the "Swap cards" option in round 1 of 2 and 3 player games.
 - **Quick rules:** Pure UI state on one phone (`src/ui/`). Opening it sends no action to the session, so it cannot pause or affect other players. Content is loaded from `src/content/quick-rules.md`.
 - **Pop-ups queue:** Several pop-ups can come from one move (a slap, then a player going out, then the round end). They are shown one after another, never dropped. Going-out pop-ups come from `playerOut` events; the last two are combined into one pop-up from `roundEnded`.
-- **Vote result pop-up:** Driven by a `voteResolved` event carrying the vote kind, the result, and whether it was a majority or the host. Every phone shows "Majority says… YES/NO" or "Host says… YES/NO".
+- **Vote result pop-up:** Driven by a `voteResolved` event carrying the vote kind, the result, the value (target votes), and `decidedBy` (`majority` or `host`). Every phone shows "Majority says… YES/NO" or "Host says… YES/NO".
+- **Player views:** `playerView(session, playerId)` (`src/session/view.ts`) is the only thing a phone receives. It has the player's own hand, card counts for everyone else, the current trick, a waste-pile count, scores, votes (who has voted, and only your own ballot), and pause requests (all of them for the host, only your own for others). It never contains the hidden decks in any form. A test walks whole rounds at 2, 3, 5 and 8 players and checks every view at every step.
 
 ## 6. Data model (draft)
 
@@ -82,7 +84,7 @@ Recommended: **1** for v1, with **2** planned. Each client should only ever rece
 - `Game` also tracks `dealMode`, `dealDirection` (fixed to clockwise), `jokerRuleEnabled` (host setup option), `jokerTotal` (shown at game start), `ultimateTriggered`, `ultimateLabels` (`winner`, `loser`), `pauseTimeLimit` (optional).
 - `Event` (examples): `trickResolved`, `slapped`, `playerOut`, `roundEnded`, `scoreUpdated`, `requestPending`, `gamePaused`, `gameResumed`, `voteResolved` (kind, result, `decidedBy`: `majority` or `host`).
 
-Final field names are for the Phase 1 design review, not fixed yet.
+The real types now live in `src/session/types.ts` (`Session`, `SessionAction`, `SessionEvent`, `LogEntry`), section 9b. The old drafts in `src/rules/types.ts` were removed; it now only holds `PlayerId`.
 
 ## 6a. Game record and trivia (draft)
 
@@ -155,9 +157,29 @@ The `content/` folder keeps catch-phrases and emojis in one editable place, sinc
 | `src/rules/play.ts` | Trick play: legal cards, follow suit, slaps, jokers (including joker leads and joker last cards), next leader, going out, the final-two rule (`pickUpWastePile`, `forfeit`), round end with finishing order and shared second-last place. Returns `PlayEvent`s (`cardPlayed`, `jokerPlayed`, `slapped`, `trickResolved`, `playerOut`, `finalTwoChoice`, `wastePilePickedUp`, `forfeited`, `roundEnded`) for the UI and the trivia log |
 | `src/rules/types.ts` | Draft `Game`, `Player`, `Trick`, `Vote` and `Action` types |
 
+`play.ts` also has the take-cards request (`PROJECT.md` 4.2): `takeAllowed` (why not, or null), `betweenTricks`, and `takeCards` (moves every card, marks the giver out with the next place, picks the next leader if needed; event `cardsTaken` with a count, never card ids).
+
 `scoring.ts` `scoreRound` takes an optional `sharedSecondLast` pair: both get the points for place (players − 1).
 
-Next to build: the session layer (rounds, votes, pause, results, target score, Ultimate Round, event log).
+## 9b. Session layer modules (built)
+
+Plain TypeScript in `src/session/`, no Svelte. It ties the rules together into a whole game and runs on the host's phone (or the one phone in pass-and-play).
+
+| File | What it does |
+|---|---|
+| `src/session/types.ts` | `Session` (the full game state), `SessionAction` (everything a player can send, each with `by`), `SessionEvent`, `LogEntry`, `RoundRecord`, `SessionEnd` |
+| `src/session/session.ts` | `createSession(setup, rng)` and `applyAction(session, action, rng)`: checks who may act and when, runs the round flow (deal, reshuffle window and vote, swap, missing suits, Reaction Tap, winner picks leader, play), votes (reshuffle, target, Ultimate; majority, host on no majority, host can close early), pause (host pause and resume, requests, optional time limit via a `tick` action), results screen (ready up, host moves on or ends), target reached starts an automatic Ultimate vote, the Ultimate Round (outside the score, titles), and `finalStandings` |
+| `src/session/view.ts` | `playerView`: what one phone may see (section 5a) |
+| `src/session/trivia.ts` | `computeTrivia(log, players)`: every stat in `PROJECT.md` section 11, computed from the event log |
+| `src/session/record.ts` | `buildGameRecord`, `addGameToProfiles` (once per game, keyed by record id), `profileRivals`, `sessionCsv`, `profileCsv` |
+
+- **Flow:** `dealing` → `reshuffle` → `swap` (2 and 3 players) → `reactionTap` or `chooseLeader` (if needed) → `playing` → `results` (or `gameOver` after the Ultimate Round).
+- **Events:** every action returns its events, and they are also added to `session.log`, each stamped with its round. Trivia and the game record are built only from the log.
+- **Take-cards requests:** actions `requestTake`, `answerTake` (the asked player), `withdrawTake`. Stored in `session.takeRequests`. Agreed requests are carried out, oldest first, the moment play is between tricks; requests that can no longer happen are cancelled (`takeCancelled`). The leader's first card is blocked while a request is waiting for an answer. `playerView.myTakeRequests` shows a request only to the two players in it.
+- **Target vote window:** `targetVoteAllowed(session)`: round 1 before it starts (`dealing` or `reshuffle`), or `results`; never once a target or the Ultimate Round is agreed. Dealing waits while a vote is open. `playerView` exposes it as `canProposeTarget`.
+- **Illegal actions throw** an `Error` with a short message the UI shows (the testbed shows "Not allowed").
+- **Time:** the session never reads the clock. Pause actions carry `at` (ms), and the UI sends `tick` once a second while paused so the optional time limit can end the pause.
+- **Saving:** the session layer returns plain data. Saving the record and profiles to phone storage, and opening the share sheet, are UI jobs (Phase 2). The testbed keeps profiles in the browser's local storage to try profile history across games.
 
 Every function is pure: it returns a new state and never changes the one passed in.
 
@@ -167,7 +189,8 @@ Every function is pure: it returns a new state and never changes the one passed 
 
 - **Until the Svelte UI exists (Phase 1):** a single self-contained test page, `testbed/index.html`. It bundles the real rules engine (`src/rules/`) with esbuild into one file, so it runs the same code the game will use. It is published as a private link the user opens on their phone.
 - **Files:** `testbed/main.ts` (test UI), `testbed/template.html` (styles), `testbed/build.mjs` (bundles them into `testbed/index.html`). Build with `npm run testbed`. Before publishing, it is played through automatically in a headless browser across 2 to 8 players.
-- **Testbed features:** pick 2 to 8 players and the joker rule; see every hand (it is a test tool, so all hands are visible, but hidden decks show only a count, to check sizes); deal; swap; play cards with illegal moves blocked; slaps, jokers, final-two pick-up or forfeit; a log of every event; round scores. A seed box so the same deal can be replayed when reporting a bug.
+- **Testbed features (session layer version):** runs the real session layer, so every rule goes through the same code the app will use. Adds: votes for every player (reshuffle, target, Ultimate) with host close and host decide, pause and resume, pause requests, the optional pause time limit with a countdown, the results screen (ready up, trivia, per-player stats), the target and Ultimate flow, the end of the session with standings, titles, the game record, saved profiles, CSV (copied to the clipboard and shown, because the share sheet and downloads are blocked inside a published page), and a "What a player's phone receives" panel that checks the hidden decks never reach a player.
+- **Earlier testbed features:** pick 2 to 8 players and the joker rule; see every hand (it is a test tool, so all hands are visible, but hidden decks show only a count, to check sizes); deal; swap; play cards with illegal moves blocked; slaps, jokers, final-two pick-up or forfeit; a log of every event; round scores. A seed box so the same deal can be replayed when reporting a bug.
 - **From Phase 2:** the real app, built with Vite and published to GitHub Pages (or a preview link) for each change.
 - Every test build comes with a short checklist: what to try and what should happen.
 

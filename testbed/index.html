@@ -55,6 +55,22 @@
   .place { background:var(--accent); color:#1a1a1a; border-radius:8px; padding:1px 7px; font-weight:800; font-size:13px; }
   .place.loser { background:#d62f2f; color:#fff; }
   .winner { font-size:22px; font-weight:800; color:var(--accent); margin:4px 0 8px; }
+  .votebox { background:#2a2350; border:2px solid #9b8cff; border-radius:12px; padding:10px; margin:10px 0; }
+  .votebox h2 { margin-top:4px; }
+  .pausebar { background:#0c1d14; border-radius:12px; padding:4px 8px; margin:8px 0; }
+  .paused { position:fixed; inset:0; background:rgba(5,15,10,.92); display:flex; align-items:center; justify-content:center; padding:20px; z-index:9; text-align:center; }
+  .paused > div { max-width:420px; }
+  .paused .ptitle { font-size:56px; font-weight:900; color:var(--accent); letter-spacing:4px; }
+  .popup.vote > div { background:#9b8cff; color:#120d2e; }
+  .popup .pline.phrase { font-style:italic; font-size:15px; margin-top:12px; }
+  .viewas { background:#0c1d14; border-radius:12px; padding:8px; margin:12px 0; font-size:14px; }
+  .viewas summary { cursor:pointer; color:var(--muted); }
+  .scroll { overflow-x:auto; }
+  table.tight td, table.tight th { padding:6px 4px; font-size:13px; }
+  .csvbox { background:#0c1d14; border-radius:12px; padding:8px; margin:8px 0; }
+  .csvbox textarea { width:100%; font:12px/1.4 ui-monospace, monospace; background:#06120c; color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:6px; }
+  .takebox { background:#2b1f12; border:2px solid #d9963a; border-radius:12px; padding:8px; margin:8px 0; }
+  .takebox summary { cursor:pointer; font-weight:700; }
 </style>
 </head>
 <body>
@@ -62,6 +78,10 @@
 <script>
 "use strict";
 (() => {
+  var __defProp = Object.defineProperty;
+  var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+  var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+
   // src/rules/cards.ts
   var SUITS = ["clubs", "diamonds", "hearts", "spades"];
   var RANKS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
@@ -102,13 +122,13 @@
   function missingSuits(hand) {
     const held = /* @__PURE__ */ new Set();
     for (const c of hand) if (isStandard(c)) held.add(c.suit);
-    return SUITS.filter((s) => !held.has(s));
+    return SUITS.filter((s2) => !held.has(s2));
   }
   function cardLabel(card) {
     if (isJoker(card)) return "Joker";
-    const names = { 11: "J", 12: "Q", 13: "K", 14: "A" };
+    const names2 = { 11: "J", 12: "Q", 13: "K", 14: "A" };
     const symbols = { clubs: "\u2663", diamonds: "\u2666", hearts: "\u2665", spades: "\u2660" };
-    return `${names[card.rank] ?? String(card.rank)}${symbols[card.suit]}`;
+    return `${names2[card.rank] ?? String(card.rank)}${symbols[card.suit]}`;
   }
 
   // src/rules/rng.ts
@@ -162,21 +182,21 @@
     }
     const count = hiddenDeckCount(players);
     const size = hiddenDeckSize(players, shuffledDeck.length);
-    const hiddenDecks2 = {};
-    for (let i = 0; i < count; i++) hiddenDecks2[hiddenSeatId(i)] = [];
+    const hiddenDecks = {};
+    for (let i = 0; i < count; i++) hiddenDecks[hiddenSeatId(i)] = [];
     let pos = 0;
-    for (let round2 = 0; round2 < size; round2++) {
+    for (let round = 0; round < size; round++) {
       for (let i = 0; i < count; i++) {
-        hiddenDecks2[hiddenSeatId(i)].push(shuffledDeck[pos++]);
+        hiddenDecks[hiddenSeatId(i)].push(shuffledDeck[pos++]);
       }
     }
-    const hands2 = {};
-    for (const s of playersClockwise) hands2[s] = [];
+    const hands = {};
+    for (const s2 of playersClockwise) hands[s2] = [];
     return {
       seats: playersClockwise.slice(),
-      hiddenDecks: hiddenDecks2,
+      hiddenDecks,
       remaining: shuffledDeck.slice(pos),
-      hands: hands2,
+      hands,
       mode,
       nextSeat: null
     };
@@ -188,12 +208,12 @@
     if (!state.seats.includes(seat)) throw new Error(`Unknown seat: ${seat}`);
   }
   function giveTopCard(state, seat) {
-    const [top, ...rest] = state.remaining;
-    if (!top) throw new Error("No cards left to deal");
+    const [top2, ...rest] = state.remaining;
+    if (!top2) throw new Error("No cards left to deal");
     return {
       ...state,
       remaining: rest,
-      hands: { ...state.hands, [seat]: [...state.hands[seat] ?? [], top] }
+      hands: { ...state.hands, [seat]: [...state.hands[seat] ?? [], top2] }
     };
   }
   function nextClockwise(state, seat) {
@@ -215,9 +235,9 @@
     return { ...dealt, nextSeat: nextClockwise(dealt, seat) };
   }
   function autoDealAll(state) {
-    let s = state;
-    while (!isDealComplete(s)) s = autoDealStep(s);
-    return s;
+    let s2 = state;
+    while (!isDealComplete(s2)) s2 = autoDealStep(s2);
+    return s2;
   }
   function manualDealCard(state, seat) {
     if (state.mode !== "manual") throw new Error("Not in manual deal mode");
@@ -260,9 +280,9 @@
     }
     return out;
   }
-  function addScores(totals2, round2) {
-    const out = { ...totals2 };
-    for (const [id, pts] of Object.entries(round2)) out[id] = (out[id] ?? 0) + pts;
+  function addScores(totals, round) {
+    const out = { ...totals };
+    for (const [id, pts] of Object.entries(round)) out[id] = (out[id] ?? 0) + pts;
     return out;
   }
 
@@ -282,12 +302,6 @@
     if (no * 2 > playerCount) return "failed";
     return "hostDecides";
   }
-  function resolveVote(tally, hostSaysYes) {
-    if (tally === "passed") return true;
-    if (tally === "failed") return false;
-    if (hostSaysYes === void 0) throw new Error("No majority: the host must decide");
-    return hostSaysYes;
-  }
 
   // src/rules/round.ts
   function dealerFor(setup) {
@@ -305,7 +319,7 @@
   function swapAllowed(players) {
     return players === 2 || players === 3;
   }
-  function hiddenSwap(hand, hiddenDecks2, cardIds, rng2) {
+  function hiddenSwap(hand, hiddenDecks, cardIds, rng2) {
     if (cardIds.length > MAX_SWAP) throw new Error(`Swap at most ${MAX_SWAP} cards`);
     if (new Set(cardIds).size !== cardIds.length) throw new Error("Same card chosen twice");
     const removed = [];
@@ -315,14 +329,14 @@
       removed.push(card);
     }
     const pool = [];
-    for (const [deck, cards] of Object.entries(hiddenDecks2)) {
+    for (const [deck, cards] of Object.entries(hiddenDecks)) {
       for (const card of cards) pool.push({ deck, card });
     }
     if (pool.length < cardIds.length) throw new Error("Not enough hidden cards to swap");
     const drawn = shuffle(pool, rng2).slice(0, cardIds.length);
     const drawnIds = new Set(drawn.map((d) => d.card.id));
     const newDecks = {};
-    for (const [deck, cards] of Object.entries(hiddenDecks2)) {
+    for (const [deck, cards] of Object.entries(hiddenDecks)) {
       newDecks[deck] = cards.filter((c) => !drawnIds.has(c.id));
     }
     const removedIds = new Set(cardIds);
@@ -332,10 +346,10 @@
       removed
     };
   }
-  function missingSuitPlayers(players, hands2) {
+  function missingSuitPlayers(players, hands) {
     const out = [];
     for (const p of players) {
-      const suits = missingSuits(hands2[p] ?? []);
+      const suits = missingSuits(hands[p] ?? []);
       if (suits.length > 0) out.push({ player: p, suits });
     }
     return out;
@@ -348,8 +362,8 @@
     if (slowest.length === 1) return { kind: "decided", slowest: slowest[0] };
     return { kind: "replay", players: slowest };
   }
-  function decideLeader(setup, hands2) {
-    const missing = missingSuitPlayers(setup.players, hands2);
+  function decideLeader(setup, hands) {
+    const missing = missingSuitPlayers(setup.players, hands);
     if (missing.length === 1) {
       return { kind: "leader", leader: missing[0].player, reason: "missingSuit" };
     }
@@ -363,12 +377,12 @@
   function handOf(state, p) {
     return state.hands[p] ?? [];
   }
-  function activeFrom(order, hands2, from) {
+  function activeFrom(order, hands, from) {
     const start = Math.max(0, order.indexOf(from));
     const out = [];
     for (let i = 0; i < order.length; i++) {
       const p = order[(start + i) % order.length];
-      if ((hands2[p] ?? []).length > 0) out.push(p);
+      if ((hands[p] ?? []).length > 0) out.push(p);
     }
     return out;
   }
@@ -414,10 +428,10 @@
       events
     };
   }
-  function startPlay(order, hands2, leader) {
+  function startPlay(order, hands, leader) {
     if (!order.includes(leader)) throw new Error(`Leader is not a player: ${leader}`);
-    if ((hands2[leader] ?? []).length === 0) throw new Error("Leader has no cards");
-    const base = { order: order.slice(), hands: { ...hands2 } };
+    if ((hands[leader] ?? []).length === 0) throw new Error("Leader has no cards");
+    const base = { order: order.slice(), hands: { ...hands } };
     return {
       ...base,
       turn: leader,
@@ -452,31 +466,31 @@
       throw new Error("You must follow the led suit");
     }
     const events = [];
-    const hands2 = { ...state.hands, [player]: hand.filter((c) => c.id !== cardId) };
+    const hands = { ...state.hands, [player]: hand.filter((c) => c.id !== cardId) };
     const trick = state.trick;
     const finalTwo = trick.participants.length === 2;
     if (isJoker(card)) {
       const asLeader = trick.plays.length === 0;
       events.push({ type: "jokerPlayed", player, asLeader });
       const nextTrick2 = { ...trick, acted: [...trick.acted, player] };
-      const s = { ...state, hands: hands2, trick: nextTrick2, usedJokers: [...state.usedJokers, card] };
-      if (finalTwo && (hands2[player] ?? []).length === 0 && trick.acted.length === 0) {
+      const s2 = { ...state, hands, trick: nextTrick2, usedJokers: [...state.usedJokers, card] };
+      if (finalTwo && (hands[player] ?? []).length === 0 && trick.acted.length === 0) {
         const other = otherOf(trick.participants, player);
-        const otherHand = hands2[other] ?? [];
+        const otherHand = hands[other] ?? [];
         const order = [...state.finished, player, other];
         if (otherHand.length === 1 && isJoker(otherHand[0])) {
           const otherJoker = otherHand[0];
           events.push({ type: "jokerPlayed", player: other, asLeader: false });
           const both = {
-            ...s,
-            hands: { ...hands2, [other]: [] },
-            usedJokers: [...s.usedJokers, otherJoker]
+            ...s2,
+            hands: { ...hands, [other]: [] },
+            usedJokers: [...s2.usedJokers, otherJoker]
           };
           return endRound(both, events, order, state.wastePile, { sharedSecondLast: [player, other] });
         }
-        return endRound(s, events, order, state.wastePile);
+        return endRound(s2, events, order, state.wastePile);
       }
-      return finishTurn(s, player, events);
+      return finishTurn(s2, player, events);
     }
     const std = card;
     events.push({ type: "cardPlayed", player, card: std });
@@ -487,19 +501,19 @@
         plays: [{ player, card: std }],
         acted: [...trick.acted, player]
       };
-      return finishTurn({ ...state, hands: hands2, trick: nextTrick2 }, player, events);
+      return finishTurn({ ...state, hands, trick: nextTrick2 }, player, events);
     }
     const plays = [...trick.plays, { player, card: std }];
     if (std.suit !== trick.ledSuit) {
       const high = ledSuitPlaysHighFirst(trick)[0];
       const pickup = plays.map((p) => p.card);
-      const afterHands = { ...hands2, [high.player]: [...hands2[high.player] ?? [], ...pickup] };
+      const afterHands = { ...hands, [high.player]: [...hands[high.player] ?? [], ...pickup] };
       events.push({ type: "slapped", slapper: player, slapped: high.player, cardsPickedUp: pickup.length });
       const resolvedTrick = { ...trick, plays, acted: [...trick.acted, player] };
       return resolveTrick({ ...state, hands: afterHands, trick: resolvedTrick }, high.player, [], events);
     }
     const nextTrick = { ...trick, plays, acted: [...trick.acted, player] };
-    return finishTurn({ ...state, hands: hands2, trick: nextTrick }, player, events);
+    return finishTurn({ ...state, hands, trick: nextTrick }, player, events);
   }
   function finishTurn(state, player, events) {
     const trick = state.trick;
@@ -596,18 +610,18 @@
   function pickUpWastePile(state, player) {
     if (state.pendingFinalTwo !== player) throw new Error(`${player} has no pick-up choice`);
     const cards = state.wastePile;
-    const hands2 = { ...state.hands, [player]: [...handOf(state, player), ...cards] };
-    const s = {
+    const hands = { ...state.hands, [player]: [...handOf(state, player), ...cards] };
+    const s2 = {
       ...state,
-      hands: hands2,
+      hands,
       wastePile: [],
       pendingFinalTwo: null,
       forfeitAllowed: state.forfeitAllowed.includes(player) ? state.forfeitAllowed : [...state.forfeitAllowed, player],
       turn: player,
-      trick: newTrick({ order: state.order, hands: hands2 }, player)
+      trick: newTrick({ order: state.order, hands }, player)
     };
     return {
-      state: s,
+      state: s2,
       events: [
         { type: "wastePilePickedUp", player, cards: cards.length },
         { type: "trickResolved", nextLeader: player }
@@ -626,50 +640,1377 @@
     const events = [{ type: "forfeited", player }];
     return endRound(state, events, [...state.finished, other, player], state.wastePile, { forfeitedBy: player });
   }
+  function playersHoldingCards(state) {
+    return state.order.filter((p) => handOf(state, p).length > 0);
+  }
+  function betweenTricks(state) {
+    return !state.over && state.pendingFinalTwo === null && state.trick.acted.length === 0;
+  }
+  function takeAllowed(state, requester, target) {
+    if (state.over) return "The round is over";
+    if (requester === target) return "You cannot take your own cards";
+    if (!state.order.includes(requester) || !state.order.includes(target)) return "Unknown player";
+    if (handOf(state, requester).length === 0) return "You are out of this round";
+    if (handOf(state, target).length === 0) return "That player is already out";
+    if (playersHoldingCards(state).length < 3) return "Not allowed with only two players left";
+    return null;
+  }
+  function takeCards(state, requester, target) {
+    const why = takeAllowed(state, requester, target);
+    if (why) throw new Error(why);
+    if (!betweenTricks(state)) throw new Error("Cards can only be taken between tricks");
+    const taken = handOf(state, target);
+    const hands = { ...state.hands, [requester]: [...handOf(state, requester), ...taken], [target]: [] };
+    const finished = [...state.finished, target];
+    const events = [
+      { type: "cardsTaken", requester, target, count: taken.length },
+      { type: "playerOut", player: target, place: finished.length }
+    ];
+    let leader = state.turn;
+    if (leader === target) leader = activeFrom(state.order, hands, target)[0];
+    const base = { order: state.order, hands };
+    const stillIn = state.order.filter((p) => (hands[p] ?? []).length > 0);
+    return {
+      state: {
+        ...state,
+        hands,
+        finished,
+        forfeitAllowed: state.forfeitAllowed.filter((p) => stillIn.includes(p)),
+        turn: leader,
+        trick: newTrick(base, leader)
+      },
+      events
+    };
+  }
+
+  // src/session/session.ts
+  var ROUND_PHASES = ["dealing", "reshuffle", "swap", "reactionTap", "chooseLeader", "playing"];
+  var Out = class {
+    constructor() {
+      __publicField(this, "entries", []);
+    }
+    emit(s2, event) {
+      this.entries.push({ round: s2.round, ultimate: s2.ultimateRound, event });
+    }
+  };
+  function fail(message) {
+    throw new Error(message);
+  }
+  function nameOf(s2, id) {
+    if (id === null) return "nobody";
+    return s2.players.find((p) => p.id === id)?.sessionName ?? id;
+  }
+  function assertPlayer(s2, id) {
+    if (!s2.order.includes(id)) fail(`Unknown player: ${id}`);
+  }
+  function assertHost(s2, by, what) {
+    if (by !== s2.hostId) fail(`Only the host can ${what}`);
+  }
+  function assertPhase(s2, ...phases) {
+    if (!phases.includes(s2.phase)) fail(`Not allowed right now (${s2.phase})`);
+  }
+  function roundSetup(s2) {
+    return {
+      round: s2.round,
+      players: s2.order,
+      hostId: s2.hostId,
+      jokerRuleEnabled: s2.jokerRuleEnabled,
+      ...s2.previous ? { previous: s2.previous } : {}
+    };
+  }
+  function createSession(setup, rng2) {
+    const n = setup.players.length;
+    assertPlayerCount(n);
+    const ids = setup.players.map((p) => p.id);
+    if (new Set(ids).size !== n) fail("Player ids must be unique");
+    if (!ids.includes(setup.hostId)) fail("The host must be one of the players");
+    for (const p of setup.players) {
+      if (!p.profileName.trim()) fail("Every player needs a profile name");
+    }
+    const jokerRuleEnabled = setup.jokerRuleEnabled ?? true;
+    const limit = setup.pauseTimeLimitSec ?? null;
+    if (limit !== null && !(limit > 0)) fail("Pause time limit must be more than 0 seconds");
+    const base = {
+      hostId: setup.hostId,
+      players: setup.players.map((p) => ({
+        id: p.id,
+        profileName: p.profileName.trim(),
+        sessionName: p.sessionName?.trim() || p.profileName.trim()
+      })),
+      order: ids,
+      jokerRuleEnabled,
+      jokerTotal: jokerCount(n, jokerRuleEnabled),
+      phase: "dealing",
+      round: 0,
+      ultimateRound: false,
+      previous: null,
+      dealer: setup.hostId,
+      deal: null,
+      dealMode: "auto",
+      hands: {},
+      hiddenDecks: {},
+      reshuffleUsed: false,
+      swapDone: [],
+      tap: null,
+      play: null,
+      takeRequests: [],
+      vote: null,
+      paused: false,
+      pausedAt: null,
+      pauseTimeLimitSec: limit,
+      pauseRequests: [],
+      scores: Object.fromEntries(ids.map((id) => [id, 0])),
+      target: null,
+      targetReachedHandled: false,
+      rounds: [],
+      ready: [],
+      ultimateLabels: null,
+      ended: null,
+      log: []
+    };
+    const out = new Out();
+    out.emit({ ...base, round: 1 }, {
+      type: "gameStarted",
+      players: ids,
+      hostId: setup.hostId,
+      jokerRuleEnabled,
+      jokerTotal: base.jokerTotal
+    });
+    const s2 = startNextRound(base, rng2, out);
+    return { session: { ...s2, log: out.entries }, events: out.entries.map((e) => e.event) };
+  }
+  function startNextRound(prev, rng2, out) {
+    let s2 = {
+      ...prev,
+      round: prev.round + 1,
+      phase: "dealing",
+      hands: {},
+      reshuffleUsed: false,
+      swapDone: [],
+      tap: null,
+      play: null,
+      takeRequests: [],
+      vote: null,
+      ready: [],
+      pauseRequests: []
+    };
+    const dealer = dealerFor(roundSetup(s2));
+    const deal = shuffleAndStartDeal(roundSetup(s2), rng2, "auto");
+    s2 = { ...s2, dealer, deal, dealMode: "auto", hiddenDecks: deal.hiddenDecks };
+    out.emit(s2, { type: "roundStarted", round: s2.round, dealer, ultimate: s2.ultimateRound });
+    return s2;
+  }
+  function applyAction(session, action, rng2) {
+    const out = new Out();
+    const next = reduce(session, action, rng2, out);
+    return {
+      session: { ...next, log: [...session.log, ...out.entries] },
+      events: out.entries.map((e) => e.event)
+    };
+  }
+  function reduce(s2, a, rng2, out) {
+    if (s2.phase === "gameOver") fail("The session has ended");
+    if ("by" in a) assertPlayer(s2, a.by);
+    if (s2.paused && a.type !== "resume" && a.type !== "setPauseTimeLimit" && a.type !== "tick") {
+      fail("The game is paused");
+    }
+    switch (a.type) {
+      // ----- Dealing -----
+      case "setDealMode": {
+        dealerOnly(s2, a.by);
+        const deal = setDealMode(s2.deal, a.mode);
+        out.emit(s2, { type: "dealModeChanged", mode: a.mode });
+        return { ...s2, deal, dealMode: a.mode };
+      }
+      case "autoDealStart":
+        dealerOnly(s2, a.by);
+        return { ...s2, deal: autoDealStart(s2.deal, a.firstSeat) };
+      case "autoDealStep":
+        dealerOnly(s2, a.by);
+        return afterDealStep({ ...s2, deal: autoDealStep(s2.deal) }, out);
+      case "autoDealAll":
+        dealerOnly(s2, a.by);
+        return afterDealStep({ ...s2, deal: autoDealAll(s2.deal) }, out);
+      case "manualDealCard":
+        dealerOnly(s2, a.by);
+        return afterDealStep({ ...s2, deal: manualDealCard(s2.deal, a.seat) }, out);
+      // ----- Votes -----
+      case "callVote":
+        return callVote(s2, a.by, a.kind, a.value ?? null, out);
+      case "castVote": {
+        const v = s2.vote ?? fail("There is no vote to answer");
+        if (v.awaitingHost) fail("Voting is closed: the host is deciding");
+        const ballots = { ...v.ballots, [a.by]: a.ballot };
+        out.emit(s2, { type: "voteCast", kind: v.kind, by: a.by, ballot: a.ballot });
+        const s22 = { ...s2, vote: { ...v, ballots } };
+        const tally = tallyVote(ballots, s2.order.length);
+        if (tally === "passed") return resolveVote(s22, true, "majority", rng2, out);
+        if (tally === "failed") return resolveVote(s22, false, "majority", rng2, out);
+        if (Object.keys(ballots).length === s2.order.length) return needHost(s22, out);
+        return s22;
+      }
+      case "closeVote": {
+        assertHost(s2, a.by, "close a vote");
+        const v = s2.vote ?? fail("There is no vote to close");
+        if (v.awaitingHost) return s2;
+        const tally = tallyVote(v.ballots, s2.order.length);
+        if (tally === "passed") return resolveVote(s2, true, "majority", rng2, out);
+        if (tally === "failed") return resolveVote(s2, false, "majority", rng2, out);
+        return needHost(s2, out);
+      }
+      case "hostDecides": {
+        assertHost(s2, a.by, "decide a vote");
+        const v = s2.vote ?? fail("There is no vote to decide");
+        if (!v.awaitingHost) fail("The vote is still open, or it has a majority");
+        return resolveVote(s2, a.yes, "host", rng2, out);
+      }
+      // ----- Round start -----
+      case "startRound":
+        assertHost(s2, a.by, "start the round");
+        assertPhase(s2, "reshuffle");
+        if (s2.vote) fail("Finish the reshuffle vote first");
+        out.emit(s2, { type: "reshuffleWindowClosed" });
+        return afterReshuffleWindow(s2, out);
+      case "swap": {
+        assertPhase(s2, "swap");
+        if (s2.swapDone.includes(a.by)) fail(`${nameOf(s2, a.by)} has already swapped this round`);
+        const res = hiddenSwap(s2.hands[a.by] ?? [], s2.hiddenDecks, a.cardIds, rng2);
+        out.emit(s2, { type: "swapped", player: a.by, count: res.removed.length });
+        const s22 = {
+          ...s2,
+          hands: { ...s2.hands, [a.by]: res.hand },
+          hiddenDecks: res.hiddenDecks,
+          swapDone: [...s2.swapDone, a.by]
+        };
+        if (s22.order.every((p) => s22.swapDone.includes(p))) return decideLeaderStep(s22, out);
+        return s22;
+      }
+      case "reactionTap": {
+        assertPhase(s2, "reactionTap");
+        const tap = s2.tap;
+        if (!tap.players.includes(a.by)) fail(`${nameOf(s2, a.by)} is not in this Reaction Tap`);
+        if (tap.results[a.by]) fail(`${nameOf(s2, a.by)} has already tapped`);
+        if (!a.falseStart && !(a.ms >= 0)) fail("Reaction time must be 0 ms or more");
+        out.emit(s2, { type: "reactionTapped", player: a.by, ms: a.ms, falseStart: a.falseStart });
+        const results = { ...tap.results, [a.by]: { ms: a.ms, falseStart: a.falseStart } };
+        if (Object.keys(results).length < tap.players.length) return { ...s2, tap: { ...tap, results } };
+        const outcome = resolveReactionTap(
+          tap.players.map((p) => ({ player: p, ms: results[p].ms, falseStart: results[p].falseStart }))
+        );
+        if (outcome.kind === "replay") {
+          out.emit(s2, { type: "reactionTapReplay", players: outcome.players });
+          return { ...s2, tap: { players: outcome.players, results: {} } };
+        }
+        return beginPlay({ ...s2, tap: null }, outcome.slowest, "reactionTap", out);
+      }
+      case "chooseLeader": {
+        assertPhase(s2, "chooseLeader");
+        const winner = s2.previous.winner;
+        if (a.by !== winner) fail(`Only ${nameOf(s2, winner)} (last round's winner) picks who leads`);
+        assertPlayer(s2, a.leader);
+        return beginPlay(s2, a.leader, "winnerChose", out);
+      }
+      // ----- Play -----
+      case "playCard":
+        assertPhase(s2, "playing");
+        if (betweenTricks(s2.play) && s2.takeRequests.some((r) => !r.agreed)) {
+          fail("Waiting for a take-cards request to be answered before the next trick");
+        }
+        return afterPlay(s2, playCard(s2.play, a.by, a.cardId), out);
+      case "pickUpWastePile":
+        assertPhase(s2, "playing");
+        return afterPlay(s2, pickUpWastePile(s2.play, a.by), out);
+      case "forfeit":
+        assertPhase(s2, "playing");
+        return afterPlay(s2, forfeit(s2.play, a.by), out);
+      // ----- Take-cards request -----
+      case "requestTake": {
+        assertPhase(s2, "playing");
+        const why = takeAllowed(s2.play, a.by, a.target);
+        if (why) fail(why);
+        if (s2.takeRequests.some((r) => r.requester === a.by && r.target === a.target)) {
+          fail(`You have already asked ${nameOf(s2, a.target)}`);
+        }
+        out.emit(s2, { type: "takeRequested", requester: a.by, target: a.target });
+        return { ...s2, takeRequests: [...s2.takeRequests, { requester: a.by, target: a.target, agreed: false }] };
+      }
+      case "answerTake": {
+        assertPhase(s2, "playing");
+        const req = s2.takeRequests.find((r) => r.requester === a.requester && r.target === a.by && !r.agreed);
+        if (!req) fail("No take-cards request to answer");
+        out.emit(s2, { type: "takeAnswered", requester: a.requester, target: a.by, accepted: a.accept });
+        const rest = s2.takeRequests.filter((r) => r !== req);
+        const takeRequests = a.accept ? [...rest, { ...req, agreed: true }] : rest;
+        return processTakes({ ...s2, takeRequests }, out);
+      }
+      case "withdrawTake": {
+        assertPhase(s2, "playing");
+        const req = s2.takeRequests.find((r) => r.requester === a.by && r.target === a.target);
+        if (!req) fail("No request to withdraw");
+        out.emit(s2, { type: "takeCancelled", requester: a.by, target: a.target, reason: "withdrawn" });
+        return { ...s2, takeRequests: s2.takeRequests.filter((r) => r !== req) };
+      }
+      // ----- Pause -----
+      case "pause":
+        assertHost(s2, a.by, "pause");
+        return doPause(s2, a.at, null, out);
+      case "requestPause": {
+        if (a.by === s2.hostId) fail("The host can pause directly");
+        pauseAllowed(s2);
+        if (s2.pauseRequests.includes(a.by)) fail("You have already asked to pause");
+        out.emit(s2, { type: "pauseRequested", by: a.by });
+        return { ...s2, pauseRequests: [...s2.pauseRequests, a.by] };
+      }
+      case "respondPause": {
+        assertHost(s2, a.by, "answer a pause request");
+        if (!s2.pauseRequests.includes(a.requester)) fail("No pause request from that player");
+        if (a.approve) return doPause(s2, a.at, a.requester, out);
+        out.emit(s2, { type: "pauseDeclined", requester: a.requester });
+        return { ...s2, pauseRequests: s2.pauseRequests.filter((p) => p !== a.requester) };
+      }
+      case "resume":
+        assertHost(s2, a.by, "resume");
+        if (!s2.paused) fail("The game is not paused");
+        out.emit(s2, { type: "resumed", reason: "host" });
+        return { ...s2, paused: false, pausedAt: null };
+      case "setPauseTimeLimit": {
+        assertHost(s2, a.by, "set the pause time limit");
+        if (a.seconds !== null && !(a.seconds > 0)) fail("Pause time limit must be more than 0 seconds");
+        out.emit(s2, { type: "pauseTimeLimitSet", seconds: a.seconds });
+        return { ...s2, pauseTimeLimitSec: a.seconds };
+      }
+      case "tick": {
+        if (!s2.paused || s2.pauseTimeLimitSec === null || s2.pausedAt === null) return s2;
+        if (a.at - s2.pausedAt < s2.pauseTimeLimitSec * 1e3) return s2;
+        out.emit(s2, { type: "resumed", reason: "timeLimit" });
+        return { ...s2, paused: false, pausedAt: null };
+      }
+      // ----- Results screen -----
+      case "readyUp":
+        assertPhase(s2, "results");
+        if (s2.ready.includes(a.by)) return s2;
+        out.emit(s2, { type: "playerReady", player: a.by });
+        return { ...s2, ready: [...s2.ready, a.by] };
+      case "advance":
+        assertHost(s2, a.by, "start the next round");
+        assertPhase(s2, "results");
+        if (s2.vote) fail("Finish the vote first");
+        return startNextRound(s2, rng2, out);
+      case "endSession":
+        assertHost(s2, a.by, "end the session");
+        assertPhase(s2, "results");
+        if (s2.vote) fail("Finish the vote first");
+        return endSession(s2, "hostEnded", out);
+    }
+  }
+  function dealerOnly(s2, by) {
+    assertPhase(s2, "dealing");
+    if (s2.vote) fail("Finish the vote first");
+    if (by !== s2.dealer) fail(`Only the dealer (${nameOf(s2, s2.dealer)}) can deal`);
+  }
+  function afterDealStep(s2, out) {
+    const deal = s2.deal;
+    if (!isDealComplete(deal)) return s2;
+    const hands = deal.hands;
+    out.emit(s2, {
+      type: "dealComplete",
+      handSizes: Object.fromEntries(s2.order.map((p) => [p, (hands[p] ?? []).length]))
+    });
+    const s22 = { ...s2, deal: null, hands, hiddenDecks: deal.hiddenDecks };
+    if (s22.reshuffleUsed) return afterReshuffleWindow(s22, out);
+    return { ...s22, phase: "reshuffle" };
+  }
+  function callVote(s2, by, kind, value, out) {
+    if (s2.vote) fail("A vote is already in progress");
+    if (kind === "reshuffle") {
+      if (s2.phase !== "reshuffle") fail("A reshuffle vote can only be called after the deal, before the round begins");
+      if (s2.reshuffleUsed) fail("Only one reshuffle vote per round");
+      value = null;
+    } else if (kind === "target") {
+      if (!targetVoteAllowed(s2)) {
+        if (s2.target !== null) fail("The target score has already been agreed");
+        if (s2.ultimateRound) fail("The Ultimate Round has already been agreed");
+        fail("A target vote can only happen before round 1 starts or on the results screen");
+      }
+      if (value === null || !Number.isInteger(value) || value < 1) fail("The target must be a whole number of points, 1 or more");
+    } else {
+      if (s2.phase !== "results") fail("This vote can only happen on the results screen");
+      if (s2.ultimateRound) fail("The Ultimate Round has already been agreed");
+      value = null;
+    }
+    out.emit(s2, { type: "voteCalled", kind, by, value });
+    return {
+      ...s2,
+      reshuffleUsed: kind === "reshuffle" ? true : s2.reshuffleUsed,
+      vote: { kind, calledBy: by, ballots: {}, value, awaitingHost: false }
+    };
+  }
+  function targetVoteAllowed(s2) {
+    if (s2.vote || s2.paused || s2.target !== null || s2.ultimateRound) return false;
+    if (s2.phase === "results") return true;
+    return s2.round === 1 && (s2.phase === "dealing" || s2.phase === "reshuffle");
+  }
+  function needHost(s2, out) {
+    const v = s2.vote;
+    out.emit(s2, { type: "voteNeedsHost", kind: v.kind });
+    return { ...s2, vote: { ...v, awaitingHost: true } };
+  }
+  function resolveVote(s2, result, decidedBy, rng2, out) {
+    const v = s2.vote;
+    out.emit(s2, { type: "voteResolved", kind: v.kind, result, decidedBy, value: v.value });
+    const s22 = { ...s2, vote: null };
+    switch (v.kind) {
+      case "reshuffle": {
+        if (!result) return afterReshuffleWindow(s22, out);
+        const deal = shuffleAndStartDeal(roundSetup(s22), rng2, "auto");
+        out.emit(s22, { type: "reshuffled", dealer: s22.dealer });
+        return { ...s22, phase: "dealing", deal, dealMode: "auto", hands: {}, hiddenDecks: deal.hiddenDecks };
+      }
+      case "target": {
+        if (!result) return s22;
+        return checkTarget({ ...s22, target: v.value, targetReachedHandled: false }, out);
+      }
+      case "ultimate": {
+        if (result) return { ...s22, ultimateRound: true };
+        if (v.calledBy === null) return endSession(s22, "ultimateVoteFailedAtTarget", out);
+        return s22;
+      }
+    }
+  }
+  function checkTarget(s2, out) {
+    if (s2.target === null || s2.targetReachedHandled || s2.ultimateRound) return s2;
+    const reached = s2.order.filter((p) => (s2.scores[p] ?? 0) >= s2.target);
+    if (reached.length === 0) return s2;
+    out.emit(s2, { type: "targetReached", players: reached, target: s2.target });
+    return callVote({ ...s2, targetReachedHandled: true }, null, "ultimate", null, out);
+  }
+  function afterReshuffleWindow(s2, out) {
+    if (swapAllowed(s2.order.length)) return { ...s2, phase: "swap", swapDone: [] };
+    return decideLeaderStep(s2, out);
+  }
+  function decideLeaderStep(s2, out) {
+    for (const m of missingSuitPlayers(s2.order, s2.hands)) {
+      out.emit(s2, { type: "missingSuitDeclared", player: m.player, suits: m.suits });
+    }
+    const d = decideLeader(roundSetup(s2), s2.hands);
+    if (d.kind === "leader") return beginPlay(s2, d.leader, d.reason, out);
+    if (d.kind === "reactionTap") {
+      out.emit(s2, { type: "reactionTapStarted", players: d.players });
+      return { ...s2, phase: "reactionTap", tap: { players: d.players, results: {} } };
+    }
+    return { ...s2, phase: "chooseLeader" };
+  }
+  function beginPlay(s2, leader, reason, out) {
+    out.emit(s2, { type: "leaderChosen", leader, reason });
+    return { ...s2, phase: "playing", play: startPlay(s2.order, s2.hands, leader) };
+  }
+  function afterPlay(s2, r, out) {
+    let s22 = { ...s2, play: r.state, hands: r.state.hands };
+    for (const e of r.events) out.emit(s22, e);
+    const end = r.events.find((e) => e.type === "roundEnded");
+    if (end) return finishRound({ ...s22, takeRequests: [] }, end, out);
+    return processTakes(s22, out);
+  }
+  function processTakes(s2, out) {
+    if (s2.phase !== "playing" || !s2.play || s2.takeRequests.length === 0) return s2;
+    let play = s2.play;
+    let queue = s2.takeRequests.slice();
+    const drop = () => {
+      queue = queue.filter((r) => {
+        if (!takeAllowed(play, r.requester, r.target)) return true;
+        out.emit(s2, { type: "takeCancelled", requester: r.requester, target: r.target, reason: "notPossible" });
+        return false;
+      });
+    };
+    drop();
+    if (betweenTricks(play)) {
+      for (; ; ) {
+        const next = queue.find((r) => r.agreed);
+        if (!next) break;
+        queue = queue.filter((r) => r !== next);
+        const res = takeCards(play, next.requester, next.target);
+        play = res.state;
+        for (const e of res.events) out.emit(s2, e);
+        drop();
+      }
+    }
+    return { ...s2, play, hands: play.hands, takeRequests: queue };
+  }
+  function finishRound(s2, end, out) {
+    const order = end.finishingOrder;
+    const n = order.length;
+    const pauseCleared = { paused: false, pausedAt: null, pauseRequests: [] };
+    if (s2.ultimateRound) {
+      const losers = end.sharedSecondLast ? end.sharedSecondLast.slice() : [order[n - 1]];
+      const winnerCandidate = order[0];
+      const labels = {
+        winner: losers.includes(winnerCandidate) ? null : winnerCandidate,
+        losers
+      };
+      out.emit(s2, { type: "roundScored", round: s2.round, ultimate: true, finishingOrder: order, points: {}, totals: s2.scores });
+      out.emit(s2, { type: "ultimateLabels", winner: labels.winner, losers: labels.losers });
+      const s23 = {
+        ...s2,
+        ...pauseCleared,
+        ultimateLabels: labels,
+        rounds: [
+          ...s2.rounds,
+          {
+            round: s2.round,
+            ultimate: true,
+            finishingOrder: order,
+            points: {},
+            totals: s2.scores,
+            sharedSecondLast: end.sharedSecondLast,
+            forfeitedBy: end.forfeitedBy
+          }
+        ]
+      };
+      return endSession(s23, "ultimatePlayed", out);
+    }
+    const points = scoreRound(order, end.sharedSecondLast);
+    const totals = addScores(s2.scores, points);
+    out.emit(s2, { type: "roundScored", round: s2.round, ultimate: false, finishingOrder: order, points, totals });
+    const s22 = {
+      ...s2,
+      ...pauseCleared,
+      phase: "results",
+      scores: totals,
+      previous: { winner: order[0], loser: order[n - 1] },
+      ready: [],
+      rounds: [
+        ...s2.rounds,
+        {
+          round: s2.round,
+          ultimate: false,
+          finishingOrder: order,
+          points,
+          totals,
+          sharedSecondLast: end.sharedSecondLast,
+          forfeitedBy: end.forfeitedBy
+        }
+      ]
+    };
+    return checkTarget(s22, out);
+  }
+  function pauseAllowed(s2) {
+    if (s2.paused) fail("The game is already paused");
+    if (!ROUND_PHASES.includes(s2.phase)) fail("You can only pause during a round");
+    if (s2.vote) fail("No pausing during a vote");
+  }
+  function doPause(s2, at, requestedBy, out) {
+    pauseAllowed(s2);
+    out.emit(s2, { type: "paused", requestedBy });
+    return { ...s2, paused: true, pausedAt: at, pauseRequests: [] };
+  }
+  function finalStandings(s2) {
+    const labels = s2.ultimateLabels;
+    const byScore = s2.order.slice().sort((a, b) => (s2.scores[b] ?? 0) - (s2.scores[a] ?? 0));
+    const losers = labels?.losers ?? [];
+    const winner = labels?.winner ?? null;
+    const middle = byScore.filter((p) => p !== winner && !losers.includes(p));
+    const standings = [...winner ? [winner] : [], ...middle, ...losers.filter((p) => p !== winner)];
+    if (winner) return { standings, winners: [winner], decidedBy: "ultimate" };
+    const pool = middle.length ? middle : byScore;
+    const top2 = Math.max(...pool.map((p) => s2.scores[p] ?? 0));
+    return { standings, winners: pool.filter((p) => (s2.scores[p] ?? 0) === top2), decidedBy: "highestScore" };
+  }
+  function endSession(s2, reason, out) {
+    const f = finalStandings(s2);
+    const ended = { ...f, reason };
+    out.emit(s2, { type: "sessionEnded", ...ended });
+    return { ...s2, phase: "gameOver", vote: null, ended, paused: false, pausedAt: null, pauseRequests: [] };
+  }
+  function handOf2(s2, id) {
+    if (s2.phase === "dealing") return s2.deal?.hands[id] ?? [];
+    return s2.hands[id] ?? [];
+  }
+
+  // src/session/view.ts
+  function playerView(s2, me) {
+    if (!s2.order.includes(me)) throw new Error(`Unknown player: ${me}`);
+    const play = s2.phase === "playing" ? s2.play : null;
+    const placeOf = (p) => {
+      if (!play) return null;
+      const i = play.finished.indexOf(p);
+      return i === -1 ? null : i + 1;
+    };
+    const players = s2.players.map((p) => ({
+      id: p.id,
+      sessionName: p.sessionName,
+      profileName: p.profileName,
+      cardCount: handOf2(s2, p.id).length,
+      isHost: p.id === s2.hostId,
+      place: placeOf(p.id),
+      score: s2.scores[p.id] ?? 0,
+      ready: s2.ready.includes(p.id)
+    }));
+    const v = s2.vote;
+    return {
+      me,
+      isHost: me === s2.hostId,
+      phase: s2.phase,
+      round: s2.round,
+      ultimateRound: s2.ultimateRound,
+      hostId: s2.hostId,
+      dealer: s2.dealer,
+      jokerRuleEnabled: s2.jokerRuleEnabled,
+      jokerTotal: s2.jokerTotal,
+      players,
+      myHand: handOf2(s2, me).slice(),
+      deal: s2.phase === "dealing" && s2.deal ? { remaining: s2.deal.remaining.length, mode: s2.deal.mode, nextSeat: s2.deal.nextSeat } : null,
+      canCallReshuffle: s2.phase === "reshuffle" && !s2.reshuffleUsed && !s2.vote && !s2.paused,
+      canProposeTarget: targetVoteAllowed(s2),
+      canSwap: s2.phase === "swap" && swapAllowed(s2.order.length) && !s2.swapDone.includes(me),
+      reactionTap: s2.phase === "reactionTap" && s2.tap ? { players: s2.tap.players, tapped: Object.keys(s2.tap.results) } : null,
+      chooser: s2.phase === "chooseLeader" ? s2.previous?.winner ?? null : null,
+      turn: play?.turn ?? null,
+      legalCardIds: play && !s2.paused ? legalCards(play, me).map((c) => c.id) : [],
+      ledSuit: play?.trick.ledSuit ?? null,
+      trick: play ? play.trick.plays.map((t) => ({ player: t.player, card: t.card })) : [],
+      wastePileCount: play?.wastePile.length ?? 0,
+      pendingFinalTwo: play?.pendingFinalTwo ?? null,
+      myTakeRequests: s2.takeRequests.filter((r) => r.requester === me || r.target === me),
+      canForfeit: !!play && !play.over && (play.pendingFinalTwo === me || play.forfeitAllowed.includes(me)),
+      vote: v ? {
+        kind: v.kind,
+        calledBy: v.calledBy,
+        value: v.value,
+        voted: Object.keys(v.ballots),
+        myBallot: v.ballots[me] ?? null,
+        awaitingHost: v.awaitingHost
+      } : null,
+      paused: s2.paused,
+      pauseTimeLimitSec: s2.pauseTimeLimitSec,
+      pauseRequests: me === s2.hostId ? s2.pauseRequests : s2.pauseRequests.filter((p) => p === me),
+      target: s2.target,
+      rounds: s2.rounds,
+      ultimateLabels: s2.ultimateLabels,
+      ended: s2.ended
+    };
+  }
+
+  // src/session/trivia.ts
+  function top(counts) {
+    const vals = Object.values(counts);
+    if (vals.length === 0) return null;
+    const max = Math.max(...vals);
+    if (max <= 0) return null;
+    return { players: Object.keys(counts).filter((p) => counts[p] === max), count: max };
+  }
+  function bump(m, p, by = 1) {
+    m[p] = (m[p] ?? 0) + by;
+  }
+  function computeTrivia(log, players) {
+    var _a;
+    const given = {};
+    const received = {};
+    const pairs = {};
+    const bottomTwo = {};
+    const forfeits = {};
+    const reshuffleCalls = {};
+    const biggest = {};
+    const slowest = {};
+    for (const { event: e, ultimate } of log) {
+      switch (e.type) {
+        case "slapped":
+          bump(given, e.slapper);
+          bump(received, e.slapped);
+          bump(pairs[_a = e.slapper] ?? (pairs[_a] = {}), e.slapped);
+          biggest[e.slapped] = Math.max(biggest[e.slapped] ?? 0, e.cardsPickedUp);
+          break;
+        case "roundScored":
+          if (!ultimate) for (const p of e.finishingOrder.slice(-2)) bump(bottomTwo, p);
+          break;
+        case "forfeited":
+          bump(forfeits, e.player);
+          break;
+        case "voteCalled":
+          if (e.kind === "reshuffle" && e.by) bump(reshuffleCalls, e.by);
+          break;
+        case "reactionTapped":
+          if (!e.falseStart) slowest[e.player] = Math.max(slowest[e.player] ?? 0, e.ms);
+          break;
+        default:
+          break;
+      }
+    }
+    let rivalMax = 0;
+    for (const row of Object.values(pairs)) for (const n of Object.values(row)) rivalMax = Math.max(rivalMax, n);
+    const rivals = [];
+    if (rivalMax > 0) {
+      for (const slapper of players) {
+        for (const slapped of players) {
+          if ((pairs[slapper]?.[slapped] ?? 0) === rivalMax) rivals.push({ slapper, slapped, count: rivalMax });
+        }
+      }
+    }
+    const perPlayer = {};
+    for (const p of players) {
+      const by = {};
+      for (const q of players) if (pairs[q]?.[p]) by[q] = pairs[q][p];
+      perPlayer[p] = {
+        slapsGiven: given[p] ?? 0,
+        timesSlapped: received[p] ?? 0,
+        slappedByMost: top(by),
+        slappedMost: top(pairs[p] ?? {}),
+        bottomTwo: bottomTwo[p] ?? 0
+      };
+    }
+    return {
+      mostSlapped: top(received),
+      mostSlapper: top(given),
+      rivals,
+      perPlayer,
+      alwaysFightingForSurvival: top(bottomTwo),
+      biggestPickUp: top(biggest),
+      mostForfeits: top(forfeits),
+      mostReshuffleVotes: top(reshuffleCalls),
+      slowestReaction: top(slowest),
+      pairs
+    };
+  }
+
+  // src/session/record.ts
+  function buildGameRecord(s2, savedAt, id) {
+    if (!s2.ended) throw new Error("The session has not ended yet");
+    const ult = s2.rounds.find((r) => r.ultimate) ?? null;
+    return {
+      id,
+      savedAt: savedAt.toISOString(),
+      playerCount: s2.order.length,
+      players: s2.players,
+      hostId: s2.hostId,
+      jokerRuleEnabled: s2.jokerRuleEnabled,
+      jokerTotal: s2.jokerTotal,
+      target: s2.target,
+      rounds: s2.rounds,
+      ultimate: {
+        played: !!ult,
+        finishingOrder: ult?.finishingOrder ?? null,
+        winner: s2.ultimateLabels?.winner ?? null,
+        losers: s2.ultimateLabels?.losers ?? []
+      },
+      final: { ...s2.ended, scores: s2.scores },
+      trivia: computeTrivia(s2.log, s2.order)
+    };
+  }
+  function emptyProfile(profileName) {
+    return {
+      profileName,
+      gamesPlayed: 0,
+      points: 0,
+      roundWins: 0,
+      roundLosses: 0,
+      bottomTwo: 0,
+      ultimateWinner: 0,
+      ultimateLoser: 0,
+      timesSlapped: 0,
+      slapsGiven: 0,
+      slappedBy: {},
+      slapped: {},
+      games: []
+    };
+  }
+  function addCounts(a, b) {
+    const out = { ...a };
+    for (const [k, n] of Object.entries(b)) out[k] = (out[k] ?? 0) + n;
+    return out;
+  }
+  function addGameToProfiles(profiles2, record2, profilesOnThisPhone) {
+    const out = { ...profiles2 };
+    const profileOf = (id) => record2.players.find((p) => p.id === id)?.profileName ?? id;
+    const normal = record2.rounds.filter((r) => !r.ultimate);
+    for (const player of record2.players) {
+      const name = player.profileName;
+      if (!profilesOnThisPhone.includes(name)) continue;
+      const prev = out[name] ?? emptyProfile(name);
+      if (prev.games.includes(record2.id)) continue;
+      const id = player.id;
+      const t = record2.trivia;
+      const slapped = {};
+      const slappedBy = {};
+      for (const [other, n] of Object.entries(t.pairs[id] ?? {})) slapped[profileOf(other)] = (slapped[profileOf(other)] ?? 0) + n;
+      for (const [slapper, row] of Object.entries(t.pairs)) {
+        const n = row[id];
+        if (n) slappedBy[profileOf(slapper)] = (slappedBy[profileOf(slapper)] ?? 0) + n;
+      }
+      out[name] = {
+        ...prev,
+        gamesPlayed: prev.gamesPlayed + 1,
+        points: prev.points + (record2.final.scores[id] ?? 0),
+        roundWins: prev.roundWins + normal.filter((r) => r.finishingOrder[0] === id).length,
+        roundLosses: prev.roundLosses + normal.filter((r) => r.finishingOrder[r.finishingOrder.length - 1] === id && !r.sharedSecondLast?.includes(id)).length,
+        bottomTwo: prev.bottomTwo + (t.perPlayer[id]?.bottomTwo ?? 0),
+        ultimateWinner: prev.ultimateWinner + (record2.ultimate.winner === id ? 1 : 0),
+        ultimateLoser: prev.ultimateLoser + (record2.ultimate.losers.includes(id) ? 1 : 0),
+        timesSlapped: prev.timesSlapped + (t.perPlayer[id]?.timesSlapped ?? 0),
+        slapsGiven: prev.slapsGiven + (t.perPlayer[id]?.slapsGiven ?? 0),
+        slappedBy: addCounts(prev.slappedBy, slappedBy),
+        slapped: addCounts(prev.slapped, slapped),
+        games: [...prev.games, record2.id]
+      };
+    }
+    return out;
+  }
+  function profileRivals(p) {
+    const best = (m) => {
+      const max = Math.max(0, ...Object.values(m));
+      return max === 0 ? [] : Object.keys(m).filter((k) => m[k] === max);
+    };
+    return { slappedByMost: best(p.slappedBy), slappedMost: best(p.slapped) };
+  }
+  function cell(v) {
+    const s2 = v === null || v === void 0 ? "" : String(v);
+    return /[",\n\r]/.test(s2) ? `"${s2.replace(/"/g, '""')}"` : s2;
+  }
+  function rows(lines) {
+    return lines.map((l) => l.map(cell).join(",")).join("\r\n");
+  }
+  function sessionCsv(r) {
+    const name = (id) => r.players.find((p) => p.id === id)?.sessionName ?? id;
+    const profile = (id) => r.players.find((p) => p.id === id)?.profileName ?? id;
+    const names2 = (ids) => (ids ?? []).map(name).join(" & ");
+    const t = r.trivia;
+    const lines = [
+      ["Pubby game record"],
+      ["Date", r.savedAt],
+      ["Players", r.playerCount],
+      ["Joker rule", r.jokerRuleEnabled ? `on (${r.jokerTotal})` : "off"],
+      ["Target score", r.target ?? "none"],
+      ["Ended because", r.final.reason],
+      ["Winner", names2(r.final.winners)],
+      ["Decided by", r.final.decidedBy === "ultimate" ? "Ultimate Round" : "highest score"],
+      [],
+      ["Round", "Ultimate", "Place", "Session name", "Profile name", "Points", "Total"]
+    ];
+    for (const round of r.rounds) {
+      round.finishingOrder.forEach((id, i) => {
+        lines.push([
+          round.round,
+          round.ultimate ? "yes" : "no",
+          i + 1,
+          name(id),
+          profile(id),
+          round.ultimate ? "" : round.points[id] ?? 0,
+          round.totals[id] ?? 0
+        ]);
+      });
+    }
+    lines.push([], ["Final place", "Session name", "Profile name", "Score", "Title"]);
+    r.final.standings.forEach((id, i) => {
+      const title = r.ultimate.winner === id ? "Ultimate Winner" : r.ultimate.losers.includes(id) ? "Ultimate Loser" : "";
+      lines.push([i + 1, name(id), profile(id), r.final.scores[id] ?? 0, title]);
+    });
+    lines.push([], ["Player", "Slaps given", "Times slapped", "Slapped most", "Slapped by most", "Bottom two"]);
+    for (const p of r.players) {
+      const pt = t.perPlayer[p.id];
+      lines.push([
+        p.sessionName,
+        pt?.slapsGiven ?? 0,
+        pt?.timesSlapped ?? 0,
+        names2(pt?.slappedMost?.players),
+        names2(pt?.slappedByMost?.players),
+        pt?.bottomTwo ?? 0
+      ]);
+    }
+    const topRow = (label, top2, unit = "") => [label, top2 ? `${names2(top2.players)} (${top2.count}${unit})` : "\u2014"];
+    lines.push(
+      [],
+      ["Trivia", "Value"],
+      topRow("Most slapped", t.mostSlapped),
+      topRow("Most slapper", t.mostSlapper),
+      ["Rivals", t.rivals.map((x) => `${name(x.slapper)} slaps ${name(x.slapped)} (${x.count})`).join("; ") || "\u2014"],
+      topRow("Always fighting for survival", t.alwaysFightingForSurvival),
+      topRow("Biggest pick-up", t.biggestPickUp, " cards"),
+      topRow("Most forfeits", t.mostForfeits),
+      topRow("Most reshuffle votes", t.mostReshuffleVotes),
+      topRow("Slowest reaction", t.slowestReaction, " ms")
+    );
+    return rows(lines) + "\r\n";
+  }
+  function profileCsv(p) {
+    const r = profileRivals(p);
+    return rows([
+      ["Pubby profile", p.profileName],
+      ["Games played", p.gamesPlayed],
+      ["Points", p.points],
+      ["Round wins", p.roundWins],
+      ["Round losses", p.roundLosses],
+      ["Bottom two", p.bottomTwo],
+      ["Ultimate Winner", p.ultimateWinner],
+      ["Ultimate Loser", p.ultimateLoser],
+      ["Times slapped", p.timesSlapped],
+      ["Slaps given", p.slapsGiven],
+      ["Slapped by most", r.slappedByMost.join(" & ") || "\u2014"],
+      ["Slapped most", r.slappedMost.join(" & ") || "\u2014"]
+    ]) + "\r\n";
+  }
 
   // testbed/main.ts
-  var stage = "setup";
-  var cfg = { players: 4, jokers: true, seed: Math.floor(Math.random() * 1e5) };
-  var ids = [];
+  var NAMES = ["Ferrari", "Speedy", "Bubbles", "Ace", "Rocket", "Biscuit", "Tiger", "Pickle"];
+  var cfg = { players: 4, jokers: true, seed: Math.floor(Math.random() * 1e5), pauseLimit: 0 };
+  var s = null;
   var rng = seededRng(1);
-  var round = 1;
-  var previous;
-  var totals = {};
-  var deal = null;
-  var hands = {};
-  var hiddenDecks = {};
-  var swapDone = [];
-  var swapSelected = [];
   var swapWho = "";
-  var votes = {};
-  var reshuffleUsed = false;
-  var leaderDecision = null;
-  var tapPlayers = [];
+  var swapSelected = [];
   var tapInputs = {};
-  var play = null;
-  var roundEnd = null;
-  var log = [];
+  var targetInput = "10";
+  var viewAs = "p1";
+  var record = null;
+  var profiles = loadProfiles();
+  var csvShown = null;
+  var takeAsker = "";
   var popups = [];
-  var places = {};
+  var CATCH_PHRASES = [
+    "Don't let the cards control you, you control the cards.",
+    "Craftyyyy",
+    "You got slapped",
+    "You got slapped by a kiiid"
+  ];
+  var app = document.getElementById("app");
   function pop(title, lines = [], kind = "info") {
     popups.push({ title, lines, kind });
   }
   function ordinal(n) {
-    const s = ["th", "st", "nd", "rd"];
+    const sfx = ["th", "st", "nd", "rd"];
     const v = n % 100;
-    return n + (s[(v - 20) % 10] ?? s[v] ?? s[0] ?? "th");
+    return n + (sfx[(v - 20) % 10] ?? sfx[v] ?? sfx[0] ?? "th");
   }
-  var HOST = "P1";
-  var app = document.getElementById("app");
-  function setupFor() {
-    return { round, players: ids, hostId: HOST, jokerRuleEnabled: cfg.jokers, previous };
+  function esc(x) {
+    return x.replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
   }
-  function say(line) {
-    log.unshift(`R${round}: ${line}`);
-    if (log.length > 200) log.length = 200;
+  function nm(id) {
+    if (!id) return "\u2014";
+    return s?.players.find((p) => p.id === id)?.sessionName ?? id;
   }
-  function esc(s) {
-    return s.replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
+  function names(ids) {
+    return (ids ?? []).map(nm).join(" & ");
+  }
+  function loadProfiles() {
+    try {
+      return JSON.parse(localStorage.getItem("pubby-testbed-profiles") ?? "{}");
+    } catch {
+      return {};
+    }
+  }
+  function saveProfiles() {
+    try {
+      localStorage.setItem("pubby-testbed-profiles", JSON.stringify(profiles));
+    } catch {
+    }
+  }
+  function send(a) {
+    if (!s) return;
+    const r = applyAction(s, a, rng);
+    s = r.session;
+    popUpFor(r.events);
+    if (s.phase === "gameOver" && !record) finishSession();
+    if (s.phase === "swap" && (!swapWho || s.swapDone.includes(swapWho))) {
+      swapWho = s.order.find((p) => !s.swapDone.includes(p)) ?? "";
+      swapSelected = [];
+    }
+    if (s.phase === "reactionTap" && s.tap) {
+      for (const p of s.tap.players) if (!tapInputs[p] || !s.tap.results[p]) tapInputs[p] ?? (tapInputs[p] = { ms: "", fs: false });
+    }
+  }
+  function finishSession() {
+    if (!s) return;
+    const id = `game-${cfg.seed}-${Date.now()}`;
+    record = buildGameRecord(s, /* @__PURE__ */ new Date(), id);
+    profiles = addGameToProfiles(profiles, record, s.players.map((p) => p.profileName));
+    saveProfiles();
+  }
+  function popUpFor(events) {
+    const ending = events.some((e) => e.type === "roundEnded");
+    for (const e of events) {
+      switch (e.type) {
+        case "gameStarted":
+          pop(
+            e.jokerRuleEnabled ? `${e.jokerTotal} jokers in the deck!` : "No jokers this game",
+            [`${e.players.length} players. Host: ${nm(e.hostId)}`]
+          );
+          break;
+        case "roundStarted":
+          if (e.ultimate) pop("ULTIMATE ROUND!", ["Outside the score. Titles only.", `${nm(e.dealer)} deals.`], "vote");
+          break;
+        case "voteCalled":
+          if (e.by === null) pop("Vote: Ultimate Round?", ["Started automatically: the target was reached."], "vote");
+          break;
+        case "voteNeedsHost":
+          pop("No majority", ["The host decides."]);
+          break;
+        case "voteResolved": {
+          const what = e.kind === "reshuffle" ? e.result ? "Reshuffle!" : "No reshuffle." : e.kind === "target" ? e.result ? `Target: ${e.value} points` : `No target of ${e.value}` : e.result ? "Ultimate Round!" : "No Ultimate Round.";
+          pop(`${e.decidedBy === "majority" ? "Majority" : "Host"} says\u2026 ${e.result ? "YES!" : "NO!"}`, [what], "vote");
+          break;
+        }
+        case "targetReached":
+          pop("Target reached!", [`${names(e.players)} reached ${e.target} points.`, "Vote on the Ultimate Round."], "vote");
+          break;
+        case "reactionTapReplay":
+          pop("Tie!", [`${names(e.players)} play Reaction Tap again.`]);
+          break;
+        case "leaderChosen":
+          if (e.reason === "reactionTap") pop(`${nm(e.leader)} leads!`, ["Slowest in Reaction Tap."]);
+          break;
+        case "slapped":
+          pop("SLAP! \u{1F602}", [
+            `${nm(e.slapper)} slapped ${nm(e.slapped)}`,
+            `${nm(e.slapped)} picks up ${e.cardsPickedUp} cards`,
+            CATCH_PHRASES[Math.floor(Math.random() * CATCH_PHRASES.length)]
+          ], "slap");
+          break;
+        case "playerOut":
+          if (!ending) pop(`${nm(e.player)} is out!`, [`Came ${ordinal(e.place)}`], "out");
+          break;
+        case "cardsTaken":
+          pop("Cards taken!", [`${nm(e.requester)} took all of ${nm(e.target)}'s cards (${e.count})`, "Nobody else knows which cards."], "vote");
+          break;
+        case "takeAnswered":
+          if (!e.accepted) pop("Request refused", [`${nm(e.target)} said no to ${nm(e.requester)}.`]);
+          else pop("Request agreed", [`${nm(e.target)} said yes to ${nm(e.requester)}.`, "The cards move between tricks."]);
+          break;
+        case "finalTwoChoice":
+          pop(`${nm(e.player)}'s last card was higher!`, ["Pick up the waste pile or forfeit."]);
+          break;
+        case "roundEnded": {
+          const order = e.finishingOrder;
+          const n = order.length;
+          const before = events.filter((x) => x.type === "playerOut" && x.place < n - 1);
+          for (const x of before) if (x.type === "playerOut") pop(`${nm(x.player)} is out!`, [`Came ${ordinal(x.place)}`], "out");
+          const second = order[n - 2];
+          const last = order[n - 1];
+          if (e.sharedSecondLast) {
+            pop("Both out on jokers!", [`${nm(second)} and ${nm(last)} share second last (${ordinal(n - 1)})`], "end");
+          } else {
+            const lines = [n === 2 ? `${nm(second)} wins (1st)` : `${nm(second)} is second last (${ordinal(n - 1)})`, `${nm(last)} is the LOSER!`];
+            if (e.forfeitedBy) lines.push(`(${nm(e.forfeitedBy)} forfeited)`);
+            pop("Round over", lines, "end");
+          }
+          break;
+        }
+        case "ultimateLabels":
+          pop("Ultimate titles", [
+            e.winner ? `\u{1F3C6} Ultimate Winner: ${nm(e.winner)}` : "No Ultimate Winner",
+            `Ultimate Loser: ${names(e.losers)}`
+          ], "end");
+          break;
+        case "paused":
+          pop("PAUSED", [e.requestedBy ? `${nm(e.requestedBy)} asked, the host agreed.` : "The host paused the game."]);
+          break;
+        case "pauseDeclined":
+          pop("Pause declined", [`The host said no to ${nm(e.requester)}.`]);
+          break;
+        case "resumed":
+          pop("Game on!", [e.reason === "timeLimit" ? "The pause time ran out." : "The host resumed."]);
+          break;
+        case "sessionEnded":
+          pop("Game over", [`${names(e.winners)} ${e.winners.length > 1 ? "win" : "wins"} the game!`, e.decidedBy === "ultimate" ? "(Ultimate Winner)" : "(highest score)"], "end");
+          break;
+        default:
+          break;
+      }
+    }
+  }
+  function logLine(entry) {
+    const e = entry.event;
+    switch (e.type) {
+      case "gameStarted":
+        return `New game: ${e.players.length} players, jokers ${e.jokerRuleEnabled ? `on (${e.jokerTotal})` : "off"}, seed ${cfg.seed}. Host is ${nm(e.hostId)}.`;
+      case "roundStarted":
+        return `${e.ultimate ? "ULTIMATE ROUND" : `Round ${e.round}`}. ${nm(e.dealer)} shuffles and deals.`;
+      case "dealModeChanged":
+        return `Dealer switches to ${e.mode} deal.`;
+      case "dealComplete":
+        return `Deal done. Hands ${Object.entries(e.handSizes).map(([p, n]) => `${nm(p)}:${n}`).join(" ")}.`;
+      case "voteCalled":
+        return `${e.by ? nm(e.by) : "The game"} calls a ${e.kind} vote${e.value !== null ? ` (${e.value} points)` : ""}.`;
+      case "voteCast":
+        return `${nm(e.by)} votes ${e.ballot}.`;
+      case "voteNeedsHost":
+        return "No majority: the host decides.";
+      case "voteResolved":
+        return `${e.kind} vote: ${e.result ? "YES" : "NO"} (${e.decidedBy}).`;
+      case "reshuffled":
+        return `${nm(e.dealer)} reshuffles and deals again.`;
+      case "reshuffleWindowClosed":
+        return "Host starts the round. Reshuffle vote no longer available.";
+      case "swapped":
+        return e.count ? `${nm(e.player)} swaps ${e.count} card(s).` : `${nm(e.player)} keeps their hand.`;
+      case "missingSuitDeclared":
+        return `${nm(e.player)} declares missing: ${e.suits.join(", ")}.`;
+      case "reactionTapStarted":
+        return `Reaction Tap: ${names(e.players)}.`;
+      case "reactionTapped":
+        return `${nm(e.player)} taps: ${e.falseStart ? "FALSE START" : `${e.ms} ms`}.`;
+      case "reactionTapReplay":
+        return `Tie: ${names(e.players)} replay.`;
+      case "leaderChosen":
+        return `${nm(e.leader)} leads (${{ host: "host leads round 1", missingSuit: "missing a suit", reactionTap: "slowest in Reaction Tap", winnerChose: "last round's winner chose" }[e.reason]}).`;
+      case "cardPlayed":
+        return `${nm(e.player)} plays ${cardLabel(e.card)}.`;
+      case "jokerPlayed":
+        return `${nm(e.player)} plays a JOKER${e.asLeader ? " as the lead" : ""}.`;
+      case "slapped":
+        return `SLAP! ${nm(e.slapper)} slaps ${nm(e.slapped)}, who picks up ${e.cardsPickedUp}.`;
+      case "trickResolved":
+        return e.nextLeader ? `Trick over. ${nm(e.nextLeader)} leads.` : null;
+      case "playerOut":
+        return `${nm(e.player)} is out in place ${e.place}.`;
+      case "finalTwoChoice":
+        return `${nm(e.player)} played a higher last card: pick up or forfeit.`;
+      case "wastePilePickedUp":
+        return `${nm(e.player)} picks up the waste pile (${e.cards}).`;
+      case "forfeited":
+        return `${nm(e.player)} forfeits.`;
+      case "roundEnded":
+        return `Round over: ${e.finishingOrder.map(nm).join(" > ")}.`;
+      case "roundScored":
+        return e.ultimate ? "Ultimate Round: no points." : `Points: ${e.finishingOrder.map((p) => `${nm(p)} ${fmt(e.points[p] ?? 0)}`).join(", ")}.`;
+      case "ultimateLabels":
+        return `Ultimate Winner: ${nm(e.winner)}. Ultimate Loser: ${names(e.losers)}.`;
+      case "targetReached":
+        return `${names(e.players)} reached the target (${e.target}).`;
+      case "takeRequested":
+        return `${nm(e.requester)} asks to take ${nm(e.target)}'s cards.`;
+      case "takeAnswered":
+        return `${nm(e.target)} ${e.accepted ? "agrees" : "refuses"} (${nm(e.requester)}'s take-cards request).`;
+      case "takeCancelled":
+        return `${nm(e.requester)}'s request to take ${nm(e.target)}'s cards is ${e.reason === "withdrawn" ? "withdrawn" : "cancelled (no longer possible)"}.`;
+      case "cardsTaken":
+        return `${nm(e.requester)} takes all ${e.count} of ${nm(e.target)}'s cards.`;
+      case "pauseRequested":
+        return `${nm(e.by)} asks to pause.`;
+      case "pauseDeclined":
+        return `Host declines ${nm(e.requester)}'s pause.`;
+      case "paused":
+        return "Game paused.";
+      case "resumed":
+        return `Game resumed${e.reason === "timeLimit" ? " (time limit)" : ""}.`;
+      case "pauseTimeLimitSet":
+        return `Pause time limit: ${e.seconds ? `${e.seconds}s` : "none"}.`;
+      case "playerReady":
+        return `${nm(e.player)} is ready.`;
+      case "sessionEnded":
+        return `Session over (${e.reason}). Winner: ${names(e.winners)}.`;
+    }
+  }
+  function fmt(n) {
+    return n > 0 ? `+${n}` : String(n);
+  }
+  function act(action, arg) {
+    try {
+      doAct(action, arg);
+    } catch (err) {
+      pop("Not allowed", [err.message]);
+    }
+    render();
+  }
+  function doAct(action, arg) {
+    const now = Date.now();
+    const host = s?.hostId ?? "p1";
+    switch (action) {
+      case "players":
+        cfg.players = Number(arg);
+        return;
+      case "jokers":
+        cfg.jokers = !cfg.jokers;
+        return;
+      case "pauseLimit":
+        cfg.pauseLimit = Number(arg);
+        return;
+      case "randomSeed":
+        cfg.seed = Math.floor(Math.random() * 1e5);
+        return;
+      case "start": {
+        cfg.seed = Number(document.getElementById("seed").value) || 1;
+        rng = seededRng(cfg.seed);
+        record = null;
+        csvShown = null;
+        popups = [];
+        tapInputs = {};
+        swapWho = "";
+        viewAs = "p1";
+        const r = createSession({
+          players: Array.from({ length: cfg.players }, (_, i) => ({ id: `p${i + 1}`, profileName: NAMES[i] })),
+          hostId: "p1",
+          jokerRuleEnabled: cfg.jokers,
+          pauseTimeLimitSec: cfg.pauseLimit || null
+        }, rng);
+        s = r.session;
+        popUpFor(r.events);
+        return;
+      }
+      case "restart":
+        s = null;
+        return;
+      case "closePopup":
+        popups.shift();
+        return;
+      case "clearProfiles":
+        profiles = {};
+        saveProfiles();
+        return;
+      // Dealing
+      case "autoStart":
+        send({ type: "autoDealStart", by: s.dealer, firstSeat: arg });
+        return;
+      case "autoStep":
+        send({ type: "autoDealStep", by: s.dealer });
+        return;
+      case "autoAll":
+        send({ type: "autoDealAll", by: s.dealer });
+        return;
+      case "mode":
+        send({ type: "setDealMode", by: s.dealer, mode: arg });
+        return;
+      case "manual":
+        send({ type: "manualDealCard", by: s.dealer, seat: arg });
+        return;
+      // Votes
+      case "callReshuffle":
+        send({ type: "callVote", by: arg, kind: "reshuffle" });
+        return;
+      case "callTarget": {
+        const [p] = arg.split(":");
+        send({ type: "callVote", by: p, kind: "target", value: Number(targetInput) });
+        return;
+      }
+      case "callUltimate":
+        send({ type: "callVote", by: arg, kind: "ultimate" });
+        return;
+      case "vote": {
+        const [p, b] = arg.split(":");
+        send({ type: "castVote", by: p, ballot: b });
+        return;
+      }
+      case "closeVote":
+        send({ type: "closeVote", by: host });
+        return;
+      case "hostDecide":
+        send({ type: "hostDecides", by: host, yes: arg === "yes" });
+        return;
+      case "startRound":
+        send({ type: "startRound", by: host });
+        return;
+      // Swap
+      case "swapWho":
+        swapWho = arg;
+        swapSelected = [];
+        return;
+      case "swapPick":
+        if (swapSelected.includes(arg)) swapSelected = swapSelected.filter((x) => x !== arg);
+        else if (swapSelected.length < MAX_SWAP) swapSelected = [...swapSelected, arg];
+        else pop(`You can swap at most ${MAX_SWAP} cards.`);
+        return;
+      case "swapDo": {
+        const ids = swapSelected;
+        swapSelected = [];
+        send({ type: "swap", by: swapWho, cardIds: ids });
+        return;
+      }
+      // Reaction Tap
+      case "tapFs": {
+        const t = tapInputs[arg] ?? (tapInputs[arg] = { ms: "", fs: false });
+        t.fs = !t.fs;
+        return;
+      }
+      case "tapSend": {
+        const t = tapInputs[arg] ?? { ms: "", fs: false };
+        if (!t.fs && !(Number(t.ms) > 0)) throw new Error(`Enter a time for ${nm(arg)} or tick false start`);
+        send({ type: "reactionTap", by: arg, ms: Number(t.ms) || 0, falseStart: t.fs });
+        tapInputs[arg] = { ms: "", fs: false };
+        return;
+      }
+      case "winnerPicks":
+        send({ type: "chooseLeader", by: s.previous.winner, leader: arg });
+        return;
+      // Play
+      case "play": {
+        const [p, id] = arg.split("|");
+        send({ type: "playCard", by: p, cardId: id });
+        return;
+      }
+      case "pickUp":
+        send({ type: "pickUpWastePile", by: arg });
+        return;
+      case "forfeit":
+        send({ type: "forfeit", by: arg });
+        return;
+      // Take-cards request
+      case "takeAsker":
+        takeAsker = takeAsker === arg ? "" : arg;
+        return;
+      case "requestTake":
+        send({ type: "requestTake", by: takeAsker, target: arg });
+        takeAsker = "";
+        return;
+      case "answerTake": {
+        const [req, target, yes] = arg.split(":");
+        send({ type: "answerTake", by: target, requester: req, accept: yes === "yes" });
+        return;
+      }
+      case "withdrawTake": {
+        const [req, target] = arg.split(":");
+        send({ type: "withdrawTake", by: req, target });
+        return;
+      }
+      // Pause
+      case "pause":
+        send({ type: "pause", by: host, at: now });
+        return;
+      case "resume":
+        send({ type: "resume", by: host });
+        return;
+      case "requestPause":
+        send({ type: "requestPause", by: arg });
+        return;
+      case "respondPause": {
+        const [p, yes] = arg.split(":");
+        send({ type: "respondPause", by: host, requester: p, approve: yes === "yes", at: now });
+        return;
+      }
+      case "setLimit":
+        send({ type: "setPauseTimeLimit", by: host, seconds: Number(arg) || null });
+        return;
+      // Results
+      case "ready":
+        send({ type: "readyUp", by: arg });
+        return;
+      case "advance":
+        send({ type: "advance", by: host });
+        return;
+      case "endSession":
+        send({ type: "endSession", by: host });
+        return;
+      case "viewAs":
+        viewAs = arg;
+        return;
+      // Export
+      case "shareSession":
+        if (record) shareCsv("pubby-game.csv", sessionCsv(record));
+        return;
+      case "shareProfile": {
+        const p = profiles[arg];
+        if (p) shareCsv(`pubby-${arg}.csv`, profileCsv(p));
+        return;
+      }
+      case "closeCsv":
+        csvShown = null;
+        return;
+    }
+  }
+  function shareCsv(filename, csv) {
+    csvShown = { filename, csv };
+    try {
+      void navigator.clipboard?.writeText(csv).then(
+        () => pop("CSV copied", [`${filename} is on the clipboard. Paste it into a spreadsheet or a note.`]),
+        () => pop("CSV ready", ["Copy it from the box below."])
+      );
+    } catch {
+      pop("CSV ready", ["Copy it from the box below."]);
+    }
   }
   function cardHtml(c, attrs = "", extraClass = "") {
     const red = !isJoker(c) && (c.suit === "hearts" || c.suit === "diamonds");
@@ -684,365 +2025,23 @@
       return order[a.suit] - order[b.suit] || a.rank - b.rank;
     });
   }
-  function newGame() {
-    ids = Array.from({ length: cfg.players }, (_, i) => `P${i + 1}`);
-    rng = seededRng(cfg.seed);
-    round = 1;
-    previous = void 0;
-    totals = Object.fromEntries(ids.map((p) => [p, 0]));
-    log = [];
-    say(`New game: ${cfg.players} players, jokers ${cfg.jokers ? `on (${jokerCount(cfg.players, true)})` : "off"}, seed ${cfg.seed}. Host is ${HOST}.`);
-    startRound();
+  function handOf3(p) {
+    if (!s) return [];
+    if (s.phase === "dealing") return s.deal?.hands[p] ?? [];
+    return s.hands[p] ?? [];
   }
-  function startRound() {
-    const dealer = dealerFor(setupFor());
-    deal = shuffleAndStartDeal(setupFor(), rng, "auto");
-    hands = {};
-    hiddenDecks = { ...deal.hiddenDecks };
-    swapDone = [];
-    swapSelected = [];
-    votes = {};
-    reshuffleUsed = false;
-    leaderDecision = null;
-    play = null;
-    roundEnd = null;
-    places = {};
-    popups = [];
-    stage = "deal";
-    const hidden = Object.values(deal.hiddenDecks).map((d) => d.length);
-    say(`Round ${round}. ${dealer} shuffles and deals.${hidden.length ? ` Hidden decks set aside: ${hidden.join(" + ")} cards.` : ""}`);
-  }
-  function finishDeal() {
-    if (!deal) return;
-    hands = Object.fromEntries(Object.entries(deal.hands).map(([k, v]) => [k, v.slice()]));
-    const sizes = ids.map((p) => `${p}:${hands[p]?.length}`).join(" ");
-    say(`Deal done. Hands ${sizes}.`);
-    if (reshuffleUsed) {
-      say("Reshuffle vote already used this round.");
-      proceedAfterVote();
-      return;
-    }
-    stage = "vote";
-  }
-  function afterVote(reshuffle, how) {
-    pop(`${how === "majority" ? "Majority" : "Host"} says\u2026 ${reshuffle ? "YES!" : "NO!"}`, [reshuffle ? "Reshuffle!" : "Play on."]);
-    say(`Reshuffle vote: ${reshuffle ? "yes" : "no"} (${how}).`);
-    votes = {};
-    reshuffleUsed = true;
-    if (reshuffle) {
-      startRoundSameNumber();
-      return;
-    }
-    proceedAfterVote();
-  }
-  function proceedAfterVote() {
-    if (swapAllowed(ids.length)) {
-      stage = "swap";
-      swapWho = ids[0];
-    } else goToLeader();
-  }
-  function startRoundSameNumber() {
-    deal = shuffleAndStartDeal(setupFor(), rng, "auto");
-    hiddenDecks = { ...deal.hiddenDecks };
-    hands = {};
-    stage = "deal";
-    say(`Reshuffled. ${dealerFor(setupFor())} deals again.`);
-  }
-  function goToLeader() {
-    const missing = missingSuitPlayers(ids, hands);
-    if (missing.length) {
-      say(`Missing suits: ${missing.map((m) => `${m.player} (${m.suits.join(", ")})`).join("; ")}.`);
-    }
-    leaderDecision = decideLeader(setupFor(), hands);
-    if (leaderDecision.kind === "leader") {
-      say(`${leaderDecision.leader} leads (${leaderDecision.reason === "host" ? "host leads round 1" : "missing a suit"}).`);
-      beginPlay(leaderDecision.leader);
-      return;
-    }
-    if (leaderDecision.kind === "reactionTap") {
-      tapPlayers = leaderDecision.players.slice();
-      tapInputs = Object.fromEntries(tapPlayers.map((p) => [p, { ms: "", fs: false }]));
-      say(`Reaction Tap between ${tapPlayers.join(", ")}.`);
-    }
-    stage = "leader";
-  }
-  function beginPlay(leader) {
-    play = startPlay(ids, hands, leader);
-    stage = "play";
-  }
-  function applyEvents(events) {
-    for (const e of events) {
-      switch (e.type) {
-        case "cardPlayed":
-          say(`${e.player} plays ${cardLabel(e.card)}.`);
-          break;
-        case "jokerPlayed":
-          say(`${e.player} plays a JOKER${e.asLeader ? " as the lead (next player starts the trick)" : ""}.`);
-          break;
-        case "slapped":
-          pop("SLAP! \u{1F602}", [`${e.slapper} slapped ${e.slapped}`, `${e.slapped} picks up ${e.cardsPickedUp} cards`], "slap");
-          say(`SLAP! ${e.slapper} slaps ${e.slapped}, who picks up ${e.cardsPickedUp} cards.`);
-          break;
-        case "trickResolved":
-          if (e.nextLeader) say(`Trick over. ${e.nextLeader} leads.`);
-          break;
-        case "playerOut":
-          say(`${e.player} is out in place ${e.place}.`);
-          if (!events.some((x) => x.type === "roundEnded")) {
-            places[e.player] = ordinal(e.place);
-            pop(`${e.player} is out!`, [`Came ${ordinal(e.place)}`], "out");
-          }
-          break;
-        case "finalTwoChoice":
-          pop(`${e.player}'s last card was higher!`, ["Pick up the waste pile or forfeit."]);
-          say(`${e.player} played a higher last card: pick up or forfeit.`);
-          break;
-        case "wastePilePickedUp":
-          say(`${e.player} picks up the waste pile (${e.cards} cards) and plays on.`);
-          break;
-        case "forfeited":
-          say(`${e.player} forfeits.`);
-          break;
-        case "roundEnded":
-          endRound2(e);
-          break;
-      }
-    }
-  }
-  function endRound2(end) {
-    roundEnd = end;
-    const pts = scoreRound(end.finishingOrder, end.sharedSecondLast);
-    totals = addScores(totals, pts);
-    const order = end.finishingOrder;
-    const n = order.length;
-    previous = { winner: order[0], loser: order[n - 1] };
-    say(`Round over. Order: ${order.join(" > ")}.${end.sharedSecondLast ? ` ${end.sharedSecondLast.join(" and ")} share second-last.` : ""}`);
-    order.slice(0, n - 2).forEach((p, i) => {
-      if (!places[p]) {
-        places[p] = ordinal(i + 1);
-        pop(`${p} is out!`, [`Came ${ordinal(i + 1)}`], "out");
-      }
-    });
-    const second = order[n - 2];
-    const last = order[n - 1];
-    if (end.sharedSecondLast) {
-      places[second] = `${ordinal(n - 1)}=`;
-      places[last] = `${ordinal(n - 1)}=`;
-      pop("Both out on jokers!", [`${second} and ${last} share second last (${ordinal(n - 1)})`], "end");
-    } else {
-      places[second] = ordinal(n - 1);
-      places[last] = "LOSER";
-      const lines = [n === 2 ? `${second} wins (1st)` : `${second} is second last (${ordinal(n - 1)})`, `${last} is the LOSER!`];
-      if (end.forfeitedBy) lines.push(`(${end.forfeitedBy} forfeited)`);
-      pop("Round over", lines, "end");
-    }
-    stage = "roundEnd";
-  }
-  function act(action, arg) {
-    try {
-      doAct(action, arg);
-    } catch (err) {
-      pop("Not allowed", [err.message]);
-    }
-    render();
-  }
-  function doAct(action, arg) {
-    switch (action) {
-      case "players":
-        cfg.players = Number(arg);
-        return;
-      case "jokers":
-        cfg.jokers = !cfg.jokers;
-        return;
-      case "seed":
-        cfg.seed = Number(document.getElementById("seed").value) || 1;
-        newGame();
-        return;
-      case "randomSeed":
-        cfg.seed = Math.floor(Math.random() * 1e5);
-        return;
-      case "closePopup":
-        popups.shift();
-        return;
-      case "restart":
-        stage = "setup";
-        return;
-      // Dealing
-      case "autoStart":
-        deal = autoDealStart(deal, arg);
-        say(`Auto deal starts at ${arg}.`);
-        return;
-      case "autoStep":
-        deal = autoDealStep(deal);
-        if (isDealComplete(deal)) finishDeal();
-        return;
-      case "autoAll":
-        deal = autoDealAll(deal);
-        finishDeal();
-        return;
-      case "mode":
-        deal = setDealMode(deal, arg);
-        say(`Dealer switches to ${arg} deal.`);
-        return;
-      case "manual":
-        deal = manualDealCard(deal, arg);
-        if (isDealComplete(deal)) finishDeal();
-        return;
-      // Reshuffle vote
-      case "vote": {
-        const [p, b] = arg.split(":");
-        votes = { ...votes, [p]: b };
-        return;
-      }
-      case "countVote": {
-        const tally = tallyVote(votes, ids.length);
-        if (tally === "hostDecides") {
-          pop("No majority", ["The host decides."]);
-          hostDeciding = true;
-          return;
-        }
-        afterVote(resolveVote(tally), "majority");
-        return;
-      }
-      case "hostDecide":
-        hostDeciding = false;
-        afterVote(resolveVote("hostDecides", arg === "yes"), "host");
-        return;
-      case "skipVote":
-        votes = {};
-        say("No reshuffle vote called.");
-        proceedAfterVote();
-        return;
-      // Swap
-      case "swapWho":
-        swapWho = arg;
-        swapSelected = [];
-        return;
-      case "swapPick":
-        if (swapSelected.includes(arg)) swapSelected = swapSelected.filter((x) => x !== arg);
-        else if (swapSelected.length < MAX_SWAP) swapSelected = [...swapSelected, arg];
-        else pop(`You can swap at most ${MAX_SWAP} cards.`);
-        return;
-      case "swapDo": {
-        if (swapDone.includes(swapWho)) throw new Error(`${swapWho} already swapped this round`);
-        const res = hiddenSwap(hands[swapWho] ?? [], hiddenDecks, swapSelected, rng);
-        hands = { ...hands, [swapWho]: res.hand.slice() };
-        hiddenDecks = { ...res.hiddenDecks };
-        say(
-          swapSelected.length ? `${swapWho} swaps ${swapSelected.length} card(s): gave ${res.removed.map(cardLabel).join(" ")} (out of the round).` : `${swapWho} keeps their hand.`
-        );
-        swapDone = [...swapDone, swapWho];
-        swapSelected = [];
-        const next = ids.find((p) => !swapDone.includes(p));
-        if (next) swapWho = next;
-        return;
-      }
-      case "swapFinish":
-        goToLeader();
-        return;
-      // Leader
-      case "tapMs": {
-        const [p, v] = arg.split(":");
-        tapInputs[p].ms = v;
-        return;
-      }
-      case "tapFs": {
-        const t = tapInputs[arg];
-        t.fs = !t.fs;
-        return;
-      }
-      case "tapResolve": {
-        const results = tapPlayers.map((p) => {
-          const t = tapInputs[p];
-          if (!t.fs && !(Number(t.ms) > 0)) throw new Error(`Enter a time for ${p} or tick false start`);
-          return { player: p, ms: Number(t.ms) || 0, falseStart: t.fs };
-        });
-        const out = resolveReactionTap(results);
-        if (out.kind === "replay") {
-          tapPlayers = out.players.slice();
-          tapInputs = Object.fromEntries(tapPlayers.map((p) => [p, { ms: "", fs: false }]));
-          pop("Tie!", [`${tapPlayers.join(" & ")} play Reaction Tap again.`]);
-          say(`Reaction Tap tie: ${tapPlayers.join(", ")} replay.`);
-          return;
-        }
-        pop(`${out.slowest} leads!`, ["Slowest in Reaction Tap."]);
-        say(`Reaction Tap: ${out.slowest} slowest, leads.`);
-        beginPlay(out.slowest);
-        return;
-      }
-      case "winnerPicks":
-        say(`${previous?.winner} (last round's winner) picks ${arg} to lead.`);
-        beginPlay(arg);
-        return;
-      // Play
-      case "play": {
-        const [p, id] = arg.split("|");
-        const r = playCard(play, p, id);
-        play = r.state;
-        hands = Object.fromEntries(Object.entries(play.hands).map(([k, v]) => [k, v.slice()]));
-        applyEvents(r.events);
-        return;
-      }
-      case "pickUp": {
-        const r = pickUpWastePile(play, arg);
-        play = r.state;
-        hands = Object.fromEntries(Object.entries(play.hands).map(([k, v]) => [k, v.slice()]));
-        applyEvents(r.events);
-        return;
-      }
-      case "forfeit": {
-        const r = forfeit(play, arg);
-        play = r.state;
-        applyEvents(r.events);
-        return;
-      }
-      case "nextRound":
-        round++;
-        startRound();
-        return;
-    }
-  }
-  var hostDeciding = false;
-  function render() {
-    let body = "";
-    if (stage === "setup") body = renderSetup();
-    else {
-      body = `
-      <div class="bar">
-        <div><b>Round ${round}</b> \xB7 ${ids.length} players \xB7 jokers ${cfg.jokers ? "on" : "off"} \xB7 seed ${cfg.seed}</div>
-        <button class="small" data-act="restart">New game</button>
-      </div>
-      <div class="scores">${ids.map((p2) => `<span>${p2}${p2 === HOST ? " (host)" : ""}: <b>${totals[p2]}</b></span>`).join("")}</div>
-      ${renderStage()}
-      <h3>Event log</h3>
-      <div class="log">${log.map((l) => `<div>${esc(l)}</div>`).join("")}</div>`;
-    }
-    const p = popups[0];
-    const more = popups.length > 1 ? ` (${popups.length - 1} more)` : "";
-    app.innerHTML = body + (p ? `<div class="popup ${p.kind ?? "info"}" data-act="closePopup"><div>
-          <div class="ptitle">${esc(p.title)}</div>
-          ${(p.lines ?? []).map((l, i) => `<div class="pline ${i === 0 ? "first" : ""}">${esc(l)}</div>`).join("")}
-          <small>tap to close${more}</small></div></div>` : "");
-  }
-  function renderSetup() {
-    return `
-    <h1>Pubby testbed</h1>
-    <p class="note">Play-tests the real rules engine. Every hand is shown so you can check the rules. You make every player's move. Hidden decks only show a card count.</p>
-    <h3>Players</h3>
-    <div class="row">${[2, 3, 4, 5, 6, 7, 8].map((n) => `<button class="${n === cfg.players ? "on" : ""}" data-act="players" data-arg="${n}">${n}</button>`).join("")}</div>
-    <h3>Joker rule</h3>
-    <div class="row"><button class="${cfg.jokers ? "on" : ""}" data-act="jokers">Jokers ${cfg.jokers ? "ON" : "OFF"}</button></div>
-    <h3>Seed</h3>
-    <p class="note">Same seed = same shuffles. Note it down if something looks wrong.</p>
-    <div class="row"><input id="seed" type="number" inputmode="numeric" value="${cfg.seed}"><button data-act="randomSeed">Random</button></div>
-    <div class="row"><button class="go" data-act="seed">Start game</button></div>`;
+  function placeBadge(p) {
+    if (!s || s.phase !== "playing" || !s.play) return "";
+    const i = s.play.finished.indexOf(p);
+    return i === -1 ? "" : ` <span class="place">${ordinal(i + 1)}</span>`;
   }
   function handsBlock(opts = {}) {
-    return ids.map((p) => {
-      const h = sortHand(hands[p] ?? []);
-      const legal = opts.playable && play ? new Set(legalCards(play, p).map((c) => c.id)) : null;
-      const isTurn = play?.turn === p;
-      const out = play?.finished.includes(p);
+    const ss = s;
+    return ss.order.map((p) => {
+      const h = sortHand(handOf3(p));
+      const play = ss.play;
+      const legal = opts.playable && play && !ss.paused ? new Set(legalCards(play, p).map((c) => c.id)) : null;
+      const isTurn = ss.phase === "playing" && play?.turn === p;
       const cards = h.map((c) => {
         if (opts.swapPick && p === swapWho) {
           return cardHtml(c, `data-act="swapPick" data-arg="${c.id}"`, swapSelected.includes(c.id) ? "picked" : "");
@@ -1052,103 +2051,315 @@
         }
         return cardHtml(c, "disabled");
       }).join("");
-      const forfeitBtn = play && !play.over && play.forfeitAllowed.includes(p) ? `<button class="small warn" data-act="forfeit" data-arg="${p}">Forfeit</button>` : "";
+      const forfeitBtn = ss.phase === "playing" && play && !play.over && play.forfeitAllowed.includes(p) && play.pendingFinalTwo !== p ? `<button class="small warn" data-act="forfeit" data-arg="${p}">Forfeit</button>` : "";
       return `<div class="hand ${isTurn ? "turn" : ""}">
-        <div class="who">${p}${p === HOST ? " (host)" : ""}${places[p] ? ` <span class="place ${places[p] === "LOSER" ? "loser" : ""}">${places[p]}</span>` : ""} \xB7 ${h.length} cards ${isTurn ? "<b>\u2190 turn</b>" : ""} ${forfeitBtn}</div>
+        <div class="who">${esc(nm(p))}${p === ss.hostId ? " (host)" : ""}${placeBadge(p)} \xB7 ${h.length} cards ${isTurn ? "<b>\u2190 turn</b>" : ""} ${forfeitBtn}</div>
         <div class="cards">${cards || '<span class="note">no cards</span>'}</div>
       </div>`;
     }).join("");
   }
   function hiddenInfo() {
-    const sizes = Object.values(hiddenDecks).map((d) => d.length);
+    const sizes = Object.values(s.hiddenDecks).map((d) => d.length);
     return sizes.length ? `<p class="note">Hidden decks (never shown in the real game): ${sizes.join(" + ")} cards</p>` : "";
   }
+  function topLine(label, t, unit = "") {
+    return `<tr><td>${label}</td><td>${t ? `${esc(names(t.players))} (${t.count}${unit})` : "\u2014"}</td></tr>`;
+  }
+  function render() {
+    let body = "";
+    if (!s) body = renderSetup();
+    else {
+      const ss = s;
+      body = `
+      <div class="bar">
+        <div><b>${ss.ultimateRound && ss.phase !== "results" ? "ULTIMATE ROUND" : `Round ${ss.round}`}</b> \xB7 ${ss.order.length} players \xB7 jokers ${ss.jokerRuleEnabled ? ss.jokerTotal : "off"} \xB7 seed ${cfg.seed}</div>
+        <button class="small" data-act="restart">New game</button>
+      </div>
+      <div class="scores">${ss.order.map((p2) => `<span>${esc(nm(p2))}${p2 === ss.hostId ? " (host)" : ""}: <b>${ss.scores[p2]}</b></span>`).join("")}${ss.target !== null ? `<span>\u{1F3AF} target <b>${ss.target}</b></span>` : ""}${ss.ultimateRound && ss.phase === "results" ? "<span>\u26A1 Ultimate next</span>" : ""}</div>
+      ${renderPauseBar()}
+      ${["dealing", "reshuffle", "swap", "reactionTap", "chooseLeader", "playing"].includes(ss.phase) ? '<p class="note">\u{1F3AF} Target score: before round 1 starts, or on the results screen. \u26A1 Ultimate Round: on the results screen after each round.</p>' : ""}
+      ${renderVote()}
+      ${renderStage()}
+      ${renderViewAs()}
+      <h3>Event log</h3>
+      <div class="log">${ss.log.slice().reverse().map((e) => {
+        const l = logLine(e);
+        return l ? `<div>R${e.round}: ${esc(l)}</div>` : "";
+      }).join("")}</div>`;
+    }
+    const p = popups[0];
+    const more = popups.length > 1 ? ` (${popups.length - 1} more)` : "";
+    const paused = s?.paused ? renderPausedOverlay() : "";
+    app.innerHTML = body + paused + (p ? `<div class="popup ${p.kind ?? "info"}" data-act="closePopup"><div>
+          <div class="ptitle">${esc(p.title)}</div>
+          ${(p.lines ?? []).map((l, i) => `<div class="pline ${i === 0 ? "first" : ""} ${p.kind === "slap" && i === 2 ? "phrase" : ""}">${esc(l)}</div>`).join("")}
+          <small>tap to close${more}</small></div></div>` : "");
+  }
+  function renderSetup() {
+    const saved = Object.values(profiles);
+    return `
+    <h1>Pubby testbed</h1>
+    <p class="note">Play-tests the real rules engine and session layer. Every hand is shown and you make every player's move. P1 is always the host. Hidden decks only show a card count.</p>
+    <h3>Players</h3>
+    <div class="row">${[2, 3, 4, 5, 6, 7, 8].map((n) => `<button class="${n === cfg.players ? "on" : ""}" data-act="players" data-arg="${n}">${n}</button>`).join("")}</div>
+    <h3>Joker rule (host setup)</h3>
+    <div class="row"><button class="${cfg.jokers ? "on" : ""}" data-act="jokers">Jokers ${cfg.jokers ? "ON" : "OFF"}</button></div>
+    <h3>Pause time limit (host setup, optional)</h3>
+    <div class="row">${[0, 15, 60].map((n) => `<button class="small ${n === cfg.pauseLimit ? "on" : ""}" data-act="pauseLimit" data-arg="${n}">${n ? `${n}s` : "None"}</button>`).join("")}</div>
+    <h3>Seed</h3>
+    <p class="note">Same seed = same shuffles. Note it down if something looks wrong.</p>
+    <div class="row"><input id="seed" type="number" inputmode="numeric" value="${cfg.seed}"><button data-act="randomSeed">Random</button></div>
+    <div class="row"><button class="go" data-act="start">Start game</button></div>
+    ${saved.length ? `<h3>Saved profiles on this phone</h3>${renderProfiles()}${renderCsv()}<div class="row"><button class="small warn" data-act="clearProfiles">Clear saved profiles</button></div>` : ""}`;
+  }
+  function renderProfiles() {
+    return `<div class="scroll"><table class="tight"><tr><th>Profile</th><th>Games</th><th>Pts</th><th>W/L</th><th>Slapped by most</th><th>Slapped most</th><th></th></tr>${Object.values(profiles).map((p) => {
+      const r = profileRivals(p);
+      return `<tr><td>${esc(p.profileName)}</td><td>${p.gamesPlayed}</td><td>${p.points}</td><td>${p.roundWins}/${p.roundLosses}</td>
+        <td>${esc(r.slappedByMost.join(" & ") || "\u2014")}</td><td>${esc(r.slappedMost.join(" & ") || "\u2014")}</td>
+        <td><button class="small" data-act="shareProfile" data-arg="${esc(p.profileName)}">CSV</button></td></tr>`;
+    }).join("")}</table></div>`;
+  }
+  function renderPauseBar() {
+    const ss = s;
+    const inRound = ["dealing", "reshuffle", "swap", "reactionTap", "chooseLeader", "playing"].includes(ss.phase);
+    if (!inRound || ss.paused) return "";
+    const reqs = ss.pauseRequests.map((p) => `<div class="row"><span>${esc(nm(p))} asks to pause:</span>
+      <button class="small" data-act="respondPause" data-arg="${p}:yes">Host: approve</button>
+      <button class="small warn" data-act="respondPause" data-arg="${p}:no">Host: decline</button></div>`).join("");
+    return `<div class="pausebar">
+    <div class="row"><button class="small" data-act="pause">\u23F8 Host pauses</button>
+      <span class="note">Ask to pause:</span>${ss.order.filter((p) => p !== ss.hostId).map((p) => `<button class="small" data-act="requestPause" data-arg="${p}">${esc(nm(p))}</button>`).join("")}</div>
+    ${reqs}</div>`;
+  }
+  function renderPausedOverlay() {
+    const ss = s;
+    let left = "";
+    if (ss.pauseTimeLimitSec && ss.pausedAt) {
+      const secs = Math.max(0, Math.ceil(ss.pauseTimeLimitSec - (Date.now() - ss.pausedAt) / 1e3));
+      left = `<p>Resumes on its own in <b>${secs}s</b></p>`;
+    }
+    return `<div class="paused"><div>
+    <div class="ptitle">PAUSED</div>
+    <p>Every phone is frozen. Nobody can play or ask to pause.</p>${left}
+    <div class="row"><button class="go" data-act="resume">Host: resume</button></div>
+    <p class="note">Host can change the pause time limit:</p>
+    <div class="row">${[0, 15, 60].map((n) => `<button class="small ${(ss.pauseTimeLimitSec ?? 0) === n ? "on" : ""}" data-act="setLimit" data-arg="${n}">${n ? `${n}s` : "None"}</button>`).join("")}</div>
+  </div></div>`;
+  }
+  function renderVote() {
+    const ss = s;
+    const v = ss.vote;
+    if (!v) return "";
+    const title = v.kind === "reshuffle" ? "Reshuffle?" : v.kind === "target" ? `Target score: ${v.value} points?` : "Play the Ultimate Round?";
+    const by = v.calledBy ? `${nm(v.calledBy)} called this vote.` : "Started automatically: the target was reached.";
+    if (v.awaitingHost) {
+      return `<div class="votebox"><h2>${esc(title)}</h2><p>No majority. Host ${esc(nm(ss.hostId))} decides:</p>
+      <div class="row"><button data-act="hostDecide" data-arg="yes">YES</button><button data-act="hostDecide" data-arg="no">NO</button></div></div>`;
+    }
+    const rows2 = ss.order.map((p) => `<div class="row"><span class="w">${esc(nm(p))}</span>
+      <button class="small ${v.ballots[p] === "yes" ? "on" : ""}" data-act="vote" data-arg="${p}:yes">Yes</button>
+      <button class="small ${v.ballots[p] === "no" ? "on" : ""}" data-act="vote" data-arg="${p}:no">No</button></div>`).join("");
+    return `<div class="votebox"><h2>Vote: ${esc(title)}</h2><p class="note">${esc(by)} More than half decides it at once. A tie or too few votes goes to the host.</p>
+    ${rows2}<div class="row"><button class="small" data-act="closeVote">Host: close vote now</button></div></div>`;
+  }
   function renderStage() {
-    switch (stage) {
-      case "deal": {
-        const d = deal;
-        const dealer = dealerFor(setupFor());
-        const seatBtns = (a) => ids.map((p) => `<button data-act="${a}" data-arg="${p}">${p} (${d.hands[p]?.length ?? 0})</button>`).join("");
+    const ss = s;
+    switch (ss.phase) {
+      case "dealing": {
+        const d = ss.deal;
+        const seatBtns = (a) => ss.order.map((p) => `<button data-act="${a}" data-arg="${p}">${esc(nm(p))} (${d.hands[p]?.length ?? 0})</button>`).join("");
         let controls = "";
         if (d.mode === "auto") {
-          controls = d.nextSeat === null ? `<p>Dealer ${dealer}: tap the first player to start the auto deal.</p><div class="row">${seatBtns("autoStart")}</div>` : `<p>Next card goes to <b>${d.nextSeat}</b>.</p><div class="row"><button data-act="autoStep">Deal 1 card</button><button data-act="autoAll">Deal the rest</button></div>`;
+          controls = d.nextSeat === null ? `<p>Dealer ${esc(nm(ss.dealer))}: tap the first player to start the auto deal.</p><div class="row">${seatBtns("autoStart")}</div>` : `<p>Next card goes to <b>${esc(nm(d.nextSeat))}</b>.</p><div class="row"><button data-act="autoStep">Deal 1 card</button><button data-act="autoAll">Deal the rest</button></div>`;
           controls += `<div class="row"><button class="small" data-act="mode" data-arg="manual">Switch to manual</button></div>`;
         } else {
           controls = `<p>Manual deal: tap a player to give them one card.</p><div class="row">${seatBtns("manual")}</div>
           <div class="row"><button class="small" data-act="mode" data-arg="auto">Switch to auto</button></div>`;
         }
-        return `<h2>Deal</h2><p>${d.remaining.length} cards left to deal.</p>${controls}${hiddenInfo()}`;
+        if (ss.vote) controls = '<p class="note">Dealing waits until the vote is finished.</p>';
+        return `<h2>Deal${ss.reshuffleUsed ? " again (reshuffled)" : ""}</h2>${preRoundTarget()}<p>${d.remaining.length} cards left to deal.</p>${controls}${hiddenInfo()}`;
       }
-      case "vote": {
-        if (hostDeciding) {
-          return `<h2>Reshuffle vote</h2><p>No majority. Host ${HOST} decides:</p>
-          <div class="row"><button data-act="hostDecide" data-arg="yes">Reshuffle</button><button data-act="hostDecide" data-arg="no">Play on</button></div>`;
-        }
-        const rows = ids.map(
-          (p) => `<div class="row"><span class="w">${p}</span>
-          <button class="small ${votes[p] === "yes" ? "on" : ""}" data-act="vote" data-arg="${p}:yes">Yes</button>
-          <button class="small ${votes[p] === "no" ? "on" : ""}" data-act="vote" data-arg="${p}:no">No</button></div>`
-        ).join("");
-        return `<h2>Reshuffle vote?</h2><p class="note">Look at the hands below. Any player can call a reshuffle vote (only one per round); set the votes and count, or skip.</p>
-        ${rows}<div class="row"><button data-act="countVote">Count votes</button><button data-act="skipVote">No vote called</button></div>
+      case "reshuffle":
+        return `<h2>Before the round</h2>
+        <p class="note">Everyone looks at their cards. Any player can call a reshuffle vote (one per round). The host starts the round when ready, and then no reshuffle vote can be called.</p>
+        ${ss.vote ? "" : `<div class="row"><span class="note">Call reshuffle vote:</span>${ss.order.map((p) => `<button class="small" data-act="callReshuffle" data-arg="${p}">${esc(nm(p))}</button>`).join("")}</div>
+        <div class="row"><button class="go" data-act="startRound">Host: start the round</button></div>`}
+        ${preRoundTarget()}
         ${hiddenInfo()}${handsBlock()}`;
-      }
       case "swap": {
-        const done = swapDone.includes(swapWho);
-        return `<h2>Hidden swap</h2><p class="note">Each player may swap up to ${MAX_SWAP} cards (or none) for random hidden cards, once this round.</p>
-        <div class="row">${ids.map((p) => `<button class="small ${p === swapWho ? "on" : ""}" data-act="swapWho" data-arg="${p}">${p}${swapDone.includes(p) ? " \u2713" : ""}</button>`).join("")}</div>
-        <p>${done ? `${swapWho} has already swapped.` : `${swapWho}: tap up to ${MAX_SWAP} cards, then Swap (or Swap with none to keep).`}</p>
-        <div class="row"><button data-act="swapDo" ${done ? "disabled" : ""}>Swap ${swapSelected.length} card(s)</button><button data-act="swapFinish">Done swapping</button></div>
+        const done = ss.swapDone.includes(swapWho);
+        return `<h2>Hidden swap</h2><p class="note">Each player may swap up to ${MAX_SWAP} cards (or none) for random hidden cards, once this round. The round goes on when everyone has chosen.</p>
+        <div class="row">${ss.order.map((p) => `<button class="small ${p === swapWho ? "on" : ""}" data-act="swapWho" data-arg="${p}">${esc(nm(p))}${ss.swapDone.includes(p) ? " \u2713" : ""}</button>`).join("")}</div>
+        <p>${done ? `${esc(nm(swapWho))} has already swapped.` : `${esc(nm(swapWho))}: tap up to ${MAX_SWAP} cards, then Swap (or Swap 0 to keep).`}</p>
+        <div class="row"><button data-act="swapDo" ${done ? "disabled" : ""}>Swap ${swapSelected.length} card(s)</button></div>
         ${hiddenInfo()}${handsBlock({ swapPick: !done })}`;
       }
-      case "leader": {
-        const ld = leaderDecision;
-        if (ld.kind === "reactionTap") {
-          const rows = tapPlayers.map((p) => {
-            const t = tapInputs[p];
-            return `<div class="row"><span class="w">${p}</span>
-              <input type="number" inputmode="numeric" placeholder="ms" value="${esc(t.ms)}" data-input="tapMs" data-p="${p}">
-              <button class="small ${t.fs ? "on" : ""}" data-act="tapFs" data-arg="${p}">False start</button></div>`;
-          }).join("");
-          return `<h2>Reaction Tap</h2><p class="note">More than one player is missing a suit. Enter each reaction time (ms) or tick false start. Slowest leads; false start counts as slowest; ties replay.</p>
-          ${rows}<div class="row"><button data-act="tapResolve">Who leads?</button></div>${handsBlock()}`;
-        }
-        if (ld.kind === "winnerChooses") {
-          return `<h2>Who leads?</h2><p>${ld.winner} won last round and picks the leader:</p>
-          <div class="row">${ids.map((p) => `<button data-act="winnerPicks" data-arg="${p}">${p}</button>`).join("")}</div>${handsBlock()}`;
-        }
-        return "";
+      case "reactionTap": {
+        const tap = ss.tap;
+        const rows2 = tap.players.map((p) => {
+          if (tap.results[p]) return `<div class="row"><span class="w">${esc(nm(p))}</span><span class="note">tapped \u2713</span></div>`;
+          const t = tapInputs[p] ?? (tapInputs[p] = { ms: "", fs: false });
+          return `<div class="row"><span class="w">${esc(nm(p))}</span>
+            <input type="number" inputmode="numeric" placeholder="ms" value="${esc(t.ms)}" data-input="tapMs" data-p="${p}">
+            <button class="small ${t.fs ? "on" : ""}" data-act="tapFs" data-arg="${p}">False start</button>
+            <button class="small" data-act="tapSend" data-arg="${p}">Tap</button></div>`;
+        }).join("");
+        return `<h2>Reaction Tap</h2><p class="note">More than one player is missing a suit. Enter each reaction time (ms) or tick false start, then Tap. Slowest leads; a false start counts as slowest; ties replay.</p>
+        ${rows2}${handsBlock()}`;
       }
-      case "play": {
-        const p = play;
-        const trick = p.trick.plays.map((t) => `<span class="tp">${t.player}: ${cardHtml(t.card, "disabled")}</span>`).join("");
-        const choice = p.pendingFinalTwo ? `<div class="choice"><b>${p.pendingFinalTwo}</b> played a higher last card:
+      case "chooseLeader":
+        return `<h2>Who leads?</h2><p>${esc(nm(ss.previous.winner))} won last round and picks the leader:</p>
+        <div class="row">${ss.order.map((p) => `<button data-act="winnerPicks" data-arg="${p}">${esc(nm(p))}</button>`).join("")}</div>${handsBlock()}`;
+      case "playing": {
+        const p = ss.play;
+        const trick = p.trick.plays.map((t) => `<span class="tp">${esc(nm(t.player))}: ${cardHtml(t.card, "disabled")}</span>`).join("");
+        const choice = p.pendingFinalTwo ? `<div class="choice"><b>${esc(nm(p.pendingFinalTwo))}</b> played a higher last card:
             <button data-act="pickUp" data-arg="${p.pendingFinalTwo}">Pick up waste pile (${p.wastePile.length})</button>
             <button class="warn" data-act="forfeit" data-arg="${p.pendingFinalTwo}">Forfeit</button></div>` : "";
         return `<h2>Play</h2>
         <div class="table">
           <div>Led suit: <b>${p.trick.ledSuit ?? "\u2014"}</b> \xB7 Waste pile: ${p.wastePile.length} \xB7 Jokers used: ${p.usedJokers.length}</div>
-          <div>Out: ${p.finished.join(", ") || "nobody yet"}</div>
           <div class="trick">${trick || '<span class="note">No cards in this trick yet</span>'}</div>
         </div>
         ${choice}
+        ${renderTakePanel()}
         <p class="note">Bright cards can be played. Dimmed cards are blocked (must follow suit).</p>
         ${handsBlock({ playable: true })}`;
       }
-      case "roundEnd": {
-        const e = roundEnd;
-        const pts = scoreRound(e.finishingOrder, e.sharedSecondLast);
-        const rows = e.finishingOrder.map((p, i) => `<tr><td>${i + 1}</td><td>${p}</td><td>${pts[p] > 0 ? "+" : ""}${pts[p]}</td><td>${totals[p]}</td></tr>`).join("");
-        return `<h2>Round ${round} results</h2>
-        <p class="winner">\u{1F3C6} ${esc(e.finishingOrder[0])} is the winner!</p>
-        ${e.forfeitedBy ? `<p>${e.forfeitedBy} forfeited.</p>` : ""}
-        ${e.sharedSecondLast ? `<p>${e.sharedSecondLast.join(" & ")} went out on jokers and share second-last place.</p>` : ""}
-        <table><tr><th>Place</th><th>Player</th><th>Points</th><th>Total</th></tr>${rows}</table>
-        <p class="note">Next round: ${previous?.loser} deals, ${previous?.winner} picks who leads (unless someone is missing a suit).</p>
-        <div class="row"><button class="go" data-act="nextRound">Next round</button></div>`;
+      case "results":
+        return renderResults();
+      case "gameOver":
+        return renderGameOver();
+    }
+  }
+  function targetRows() {
+    const ss = s;
+    if (ss.target !== null) return `<h3>\u{1F3AF} Target score</h3><p><b>Agreed: ${ss.target} points.</b></p>`;
+    if (!targetVoteAllowed(ss)) return "";
+    return `<h3>\u{1F3AF} Target score (not set)</h3>
+    <div class="row"><span class="note">Points:</span><input id="target" type="number" inputmode="numeric" value="${esc(targetInput)}" data-input="target"></div>
+    <div class="row"><span class="note">Proposed by:</span>${ss.order.map((p) => `<button class="small" data-act="callTarget" data-arg="${p}">${esc(nm(p))}</button>`).join("")}</div>`;
+  }
+  function preRoundTarget() {
+    const ss = s;
+    if (ss.round !== 1 || ss.vote || !(ss.phase === "dealing" || ss.phase === "reshuffle")) return "";
+    const rows2 = targetRows();
+    return rows2 ? `<div class="votebox proposebox">${rows2}<p class="note">Optional. You can also set it on any results screen.</p></div>` : "";
+  }
+  function renderTakePanel() {
+    const ss = s;
+    const play = ss.play;
+    const holding = ss.order.filter((p) => (play.hands[p] ?? []).length > 0);
+    const reqs = ss.takeRequests.map((r) => r.agreed ? `<div class="row"><span>${esc(nm(r.requester))} \u2192 ${esc(nm(r.target))}: <b>agreed</b>, cards move when this trick is over</span></div>` : `<div class="row"><span>${esc(nm(r.requester))} asks to take <b>${esc(nm(r.target))}</b>'s cards</span>
+          <button class="small" data-act="answerTake" data-arg="${r.requester}:${r.target}:yes">${esc(nm(r.target))}: agree</button>
+          <button class="small warn" data-act="answerTake" data-arg="${r.requester}:${r.target}:no">${esc(nm(r.target))}: refuse</button>
+          <button class="small" data-act="withdrawTake" data-arg="${r.requester}:${r.target}">${esc(nm(r.requester))}: withdraw</button></div>`).join("");
+    const blocked = ss.takeRequests.some((r) => !r.agreed) && play.trick.acted.length === 0 ? '<p class="note"><b>The next trick waits until the request is answered.</b></p>' : "";
+    let ask = "";
+    if (holding.length < 3) ask = '<p class="note">Not allowed with only two players holding cards.</p>';
+    else {
+      ask = `<div class="row"><span class="note">Who asks?</span>${holding.map((p) => `<button class="small ${p === takeAsker ? "on" : ""}" data-act="takeAsker" data-arg="${p}">${esc(nm(p))}</button>`).join("")}</div>`;
+      if (takeAsker && holding.includes(takeAsker)) {
+        ask += `<div class="row"><span class="note">${esc(nm(takeAsker))} asks to take all cards of:</span>${holding.filter((p) => p !== takeAsker).map((p) => `<button class="small" data-act="requestTake" data-arg="${p}">${esc(nm(p))}</button>`).join("")}</div>`;
       }
     }
-    return "";
+    return `<details class="takebox" ${ss.takeRequests.length || takeAsker ? "open" : ""}><summary>\u{1F91D} Take-cards request${ss.takeRequests.length ? ` (${ss.takeRequests.length})` : ""}</summary>
+    <p class="note">Take all of another player's cards, unseen. Ask any time; it happens between tricks. The other player can agree or refuse. In the real game only the two players see the request.</p>
+    ${ask}${reqs}${blocked}</details>`;
+  }
+  function renderRoundTable() {
+    const ss = s;
+    const r = ss.rounds[ss.rounds.length - 1];
+    if (!r) return "";
+    const rows2 = r.finishingOrder.map((p, i) => {
+      const badge = r.ultimate ? ss.ultimateLabels?.winner === p ? " \u{1F3C6} Ultimate Winner" : ss.ultimateLabels?.losers.includes(p) ? " \u{1F480} Ultimate Loser" : "" : "";
+      return `<tr><td>${i + 1}</td><td>${esc(nm(p))}${badge}</td><td>${r.ultimate ? "\u2014" : fmt(r.points[p] ?? 0)}</td><td>${ss.scores[p]}</td></tr>`;
+    }).join("");
+    return `<p class="winner">\u{1F3C6} ${esc(nm(r.finishingOrder[0]))} is the winner${r.ultimate ? " of the Ultimate Round" : ""}!</p>
+    ${r.forfeitedBy ? `<p>${esc(nm(r.forfeitedBy))} forfeited.</p>` : ""}
+    ${r.sharedSecondLast ? `<p>${esc(names(r.sharedSecondLast))} went out on jokers and share second-last place.</p>` : ""}
+    <table><tr><th>Place</th><th>Player</th><th>Points</th><th>Total</th></tr>${rows2}</table>`;
+  }
+  function renderTrivia() {
+    const ss = s;
+    const t = computeTrivia(ss.log, ss.order);
+    const per = ss.order.map((p) => {
+      const x = t.perPlayer[p];
+      return `<tr><td>${esc(nm(p))}</td><td>${x.slapsGiven}</td><td>${x.timesSlapped}</td><td>${esc(names(x.slappedByMost?.players) || "\u2014")}</td><td>${esc(names(x.slappedMost?.players) || "\u2014")}</td></tr>`;
+    }).join("");
+    return `<h3>Trivia (this session)</h3>
+    <table>
+      ${topLine("Most slapped", t.mostSlapped)}
+      ${topLine("Most slapper", t.mostSlapper)}
+      <tr><td>Rivals</td><td>${t.rivals.length ? t.rivals.map((r) => `${esc(nm(r.slapper))} slaps ${esc(nm(r.slapped))} most (${r.count})`).join("<br>") : "\u2014"}</td></tr>
+      ${topLine("Always fighting for survival", t.alwaysFightingForSurvival)}
+      ${topLine("Biggest pick-up", t.biggestPickUp, " cards")}
+      ${topLine("Most forfeits", t.mostForfeits)}
+      ${topLine("Most reshuffle votes", t.mostReshuffleVotes)}
+      ${topLine("Slowest reaction", t.slowestReaction, " ms")}
+    </table>
+    <h3>Per player (this session)</h3>
+    <table><tr><th>Player</th><th>Slaps</th><th>Slapped</th><th>Slapped by most</th><th>Slapped most</th></tr>${per}</table>`;
+  }
+  function renderResults() {
+    const ss = s;
+    const r = ss.rounds[ss.rounds.length - 1];
+    const voteBtns = ss.vote ? "" : `<div class="votebox proposebox"><h2>\u{1F5F3} Votes</h2>
+      <p class="note">Only between rounds. Tap the name of the player who proposes it, then everyone votes.</p>
+      ${targetRows()}
+      <h3>\u26A1 Ultimate Round</h3>
+      ${ss.ultimateRound ? "<p><b>Agreed: the next round is the Ultimate Round.</b></p>" : `<div class="row"><span class="note">Triggered by:</span>${ss.order.map((p) => `<button class="small" data-act="callUltimate" data-arg="${p}">${esc(nm(p))}</button>`).join("")}</div>`}
+      </div>`;
+    return `<h2>Round ${r.round} results</h2>
+    ${renderRoundTable()}
+    ${voteBtns}
+    <h3>Ready up (no timer; the host decides)</h3>
+    <div class="row">${ss.order.map((p) => `<button class="small ${ss.ready.includes(p) ? "on" : ""}" data-act="ready" data-arg="${p}">${esc(nm(p))}${ss.ready.includes(p) ? " \u2713" : ""}</button>`).join("")}</div>
+    ${renderTrivia()}
+    <p class="note">Next round: ${esc(nm(ss.previous?.loser))} deals, ${esc(nm(ss.previous?.winner))} picks who leads (unless someone is missing a suit).</p>
+    <div class="row"><button class="go" data-act="advance">Host: ${ss.ultimateRound ? "start the ULTIMATE ROUND" : "next round"}</button></div>
+    <div class="row"><button class="warn" data-act="endSession">Host: end the session</button></div>`;
+  }
+  function renderGameOver() {
+    const ss = s;
+    const e = ss.ended;
+    const reason = { ultimatePlayed: "The Ultimate Round was played.", ultimateVoteFailedAtTarget: "The target was reached and the Ultimate vote failed.", hostEnded: "The host ended the session." }[e.reason];
+    const rows2 = e.standings.map((p, i) => {
+      const title = ss.ultimateLabels?.winner === p ? "\u{1F3C6} Ultimate Winner" : ss.ultimateLabels?.losers.includes(p) ? "\u{1F480} Ultimate Loser" : "";
+      return `<tr><td>${i + 1}</td><td>${esc(nm(p))}</td><td>${ss.scores[p]}</td><td>${title}</td></tr>`;
+    }).join("");
+    return `<h2>Game over</h2>
+    <p>${reason}</p>
+    <p class="winner">\u{1F3C6} ${esc(names(e.winners))} ${e.winners.length > 1 ? "win" : "wins"} the game (${e.decidedBy === "ultimate" ? "Ultimate Winner" : "highest score"})</p>
+    <table><tr><th>Place</th><th>Player</th><th>Score</th><th>Title</th></tr>${rows2}</table>
+    ${ss.rounds.some((r) => r.ultimate) ? `<h3>Ultimate Round</h3>${renderRoundTable()}` : ""}
+    ${renderTrivia()}
+    <h3>Game record</h3>
+    <p class="note">Saved on this phone. Every profile in this game has been updated once.</p>
+    <div class="row"><button data-act="shareSession">Session stats CSV</button></div>
+    <h3>Profiles on this phone (all saved games)</h3>
+    ${renderProfiles()}
+    ${renderCsv()}
+    <div class="row"><button class="go" data-act="restart">New game</button></div>`;
+  }
+  function renderCsv() {
+    if (!csvShown) return "";
+    return `<div class="csvbox"><div class="row"><b>${esc(csvShown.filename)}</b><button class="small" data-act="closeCsv">Close</button></div>
+    <p class="note">In the real app this opens the phone's share sheet. Here it is copied to the clipboard (or copy it from the box).</p>
+    <textarea readonly rows="10">${esc(csvShown.csv)}</textarea></div>`;
+  }
+  function renderViewAs() {
+    const ss = s;
+    const v = playerView(ss, viewAs);
+    const json = JSON.stringify(v);
+    const leak = Object.values(ss.hiddenDecks).some((d) => d.some((c) => json.includes(`"${c.id}"`)));
+    return `<details class="viewas"><summary>What a player's phone receives</summary>
+    <div class="row">${ss.order.map((p) => `<button class="small ${p === viewAs ? "on" : ""}" data-act="viewAs" data-arg="${p}">${esc(nm(p))}</button>`).join("")}</div>
+    <p>Own hand: ${v.myHand.length} cards. Others: ${v.players.filter((p) => p.id !== viewAs).map((p) => `${esc(p.sessionName)} ${p.cardCount}`).join(", ")}.</p>
+    <p>Hidden decks in this phone's data: <b>${leak || /hidden/i.test(json) ? "YES (bug!)" : "none \u2713"}</b></p>
+    <p class="note">${v.isHost ? "Host. " : ""}${v.legalCardIds.length ? `Can play ${v.legalCardIds.length} card(s) now. ` : ""}${v.canSwap ? "Can swap. " : ""}${v.canCallReshuffle ? "Can call a reshuffle vote. " : ""}${v.canForfeit ? "Can forfeit. " : ""}</p>
+  </details>`;
   }
   app.addEventListener("click", (ev) => {
     const el = ev.target.closest("[data-act]");
@@ -1156,11 +2367,27 @@
     act(el.dataset["act"], el.dataset["arg"] ?? "");
   });
   app.addEventListener("input", (ev) => {
+    var _a;
     const el = ev.target;
-    if (el.dataset["input"] === "tapMs") {
-      tapInputs[el.dataset["p"]].ms = el.value;
-    }
+    if (el.dataset["input"] === "tapMs") (tapInputs[_a = el.dataset["p"]] ?? (tapInputs[_a] = { ms: "", fs: false })).ms = el.value;
+    if (el.dataset["input"] === "target") targetInput = el.value;
   });
+  setInterval(() => {
+    if (!s?.paused) return;
+    const before = s.paused;
+    try {
+      send({ type: "tick", at: Date.now() });
+    } catch {
+      return;
+    }
+    if (before && !s.paused) render();
+    else {
+      const el = document.querySelector(".paused p b");
+      if (el && s.pauseTimeLimitSec && s.pausedAt) {
+        el.textContent = `${Math.max(0, Math.ceil(s.pauseTimeLimitSec - (Date.now() - s.pausedAt) / 1e3))}s`;
+      }
+    }
+  }, 1e3);
   render();
 })();
 

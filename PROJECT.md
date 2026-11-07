@@ -1,6 +1,6 @@
 # Pubby — Game Spec
 
-**Status:** Phase 1 (rules engine) in progress. Each change is play-tested by the user before it is committed (see `CLAUDE.md`). Items marked **OPEN** need a decision before they are built.
+**Status:** Phase 1 (rules engine and session layer) in progress. Each change is play-tested by the user before it is committed (see `CLAUDE.md`). Items marked **OPEN** need a decision before they are built.
 
 Pubby is a multiplayer shedding card game based on Bhabhi (also called Get Away). It is played as a phone-only, offline-capable web app. The goal of each round is to get rid of all your cards. The last player holding cards is the round loser (the "Bhabhi").
 
@@ -19,6 +19,7 @@ Pubby is a multiplayer shedding card game based on Bhabhi (also called Get Away)
 - A vote passes with a **majority**: more than half of the players.
 - If more than half vote no, the vote **fails**. The host is not asked.
 - If no majority is reached either way (a tie, or too few votes), **the host decides**.
+- **Counting:** A vote is decided the moment more than half say the same thing, without waiting for the rest. If everyone has voted and there is no majority, it goes to the host. The host can also close a vote early (for example if someone won't vote); with no majority, the host then decides.
 - **Result pop-up:** Every vote ends with a bold pop-up on every phone showing the decision, for example:
   - "Majority says… YES!" or "Majority says… NO!"
   - "Host says… YES!" or "Host says… NO!" when the host decided.
@@ -26,6 +27,7 @@ Pubby is a multiplayer shedding card game based on Bhabhi (also called Get Away)
 - **Votes only happen outside a round.** There are two places they can happen:
   - Before a round starts: the reshuffle vote (section 2a).
   - On the results screen after a round: the target score vote and the Ultimate Round vote (section 9).
+  - The target score vote can also happen before round 1 starts (section 9).
 
 ---
 
@@ -53,8 +55,8 @@ The order of steps 3 and 4 does not matter to the players, so the order above is
 - **Who can call it:** Any player.
 - **When:** Before every round, after everyone has looked at their cards. Once the round has begun, it can no longer be called.
 - **Passing rule:** Majority vote. If there is no majority, the host decides.
+- **Closing the window:** If nobody calls a vote, the host taps "Start the round". After a vote, the round carries on by itself (after the new deal if it passed).
 - **If it passes:** The dealer of that round shuffles the cards again and deals them again. This includes the hidden decks.
-- **Once per round:** Only one reshuffle vote per round. After a vote (passed or failed), no other reshuffle vote can be called that round. After a reshuffle, players keep the new deal.
 - **Once per round:** Only one reshuffle vote per round. After a vote (passed or failed), no other reshuffle vote can be called that round. After a reshuffle, players keep the new deal.
 
 ### 2b. Dealing
@@ -126,6 +128,22 @@ The Ace of Spades has no special rule. It is an ordinary card.
     - "You got slapped"
     - "You got slapped by a kiiid"
   - More catch-phrases will be added by the user later. The catch-phrase list must be easy to edit.
+
+### 4.2 Take-cards request
+
+- **Why:** A player who keeps getting slapped by the same person, and can't get past them, can try to take another player's cards to change their hand.
+- **What it does:** The requester takes **all** of another player's cards.
+  - The requester does not see the cards before taking them.
+  - Nobody else is told which cards moved. Everyone can see the card counts change.
+- **Who can be asked:** Any other player still holding cards. This includes the player who keeps slapping them, or someone else whose cards would help.
+- **Always available, unlimited, no cost:** The request button is there all through the round. A player can ask as often as they like. Asking costs nothing.
+- **Timing:** A request can be tapped at any time. The cards only move **between tricks**: after one trick ends and before the first card of the next trick is played. If a trick is under way, an agreed request waits until that trick is over.
+- **The next trick waits:** Between tricks, the leader can't play the first card while a request is still waiting for an answer.
+- **Agreement:** Only the two players decide. The asked player agrees or refuses. The host does not approve (the user may add host approval back later). The requester can withdraw a request that hasn't happened yet.
+- **Private:** Only the two players see the request. The cards moving is shown to everyone (who took from whom, and how many), never which cards.
+- **The player whose cards are taken** has no cards left, so they are **out**, by the normal rules, and take the next finishing place at that moment.
+- **Who leads after:** If the player whose cards were taken was about to lead the next trick, the next player clockwise still holding cards leads instead.
+- **Not with two left:** Not allowed when only two players hold cards (it would just be a forfeit), so never in a 2-player game. Any waiting requests are cancelled when the round gets down to two players, or when either player goes out.
 
 ---
 
@@ -212,6 +230,9 @@ After each round, points are awarded by finishing position. The first player out
 ### Target score (the points goal)
 - The **target score** is a number of points that players agree on by vote. It is the goal the game is played towards.
 - The vote happens on the results screen, between rounds. Majority rule.
+- **Who proposes it:** Any player can propose a target number, which starts the vote.
+- **When:** Before round 1 starts (during the deal, or before the host starts round 1), or on the results screen after any round.
+- **Once agreed, it's fixed.** After a target vote passes, no more target votes can be called for the rest of the session. A failed target vote can be tried again. No target votes once the Ultimate Round has been agreed.
 - If the target score is set and a player reaches it, a vote on the Ultimate Round starts.
 - If no target score is set, the game does not end because of points. The Ultimate Round can still be triggered (below).
 
@@ -257,7 +278,7 @@ When a session ends, the full record is saved.
 - Each profile keeps running totals:
   - Games played.
   - Points scored in total.
-  - Round wins and round losses.
+  - Round wins and round losses (normal rounds only; the Ultimate Round has its own titles).
   - Ultimate Winner and Ultimate Loser titles.
   - Times finished in the bottom two of a round.
   - Times slapped, and times slapped others.
@@ -295,7 +316,7 @@ The trivia shows on the results screen after every round. It has no effect on sc
 - **Overall (profile history):** The same two stats, across every session saved on that phone, shown on each profile (section 10).
 
 ### Other fun stats
-- **Always fighting for survival:** The player who has finished in the bottom two of a round the most times in the session so far.
+- **Always fighting for survival:** The player who has finished in the bottom two of a round the most times in the session so far. The Ultimate Round is not counted.
 - **Biggest pick-up:** The most cards picked up in a single slap.
 - **Most forfeits** in the session.
 - **Most reshuffle votes** called.
@@ -355,6 +376,11 @@ Answer these in any order. Each one unblocks part of the build.
 None. The spec has no open questions.
 
 ### Decided (for reference)
+- Take-cards request (section 4.2): take all of another player's cards, unseen; agreed between the two players only (no host approval for now); unlimited; no cost; moves between tricks; the giver goes out with the next place; not with only two players left.
+- If nobody calls a reshuffle vote, the host taps "Start the round". After a reshuffle vote, the round carries on by itself.
+- A vote is decided as soon as more than half agree. The host can close a vote early; with no majority, the host decides.
+- Any player can propose a target score. It can be voted on before round 1 starts or on any results screen. Once agreed it is fixed, and no more target votes appear (also none once the Ultimate Round is agreed).
+- The Ultimate Round is not counted in round wins, round losses, or bottom-two stats.
 - Final two (all game sizes): the pick-up-or-forfeit choice only applies to a player whose last card is higher than the other player's. A lower last card, a joker, or a slap wins. After picking up, the forfeit option stays.
 - Jokers are played on your own turn, even if you could follow suit.
 - If nobody who played the led suit still holds cards, the next player clockwise still holding cards leads.
@@ -370,7 +396,7 @@ None. The spec has no open questions.
 - Any player can open the quick rules at any time, on their own phone only (section 13).
 - One standard 52-card deck for every player count. Ace is high.
 - Hidden decks are dealt first, automatically and face down, one player's share each. The dealer deals only to players.
-- Peek and take-cards are not in the game. The only card exchange is the hidden swap.
+- The old "peek and take-cards" wording was confusing and was removed. The real idea is the take-cards request (section 4.2).
 - Votes happen only before a round (reshuffle) or on the results screen (target score, Ultimate Round). No votes during a round or a pause.
 - The results screen has no timer. The host moves on. Players can ready up.
 - The target score is a points goal agreed by vote. Reaching it starts an Ultimate Round vote.
@@ -379,7 +405,7 @@ None. The spec has no open questions.
 - The Ultimate Round is one final round, outside the score. It ends the session.
 - Ultimate Loser ranks below all scores. Ultimate Winner outranks the highest score.
 - Auto deal runs clockwise. The dealer can switch to manual during the animation.
-- Any player can call a reshuffle vote. Only one reshuffle vote per round. Only one reshuffle vote per round.
+- Any player can call a reshuffle vote. Only one reshuffle vote per round.
 - A false start in Reaction Tap counts as the slowest time.
 - Jokers are dealt from the player deck. The total is shown at game start. The host can turn the joker rule off at setup.
 - The order of the reshuffle vote and the hidden swap does not matter.
