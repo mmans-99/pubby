@@ -4,6 +4,29 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-06 — New rule: test before commit
+
+**Done**
+- User asked for a playable test build before every commit and push, so they can test before approving. Added as `CLAUDE.md` rule 5 and to the session checklist (rules renumbered).
+- `CODE.md` section 8a: how test builds work. A testbed page that runs the real rules engine until the Svelte UI exists, then the real app on GitHub Pages.
+- `TODO.md`: added the testbed and a play-test of everything built so far. `PROJECT.md` status line notes that every change is play-tested before commit.
+
+- Built the testbed (`testbed/`): a phone-friendly page that runs the real rules engine, bundled into one file with esbuild. All hands visible; hidden decks show only a count. Covers dealing (auto, manual, switching), reshuffle vote with the "Majority says / Host says" pop-up, hidden swap, missing suits and Reaction Tap, winner picks leader, trick play with illegal cards blocked, slaps, jokers, final-two pick-up or forfeit, round results and running totals, event log, seed for replays.
+- Automated browser playthrough: 21 rounds across 2 to 8 players, jokers on and off, no errors.
+- Published the testbed as a private link for the user.
+
+- User tested the testbed: fine. Change: only one reshuffle vote per round (`PROJECT.md` 2a). Testbed updated and republished; checked in a headless browser that a second vote is not offered after a reshuffle.
+- User asked whether the testbed is how the game will look. It is not: it is a rules test tool. The real table UI (Phase 2) is planned as a card-table layout with animations.
+
+- User feedback on pop-ups, now in `PROJECT.md` (sections 4 and 4.1) and in the testbed: SLAP! made big with who slapped who underneath in a smaller font; a pop-up each time someone goes out, saying their place, with a place badge kept next to their name; one pop-up for the last two (second last, and the loser); the round's 1st place is "the winner", never "the Pubby". Pop-ups now queue, so none are lost when several happen at once.
+- Testbed republished; browser playthrough of 21 rounds, 2 to 8 players, no errors.
+
+**Next**
+- User play-tests and reports anything wrong (with the seed).
+- After approval: commit this session's changes, then build the session layer.
+
+---
+
 ## 2026-11-06 — Round start and trick play
 
 **Done**

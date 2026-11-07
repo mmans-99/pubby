@@ -71,6 +71,7 @@ Recommended: **1** for v1, with **2** planned. Each client should only ever rece
 
 - **Hidden decks:** Never sent to any player view, never rendered, no count or animation, including on the host's phone. The rules engine keeps them in `DealState.hiddenDecks`, separate from the seats. The only UI is the "Swap cards" option in round 1 of 2 and 3 player games.
 - **Quick rules:** Pure UI state on one phone (`src/ui/`). Opening it sends no action to the session, so it cannot pause or affect other players. Content is loaded from `src/content/quick-rules.md`.
+- **Pop-ups queue:** Several pop-ups can come from one move (a slap, then a player going out, then the round end). They are shown one after another, never dropped. Going-out pop-ups come from `playerOut` events; the last two are combined into one pop-up from `roundEnded`.
 - **Vote result pop-up:** Driven by a `voteResolved` event carrying the vote kind, the result, and whether it was a majority or the host. Every phone shows "Majority says… YES/NO" or "Host says… YES/NO".
 
 ## 6. Data model (draft)
@@ -132,7 +133,7 @@ The `content/` folder keeps catch-phrases and emojis in one editable place, sinc
 - **Hidden information:** Tests that a client's view never contains another player's hand or hidden deck.
 - **Jokers:** Tests the count per player count (2 for 2–5, 3 for 6–8), that the joker rule can be switched off at setup, and that a joker never enters the waste pile.
 - **Pause:** Tests that only the host can pause or resume, and that a paused game accepts no play actions.
-- **Round-start order:** Tests that the reshuffle vote happens before every round, the hidden swap only in 2–3 player games and only in round 1, and that the reshuffle vote is locked once the round begins.
+- **Round-start order:** Tests that the reshuffle vote is offered before every round, only once per round, and is locked once the round begins; and that the hidden swap is offered every round in 2–3 player games only.
 - **Ultimate Round:** Tests that any player can trigger it from a results screen only, that it is decided by majority vote, that it does not change scores, that the Ultimate Winner label outranks the highest score, and that the Ultimate Loser label ranks below every score.
 - **Voting:** Tests that a majority passes, and that no majority hands the decision to the host.
 - **Dealing:** Tests for auto deal (every card dealt, uneven hands allowed) and manual deal, and that the dealer can switch modes mid-deal. Hidden decks get one share each before the deal, and the dealer cannot deal to them.
@@ -159,6 +160,16 @@ The `content/` folder keeps catch-phrases and emojis in one editable place, sinc
 Next to build: the session layer (rounds, votes, pause, results, target score, Ultimate Round, event log).
 
 Every function is pure: it returns a new state and never changes the one passed in.
+
+## 8a. Playable test builds (required before every commit)
+
+`CLAUDE.md` rule 5: the user tests every change on their phone before approving a commit.
+
+- **Until the Svelte UI exists (Phase 1):** a single self-contained test page, `testbed/index.html`. It bundles the real rules engine (`src/rules/`) with esbuild into one file, so it runs the same code the game will use. It is published as a private link the user opens on their phone.
+- **Files:** `testbed/main.ts` (test UI), `testbed/template.html` (styles), `testbed/build.mjs` (bundles them into `testbed/index.html`). Build with `npm run testbed`. Before publishing, it is played through automatically in a headless browser across 2 to 8 players.
+- **Testbed features:** pick 2 to 8 players and the joker rule; see every hand (it is a test tool, so all hands are visible, but hidden decks show only a count, to check sizes); deal; swap; play cards with illegal moves blocked; slaps, jokers, final-two pick-up or forfeit; a log of every event; round scores. A seed box so the same deal can be replayed when reporting a bug.
+- **From Phase 2:** the real app, built with Vite and published to GitHub Pages (or a preview link) for each change.
+- Every test build comes with a short checklist: what to try and what should happen.
 
 ## 9. Conventions
 

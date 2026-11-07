@@ -27,7 +27,7 @@ Both go out in the same trick? Lower card, joker, or slapper wins. Both on joker
 At the start of every round: swap up to 4 of your cards for random unseen ones, or keep your hand. Swapped-out cards leave the round.
 
 ## Votes
-More than half wins. A tie goes to the host. Votes happen before a round (reshuffle) or on the results screen (target score, Ultimate Round).
+More than half wins. A tie goes to the host. Votes happen before a round (reshuffle, once per round) or on the results screen (target score, Ultimate Round).
 
 ## Ultimate Round
 One final round for glory, worth no points. The winner beats every score; the loser ranks below every score. The game ends after it.

@@ -14,6 +14,9 @@ Status key: `[ ]` not started, `[~]` in progress, `[x]` done, `[!]` blocked on a
 
 ## Phase 1 — Rules engine (no UI)
 
+- [x] **Testbed page** (`testbed/index.html`, `CODE.md` section 8a): deal, reshuffle vote, swap, missing suits, Reaction Tap result, winner picks leader, tricks, slaps, jokers, final two, scoring across rounds. Published as a private link.
+- [~] User play-tests the rules built so far (round start, tricks, slaps, jokers, final two)
+
 - [x] Scaffold Svelte + Vite + TypeScript project (placeholder screen only)
 - [~] Define the game state and action types (`CODE.md` section 6) — draft in `src/rules/types.ts`
 - [x] Deck creation (one 52-card deck, Ace high), joker count, and hidden decks by player count
@@ -27,7 +30,7 @@ Status key: `[ ]` not started, `[~]` in progress, `[x]` done, `[!]` blocked on a
 - [x] Missing-suit declaration and Reaction Tap result (slowest leads, false start slowest, ties replay)
 - [x] Final-two rule (all game sizes): higher last card picks up the waste pile or forfeits; lower card, joker or slap wins; forfeit stays available after a pick-up
 - [x] Joker rule: own turn even when able to follow, joker leads, joker last card out at once, final-two joker cases, shared second-last place
-- [ ] Reshuffle vote (any player can call; majority; before every round; locked once the round begins)
+- [ ] Reshuffle vote (any player can call; majority; before every round; once per round; locked once the round begins) — once-per-round is in the testbed, the session layer will enforce it
 - [x] Hidden swap (2 and 3 players, every round, choose up to 4 cards or none, given cards leave the round)
 - [~] Reshuffle vote: tally and fresh redeal done; wiring into the game flow comes with the session layer
 - [ ] Joker rule: on by default, host can turn off at setup; total jokers shown at game start
@@ -64,7 +67,8 @@ Status key: `[ ]` not started, `[~]` in progress, `[x]` done, `[!]` blocked on a
 - [ ] Joker count banner at game start; host setup toggle for the joker rule
 - [ ] Results screen after every round: scores, trivia, per-player "slapped by most" and "slapped most", no timer, ready-up for players, host moves on
 - [ ] Target score vote and Ultimate Round vote on the results screen
-- [ ] Slap pop-up: 😂 spam and catch-phrases, including "You got slapped by a kiiid"
+- [ ] Slap pop-up: big SLAP!, who slapped who underneath in a smaller font, 😂 spam and catch-phrases, including "You got slapped by a kiiid"
+- [ ] Going-out pop-up with the place, place badge next to the name, one last-two pop-up (second last + the loser), results headline "X is the winner"
 - [ ] Ultimate Round button on the results screen and majority vote UI
 - [ ] Round end, scoreboard, and vote screens
 - [ ] Manual playtest at 2, 3, 5, and 8 players

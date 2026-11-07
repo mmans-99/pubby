@@ -1,6 +1,6 @@
 # Pubby — Game Spec
 
-**Status:** Phase 1 (rules engine) in progress. Items marked **OPEN** need a decision before they are built.
+**Status:** Phase 1 (rules engine) in progress. Each change is play-tested by the user before it is committed (see `CLAUDE.md`). Items marked **OPEN** need a decision before they are built.
 
 Pubby is a multiplayer shedding card game based on Bhabhi (also called Get Away). It is played as a phone-only, offline-capable web app. The goal of each round is to get rid of all your cards. The last player holding cards is the round loser (the "Bhabhi").
 
@@ -54,6 +54,8 @@ The order of steps 3 and 4 does not matter to the players, so the order above is
 - **When:** Before every round, after everyone has looked at their cards. Once the round has begun, it can no longer be called.
 - **Passing rule:** Majority vote. If there is no majority, the host decides.
 - **If it passes:** The dealer of that round shuffles the cards again and deals them again. This includes the hidden decks.
+- **Once per round:** Only one reshuffle vote per round. After a vote (passed or failed), no other reshuffle vote can be called that round. After a reshuffle, players keep the new deal.
+- **Once per round:** Only one reshuffle vote per round. After a vote (passed or failed), no other reshuffle vote can be called that round. After a reshuffle, players keep the new deal.
 
 ### 2b. Dealing
 - **The deck:** One standard 52-card deck for every player count, plus jokers when the joker rule is on (section 7).
@@ -102,6 +104,10 @@ The order of steps 3 and 4 does not matter to the players, so the order above is
 4. When every player has played or the trick is stopped, the trick is resolved.
 5. The player who played the highest card of the led suit leads the next trick. If that player has gone out, whoever played the **next highest** card of the led suit leads instead.
 6. A player who empties their hand is **out** and can watch the rest of the round.
+   - **Going-out pop-up:** Each time a player goes out, a pop-up shows their name and the place they came (for example "Ferrari is out! Came 2nd").
+   - **Place badge:** Their place stays visible next to their name for the rest of the round.
+   - **Last two:** When the round ends, one pop-up announces both: who came second last (with the place), and the last player, called **the loser**. In a 2-player game it says who wins and who is the loser.
+   - **Wording:** The round's 1st place is called **the winner**. The round end never calls anyone "the Pubby".
 7. Cards from completed tricks go to the **waste pile** (see section 6 for the exception).
 
 **Card ranking:** Ace is high. Within a suit, 2 is lowest, then 3 to 10, J, Q, K, and A is highest.
@@ -112,7 +118,7 @@ The Ace of Spades has no special rule. It is an ordinary card.
 - A slap happens when a player plays an off-suit card (step 3 above). That player is the **slapper**.
 - **Effect:** The trick stops immediately. The player who holds the highest card of the led suit picks up **all the cards played in that trick**, including the slap card, and adds them to their hand. That player is the **slapped** player. They then lead the next trick.
 - **Feedback:**
-  - A comic-book style **"SLAP!"** pop-up appears on every screen.
+  - A comic-book style **"SLAP!"** pop-up appears on every screen. It must be big and hard to miss. Underneath, in a smaller font: who slapped who (for example "Speedy slapped Ferrari") and how many cards were picked up.
   - All players can spam the laughing-with-tears emoji 😂. No other emoji for now.
   - A random catch-phrase appears with the pop-up. Starting set:
     - "Don't let the cards control you, you control the cards."
@@ -308,6 +314,21 @@ The trivia shows on the results screen after every round. It has no effect on sc
 
 ---
 
+## 12a. Look and feel (target for the real game UI)
+
+The user wants a polished card-table look, like popular online card games:
+- A green felt table filling the screen.
+- Other players placed around the table, with their cards shown face down as card backs, their name, and a score badge.
+- Your own hand at the bottom, fanned, with big readable cards. Cards you can't play are greyed out.
+- The current trick in the middle of the table, each card in front of the player who played it.
+- Round icon buttons for home, quick rules (?), and sound.
+- Animations: dealing cards out to each player, cards sliding to the middle when played, the trick sweeping to the waste pile or to the slapped player, the SLAP! pop-up, and vote result pop-ups.
+- Pubby's own design: no copying another game's artwork, logos or card designs.
+
+The testbed (`CODE.md` section 8a) is only a rules test tool and does not use this look.
+
+---
+
 ## 13. Quick rules (in-game help)
 
 - **What it is:** A short, simplified rules guide inside the app.
@@ -358,7 +379,7 @@ None. The spec has no open questions.
 - The Ultimate Round is one final round, outside the score. It ends the session.
 - Ultimate Loser ranks below all scores. Ultimate Winner outranks the highest score.
 - Auto deal runs clockwise. The dealer can switch to manual during the animation.
-- Any player can call a reshuffle vote.
+- Any player can call a reshuffle vote. Only one reshuffle vote per round. Only one reshuffle vote per round.
 - A false start in Reaction Tap counts as the slowest time.
 - Jokers are dealt from the player deck. The total is shown at game start. The host can turn the joker rule off at setup.
 - The order of the reshuffle vote and the hidden swap does not matter.
