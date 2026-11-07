@@ -14,6 +14,7 @@
 
 import quickRulesMd from '../content/quick-rules.md';
 import { VERSION } from './version.ts';
+import { keepPubbyOpen, leavePubby, setupBack } from './back.ts';
 import { jokerCount, MAX_PLAYERS, MIN_PLAYERS } from '../rules/cards.ts';
 import { defaultRng } from '../rules/rng.ts';
 import { createSession } from '../session/session.ts';
@@ -54,9 +55,11 @@ export function startApp(target: HTMLElement): void {
     openProfile: null,
     openRecord: null,
     csvSheet: null,
+    exitAsk: false,
   };
   initState(initial, render);
   render();
+  setupBack();
 }
 
 function freshSetup(): SetupState {
@@ -83,10 +86,24 @@ function render(): void {
     ...(st.screen === 'game' && st.game ? reactionsLayer() : []),
     st.rulesOpen ? rulesOverlay() : null,
     csvSheetLayer(),
+    st.exitAsk ? exitOverlay() : null,
     st.message ? h('div', { class: 'toast', role: 'status' }, st.message) : null,
   ];
   root.replaceChildren(...parts.filter((p): p is HTMLElement => p !== null));
   afterRender();
+}
+
+function exitOverlay(): HTMLElement {
+  return h('div', { class: 'overlay', onclick: (e) => { if (e.target === e.currentTarget) keepPubbyOpen(); } },
+    h('div', { class: 'sheet exit-sheet', role: 'dialog', 'aria-label': 'Exit Pubby?' },
+      h('h2', null, 'Exit Pubby?'),
+      h('p', { class: 'muted small' }, 'Swipe back again to exit.'),
+      h('div', { class: 'row' },
+        h('button', { class: 'big secondary grow', onclick: keepPubbyOpen }, 'Stay'),
+        h('button', { class: 'big grow', onclick: leavePubby }, 'Exit'),
+      ),
+    ),
+  );
 }
 
 function rulesOverlay(): HTMLElement {

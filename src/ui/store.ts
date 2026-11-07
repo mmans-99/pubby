@@ -57,6 +57,8 @@ export interface State {
   openRecord: string | null;
   /** CSV shown as text when the share sheet can't take a file. */
   csvSheet: CsvSheet | null;
+  /** "Exit Pubby?" question after a back gesture on the main menu. */
+  exitAsk: boolean;
 }
 
 let state: State;

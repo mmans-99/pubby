@@ -24,8 +24,13 @@ Newest entries at the top. One entry per session, added before each commit.
 
 - User asked whether it was pushed (17:40), taken as approval: v1.0 and `CLAUDE.md` rule 8 committed and pushed.
 
+- User explained GitHub didn't seem to update: checked, commit, deploy run and Pages deployment were all there at 17:41; the delay is GitHub's 10-minute cache plus the app showing a new version on the next open.
+- **User asked (17:50):** back gesture should go back one screen, and ask before exiting on the main menu (it was closing Pubby at once). Asked what back should do during a game: user chose "do nothing". Built `src/ui/back.ts` (`CODE.md` 9e), "Exit Pubby?" sheet, version 1.1 (small change). Checks: `testbed/back_check.py` 10 of 10, offline check 20 of 20, 118 tests, 2-player playthrough 11 of 11.
+
+- User asked for it to be committed and pushed (17:55): v1.1 pushed.
+
 **Next**
-- User tests install and airplane mode on the phone.
+- User tests v1.1 on the phone install and airplane mode on the phone.
 - Decide the multiplayer path (`CODE.md` section 4) before Phase 4.
 
 ---

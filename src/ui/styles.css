@@ -624,3 +624,7 @@ table.trivia-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; 
 .pause-icon { font-size: 3.4rem; }
 .pause-clock { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 .pause-box .big { width: 100%; }
+
+/* "Exit Pubby?" sheet (back gesture on the main menu) */
+.exit-sheet h2 { margin: 0 0 4px; }
+.exit-sheet button.secondary { background: #e9e1cc; }

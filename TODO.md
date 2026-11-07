@@ -135,6 +135,8 @@ Built in slices; each slice gets a test link and a checklist.
 - [x] Version number on the home screen and quick rules (v1.0; bump rule in `CLAUDE.md` rule 8)
 - [x] No pinch zoom, no double-tap zoom, no pull-to-refresh
 - [x] Push v1.0 (user asked for it at 17:40)
+- [x] Back gesture: one screen back, nothing during a game, "Exit Pubby?" on the main menu (v1.1, `testbed/back_check.py` 10 of 10)
+- [x] Push v1.1 (user asked 17:55)
 - [~] Confirmed working with no network (automated check passes; user's own test on the phone still to do)
 
 ## Phase 4 — Multiplayer over local network
