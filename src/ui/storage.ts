@@ -5,6 +5,7 @@
  */
 
 import { emptyProfile, type GameRecord, type ProfileStats } from '../session/record.ts';
+import type { NetInfo } from '../net/netgame.ts';
 import type { Session } from '../session/types.ts';
 
 const PROFILES_KEY = 'pubby.profiles';
@@ -96,6 +97,8 @@ export interface SavedGame {
   readonly notes?: Readonly<Record<string, readonly string[]>>;
   /** Set when the game has ended and its record was saved on this phone. */
   readonly recordId?: string;
+  /** Network game (Phase 4): this phone's role and player. Never saved to storage (slice 4 adds that). */
+  readonly net?: NetInfo;
 }
 
 // ----- Finished games (game records, newest first) -----

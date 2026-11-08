@@ -83,6 +83,51 @@ export function roundStartScreen(g: SavedGame): Child | null {
   return null;
 }
 
+/**
+ * Network game (slice 2): the round-start step this phone answers for itself,
+ * all phones at once. Null when it isn't in one.
+ */
+export function netRoundStart(g: SavedGame, me: PlayerId): Child | null {
+  const s = g.session;
+  if (swapReveal && swapReveal.player === me) {
+    // The new hand shows once the host has made the swap.
+    return s.swapDone.includes(me) || s.phase !== 'swap' ? swapRevealStage(g) : waitStage(g, me, 'swap', [me]);
+  }
+  const v = s.vote;
+  if (v) {
+    if (v.awaitingHost) return me === s.hostId ? hostDecidesStage(g) : waitStage(g, me, 'vote', [s.hostId]);
+    if (!v.ballots[me]) return voteStage(g, me);
+    return waitStage(g, me, 'vote', s.order.filter((p) => !v.ballots[p]));
+  }
+  if (s.phase === 'swap') {
+    if (!s.swapDone.includes(me)) return swapStage(g, me);
+    return waitStage(g, me, 'swap', s.order.filter((p) => !s.swapDone.includes(p)));
+  }
+  if (s.phase === 'reactionTap' && s.tap) {
+    const t = s.tap;
+    if (t.players.includes(me) && !t.results[me]) return tapStage(g, me);
+    return waitStage(g, me, 'tap', t.players.filter((p) => !t.results[p]));
+  }
+  return null;
+}
+
+/** Network game: this phone has answered; waiting for the others. */
+function waitStage(g: SavedGame, me: PlayerId, what: 'vote' | 'swap' | 'tap', waitingFor: readonly PlayerId[]): Child {
+  const s = g.session;
+  const v = s.vote;
+  const [ic, title]: [IconName, string] =
+    what === 'vote' ? [voteIcon(v!.kind), voteShort(s, v!.kind, v!.value)]
+    : what === 'swap' ? ['swap', 'Hidden swap']
+    : ['hand', 'Reaction Tap'];
+  const who = waitingFor.map((p) => nameOf(s, p)).join(', ');
+  return h('div', { class: 'stack' },
+    h('div', { class: 'step-head' }, h('div', { class: 'step-title' }, icon(ic), ` ${title}`),
+      h('div', { class: 'muted small' }, v?.awaitingHost ? `No majority · ${nameOf(s, s.hostId)} decides` : `Waiting for ${who}`)),
+    seatStrip(s, publicView(s), {}),
+    s.phase === 'results' ? resultsSummary(s) : handBlock(s, playerView(s, me), null, { head: false }),
+  );
+}
+
 function passStage(g: SavedGame, who: PlayerId, what: 'vote' | 'swap' | 'tap'): Child {
   const s = g.session;
   const name = nameOf(s, who);
@@ -166,11 +211,13 @@ function voteStage(g: SavedGame, me: PlayerId): Child {
   const s = g.session;
   const v = s.vote!;
   const view = playerView(s, me);
+  // Network votes are open (PROJECT.md 12), so no "secret vote" there.
+  const secret = g.net ? '' : ' · secret vote';
   const who =
     v.draw ? 'Top score is a draw'
     : v.calledBy && s.order.length === 2 ? `${nameOf(s, v.calledBy)} asked · you decide`
-    : v.calledBy ? `${nameOf(s, v.calledBy)} asked · secret vote`
-    : 'Target reached · secret vote';
+    : v.calledBy ? `${nameOf(s, v.calledBy)} asked${secret}`
+    : `Target reached${secret}`;
   const cast = (yes: boolean): void => { send([{ type: 'castVote', by: me, ballot: yes ? 'yes' : 'no' }]); };
   return h('div', { class: 'stack' },
     h('section', { class: 'panel vote-panel' },
@@ -241,6 +288,11 @@ export function reshuffleStage(g: SavedGame): Child {
 let swapReveal: { player: PlayerId; before: Set<string> } | null = null;
 let swapPicked: { player: PlayerId; ids: string[] } = { player: '', ids: [] };
 
+/** Network game: the host refused a move, so a swap waiting to show is dropped. */
+export function clearSwapReveal(): void {
+  swapReveal = null;
+}
+
 function swapStage(g: SavedGame, me: PlayerId): Child {
   const s = g.session;
   const view = playerView(s, me);
@@ -276,6 +328,7 @@ function swapRevealStage(g: SavedGame): Child {
   const fresh = new Set(view.myHand.filter((c) => !swapReveal!.before.has(c.id)).map((c) => c.id));
   const done = (): void => {
     swapReveal = null;
+    if (g.net) { update({}); return; }
     const next = roundStartHolder(s) ?? (s.phase === 'playing' ? (s.play?.pendingFinalTwo ?? s.play?.turn ?? null) : null);
     update({ game: { ...g, stage: next ? 'handoff' : 'table', holder: next ?? g.holder } });
   };
@@ -283,7 +336,7 @@ function swapRevealStage(g: SavedGame): Child {
   return h('div', { class: 'stack' },
     h('h2', { class: 'center' }, fresh.size ? `${fresh.size} new ${fresh.size === 1 ? 'card' : 'cards'} ★` : 'Hand kept'),
     handBlock(s, view, null, { picked: fresh, all: false, mark: true, head: false }),
-    h('button', { class: 'big', onclick: done }, next ? `Hide · pass to ${nameOf(s, next)}` : 'Hide · carry on'),
+    h('button', { class: 'big', onclick: done }, g.net ? 'Done' : next ? `Hide · pass to ${nameOf(s, next)}` : 'Hide · carry on'),
   );
 }
 
@@ -361,7 +414,7 @@ function tapStage(g: SavedGame, me: PlayerId): Child {
     st.step === 'done'
       ? h('div', { class: 'stack center' },
         h('div', { class: 'tap-result' }, st.falseStart ? 'Too early!' : `${st.ms} ms`),
-        h('button', { class: 'big', onclick: finish }, 'Done · pass on'),
+        h('button', { class: 'big', onclick: finish }, g.net ? 'Done' : 'Done · pass on'),
       )
       : null,
   );

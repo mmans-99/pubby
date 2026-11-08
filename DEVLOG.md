@@ -4,6 +4,25 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-08 (afternoon, later) — Phase 4 slice 2: play over the network (version 2.3)
+
+**Done**
+- **User (15:12):** "Test is fine. Build slice 2" (v2.2 tested on phones; the hosting-phone-is-host question not answered, so it stays as it is).
+- Built version 2.3 (minor bump: a slice of Phase 4, like 2.1; the multiplayer release stays 3.0). The host's phone runs the game; each other phone gets its own copy after every move, with every other hand, the cards still to deal, the waste pile and the hidden decks blank (`src/net/netgame.ts`), and sends its moves to the host, which refuses any move not for that phone's own player and says why. Pass-and-play screens reused with no pass-the-phone steps (`src/ui/netplay.ts`, `src/ui/netscreens.ts`, `game.ts` `send` split into `runActions` / `receive` / `absorb`, `roundstart.ts` `netRoundStart`). Start in the lobby now starts the game everywhere ("Back to the lobby" removed); lobby protocol 2.
+- In: dealing from the dealer's phone, play, slaps, final two, HAHAHA!, every pop-up, sounds and animations on every phone; hidden swap, Reaction Tap and answering votes on each phone at once (the screens worked as they were); host starts each round and moves on after results; saved on every phone at the end, each to its own profile. Not yet (slice 3): calling votes, take-cards, pause, reactions across phones, ready-up. Not yet (slice 4): rejoining, saving a network game.
+- `peer.ts`: long messages are sent in parts (older Safari allows about 64 KB per message; a whole game is bigger), and the log is sent in parts after the first message.
+- A network game is never saved as the phone's game in progress, so a one-phone game saved there is kept.
+- Found and fixed while testing: a move from another phone cleared this phone's half-done "tap again" (e.g. Leave the game); only this phone's own moves clear it now.
+- Checks: new `tests/net/netgame.test.ts` (6), unit tests 147; `npm run check` clean; new `testbed/netgame_check.py` (whole games on 2, 3 and 5 pages over WebRTC; leaving; closing; one-phone game kept): 2 players 21 of 21, 3 players 21 of 21 (with a Reaction Tap), 5 players + leaving + kept 29 of 29; `lobby_check.py` 67 of 67 (Start part rewritten); back 14 of 14; offline 20 of 20; sound 44 of 44; playthrough 53 of 53.
+- Docs: `CODE.md` 4a, 7, 8, 9e, 9f, 9i, new 9j; `PROJECT.md` 12; `TODO.md` Phase 4. `CLAUDE.md` checked, no changes.
+- Test build: like 2.1 and 2.2, network play needs HTTPS and the camera, which the private test page blocks, so GitHub Pages is the test build (`CLAUDE.md` rule 5). - **User (16:14): "Commit and push".** Committed and pushed to main; GitHub Pages deploys it.
+
+**Next**
+- User tests v2.3 on 2 and 3 or more phones with the checklist (hotspot, and home Wi-Fi if possible).
+- Then slice 3.
+
+---
+
 ## 2026-11-08 (afternoon) — Version 2.2: profiles in a saved game, connection test removed
 
 **Done**

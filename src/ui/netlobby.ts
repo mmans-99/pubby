@@ -30,6 +30,7 @@ import {
 import { MAX_PLAYERS } from '../rules/cards.ts';
 import { createSession } from '../session/session.ts';
 import { defaultRng } from '../rules/rng.ts';
+import { hostGotAct, hostStart, hostSync, inNetGame, joinEnded, joinGotGame, joinNope, netChanged, setTransport } from './netplay.ts';
 
 type Role = 'host' | 'join';
 type Step =
@@ -218,6 +219,20 @@ function flash(msg: string): void {
 }
 
 // ---------------------------------------------------------------------------
+// Network game (slice 2): the game uses these links once the host starts
+// ---------------------------------------------------------------------------
+
+setTransport({
+  sendTo: (linkId, msg) => links.get(linkId)?.peer.send(msg) ?? false,
+  sendHost: (msg) => peer?.send(msg) ?? false,
+});
+
+/** The seats as this phone knows them (connected or not), for the game's connection notice. */
+export function netSeats(): LobbySeat[] | null {
+  return (role === 'host' ? lobby : seen)?.seats ?? null;
+}
+
+// ---------------------------------------------------------------------------
 // Drawing
 // ---------------------------------------------------------------------------
 
@@ -251,7 +266,7 @@ function body(): View {
     case 'join-scan': return joinScanView();
     case 'join-code': return joinCodeView();
     case 'join-wait': return [topBar('Join a game'), h('div', { class: 'panel center' }, h('p', { class: 'net-big' }, 'Connected'), h('p', { class: 'muted small' }, 'Getting the game from the host…'))];
-    case 'lost': return endView('Connection lost', 'This phone lost the link to the host. Rejoining comes in a later update: for now, the host adds you again.');
+    case 'lost': return endView('Connection lost', 'This phone lost the link to the host. Rejoining a game comes in a later update: for now, the host starts again and adds you.');
     case 'removed': return endView('Removed', 'The host took you out of this game.');
     case 'closed': return endView('Game closed', 'The host closed the game.');
     case 'refused': return endView('Couldn’t join', endText);
@@ -455,10 +470,10 @@ function broadcast(): void {
 function startGame(): void {
   const l = lobby!;
   if (lobbyProblems(l).length) return;
+  const { players, hostId, linkIds } = sessionPlayers(l);
+  let session;
   try {
-    // Check the session layer accepts these players (the real deal is slice 2).
-    const { players, hostId } = sessionPlayers(l);
-    createSession({ players, hostId, jokerRuleEnabled: l.jokers, pauseTimeLimitSec: l.pauseLimit }, defaultRng());
+    session = createSession({ players, hostId, jokerRuleEnabled: l.jokers, pauseTimeLimitSec: l.pauseLimit }, defaultRng()).session;
   } catch (e) {
     flash(errText(e));
     return;
@@ -470,15 +485,8 @@ function startGame(): void {
   }
   broadcast();
   draw();
-}
-
-function backToLobby(): void {
-  // Phones that dropped after the start leave their seat.
-  let l = { ...lobby!, started: false };
-  for (const s of l.seats) if (!s.connected) l = removeSeat(l, s.id);
-  lobby = l;
-  broadcast();
-  draw();
+  // Every phone goes into the game (netplay.ts); the links stay open here.
+  hostStart(session, linkIds, hostId);
 }
 
 // ----- Host: adding a player -----
@@ -588,6 +596,12 @@ function hostGot(id: string, raw: unknown): void {
   const m = readToHost(raw);
   if (!m) return;
   if (m.t === 'ping') return;
+  if (m.t === 'act' || m.t === 'sync') {
+    if (!link.seated || !lobby.started) return;
+    if (m.t === 'act') hostGotAct(id, m.actions);
+    else hostSync(id);
+    return;
+  }
   if (m.t === 'hello') {
     if (link.seated) return;
     const problem = joinProblem(lobby, m, VERSION);
@@ -619,6 +633,7 @@ function hostGot(id: string, raw: unknown): void {
     if (seat) flash(`${seatName(seat)} left`);
     broadcast();
     draw();
+    netChanged();
   }
 }
 
@@ -633,6 +648,7 @@ function linkLost(id: string): void {
   if (seat) flash(`${seatName(seat)} lost connection`);
   broadcast();
   draw();
+  netChanged();
 }
 
 // ----- Joiner -----
@@ -697,7 +713,7 @@ function startedView(l: Lobby, as: Role): View {
     topBar(as === 'host' ? 'Host a game' : 'Join a game'),
     h('div', { class: 'panel center' },
       h('p', { class: 'net-big ok' }, icon('check'), ` All set · ${l.seats.length} players`),
-      h('p', { class: 'muted small' }, 'Every phone shows this same list.'),
+      h('p', { class: 'muted small' }, 'Starting the game…'),
     ),
     h('section', { class: 'panel' },
       h('ol', { class: 'seats' }, l.seats.map((seat, i) =>
@@ -710,10 +726,6 @@ function startedView(l: Lobby, as: Role): View {
         ))),
       settingsSummary(l),
     ),
-    h('p', { class: 'note' }, 'Test build: dealing to every phone comes in the next update.'),
-    as === 'host'
-      ? h('button', { class: 'big secondary', onclick: backToLobby }, 'Back to the lobby')
-      : null,
     h('button', { class: 'big secondary', onclick: () => { if (othersConnected()) { leaveAsk = true; draw(); } else onBack(); } }, as === 'host' ? 'Close the game' : 'Leave'),
   ];
 }
@@ -751,10 +763,15 @@ function joinGot(raw: unknown): void {
   hostHeard = performance.now();
   const m = readToJoiner(raw);
   if (!m || m.t === 'ping') return;
-  if (m.t === 'lobby') {
+  if (m.t === 'game') {
+    joinGotGame(m);
+  } else if (m.t === 'nope') {
+    joinNope(m.why);
+  } else if (m.t === 'lobby') {
     seen = m.lobby;
     you = m.you;
     if (step !== 'lobby') go('lobby'); else draw();
+    netChanged();
   } else if (m.t === 'refused') {
     endText = m.why;
     endJoin('refused');
@@ -774,6 +791,8 @@ function endJoin(next: Step): void {
   releaseWake();
   leaveAsk = false;
   go(next);
+  // In a game: show what happened (a finished game stays on screen).
+  if (inNetGame()) joinEnded();
 }
 
 function lost(): void {

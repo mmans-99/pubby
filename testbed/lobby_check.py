@@ -103,6 +103,12 @@ def names(page):
     return [s['sessionName'] or s['profileName'] for s in lb['seats']] if lb else []
 
 
+def joinProblem_started(host):
+    """After Start the lobby is marked started (no late joining; unit-tested in lobby.test.ts)."""
+    lb = host.evaluate('window.pubbyLobby.lobby()')
+    return bool(lb and lb['started'])
+
+
 def open_lobby(page, as_host, name):
     page.get_by_role('button', name='Play on several phones').click()
     page.get_by_role('button', name='Host a game' if as_host else 'Join a game').click()
@@ -239,17 +245,6 @@ def main():
         add(host, ali)
         check('Ali joins again with her saved profile', wait_for(lambda: names(host) == ['Boss', 'Bea', 'Ali'], 5))
 
-        # --- Start ---
-        host.get_by_role('button', name='Start game · 3 players').click()
-        check('host shows All set', 'All set · 3 players' in host.inner_text('main'))
-        check('every phone shows All set', wait_for(lambda: all('All set · 3 players' in pg.inner_text('main') for pg in (ali, bea)), 5))
-        lists = [pg.inner_text('.seats') for pg in (host, ali, bea)]
-        check('the same seat order on every phone', all(l.split('\n')[:1] == lists[0].split('\n')[:1] for l in lists)
-              and all(names(pg) == ['Boss', 'Bea', 'Ali'] for pg in (host, ali, bea)))
-        check('no Add player once started', host.get_by_role('button', name='Add player').count() == 0)
-        host.get_by_role('button', name='Back to the lobby').click()
-        check('Back to the lobby on every phone', wait_for(lambda: 'Waiting for the host to start' in ali.inner_text('main'), 5))
-
         # --- A phone that goes silent is dropped ---
         bea.context.close()
         t0 = time.time()
@@ -262,8 +257,20 @@ def main():
         host.get_by_role('button', name='Stay').click()
         check('Stay keeps the lobby', step(host) == 'lobby' and names(host) == ['Boss', 'Ali'])
         host.get_by_role('button', name='‹ Back').click()
-        host.get_by_role('button', name='Close', exact=True).click()
-        check('host back on the main menu', host.inner_text('main h1') == 'Pubby')
+        check('‹ Back asks too', wait_for(lambda: 'Close the game?' in host.inner_text('main'), 3))
+        host.get_by_role('button', name='Stay').click()
+
+        # --- Start (2.3: the game starts on every phone) ---
+        host.get_by_role('button', name='Start game · 2 players').click()
+        check('Start puts every phone in the game', wait_for(lambda: all(pg.locator('.screen.game').count() == 1 for pg in (host, ali)), 8))
+        seats = [pg.evaluate('window.pubbyNet.session().players.map((x) => x.sessionName)') for pg in (host, ali)]
+        check('the same seat order on every phone', seats[0] == seats[1] == ['Boss', 'Ali'], str(seats))
+        check('each phone is its own player', [pg.evaluate('window.pubbyNet.info().me') for pg in (host, ali)] == ['p1', 'p2'])
+        check('a phone that joins after the start is refused', joinProblem_started(host))
+        host.get_by_role('button', name='Menu').click()
+        host.get_by_role('button', name='Close the game').click()
+        host.get_by_role('button', name='Tap again: close the game on every phone').click()
+        check('host back on the main menu', wait_for(lambda: host.inner_text('main h1') == 'Pubby', 5))
         check('the other phone is told the game closed', wait_for(lambda: step(ali) == 'closed', 5))
         check('closed screen offers Join again', ali.get_by_role('button', name='Join again').count() == 1)
 

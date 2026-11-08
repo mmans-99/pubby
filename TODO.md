@@ -149,7 +149,7 @@ Built in slices; each slice gets a test link and a checklist.
 - [x] **Slice 0: connection test** (go / no-go; screen removed in 2.2): version 1.3; user's test passed on a hotspot (Android + Android, Android + iPhone, mobile data on and off), 2026-11-07 22:18. Home Wi-Fi not tried yet.
 - [x] **Version 1.4:** Pubby's own QR reader (iPhones scan in Pubby and can host), join link fixed when Pubby is already open, Exit Pubby button. Pushed 22:44; connection test passed again on a hotspot (23:06)
 - [~] **Version 1.5:** stop pinch zoom slipping through in Samsung Internet. Pushed; user to test on the Samsung phone
-- [~] **Slice 1: network lobby** (version 2.1, built 2026-11-08, `CODE.md` 9i; pushed; waiting for the user's phone test on GitHub Pages)
+- [x] **Slice 1: network lobby** (version 2.1, built 2026-11-08, `CODE.md` 9i; pushed; user tested 2.2 on phones: "Test is fine", 15:12)
   - [x] "Play on several phones" on the main menu; one-phone game renamed "New game · one phone"
   - [x] Host or Join; "Who's on this phone?" (profile or new name)
   - [x] Add player: code 1 as a `#lobby=` link QR, scan code 2, connect; one at a time; Try again / Cancel
@@ -160,20 +160,33 @@ Built in slices; each slice gets a test link and a checklist.
   - [x] Start: every phone shows "All set" with the same list (deal is slice 2); host can go back to the lobby
   - [x] Checks: `tests/net/lobby.test.ts` (9), `testbed/lobby_check.py` 50 of 50
   - [x] Commit and push v2.1 as the GitHub Pages test build (user approved 13:16)
-  - [ ] User tests on phones (Android + iPhone, hotspot and home Wi-Fi)
+  - [x] User tests on phones (user 15:12: "Test is fine")
   - [x] User confirmed the 20 s quiet-phone rule (13:30)
-- [~] **Version 2.2** (user 13:30, from testing 2.1; pushed 14:16, waiting for the phone test)
+- [x] **Version 2.2** (user 13:30, from testing 2.1; pushed 14:16; tested by the user, 15:12)
   - [x] A profile in the saved game can't be deleted; a missing one turns Carry on off and says why
   - [x] Connection test removed (button, screen, `#join=` links, `net_check.py`); its checks moved to `lobby_check.py` (67 of 67)
   - [x] Commit and push v2.2 as the GitHub Pages test build (user approved 14:16)
-  - [ ] User tests v2.2 on phones
-- [ ] **Slice 2: play over the network**
-- [ ] **Slice 3: votes, swap, Reaction Tap, requests, pause, reactions, results on every phone**
+  - [x] User tests v2.2 on phones ("Test is fine", 15:12)
+- [~] **Slice 2: play over the network** (version 2.3, user 15:12 "Build slice 2"; built, `CODE.md` 9j; pushed 16:14 as the GitHub Pages test build; waiting for the user's phone test)
+  - [x] Host runs the game; each other phone gets its own copy with every other hand, the deck, the waste pile and the hidden decks blank (`src/net/netgame.ts`)
+  - [x] Moves from a phone only for its own player; refused moves come back with the reason
+  - [x] Long messages sent in parts; the log sent in parts after the first message
+  - [x] Start begins the game on every phone; "Back to the lobby" removed
+  - [x] Dealing from the dealer's phone only (auto deal driven by the host's phone); others watch with the flying cards and sounds
+  - [x] Play on your own phone: legal cards lit, glowing seat for whoever acts, "X's turn"; slaps, final two, HAHAHA!, pop-ups, animations and sounds on every phone
+  - [x] Hidden swap, Reaction Tap and answering votes on each phone at once (screens reused from pass-and-play)
+  - [x] Before the round: your own cards; host starts the round. Results: podium; host Next round / End the game. Game over on every phone
+  - [x] Game saved on every phone at the end, to that phone's own profile only; a network game never replaces a saved one-phone game
+  - [x] Menu: host Close the game (every phone), others Leave the game; a lost or leaving phone shown on every phone
+  - [x] Checks: `tests/net/netgame.test.ts` (6), unit tests 147; `testbed/netgame_check.py` (2, 3, 5 players, leaving, closing, one-phone game kept); `lobby_check.py` updated for the new Start
+  - [x] Commit and push v2.3 as the GitHub Pages test build (user approved 16:14)
+  - [ ] User tests v2.3 on phones (2 and 3 or more phones)
+- [ ] **Slice 3: votes, swap, Reaction Tap, requests, pause, reactions, results on every phone** (2.3 already has the swap, Reaction Tap and answering votes on each phone; still to do: calling the reshuffle, target and Ultimate votes, open votes showing who voted what, take-cards, pause, reactions across phones, ready-up)
 - [ ] **Slice 4: drops, rejoining, screen kept awake**
 - [x] QR code: host display and camera scanner (bundled maker; Android built-in reader; Camera app join link)
 - [x] Bundled QR reader so an iPhone can scan in Pubby and host (v1.4, user asked 22:23)
-- [~] Host session, join flow (lobby done in slice 1), and reconnection (slice 4)
-- [ ] Per-player private views (hidden hands never leave the device)
+- [~] Host session (slice 2), join flow (lobby done in slice 1), and reconnection (slice 4)
+- [x] Per-player private views (hidden hands never leave the host's phone; slice 2)
 - [ ] Reactions sent to every phone, showing who sent them and floating in from the sender's side of the table
 - [ ] Multiplayer playtest with 2 to 8 devices
 

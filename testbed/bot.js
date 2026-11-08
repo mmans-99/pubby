@@ -44,8 +44,8 @@
     if (visible(document.querySelector('.tap-pad.wait'))) return 'wait';
     const start = document.querySelector('button.tap-start');
     if (visible(start)) return click(start, 'reaction start');
-    const done = byText('Done · pass on');
-    if (done) return click(done, 'reaction done');
+    const done = byText('Done · pass on') || buttons().find((b) => b.textContent.trim() === 'Done');
+    if (done) return click(done, 'done');
 
     // Votes.
     const yes = buttons().find((b) => b.textContent.trim() === 'YES');
@@ -54,6 +54,7 @@
 
     // Game over.
     if (/Final standings/.test(text()) && byText('Back to home')) {
+      if (cfg.stayAtEnd) return 'GAME OVER';
       if (/could not be saved/.test(text())) problem('game over: game not saved');
       const share = byText('Share game stats');
       if (share && !st.shared) { st.shared = true; return click(share, 'share game stats'); }
@@ -149,7 +150,7 @@
       const call = byLabel('Deal again? Call')[0];
       if (call) return click(call, 'call reshuffle vote');
     }
-    const startRound = byText('Start ·');
+    const startRound = byText('Start ·') || byText('Start the round');
     if (startRound) return click(startRound, 'start the round');
 
     // Winner picks who leads.

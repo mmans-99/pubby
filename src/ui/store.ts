@@ -6,7 +6,7 @@
 import type { ProfileStats } from '../session/record.ts';
 import type { CsvSheet } from './history.ts';
 import type { PlayerId } from '../session/types.ts';
-import { saveGame, type SavedGame } from './storage.ts';
+import { loadGame, saveGame, type SavedGame } from './storage.ts';
 import type { IconName } from './icons.ts';
 
 export interface SetupSeat {
@@ -83,8 +83,18 @@ export function getState(): State {
 /** Change state, save the game if it changed, and redraw. */
 export function update(change: Partial<State>, draw = true): void {
   const gameChanged = 'game' in change;
+  const wasNet = !!state.game?.net;
   state = { ...state, ...change };
-  if (gameChanged) saveGame(state.game);
+  if (gameChanged) {
+    if (state.game?.net) {
+      // A network game is never saved over a one-phone game (slice 4 adds saving on the host).
+    } else if (wasNet && state.game === null) {
+      // Leaving a network game: the one-phone game saved on this phone (if any) is back.
+      state = { ...state, game: loadGame() };
+    } else {
+      saveGame(state.game);
+    }
+  }
   if (draw) redraw();
 }
 

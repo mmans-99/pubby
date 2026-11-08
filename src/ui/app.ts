@@ -108,7 +108,8 @@ function render(): void {
     : st.screen === 'netlobby' ? netLobbyScreen(() => update({ screen: 'home' }))
     : st.screen === 'bye' ? byeScreen()
     : homeScreen();
-  if (st.screen !== 'netlobby') stopNetLobby();
+  // The lobby's links carry a network game, so they stay open while it's on screen.
+  if (st.screen !== 'netlobby' && !(st.screen === 'game' && st.game?.net)) stopNetLobby();
   const parts: (HTMLElement | null)[] = [
     screen,
     h('button', { class: 'rules-btn', 'aria-label': 'Quick rules', onclick: () => update({ rulesOpen: true, rulesTopic: rulesTopicFor(st) }) }, icon('help')),
@@ -214,7 +215,7 @@ function homeScreen(): HTMLElement {
         `Past games (${loadRecords().length})`),
     ),
     h('button', { class: 'big secondary', onclick: () => update({ exitAsk: true }) }, 'Exit Pubby'),
-    h('p', { class: 'muted small center' }, 'Test build: several phones gets as far as the lobby for now.'),
+    h('p', { class: 'muted small center' }, 'Test build: on several phones you can deal and play; votes, pause, take-cards and rejoining come next.'),
     h('p', { class: 'muted small center version' }, `Version ${VERSION}`),
   );
 }

@@ -44,10 +44,11 @@ export interface SavedResult {
  * Save the record of an ended session and add it to the profiles on this
  * phone. A profile deleted during the game is not brought back.
  */
-export function saveFinishedGame(s: Session): SavedResult {
+export function saveFinishedGame(s: Session, only?: PlayerId): SavedResult {
   const rec = buildGameRecord(s, new Date(), newId());
   const current = getState().profiles;
-  const onPhone = rec.players.map((p) => p.profileName).filter((n) => n in current);
+  // Network game (slice 2): each phone adds the game to its own player's profile only.
+  const onPhone = rec.players.filter((p) => !only || p.id === only).map((p) => p.profileName).filter((n) => n in current);
   const profiles = addGameToProfiles(current, rec, onPhone);
   const okRecord = saveRecord(rec);
   const okProfiles = saveProfiles(profiles);

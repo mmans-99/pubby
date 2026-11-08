@@ -19,7 +19,7 @@
 import catchPhrasesMd from '../content/catch-phrases.md';
 import type { Card } from '../rules/cards.ts';
 import { defaultRng } from '../rules/rng.ts';
-import { applyAction } from '../session/session.ts';
+import { applyAction, handOf } from '../session/session.ts';
 import type { PlayerId, Session, SessionAction, SessionEvent } from '../session/types.ts';
 import { playerView, type PlayerView } from '../session/view.ts';
 import { cardFace, cardFaceFromId, ordinal, shortLabel, sortHand, SUIT_NAME, SUIT_SYMBOL } from './cards.ts';
@@ -31,6 +31,8 @@ import { reshuffleStage, roundStartHolder, roundStartScreen, voteOutcome } from 
 import { lockedSeats } from '../rules/deal.ts';
 import { cardSound, eventSounds, sfx } from '../audio/sfx.ts';
 import { icon, type IconName } from './icons.ts';
+import { hostBroadcast, joinSend } from './netplay.ts';
+import { netGameBody, netMenu } from './netscreens.ts';
 import {
   askToTake, gameOverStage, notesPanel, passOnButton, pauseButton, pausePanel, pauseRequestsBanner, pauseTick, resultsStage,
   takeButton, takeControls, takeHolder, takePrompts,
@@ -145,8 +147,10 @@ function actorOf(s: Session): PlayerId | null {
 }
 
 export function publicView(s: Session): PlayerView {
-  // Any player's view has the same public parts. The host's is used for table screens.
-  return playerView(s, s.hostId);
+  // Any player's view has the same public parts. The host's is used for table
+  // screens; a network phone uses its own (its copy only has its own hand).
+  const me = getState().game?.net?.me;
+  return playerView(s, me && s.order.includes(me) ? me : s.hostId);
 }
 
 /**
@@ -167,9 +171,35 @@ let pendingFly: PlayerId | null = null;
  * Run actions through the session layer. All or nothing: if one is not
  * allowed, nothing changes and the reason is shown.
  */
-export function send(actions: readonly SessionAction[], opts: { stage?: GameStage; holder?: PlayerId } = {}): boolean {
+export function send(actions: readonly SessionAction[], opts: SendOpts = {}): boolean {
   const g = getState().game;
   if (!g) return false;
+  // Network game, joining phone: the host runs the move and sends the result back.
+  if (g.net?.role === 'join') return joinSend(actions);
+  const why = runActions(actions, { ...opts, mine: true });
+  if (why) {
+    sfx('notAllowed');
+    say(why);
+    return false;
+  }
+  return true;
+}
+
+type SendOpts = {
+  stage?: GameStage;
+  holder?: PlayerId;
+  /** The move was made on this phone (so its raised card and "tap again" are done with). */
+  mine?: boolean;
+};
+
+/**
+ * Run moves on this phone (pass-and-play, or the host's phone in a network
+ * game, including moves sent by other phones). Returns why they weren't
+ * allowed, or null. The host then sends every other phone its copy.
+ */
+export function runActions(actions: readonly SessionAction[], opts: SendOpts = {}): string | null {
+  const g = getState().game;
+  if (!g) return 'No game.';
   let session = g.session;
   const events: SessionEvent[] = [];
   try {
@@ -179,10 +209,34 @@ export function send(actions: readonly SessionAction[], opts: { stage?: GameStag
       events.push(...r.events);
     }
   } catch (e) {
-    sfx('notAllowed');
-    say(e instanceof Error ? e.message : 'Not allowed.');
-    return false;
+    return e instanceof Error ? e.message : 'Not allowed.';
   }
+  absorb(g, session, events, opts);
+  if (g.net?.role === 'host') hostBroadcast(session, events);
+  return null;
+}
+
+/** Network game, joining phone: the host sent the game after a move. */
+export function receive(session: Session, events: readonly SessionEvent[]): void {
+  const g = getState().game;
+  if (!g) return;
+  absorb(g, session, events, {});
+}
+
+/** Seat that just got one card dealt (for the flying card), from the hand counts. */
+function dealtTo(before: Session, after: Session): { seat: PlayerId | null; any: boolean } {
+  if (before.phase !== 'dealing') return { seat: null, any: false };
+  const up = after.order.filter((p) => handOf(after, p).length > handOf(before, p).length);
+  return { seat: up.length === 1 ? up[0]! : null, any: up.length > 0 };
+}
+
+/**
+ * After a move: the last-trick record, private notes, who holds the phone,
+ * saving a finished game, pop-ups, sounds and animations, then redraw.
+ */
+function absorb(g: SavedGame, session: Session, events: readonly SessionEvent[], opts: SendOpts): void {
+  const dealt = dealtTo(g.session, session);
+  if (dealt.seat && !pendingFly) pendingFly = dealt.seat;
 
   // Last trick record.
   let trickLog = g.trickLog.slice();
@@ -228,7 +282,11 @@ export function send(actions: readonly SessionAction[], opts: { stage?: GameStag
   // Who holds the phone next.
   let stage: GameStage = opts.stage ?? 'table';
   let holder = opts.holder ?? g.holder;
-  if (!opts.stage) {
+  if (g.net) {
+    // Network game: every phone always shows its own player.
+    stage = 'hand';
+    holder = g.net.me;
+  } else if (!opts.stage) {
     const rs = roundStartHolder(session);
     const next = rs ?? takeHolder(session) ?? actorOf(session);
     if (next) {
@@ -241,7 +299,7 @@ export function send(actions: readonly SessionAction[], opts: { stage?: GameStag
   // Game over: save the game record and add it to the profiles on this phone (once).
   let recordId = g.recordId;
   if (session.ended && !recordId && events.some((e) => e.type === 'sessionEnded')) {
-    const saved = saveFinishedGame(session);
+    const saved = saveFinishedGame(session, g.net?.me);
     if (saved.ok) recordId = saved.recordId;
   }
 
@@ -249,7 +307,7 @@ export function send(actions: readonly SessionAction[], opts: { stage?: GameStag
   const popups = [...getState().popups, ...fresh];
 
   // Sound effects and animations for what just happened (PROJECT.md 12b).
-  if (actions.some((a) => a.type === 'autoDealStep' || a.type === 'manualDealCard' || a.type === 'autoDealAll')) sfx('deal');
+  if (dealt.any) sfx('deal');
   cardSound(events);
   if (finished) {
     if (trickAnim?.timer) window.clearTimeout(trickAnim.timer);
@@ -262,8 +320,10 @@ export function send(actions: readonly SessionAction[], opts: { stage?: GameStag
   }
   if (events.some((e) => e.type === 'reshuffled' || e.type === 'roundStarted')) startShuffle();
 
-  update({ game: { session, stage, holder, trickLog, lastTrick, notes, recordId }, popups, selected: null, armed: null });
-  return true;
+  // Network game: a move by another phone keeps this phone's raised card (drawn
+  // only if still playable) and any "tap again" it is in the middle of.
+  const keep = !!g.net && !opts.mine;
+  update({ game: { session, stage, holder, trickLog, lastTrick, notes, recordId, ...(g.net ? { net: g.net } : {}) }, popups, ...(keep ? {} : { selected: null, armed: null }) });
 }
 
 function popupsFor(s: Session, events: readonly SessionEvent[]): Popup[] {
@@ -396,9 +456,11 @@ export function gameScreen(g: SavedGame): HTMLElement {
   const s = g.session;
   const st = getState();
   let body: Child;
-  const rs = trickAnim ? null : roundStartScreen(g);
+  const rs = trickAnim || g.net ? null : roundStartScreen(g);
   if (trickAnim) {
     body = trickFinishStage(g, trickAnim);
+  } else if (g.net) {
+    body = netGameBody(g);
   } else if (rs) {
     body = rs;
   } else if (s.phase === 'playing') {
@@ -417,10 +479,10 @@ export function gameScreen(g: SavedGame): HTMLElement {
     h('div', { class: 'game-bar' },
       h('button', { class: 'icon-btn', 'aria-label': 'Menu', 'aria-expanded': st.menuOpen ? 'true' : 'false', onclick: () => update({ menuOpen: !st.menuOpen, armed: null }) }, icon('menu')),
       h('span', { class: 'round-chip', 'aria-label': s.phase === 'gameOver' ? 'Game over' : s.ultimateRound && s.phase !== 'results' ? 'Ultimate Round' : `Round ${s.round}` }, label),
-      pauseButton(s),
-      takeButton(g),
+      g.net ? null : pauseButton(s),
+      g.net ? null : takeButton(g),
     ),
-    st.menuOpen ? gameMenu() : null,
+    st.menuOpen ? (g.net ? netMenu(g) : gameMenu()) : null,
     pausePanel(g),
     pauseRequestsBanner(g),
     body,
@@ -586,7 +648,7 @@ function tableStage(g: SavedGame): Child {
   }
 }
 
-function dealingStage(g: SavedGame): Child {
+export function dealingStage(g: SavedGame): Child {
   const s = g.session;
   const v = publicView(s);
   const d = v.deal!;
@@ -594,7 +656,9 @@ function dealingStage(g: SavedGame): Child {
   const notStarted = d.mode === 'auto' && d.nextSeat === null;
   const manual = d.mode === 'manual';
   const total = s.order.reduce((n, id) => n + (v.players.find((p) => p.id === id)?.cardCount ?? 0), 0) + d.remaining;
-  const tap = notStarted
+  // Network game: only the dealer's phone deals; the others watch.
+  const watching = !!g.net && g.net.me !== dealer;
+  const tap = watching ? undefined : notStarted
     ? (id: PlayerId) => send([{ type: 'autoDealStart', by: dealer, firstSeat: id }])
     : manual
       ? (id: PlayerId) => { pendingFly = id; send([{ type: 'manualDealCard', by: dealer, seat: id }]); }
@@ -629,8 +693,9 @@ function dealingStage(g: SavedGame): Child {
         h('div', { class: 'card-back' }), h('div', { class: 'card-back' }), h('div', { class: 'card-back top' }),
         h('span', { class: 'deck-count' }, String(d.remaining))),
     ),
-    h('p', { class: 'hint center' }, notStarted ? `${nameOf(s, dealer)}: tap who gets the first card` : manual ? 'Tap a name to deal' : 'Dealing…'),
-    notStarted ? null : h('div', { class: 'seg', role: 'group', 'aria-label': 'Deal mode' },
+    h('p', { class: 'hint center' }, watching ? (notStarted || manual ? `${nameOf(s, dealer)} is dealing` : 'Dealing…')
+      : notStarted ? `${g.net ? 'You' : nameOf(s, dealer)}: tap who gets the first card` : manual ? 'Tap a name to deal' : 'Dealing…'),
+    notStarted || watching ? null : h('div', { class: 'seg', role: 'group', 'aria-label': 'Deal mode' },
       h('button', { class: manual ? 'seg-btn on' : 'seg-btn', 'aria-pressed': manual ? 'true' : 'false', onclick: () => setMode('manual') }, icon('hand'), ' Manual'),
       h('button', { class: manual ? 'seg-btn' : 'seg-btn on', 'aria-pressed': manual ? 'false' : 'true', onclick: () => setMode('auto') }, icon('play'), ' Auto'),
       !manual ? h('button', { class: 'seg-btn', onclick: () => send([{ type: 'autoDealAll', by: dealer }]) }, 'Deal all') : null,
@@ -638,7 +703,7 @@ function dealingStage(g: SavedGame): Child {
   );
 }
 
-function chooseLeaderStage(g: SavedGame): Child {
+export function chooseLeaderStage(g: SavedGame): Child {
   const s = g.session;
   const v = publicView(s);
   const winner = s.previous!.winner;
@@ -745,7 +810,7 @@ export function handBlock(
   );
 }
 
-function playHandStage(g: SavedGame): Child {
+export function playHandStage(g: SavedGame): Child {
   const s = g.session;
   const v = playerView(s, g.holder);
   const st = getState();
@@ -769,11 +834,17 @@ function playHandStage(g: SavedGame): Child {
     }, forfeitArmed ? 'Tap again to forfeit (last place)' : 'Forfeit')
     : null;
 
+  // Network game: the glowing seat is whoever must act; a line says who when it isn't this phone.
+  const actor = actorOf(s);
+  const waitLine = g.net && actor && actor !== v.me
+    ? h('p', { class: 'hint center wait-line' }, v.pendingFinalTwo === actor ? `${nameOf(s, actor)}: pick up or forfeit` : `${nameOf(s, actor)}’s turn`)
+    : null;
   return h('div', { class: 'stack' },
-    seatStrip(s, v, { highlight: v.me }),
+    seatStrip(s, v, { highlight: g.net ? actor : v.me }),
     trickArea(s, g, v),
-    notesPanel(g, v.me),
-    takePrompts(s, v.me),
+    waitLine,
+    g.net ? null : notesPanel(g, v.me),
+    g.net ? null : takePrompts(s, v.me),
     choosing
       ? h('section', { class: 'panel choice' },
         h('h2', null, 'Pick up or forfeit'),
@@ -798,8 +869,8 @@ function playHandStage(g: SavedGame): Child {
         (s.play?.hands[jokerGivesWin(s, v.me)!]?.length ?? 0) === 0 ? 'goes out with their last card unopposed and wins' : 'can play their last card unopposed and win'} the round.`)
       : null,
     !choosing ? forfeitBtn : null,
-    takeControls(s, v.me),
-    !myTurn && !choosing && !s.takeRequests.some((r) => r.target === v.me && !r.agreed)
+    g.net ? null : takeControls(s, v.me),
+    !g.net && !myTurn && !choosing && !s.takeRequests.some((r) => r.target === v.me && !r.agreed)
       ? passOnButton(g)
       : null,
   );
@@ -982,7 +1053,7 @@ export function afterRender(): void {
   }
   const st = getState();
   const s = st.game?.session;
-  const dealing = st.screen === 'game' && s?.phase === 'dealing' && s.deal?.mode === 'auto' && s.deal.nextSeat !== null && !s.vote && !s.paused && !shuffling();
+  const dealing = st.screen === 'game' && st.game?.net?.role !== 'join' && s?.phase === 'dealing' && s.deal?.mode === 'auto' && s.deal.nextSeat !== null && !s.vote && !s.paused && !shuffling();
   if (!dealing) {
     if (dealTimer !== null) { window.clearTimeout(dealTimer); dealTimer = null; }
     return;
