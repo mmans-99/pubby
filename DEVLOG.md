@@ -4,6 +4,34 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-08 (morning) — Last sound choices
+
+**Done**
+- **User (07:29):** SLAP! = Huge; fireplace crackle yes; keep the other effects as they are; start with sound on but lower volume for both music and effects; the volume and on/off switch must be changeable in game too.
+- `PROJECT.md` 12b and Decided, `CODE.md` 9g (proposed `src/audio/` plan with defaults: music 40%, effects 60%), `TODO.md` Phase 5.
+- **User (07:31):** "Yes build it, make it 2". Built version 2.0: `src/audio/engine.ts`, `music.ts`, `sfx.ts`, `settings.ts`, `src/ui/sound.ts`; hooks in `game.ts`, `app.ts`, `roundstart.ts`, `back.ts`; styles for the sound button and sheet; the game bar now wraps on small phones so the 🔊 and ? buttons fit. All sounds ported from the sample page; Reaction Tap's "ready… GO" split so GO sounds when the pad turns green.
+- Checks: new `testbed/sound_check.py` 37 of 37; playthrough 53 of 53; back 14 of 14; offline 20 of 20; unit tests 132 passing; `npm run check` clean. (The build here used the preinstalled esbuild/tsx/TypeScript, as npm has no network in this session.)
+- Test link (private): https://claude.ai/artifact/MSgwk5EHWy6Ri3hREFPYjf. `CLAUDE.md` checked, no changes. Not committed yet.
+
+- **User tested (08:22):** doesn't like the ding when a card is placed; effects overlap and sound messy; the trick just vanishes (wants the cards to move to the waste pile, or into the slapped player's hand); shuffle sound with nothing to see (wants a shuffle animation before the deal); too much text, wants the game more visual. Plan proposed (`TODO.md` Phase 5), waiting for approval.
+
+- **User approved (08:24).** Built into v2.0 (not pushed): your-turn chime dropped; effect queue and music ducking; no tap click on in-game buttons; end-of-trick animation (hold, SLAP! pop-up, cards slide to the waste pile or the slapped player's seat); shuffle animation before every deal. Bot waits for the animations. `sound_check.py` 43 of 43; back 14 of 14; offline 20 of 20; unit tests 132; playthrough rerun with the animations.
+- Screenshotted every screen and made the less-text mockup (https://claude.ai/artifact/FdJS1U4j3LroH7G9SZuYej): now vs proposed for the top bar, dealing, before the round, votes, swap, pass the phone, your turn, pop-ups and results; 23 yes/no picks and a "Copy my picks" button. Found a bug while doing it: unplayable cards aren't greyed when the hand first appears (G4).
+- New test link: see TODO.md.
+
+- **User (08:56):** music should start off (effects on); the final-two "your last card was higher" text is confusing: wants a SLAP!-style HAHAHA! pop-up instead; "Lead any card" button not centred; likes the less-text version but not the emoji everywhere (wants it professional), and the target score not in the top bar.
+- Done: music off by default; HAHAHA! pop-up with a laugh sound, choice panel cut to "Pick up or forfeit"; Play button centred. `sound_check.py` 44 of 44; a 2-player bot run showed the HAHAHA! pop-up. Mockup version 2: line icons instead of emoji, place badges, target score as a slim row on the before-the-round and results screens, Ultimate Round button next to Next round.
+
+- **User picks (09:27): yes to all 25** less-text changes. Built: `src/ui/icons.ts`; icon top bar with take button; ? opens at the right rules card; self-closing pop-ups with icons and place badges; dealing chips; before-the-round tiles; target score row; short vote, swap and pass-the-phone screens; felt suit watermark and tiny last-trick cards; podium and award cards on results; G4 dim fix; quick rules gained what the screens lost (new Dealing card) and the rules tables now render. Bot and checks updated.
+
+- **User (10:07): "Commit and push".** Version 2.0 (major: Phase 5 sound and the less-text redesign) committed and pushed to main; GitHub Pages deploys it. `CLAUDE.md` checked, no changes.
+
+**Next**
+- Check v2.0 on GitHub Pages (installed app, offline, iPhone silent switch).
+- Still open: home Wi-Fi connection test; Phase 4 slice 1 (network lobby); user's own playtest at 2, 3, 5 and 8 players. Then build the picks, test, commit and push.
+
+---
+
 ## 2026-11-07 / 08 (late night) — Choosing sound and music
 
 **Done**

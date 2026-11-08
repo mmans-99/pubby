@@ -13,10 +13,12 @@ import { MAX_SWAP } from '../rules/round.ts';
 import type { PlayerId, Session, VoteKind } from '../session/types.ts';
 import { playerView } from '../session/view.ts';
 import { h, type Child } from './dom.ts';
-import { handBlock, nameOf, nextClockwise, publicView, seatStrip, send } from './game.ts';
+import { handBlock, handoffBlock, nameOf, nextClockwise, publicView, seatStrip, send } from './game.ts';
+import { icon, type IconName } from './icons.ts';
 import type { SavedGame } from './storage.ts';
 import { getState, update } from './store.ts';
-import { resultsSummary, targetPanel } from './between.ts';
+import { resultsSummary, targetRow } from './between.ts';
+import { sfx } from '../audio/sfx.ts';
 
 // ---------------------------------------------------------------------------
 // Who holds the phone next
@@ -85,31 +87,19 @@ function passStage(g: SavedGame, who: PlayerId, what: 'vote' | 'swap' | 'tap'): 
   const s = g.session;
   const name = nameOf(s, who);
   const v = s.vote;
-  const title =
-    what === 'vote' ? voteTitle(s, v!.kind, v!.value)
-    : what === 'swap' ? 'Hidden swap'
-    : 'Reaction Tap';
-  const button =
-    what === 'vote' ? (s.order.length === 2 && v!.calledBy ? `I'm ${name}, let me answer` : `I'm ${name}, let me vote`)
-    : what === 'swap' ? `I'm ${name}, show my cards`
-    : `I'm ${name}, I'm ready`;
+  const [ic, title]: [IconName, string] =
+    what === 'vote' ? [voteIcon(v!.kind), voteShort(s, v!.kind, v!.value)]
+    : what === 'swap' ? ['swap', 'Hidden swap']
+    : ['hand', 'Reaction Tap'];
   const progress =
-    what === 'vote' ? (s.order.length === 2 && v!.calledBy ? `${nameOf(s, v!.calledBy)} asked` : `${Object.keys(v!.ballots).length} of ${s.order.length} have voted`)
+    what === 'vote' ? (s.order.length === 2 && v!.calledBy ? `${nameOf(s, v!.calledBy)} asked` : `${Object.keys(v!.ballots).length} of ${s.order.length} voted`)
     : what === 'swap' ? `${s.swapDone.length} of ${s.order.length} done`
-    : tapProgress(s);
+    : `${s.tap?.players.length ?? 0} missing a suit · slowest leads`;
   const armed = getState().armed === 'closevote';
   return h('div', { class: 'stack' },
-    h('div', { class: 'banner' },
-      h('div', { class: 'banner-big' }, title),
-      h('div', { class: 'small' }, progress),
-    ),
+    h('div', { class: 'step-head' }, h('div', { class: 'step-title' }, icon(ic), ` ${title}`), h('div', { class: 'muted small' }, progress)),
     seatStrip(s, publicView(s), { highlight: who }),
-    h('div', { class: 'handoff compact' },
-      h('p', { class: 'muted' }, 'Pass the phone to'),
-      h('h1', { class: 'handoff-name' }, name),
-      h('p', { class: 'muted small' }, 'Everyone else, look away.'),
-      h('button', { class: 'big', onclick: () => update({ game: { ...g, stage: 'hand', holder: who } }) }, button),
-    ),
+    handoffBlock(name, () => update({ game: { ...g, stage: 'hand', holder: who } }), { compact: true }),
     what === 'vote' && Object.keys(v!.ballots).length > 0
       ? h('button', {
         class: armed ? 'danger' : 'ghost',
@@ -128,6 +118,19 @@ function passStage(g: SavedGame, who: PlayerId, what: 'vote' | 'swap' | 'tap'): 
 // ---------------------------------------------------------------------------
 // Votes
 // ---------------------------------------------------------------------------
+
+function voteIcon(kind: VoteKind): IconName {
+  return kind === 'reshuffle' ? 'shuffle' : kind === 'target' ? 'target' : 'bolt';
+}
+
+/** V1: the vote as a short question. */
+function voteShort(s: Session, kind: VoteKind, value: number | null): string {
+  if (kind === 'ultimate' && s.vote?.draw === 1) return 'Draw: Ultimate Round?';
+  if (kind === 'ultimate' && s.vote?.draw === 2) return 'Coward! Last chance: Ultimate Round?';
+  if (kind === 'reshuffle') return 'Deal again?';
+  if (kind === 'target') return `Play to ${value}?`;
+  return 'Ultimate Round?';
+}
 
 export function voteTitle(s: Session, kind: VoteKind, value: number | null): string {
   if (kind === 'ultimate' && s.vote?.draw === 1) return 'It’s a draw: Ultimate Round?';
@@ -163,18 +166,16 @@ function voteStage(g: SavedGame, me: PlayerId): Child {
   const s = g.session;
   const v = s.vote!;
   const view = playerView(s, me);
-  const caller =
-    v.draw === 1 ? 'The top score is a draw, so the game called this vote.'
-    : v.draw === 2 ? 'Coward! The top score is still a draw. Last chance: if it’s a no again, the top score is shared.'
-    : v.calledBy && s.order.length === 2 ? `${nameOf(s, v.calledBy)} asked. It only happens if you agree.`
-    : v.calledBy ? `${nameOf(s, v.calledBy)} called this vote.`
-    : 'Someone reached the target, so the game called this vote.';
+  const who =
+    v.draw ? 'Top score is a draw'
+    : v.calledBy && s.order.length === 2 ? `${nameOf(s, v.calledBy)} asked · you decide`
+    : v.calledBy ? `${nameOf(s, v.calledBy)} asked · secret vote`
+    : 'Target reached · secret vote';
   const cast = (yes: boolean): void => { send([{ type: 'castVote', by: me, ballot: yes ? 'yes' : 'no' }]); };
   return h('div', { class: 'stack' },
     h('section', { class: 'panel vote-panel' },
-      h('h2', null, voteTitle(s, v.kind, v.value)),
-      h('p', null, voteQuestion(s, v.kind, v.value)),
-      h('p', { class: 'muted small' }, `${caller} Your vote is secret. More than half wins; no majority and the host decides.`),
+      h('h2', { class: 'vote-q' }, icon(voteIcon(v.kind)), ` ${voteShort(s, v.kind, v.value)}`),
+      h('p', { class: 'muted small center' }, who),
       h('div', { class: 'vote-buttons' },
         h('button', { class: 'big vote-yes', onclick: () => cast(true) }, 'YES'),
         h('button', { class: 'big vote-no', onclick: () => cast(false) }, 'NO'),
@@ -190,13 +191,9 @@ function hostDecidesStage(g: SavedGame): Child {
   const host = nameOf(s, s.hostId);
   const decide = (yes: boolean): void => { send([{ type: 'hostDecides', by: s.hostId, yes }]); };
   return h('div', { class: 'stack' },
-    h('div', { class: 'banner' },
-      h('div', { class: 'banner-big' }, 'No majority'),
-      h('div', { class: 'small' }, `${voteTitle(s, v.kind, v.value)} · ${host} (host) decides`),
-    ),
     h('section', { class: 'panel vote-panel' },
-      h('h2', null, `${host}, you decide`),
-      h('p', null, voteQuestion(s, v.kind, v.value)),
+      h('h2', { class: 'vote-q' }, icon(voteIcon(v.kind)), ` ${voteShort(s, v.kind, v.value)}`),
+      h('p', { class: 'muted small center' }, `No majority · ${host} decides`),
       h('div', { class: 'vote-buttons' },
         h('button', { class: 'big vote-yes', onclick: () => decide(true) }, 'YES'),
         h('button', { class: 'big vote-no', onclick: () => decide(false) }, 'NO'),
@@ -205,39 +202,34 @@ function hostDecidesStage(g: SavedGame): Child {
   );
 }
 
-/** Reshuffle phase (after the deal): look at cards, call a vote, or the host starts the round. */
+/** S1: after the deal: three picture buttons (look at cards, deal again?, start), and the target row (T1). */
 export function reshuffleStage(g: SavedGame): Child {
   const s = g.session;
   const v = publicView(s);
   const st = getState();
   const choosing = st.armed === 'reshufflecaller';
+  const host = nameOf(s, s.hostId);
   return h('div', { class: 'stack' },
-    h('div', { class: 'banner' },
-      h('div', { class: 'banner-big' }, 'Cards dealt'),
-      h('div', { class: 'small' }, s.reshuffleUsed ? 'The reshuffle vote has been used this round.' : 'Anyone can call one reshuffle vote this round.'),
-    ),
     seatStrip(s, v),
-    h('section', { class: 'panel' },
-      h('h2', null, '1. Look at your cards'),
-      h('p', { class: 'muted' }, 'Pass the phone round so everyone sees their own hand.'),
-      h('button', { class: 'secondary', onclick: () => update({ game: { ...g, stage: 'handoff', holder: nextClockwise(s, s.dealer) } }) }, 'Pass the phone round'),
+    h('div', { class: 'tiles' },
+      h('button', { class: 'tile', onclick: () => update({ game: { ...g, stage: 'handoff', holder: nextClockwise(s, s.dealer) } }) },
+        icon('eye', 'xl'), h('span', null, 'Look at cards')),
+      h('button', {
+        class: choosing ? 'tile on' : 'tile', disabled: !v.canCallReshuffle,
+        'aria-label': v.canCallReshuffle ? 'Deal again? Call a reshuffle vote' : 'Deal again: already used this round',
+        onclick: () => update({ armed: choosing ? null : 'reshufflecaller' }),
+      }, icon('shuffle', 'xl'), h('span', null, v.canCallReshuffle ? 'Deal again?' : 'Used')),
+      h('button', { class: 'tile go', onclick: () => send([{ type: 'startRound', by: s.hostId }]) },
+        icon('play', 'xl'), h('span', null, `Start · ${host}`)),
     ),
-    v.canCallReshuffle
+    choosing && v.canCallReshuffle
       ? h('section', { class: 'panel' },
-        h('h2', null, '2. Reshuffle?'),
-        h('p', { class: 'muted' }, 'Don’t like the deal? Anyone can call a vote. If it passes, the dealer shuffles and deals again.'),
-        choosing
-          ? [
-            h('p', null, 'Who is calling the vote?'),
-            seatStrip(s, v, { onTap: (id) => send([{ type: 'callVote', by: id, kind: 'reshuffle' }]), tapLabel: 'Called by' }),
-            h('button', { class: 'ghost', onclick: () => update({ armed: null }) }, 'Cancel'),
-          ]
-          : h('button', { class: 'secondary', onclick: () => update({ armed: 'reshufflecaller' }) }, s.order.length === 2 ? 'Ask for a reshuffle' : 'Call a reshuffle vote'),
+        h('p', { class: 'small center' }, 'Who wants to deal again?'),
+        seatStrip(s, v, { onTap: (id) => send([{ type: 'callVote', by: id, kind: 'reshuffle' }]), tapLabel: 'Called by' }),
+        h('button', { class: 'ghost', onclick: () => update({ armed: null }) }, 'Cancel'),
       )
       : null,
-    targetPanel(s),
-    h('button', { class: 'big', onclick: () => send([{ type: 'startRound', by: s.hostId }]) }, `Start the round (${nameOf(s, s.hostId)})`),
-    h('p', { class: 'muted small center' }, 'Only the host starts the round.'),
+    targetRow(s),
   );
 }
 
@@ -266,15 +258,14 @@ function swapStage(g: SavedGame, me: PlayerId): Child {
     if (!send([{ type: 'swap', by: me, cardIds: ids }], { stage: 'hand', holder: me })) swapReveal = null;
   };
   return h('div', { class: 'stack' },
-    h('section', { class: 'panel' },
-      h('h2', null, 'Hidden swap'),
-      h('p', null, `Pick up to ${MAX_SWAP} cards to swap for random unseen cards, or keep your hand. Swapped cards leave the round.`),
-      h('p', { class: 'muted small' }, `${picked.length} of ${MAX_SWAP} picked`),
+    h('h2', { class: 'center vote-q' }, icon('swap'), ` Swap up to ${MAX_SWAP}?`),
+    handBlock(s, view, toggle, { picked: new Set(picked), all: true, head: false }),
+    h('p', { class: 'muted small center' }, `${picked.length} of ${MAX_SWAP}`),
+    h('div', { class: 'row' },
+      h('button', { class: 'big grow', disabled: picked.length === 0, onclick: () => doSwap(picked.slice()) },
+        picked.length ? `Swap ${picked.length}` : 'Swap'),
+      h('button', { class: 'big secondary grow', onclick: () => doSwap([]) }, 'Keep'),
     ),
-    handBlock(s, view, toggle, { picked: new Set(picked), all: true }),
-    h('button', { class: 'big', disabled: picked.length === 0, onclick: () => doSwap(picked.slice()) },
-      picked.length ? `Swap ${picked.length} ${picked.length === 1 ? 'card' : 'cards'}` : 'Pick cards to swap'),
-    h('button', { class: 'secondary', onclick: () => doSwap([]) }, 'Keep my hand'),
   );
 }
 
@@ -290,12 +281,9 @@ function swapRevealStage(g: SavedGame): Child {
   };
   const next = roundStartHolder(s);
   return h('div', { class: 'stack' },
-    h('section', { class: 'panel' },
-      h('h2', null, fresh.size ? `Your ${fresh.size} new ${fresh.size === 1 ? 'card' : 'cards'}` : 'You kept your hand'),
-      fresh.size ? h('p', { class: 'muted small' }, 'New cards are marked with a star.') : null,
-    ),
-    handBlock(s, view, null, { picked: fresh, all: false, mark: true }),
-    h('button', { class: 'big', onclick: done }, next ? `Hide my cards · pass to ${nameOf(s, next)}` : 'Hide my cards · carry on'),
+    h('h2', { class: 'center' }, fresh.size ? `${fresh.size} new ${fresh.size === 1 ? 'card' : 'cards'} ★` : 'Hand kept'),
+    handBlock(s, view, null, { picked: fresh, all: false, mark: true, head: false }),
+    h('button', { class: 'big', onclick: done }, next ? `Hide · pass to ${nameOf(s, next)}` : 'Hide · carry on'),
   );
 }
 
@@ -315,12 +303,6 @@ let tap: { player: PlayerId; state: TapState } = { player: '', state: { step: 'r
 export function resetTap(): void {
   if (tap.state.step === 'wait') window.clearTimeout(tap.state.timer);
   if (tap.state.step === 'wait' || tap.state.step === 'go') tap = { ...tap, state: { step: 'ready' } };
-}
-
-function tapProgress(s: Session): string {
-  const t = s.tap;
-  if (!t) return '';
-  return `${t.players.map((p) => nameOf(s, p)).join(', ')} are missing a suit. Slowest leads.`;
 }
 
 function setTap(state: TapState): void {
@@ -347,12 +329,14 @@ function tapStage(g: SavedGame, me: PlayerId): Child {
     const delay = 1500 + Math.random() * 2500;
     const timer = window.setTimeout(() => {
       tap = { ...tap, state: { step: 'go', at: performance.now() } };
+      sfx('tapGo');
       update({});
       // Time from when the green pad is actually on screen.
       requestAnimationFrame(() => {
         if (tap.state.step === 'go') tap = { ...tap, state: { step: 'go', at: performance.now() } };
       });
     }, delay);
+    sfx('tapReady');
     setTap({ step: 'wait', timer });
   };
   const finish = (): void => {
@@ -368,17 +352,16 @@ function tapStage(g: SavedGame, me: PlayerId): Child {
       : null;
 
   return h('div', { class: 'stack' },
-    h('div', { class: 'banner' },
-      h('div', { class: 'banner-big' }, `Reaction Tap · ${nameOf(s, me)}`),
-      h('div', { class: 'small' }, 'Tap the pad as soon as it turns green. Tapping early counts as slowest. The slowest player leads.'),
+    h('div', { class: 'step-head' },
+      h('div', { class: 'step-title' }, icon('hand'), ` Reaction Tap · ${nameOf(s, me)}`),
+      h('div', { class: 'muted small' }, 'Tap when it turns green'),
     ),
     st.step === 'ready' ? h('button', { class: 'big tap-start', onclick: start }, 'Start') : null,
     pad,
     st.step === 'done'
       ? h('div', { class: 'stack center' },
         h('div', { class: 'tap-result' }, st.falseStart ? 'Too early!' : `${st.ms} ms`),
-        h('p', { class: 'muted' }, st.falseStart ? 'A false start counts as the slowest time.' : 'Your reaction time.'),
-        h('button', { class: 'big', onclick: finish }, 'Done · pass the phone on'),
+        h('button', { class: 'big', onclick: finish }, 'Done · pass on'),
       )
       : null,
   );

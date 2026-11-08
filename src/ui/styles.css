@@ -235,7 +235,8 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
   gap: 10px;
   text-align: center;
 }
-.handoff-icon { font-size: 3rem; animation: nudge 1.6s ease-in-out infinite; }
+.handoff-icon { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 2.6rem; animation: nudge 1.6s ease-in-out infinite; }
+.handoff-icon .ic:last-child { font-size: 1.6rem; }
 .handoff-name { font-size: 2.6rem; font-weight: 900; color: var(--gold); word-break: break-word; }
 .handoff .big { width: 100%; margin-top: 16px; }
 @keyframes nudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(10px) rotate(6deg); } }
@@ -257,7 +258,8 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 .card.red { color: var(--red); }
 .card.joker { background: linear-gradient(160deg, #fff7d6, #f2c14e); }
 .hand.fresh .card { animation-delay: calc(var(--i, 0) * 20ms); }
-@keyframes deal-in { from { opacity: 0; transform: translateY(14px) scale(0.92); } to { opacity: 1; transform: none; } }
+/* No end frame: the card settles on its own opacity and position, so .dim and .selected show (G4 fix). */
+@keyframes deal-in { from { opacity: 0; transform: translateY(14px) scale(0.92); } }
 .counts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .counts li { display: flex; gap: 8px; }
 
@@ -473,7 +475,7 @@ table.results { width: 100%; border-collapse: collapse; }
 
 /* Reactions drawer: 😂 button bottom left, slides open, stays until put away */
 .game { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
-.game .play-bar { margin-left: 64px; }
+.game .play-bar { margin-left: 64px; margin-right: 64px; } /* room for 😂 on the left, same on the right so the button is centred */
 .reactions-toggle {
   position: fixed;
   left: max(12px, calc(50% - 250px));
@@ -660,3 +662,199 @@ table.trivia-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; 
    chain, so the html/body rule alone let some spots zoom in Samsung
    Internet. More specific rules (the Reaction Tap pad: none) still win. */
 *, *::before, *::after { touch-action: pan-x pan-y; }
+
+/* Sound button and sheet (PROJECT.md 12b) */
+.sound-btn {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top));
+  right: calc(max(10px, calc(50% - 250px)) + 50px);
+  width: 42px; min-height: 42px; height: 42px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  z-index: 39; /* above pop-ups and the pause screen: sound can be changed any time */
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+.top-bar, .game-bar { padding-right: 98px; }
+.sound-row { padding: 6px 0 10px; border-bottom: 1px solid rgba(0, 0, 0, 0.1); }
+.sound-sheet .toggle-ui { background: rgba(0, 0, 0, 0.2); }
+.sound-sheet .muted { color: rgba(29, 29, 27, 0.6); }
+.vol-line { display: flex; align-items: center; gap: 10px; min-height: var(--tap); }
+.vol-line.off { opacity: 0.4; }
+.vol-slider { flex: 1; min-width: 0; height: 36px; accent-color: var(--felt); }
+.vol-num { width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
+.sound-note { color: rgba(29, 29, 27, 0.7); margin: 10px 0 0; }
+.sound-overlay { z-index: 45; }
+/* Room for the sound and ? buttons on small phones: keep words on one line, wrap the bar if needed. */
+.game-bar { flex-wrap: wrap; gap: 6px; }
+.game-bar button, .bar-right > * { white-space: nowrap; }
+.game-bar > .ghost { padding: 0 10px; }
+.game-bar .pause-btn { padding: 0 10px; }
+
+/* End-of-trick animation: taps wait until the cards have moved */
+.anim-block { position: fixed; inset: 0; z-index: 34; }
+
+/* Shuffle before the deal: the deck splits in two and riffles back together, twice */
+.deck.shuffling .card-back { transform: none; }
+.deck.shuffling .card-back.l { animation: riffle-l 0.85s ease-in-out 2 both; animation-delay: calc(var(--k) * 35ms); }
+.deck.shuffling .card-back.r { animation: riffle-r 0.85s ease-in-out 2 both; animation-delay: calc(var(--k) * 35ms + 18ms); }
+@keyframes riffle-l {
+  0% { transform: translate(0, 0) rotate(0); }
+  30%, 50% { transform: translate(-46px, 6px) rotate(-12deg); }
+  100% { transform: translate(0, 0) rotate(0); }
+}
+@keyframes riffle-r {
+  0% { transform: translate(0, 0) rotate(0); }
+  30%, 50% { transform: translate(46px, 6px) rotate(12deg); }
+  100% { transform: translate(0, 0) rotate(0); }
+}
+@media (prefers-reduced-motion: reduce) { .deck.shuffling .card-back { animation: none; } }
+
+/* HAHAHA! (final two, higher last card): the SLAP! style in green and purple, wobbling */
+.popup.slap.haha {
+  background:
+    radial-gradient(circle at 50% 35%, #e1f5c4 0 30%, transparent 31%),
+    repeating-conic-gradient(from 0deg, #aed581 0deg 10deg, #7cb342 10deg 20deg);
+}
+.popup.haha .slap-word { color: #8e24aa; font-size: clamp(2.3rem, 12vw, 3rem); animation: haha-wobble 0.34s ease-in-out 4; }
+@keyframes haha-wobble { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(4deg) scale(1.06); } }
+@media (prefers-reduced-motion: reduce) { .popup.haha .slap-word { animation: none; } }
+
+
+/* ---- Less text (2026-11-08): line icons, one style everywhere ---- */
+.ic { display: inline-flex; width: 1.15em; height: 1.15em; vertical-align: -0.2em; flex: none; }
+.ic svg { width: 100%; height: 100%; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ic svg .f { fill: currentColor; stroke: none; }
+.ic.xl { font-size: 1.9rem; }
+.rules-btn .ic, .sound-btn .ic { font-size: 1.3rem; }
+
+/* G1: top bar as icons */
+.game-bar { justify-content: flex-start; gap: 8px; flex-wrap: nowrap; }
+.icon-btn {
+  width: 42px; min-height: 42px; height: 42px; padding: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.25); color: var(--cream);
+  display: inline-grid; place-items: center;
+}
+.icon-btn .ic { font-size: 1.25rem; }
+.icon-btn.on { background: var(--cream); color: var(--ink); }
+.round-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  min-height: 32px; padding: 0 12px; border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25); font-weight: 800; white-space: nowrap;
+}
+
+/* D1 to D3: dealing */
+.info-chips { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
+.chip-info {
+  display: inline-flex; align-items: center; gap: 4px;
+  min-height: 34px; padding: 0 12px; border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25); color: var(--cream);
+  font-weight: 700; font-size: 0.95rem;
+}
+.chip-info.gold { background: var(--gold); color: var(--ink); }
+button.chip-info { min-height: 34px; }
+.hint { color: var(--muted); margin: 0; }
+.seg { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
+.seg-btn {
+  min-height: 40px; padding: 0 14px; border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25); color: var(--cream); font-weight: 700;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.seg-btn.on { background: var(--cream); color: var(--ink); }
+.seat-count { display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+.mini-back { display: inline-block; width: 9px; height: 13px; border-radius: 2px; background: linear-gradient(160deg, #b71c1c, #7f0000); border: 1.5px solid currentColor; opacity: 0.85; }
+
+/* S1: before the round */
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tile {
+  min-height: 96px; padding: 10px 4px; border-radius: 14px;
+  background: var(--cream); color: var(--ink);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  font-size: 0.9rem; font-weight: 800; text-align: center;
+}
+.tile.go { background: var(--gold); }
+.tile.on { box-shadow: 0 0 0 3px var(--gold); }
+
+/* T1: target score row */
+.slim-panel { display: flex; flex-direction: column; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; }
+.slim { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.slim .v { color: var(--muted); font-weight: 600; }
+.slim .act { margin-left: auto; min-height: 36px; padding: 0 14px; border-radius: 999px; background: var(--cream); font-size: 0.9rem; }
+.slim .act.ghost-act { background: transparent; color: var(--cream); }
+
+/* V1 and W1: votes and swap */
+.vote-q { display: flex; align-items: center; justify-content: center; gap: 8px; text-align: center; font-size: 1.5rem; }
+.step-head { text-align: center; display: flex; flex-direction: column; gap: 2px; }
+.step-title { font-size: 1.25rem; font-weight: 800; color: var(--gold); display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+
+/* H1 to H3: the felt */
+.felt { position: relative; overflow: hidden; }
+.led-mark { position: absolute; right: 10px; bottom: -22px; font-size: 7rem; line-height: 1; color: rgba(255, 255, 255, 0.1); pointer-events: none; }
+.led-mark.red { color: rgba(255, 120, 120, 0.2); }
+.felt > * { position: relative; }
+.felt > .led-mark { position: absolute; }
+.trick.empty-trick { min-height: 92px; }
+.last-trick { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; border-top: 1px dashed var(--line); padding-top: 6px; }
+.lt-label { color: var(--muted); font-size: 0.8rem; margin-right: 2px; }
+.card.tiny-card { width: 26px; aspect-ratio: 5 / 7; border-radius: 4px; padding: 0; gap: 0; animation: none; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+.card.tiny-card .rank, .card.tiny-card .suit { font-size: 0.7rem; line-height: 1; }
+.card.tiny-card .suit.tiny { display: none; }
+.card.tiny-card.slapped { box-shadow: 0 0 0 2px var(--danger); }
+.lt-slap { color: var(--danger); margin-left: 2px; }
+.play-red { color: var(--red); }
+
+/* U1 and G3: pop-ups */
+.popup-icon .ic { font-size: 2.6rem; }
+.popup-text { font-weight: 600; }
+.popup-text.places { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.popup .slap-timer { width: 70%; margin-top: 6px; }
+.place {
+  display: inline-grid; place-items: center;
+  min-width: 38px; height: 22px; padding: 0 8px; border-radius: 999px;
+  font-size: 0.75rem; font-weight: 800; color: var(--ink); background: var(--cream);
+  vertical-align: 1px;
+}
+.place.p1 { background: var(--gold); }
+.place.p2 { background: #cfd8dc; }
+.place.p3 { background: #d7a26b; }
+.place.last { background: var(--danger); color: #fff; }
+
+/* R1 to R4: results */
+.results-head { display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--gold); }
+.podium-wrap { display: flex; flex-direction: column; gap: 8px; }
+.podium { display: flex; align-items: flex-end; justify-content: center; gap: 6px; }
+.podium .step {
+  flex: 1; max-width: 120px; border-radius: 12px 12px 4px 4px;
+  background: rgba(0, 0, 0, 0.25); padding: 10px 4px 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
+}
+.podium .step.p1 { min-height: 128px; background: rgba(242, 193, 78, 0.28); }
+.podium .step.p2, .podium .step.p3 { min-height: 100px; }
+.podium .step.plast { min-height: 82px; }
+.step-name { font-weight: 800; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.podium small { opacity: 0.85; font-variant-numeric: tabular-nums; }
+.podium .forfeit, .rest-list .forfeit { color: var(--danger); }
+.rest-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.rest-list li { display: flex; align-items: center; gap: 8px; background: rgba(0, 0, 0, 0.18); border-radius: 10px; padding: 6px 10px; }
+.awards { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.awards::-webkit-scrollbar { display: none; }
+.award {
+  flex: none; min-width: 100px; padding: 8px 10px; border-radius: 12px;
+  background: rgba(0, 0, 0, 0.25); color: var(--cream);
+  display: flex; flex-direction: column; gap: 2px; text-align: left; font-weight: 700; font-size: 0.9rem;
+}
+.award b { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+button.award { min-height: 0; }
+.ready-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+button.secondary.on { box-shadow: 0 0 0 3px var(--gold); }
+.title-line { display: flex; align-items: center; gap: 6px; }
+
+/* G2: the rules card the ? opened at */
+.flash-topic { animation: flash-topic 1.6s ease-out; border-radius: 6px; }
+@keyframes flash-topic { 0%, 40% { background: rgba(242, 193, 78, 0.55); } 100% { background: transparent; } }
+.md-table { overflow-x: auto; margin: 4px 0 8px; }
+.md-table table { border-collapse: collapse; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.md-table th, .md-table td { padding: 3px 6px; border-bottom: 1px solid rgba(0, 0, 0, 0.12); text-align: center; }
+.md-table th:first-child, .md-table td:first-child { text-align: left; font-weight: 700; }
+.rules-sheet .md h3 { scroll-margin-top: 60px; }

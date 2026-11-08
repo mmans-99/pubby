@@ -167,9 +167,24 @@ Built in slices; each slice gets a test link and a checklist.
   - [x] Feel decided: cosy pub card night, comic effects, not sentimental
   - [x] Music: Fireside Piano set (menu, during play, Ultimate Round, results) (2026-11-08)
   - [x] Paused = Click; take-cards request = Knock knock
-  - [ ] Choose SLAP! (original / Big / Huge), fireplace crackle yes or no, confirm Resumed and the other effects
-  - [ ] Decide sound on or off by default, and the mute button
-  - [ ] Plan for `src/audio/` approved, then build, test on phones (iPhone silent switch)
+  - [x] SLAP! = Huge; fireplace crackle kept; Resumed = click up; every other effect as on the sample page (2026-11-08 07:29)
+  - [x] Sound on by default, music and effects both quieter; music and effects on/off and volume changeable mid-game from the sound button (2026-11-08 07:29)
+  - [x] Plan for `src/audio/` approved (07:31), version 2.0
+  - [x] Built: `src/audio/` (engine, music, sfx, settings), `src/ui/sound.ts` (sound button and sheet), hooks in the game; `testbed/sound_check.py` 37 of 37; playthrough 53 of 53, back 14 of 14, offline 20 of 20, unit tests 132
+  - [x] User tested v2.0 on the phone (test link https://claude.ai/artifact/MSgwk5EHWy6Ri3hREFPYjf); iPhone silent switch still worth a check on GitHub Pages
+  - [x] Commit and push v2.0 (10:07)
+  - [x] **User feedback on the v2.0 test (08:22), approved 08:24, built into v2.0:**
+    - [x] "Ding" after a card removed (the your-turn chime is no longer played)
+    - [x] Effects no longer pile up: one big effect at a time (queued), small ones skipped while a big one plays, no tap sound on in-game buttons, music dips under big effects
+    - [x] End-of-trick animation: trick stays on the felt 0.7 s, then (after the SLAP! pop-up) the cards slide to the waste pile or into the slapped player's seat; taps, pop-ups and sounds wait for it
+    - [x] Shuffle animation (two riffles, 1.7 s) before the deal at game start, every new round and after a reshuffle vote
+    - [x] Music off by default, effects on (user 08:56; settings key now `pubby.sound.v2`)
+    - [x] HAHAHA! pop-up and laugh sound in the final two (higher last card); choice panel text cut to "Pick up or forfeit"
+    - [x] "Lead any card" / Play button centred (same space on both sides of it)
+    - [x] Less text, more visual: all 25 picks approved (09:27) and built (PROJECT.md 12a, CODE.md 9h): G1 to G5, D1 to D4, S1, T1, V1, W1, P1, H1 to H6, U1, R1 to R4
+    - [x] G4 fixed: unplayable cards are greyed out from the moment the hand appears
+    - [x] Quick rules: new Dealing card, how to play a card, what the table shows, secret votes, the target row, next round; the ? opens at the card for the screen; rules tables and one paragraph per line now render properly
+    - [x] User asked to commit and push v2.0 (10:07)
 - [ ] Accessibility pass (contrast, tap targets, screen reader labels)
 - [ ] User adds more catch-phrases to `src/content/`
 

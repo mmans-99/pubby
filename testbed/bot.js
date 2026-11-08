@@ -24,9 +24,12 @@
 
   function step(cfg) {
     // Pop-ups first.
-    const ok = document.querySelector('.popup-ok');
-    if (visible(ok)) return click(ok, 'popup ' + (document.querySelector('.popup-title, .vote-word')?.textContent || ''));
+    // Pop-ups close by themselves; the ones that can be tapped away are skipped.
+    const skip = document.querySelector('.popup-overlay[data-skip]');
+    if (skip) return click(skip, 'popup ' + (document.querySelector('.popup-title, .vote-word')?.textContent || ''));
     if (document.querySelector('.popup-overlay')) return 'wait';
+    // End-of-trick animation and the shuffle before the deal: nothing to tap yet.
+    if (document.querySelector('.anim-block, .deck.shuffling')) { st.anims = (st.anims || 0) + 1; return 'wait'; }
 
     // CSV sheet (share sheet fallback).
     const box = document.querySelector('textarea.csv-box');
@@ -41,7 +44,7 @@
     if (visible(document.querySelector('.tap-pad.wait'))) return 'wait';
     const start = document.querySelector('button.tap-start');
     if (visible(start)) return click(start, 'reaction start');
-    const done = byText('Done · pass the phone on');
+    const done = byText('Done · pass on');
     if (done) return click(done, 'reaction done');
 
     // Votes.
@@ -52,7 +55,7 @@
     // Game over.
     if (/Final standings/.test(text()) && byText('Back to home')) {
       if (/could not be saved/.test(text())) problem('game over: game not saved');
-      const share = byText('📤 Share game stats');
+      const share = byText('Share game stats');
       if (share && !st.shared) { st.shared = true; return click(share, 'share game stats'); }
       if (!share) problem('game over: no share button');
       st.shared = false; st.ultCalled = false; st.reshuffleCalled = false;
@@ -64,30 +67,31 @@
     if (ult) return click(ult, 'start ultimate round');
     const next = byText('Next round');
     if (next) {
-      const m = /Round (\d+)/.exec(document.querySelector('.banner .small')?.textContent || '');
+      const m = /Round (\d+)/.exec(document.querySelector('.round-chip')?.getAttribute('aria-label') || '');
       const round = m ? Number(m[1]) : 0;
       if (round < cfg.rounds) return click(next, `next round after ${round}`);
       if (cfg.ultimate && !st.ultCalled) {
         const callers = [...document.querySelectorAll('.name-chip')].filter((b) => /Called by/.test(b.getAttribute('aria-label') || ''));
         if (callers.length) { st.ultCalled = true; return click(callers[0], 'ultimate vote called'); }
-        const call = byText('Call an Ultimate Round vote') || byText('Ask to play the Ultimate Round');
-        if (call) return click(call, 'call ultimate vote');
+        const call = byLabel('Ultimate Round')[0];
+        if (call && !call.classList.contains('on')) return click(call, 'call ultimate vote');
       }
       const end = byText('Tap again') || byText('End the game');
+      if (!end) return 'stuck';
       if (end) return click(end, 'end the game');
     }
 
     // Pass-the-phone screens.
-    const me = buttons().find((b) => /^I'm .*, (show my cards|let me vote|let me answer|I'm ready)$/.test(b.textContent.trim()));
+    const me = buttons().find((b) => /^I'm \S/.test(b.textContent.trim()));
     if (me) return click(me, 'show my cards');
 
     // Hidden swap.
-    const keep = byText('Keep my hand');
+    const keep = buttons().find((b) => b.textContent.trim() === 'Keep');
     if (keep) {
       if (cfg.swap && Math.random() < 0.5) {
         const cards = [...document.querySelectorAll('.hand .card[role="button"]')];
         const swapBtn = byText('Swap ');
-        if (swapBtn && /Swap [12] card/.test(swapBtn.textContent)) {
+        if (swapBtn && /^Swap [12]$/.test(swapBtn.textContent.trim())) {
           const n = parseInt(/Swap (\d)/.exec(swapBtn.textContent)[1], 10);
           if (n >= 2 || cards.length < 2) { st.swaps++; return click(swapBtn, 'swap cards'); }
         }
@@ -111,13 +115,13 @@
     const playable = [...document.querySelectorAll('.hand .card.playable')];
     if (playable.length) {
       const playBtn = byText('Play ');
-      if (playBtn && /^Play \S/.test(playBtn.textContent.trim()) && !/^Play a card/.test(playBtn.textContent.trim())) return click(playBtn, 'play ' + playBtn.textContent.trim().slice(5));
+      if (playBtn && /^Play \S/.test(playBtn.textContent.trim())) return click(playBtn, 'play ' + playBtn.textContent.trim().slice(5));
       return click(pick(playable), 'select card');
     }
-    if (byText('Lead any card') || byText('Play a card')) problem('my turn but no playable card');
+    if (byText('Pick a card')) problem('my turn but no playable card');
 
     // Hand screens: pass on.
-    const hide = byText('Hide my cards ·');
+    const hide = byText('Hide ·');
     if (hide) return click(hide, 'hide my cards');
 
     // Dealing.
@@ -131,21 +135,21 @@
         st.manualDeals++;
         return click(pick(manual), 'manual deal card');
       }
-      const auto = byText('Switch to auto deal') || byText('Back to auto deal');
+      const auto = buttons().find((b) => b.classList.contains('seg-btn') && b.textContent.trim() === 'Auto');
       if (auto) return click(auto, 'switch to auto deal');
     }
-    const rest = byText('Deal the rest now');
+    const rest = byText('Deal all');
     if (rest) return click(rest, 'deal the rest');
-    if (/Dealing clockwise/.test(text())) return 'wait';
+    if (/Dealing…/.test(text())) return 'wait';
 
     // Reshuffle phase.
     if (cfg.reshuffle && !st.reshuffleCalled) {
       const callers = byLabel('Called by');
       if (callers.length) { st.reshuffleCalled = true; return click(callers[0], 'reshuffle vote called'); }
-      const call = byText('Call a reshuffle vote') || byText('Ask for a reshuffle');
+      const call = byLabel('Deal again? Call')[0];
       if (call) return click(call, 'call reshuffle vote');
     }
-    const startRound = byText('Start the round (');
+    const startRound = byText('Start ·');
     if (startRound) return click(startRound, 'start the round');
 
     // Winner picks who leads.

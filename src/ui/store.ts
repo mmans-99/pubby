@@ -7,6 +7,7 @@ import type { ProfileStats } from '../session/record.ts';
 import type { CsvSheet } from './history.ts';
 import type { PlayerId } from '../session/types.ts';
 import { saveGame, type SavedGame } from './storage.ts';
+import type { IconName } from './icons.ts';
 
 export interface SetupSeat {
   profileName: string;
@@ -24,6 +25,8 @@ export interface SetupState {
 /** Pop-ups shown one after another, never dropped (CODE.md section 5a). */
 export type Popup =
   | { kind: 'slap'; slapper: PlayerId; slapped: PlayerId; cards: number }
+  /** Final two: the lower last card laughs at the higher one, who must pick up or forfeit. */
+  | { kind: 'haha'; laugher: PlayerId; loser: PlayerId }
   | { kind: 'out'; player: PlayerId; place: number }
   | {
       kind: 'lastTwo';
@@ -32,7 +35,7 @@ export type Popup =
       forfeitedBy: PlayerId | null;
     }
   | { kind: 'vote'; decidedBy: 'majority' | 'host' | 'both'; result: boolean; text: string }
-  | { kind: 'info'; icon: string; title: string; text: string };
+  | { kind: 'info'; icon: IconName; title: string; text: string };
 
 export type Screen = 'home' | 'profiles' | 'history' | 'setup' | 'game' | 'nettest' | 'bye';
 
@@ -42,6 +45,10 @@ export interface State {
   setup: SetupState;
   game: SavedGame | null;
   rulesOpen: boolean;
+  /** Quick rules card to open at ("Dealing", "Hidden decks"…); null = the top. */
+  rulesTopic?: string | null;
+  /** Sound sheet (music and effects switches and volumes). */
+  soundOpen: boolean;
   menuOpen: boolean;
   /** Something that needs a second tap to confirm (e.g. "delete:Sam"). */
   armed: string | null;

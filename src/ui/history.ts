@@ -12,6 +12,7 @@
  *   can't share files, a sheet shows the CSV with Copy and Download buttons.
  */
 
+import { icon } from './icons.ts';
 import {
   addGameToProfiles, buildGameRecord, profileCsv, profileRivals, sessionCsv,
   type GameRecord, type ProfileStats,
@@ -159,7 +160,7 @@ export function gameOverSaved(recordId: string | undefined): HTMLElement {
     h('p', { class: 'muted small' },
       added.length ? `Added to the profiles of ${added.join(', ')}. ` : '',
       'Find it again in Past games on the home screen.'),
-    h('button', { onclick: () => { void shareCsv(gameCsvSheet(rec)); } }, '📤 Share game stats (CSV)'),
+    h('button', { onclick: () => { void shareCsv(gameCsvSheet(rec)); } }, icon('share'), ' Share game stats (CSV)'),
   );
 }
 
@@ -205,7 +206,7 @@ function recordRow(rec: GameRecord, open: boolean): HTMLElement {
     onclick: () => update({ openRecord: open ? null : rec.id, armed: null }),
   },
     h('div', { class: 'grow' },
-      h('div', { class: 'name' }, `🏆 ${winners}`),
+      h('div', { class: 'name' }, icon('trophy'), ` ${winners}`),
       h('div', { class: 'muted small' }, `${when(rec.savedAt)} · ${rec.playerCount} players · ${rounds} ${rounds === 1 ? 'round' : 'rounds'}`),
     ),
     h('span', { class: 'muted', 'aria-hidden': 'true' }, open ? '▲' : '▼'),
@@ -224,7 +225,7 @@ function recordRow(rec: GameRecord, open: boolean): HTMLElement {
       rec.target !== null ? `Target ${rec.target} points. ` : 'No target. ',
       rec.jokerRuleEnabled ? `Joker rule on (${rec.jokerTotal}).` : 'Joker rule off.'),
     h('div', { class: 'row' },
-      h('button', { class: 'grow', onclick: () => { void shareCsv(gameCsvSheet(rec)); } }, '📤 Share game stats'),
+      h('button', { class: 'grow', onclick: () => { void shareCsv(gameCsvSheet(rec)); } }, icon('share'), ' Share game stats'),
       h('button', {
         class: armed ? 'danger' : 'ghost',
         onclick: () => {
@@ -258,6 +259,6 @@ export function profileDetails(p: ProfileStats): HTMLElement {
     row('Slaps given', p.slapsGiven),
     row('Slapped by most', r.slappedByMost.join(' & ') || '—'),
     row('Slapped most', r.slappedMost.join(' & ') || '—'),
-    h('button', { onclick: () => { void shareCsv(profileCsvSheet(p)); } }, '📤 Share profile stats (CSV)'),
+    h('button', { onclick: () => { void shareCsv(profileCsvSheet(p)); } }, icon('share'), ' Share profile stats (CSV)'),
   );
 }

@@ -74,7 +74,7 @@ export function leavePubby(): void {
   dropGuards();
   try { window.close(); } catch { /* ignore */ }
   window.setTimeout(() => {
-    if (!document.hidden) update({ screen: 'bye', menuOpen: false, rulesOpen: false });
+    if (!document.hidden) update({ screen: 'bye', menuOpen: false, rulesOpen: false, soundOpen: false });
   }, 300);
 }
 
@@ -95,6 +95,7 @@ export function backStep(): boolean {
   const st = getState();
   if (st.exitAsk) { update({ exitAsk: false }); return true; }
   if (st.rulesOpen) { update({ rulesOpen: false }); return true; }
+  if (st.soundOpen) { update({ soundOpen: false }); return true; }
   if (st.csvSheet) { update({ csvSheet: null }); return true; }
   if (st.menuOpen) { update({ menuOpen: false }); return true; }
   if (st.screen === 'game') return true;

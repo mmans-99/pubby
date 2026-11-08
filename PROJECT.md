@@ -331,7 +331,7 @@ The trivia shows on the results screen after every round. It has no effect on sc
 
 ### Core trivia
 - **Most slapped:** The player who has been the slapped player the most times in the session so far.
-- **Most slapper:** The player who has made the most slaps in the session so far.
+- **Most slapper** (shown as "Top slapper"): The player who has made the most slaps in the session so far.
 - **Rivals:** For each pair where one player (the slapper) has slapped another player (the slapped) more often than any other pair, shown by session name. If several pairs tie, all of them are shown. Example: "Speedy slaps Ferrari most."
 - **Per player, this session:**
   - **Slapped by most:** The player who has slapped this player the most times.
@@ -383,11 +383,25 @@ The user wants a polished card-table look, like popular online card games:
 - Animations: dealing cards out to each player, cards sliding to the middle when played, the trick sweeping to the waste pile or to the slapped player, the SLAP! pop-up, and vote result pop-ups.
 - Pubby's own design: no copying another game's artwork, logos or card designs.
 
+**Less text, more visual (decided 2026-11-08 09:27, all 25 changes in the mockup https://claude.ai/artifact/FdJS1U4j3LroH7G9SZuYej):**
+- **One icon style:** thin line icons everywhere, no emoji (the 😂 reactions button is the only one). Places are coloured badges: 1st gold, 2nd silver, 3rd bronze, Last red.
+- **Top bar:** menu, round number ("R1", or Ultimate) and pause as icons on one line; the take-cards button sits there too, before a trick, when someone can ask. Sound and ? on the right.
+- **Explanations live in the ? rules**, which open at the card for the screen on show (dealing, playing a trick, the last two, votes, scoring…).
+- **Pop-ups:** a line icon, one big word and a short line; they close by themselves after about 2.5 seconds with a timer bar (tap to skip). SLAP! and HAHAHA! keep their cartoon look and 4 seconds.
+- **Dealing:** two chips ("2 jokers", "1 hidden deck" with an i that opens the rules), the deck with its count, "Tap a name to deal", and Manual / Auto / Deal all chips.
+- **Before the round:** three picture buttons: Look at cards, Deal again? (reshuffle vote), Start (host).
+- **Target score:** one slim row "Target score · none · Propose" on the before-the-round screen (round 1) and the results screen; not in the top bar or on the dealing screen. Propose opens the points picker, then who is proposing.
+- **Votes:** the question with its icon ("Deal again?", "Play to 20?", "Ultimate Round?"), who asked, "secret vote", big YES / NO.
+- **Swap:** "Swap up to 4?", your cards, Swap / Keep.
+- **Pass the phone:** phone and arrow, the name big, one "I'm Dan" button.
+- **Playing:** the led suit as a big faint symbol on the felt; the glowing seat shows whose turn it is; the last trick as tiny cards (the slapped player's ringed in red); the Play button says "Play 2♥"; only playable cards are bright; no "X's cards" heading.
+- **Results:** a podium (1st, 2nd, Last; top three and a short list for bigger games) with round points and total; trivia as small award cards (Most slapped, Top slapper, Rivals) with More for the rest and the slapped-by table; Ready name chips with a tick; Next round with an Ultimate button beside it.
+
 The testbed (`CODE.md` section 8a) is only a rules test tool and does not use this look.
 
 ---
 
-## 12b. Sound and music (Phase 5, being chosen)
+## 12b. Sound and music (Phase 5, built in version 2.0)
 
 Chosen from a sample page the user listens to on their phone: **Pubby sound samples**, https://claude.ai/artifact/Q54YRtsC8xME6LN7uAHzvZ (a private Claude artifact owned by the user; open it, or read it in a new chat, to hear and reuse every sound). All sounds are made live in the browser (Web Audio), so there are no audio files, nothing is borrowed, and it all works offline.
 
@@ -399,11 +413,25 @@ Chosen from a sample page the user listens to on their phone: **Pubby sound samp
 - **Ultimate Round:** heartbeat kick and a minor-key piano pattern, the tune in a minor key from the second half.
 - **Results:** light and bouncy (104 bpm), the tune again. Not sentimental.
 
-**Sound effects chosen so far:**
-- **Paused:** Click (one soft click down). **Resumed:** a matching click up (offered, not yet confirmed).
-- **Take-cards request:** Knock knock (two knocks on a door).
+**Fireplace crackle (decided 2026-11-08 07:29):** yes, kept quietly under the music, as on the sample page.
 
-**Still to choose** (all on the sample page): which SLAP! (original, Big, Huge); whether to keep the fireplace crackle under the music (on in the samples); the other effects (tap, shuffle, deal, play a card, picked up the pile, trick done, joker, got away, last place (sad trombone), round winner, Ultimate Winner, Coward!, vote result, Reaction Tap countdown, 😂 reaction, your turn, not allowed); sound on or off by default; a mute button (section 12a already has a round sound button).
+**Sound effects (all decided 2026-11-08 07:29):**
+- **SLAP!:** the **Huge** version.
+- **Paused:** Click (one soft click down). **Resumed:** the matching click up.
+- **Take-cards request:** Knock knock (two knocks on a door).
+- **Every other effect exactly as on the sample page:** tap, shuffle, deal, play a card, picked up the pile, trick done, joker, got away, last place (sad trombone), round winner, Ultimate Winner, Coward!, vote result, Reaction Tap countdown, 😂 reaction, your turn, not allowed.
+
+**Sound at start (decided 2026-11-08 07:29, changed 08:56):** music starts switched off, effects on; both start at a lower volume than the sample page.
+
+**After the first test (2026-11-08 08:22, approved 08:24):** no "ding" after a card (the your-turn chime is dropped); effects play one at a time instead of piling up, and the music dips under the big ones; buttons in the game don't click (the move has its own sound).
+
+**Animations (2026-11-08 08:24):** when a trick ends, it stays on the table for a moment, then the cards slide to the waste pile, or, after the SLAP! pop-up, into the slapped player's seat. Before every deal (game start, new round, after a reshuffle vote) the dealer's deck is shown being shuffled, with the shuffle sound.
+
+**HAHAHA! (2026-11-08 08:56):** in the final two, when a player's last card is higher and they must pick up the waste pile or forfeit, a pop-up in the SLAP! style shows a big "HAHAHA!" and "[lower player] played a lower card than [higher player]!", with a cartoon laugh sound; it closes by itself like SLAP!. The choice panel then just says "Pick up or forfeit" with the two buttons (the explanation lines are gone).
+
+**Less text:** decided 2026-11-08 09:27, see section 12a.
+
+**Sound controls (decided 2026-11-08 07:29):** the sound settings can be changed at any time, including in the middle of a game, not only from the menu: music on/off and volume, effects on/off and volume. They open from the round sound button (🔊, 🔇 when both are off) next to the quick rules button, on every screen, also over pop-ups and the pause screen. Changing them never pauses the game or affects other players' phones. Settings are kept on the phone.
 
 **Earlier samples the user turned down:** Pub Piano, Knees-Up, Saloon Rag, Skank Night, Darts Night (menu: wanted slower and cosier); Back Room, Bossa Table, Smoky Corner (play); Last Orders (results: "I don't need it sentimental"), Scoreboard, Closing Time Shuffle, Victory Lap; the two other cosy sets (Snug Guitar, Lamplight Keys). The user liked the original Ultimate Round track and Boogie Woogie; both live on in the Fireside Piano set. Paused three-note bells and the first take-cards sound were turned down.
 
@@ -435,6 +463,8 @@ Answer these in any order. Each one unblocks part of the build.
 None. (2026-11-07 20:38: the multiplayer questions were answered; see section 12 and Decided.)
 
 ### Decided (for reference)
+- 2026-11-08 (09:27), look: all 25 less-text changes approved (section 12a): line icons, no emoji, explanations in ? rules, self-closing pop-ups, target score row on the before-the-round and results screens, podium results.
+- 2026-11-08 (07:29), sound: Huge SLAP!; fireplace crackle kept; every other effect as on the sample page (Resumed = click up); sound on by default with music and effects both quieter; music and effects on/off and volume can be changed during a game from the sound button (section 12b).
 - 2026-11-07 (20:36), multiplayer: every player uses their own phone (no shared seats); a dropped phone pauses the game for everyone and can rejoin its seat; the host can remove a player who doesn't come back, and their cards leave play (not into the waste pile); no new players once the game has started, only rejoining; votes are open (everyone sees who voted what).
 - 2026-11-07 (20:38), multiplayer: a removed player gets last place in that round (only if they don't rejoin); later rounds carry on with fewer players, using the scoring table for the new number of players, and the game ends if only one player is left; no host transfer: if the host's phone drops, the game is saved on it, the host opens Pubby and taps "Carry on", and everyone rejoins with the two scans.
 - 2026-11-07 (late afternoon): take-cards help goes to the asked player (intended); jokers can be in the hidden decks (note on screen and in the quick rules); 2-player games ask instead of voting (both must agree); target can't be lower than the highest score; a drawn top score at the end gets an Ultimate Round vote, then "Coward!" and a second chance, then shared scores; joker lead is the same trick in every game size; warning before a joker that hands the other player the win in the final two.

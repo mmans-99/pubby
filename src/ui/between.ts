@@ -22,7 +22,8 @@ import { computeTrivia, type Top } from '../session/trivia.ts';
 import type { PlayerId, RoundRecord, Session, SessionPhase } from '../session/types.ts';
 import { ordinal } from './cards.ts';
 import { h, type Child } from './dom.ts';
-import { nameOf, send } from './game.ts';
+import { nameOf, placeBadge, send } from './game.ts';
+import { icon, type IconName } from './icons.ts';
 import { gameOverSaved } from './history.ts';
 import { resetTap } from './roundstart.ts';
 import type { SavedGame } from './storage.ts';
@@ -54,7 +55,7 @@ function nameChips(
       'aria-label': `${opts.label ?? ''} ${nameOf(s, id)}`.trim(),
       'aria-pressed': opts.on ? (on ? 'true' : 'false') : null,
       onclick: () => onTap(id),
-    }, on ? `✓ ${nameOf(s, id)}` : nameOf(s, id));
+    }, on ? [icon('check'), ` ${nameOf(s, id)}`] : nameOf(s, id));
   }));
 }
 
@@ -92,29 +93,57 @@ function topText(s: Session, t: Top, unit: (n: number) => string): string {
 
 const times = (n: number): string => `${n} ${n === 1 ? 'time' : 'times'}`;
 
+interface Award { label: string; short: string; long: string }
+
+/** Trivia as awards: a short value for the award cards, a long one for "More". */
+function awards(s: Session): Award[] {
+  const t = computeTrivia(s.log, s.order);
+  const out: Award[] = [];
+  const add = (label: string, top: Top | null, unit: (n: number) => string): void => {
+    if (top) out.push({ label, short: `${names(s, top.players)} ×${top.count}`, long: topText(s, top, unit) });
+  };
+  add('Most slapped', t.mostSlapped, times);
+  add('Top slapper', t.mostSlapper, (n) => `${n} ${n === 1 ? 'slap' : 'slaps'}`);
+  if (t.rivals.length) {
+    out.push({
+      label: 'Rivals',
+      short: `${nameOf(s, t.rivals[0]!.slapper)} → ${nameOf(s, t.rivals[0]!.slapped)}`,
+      long: t.rivals.map((r) => `${nameOf(s, r.slapper)} slaps ${nameOf(s, r.slapped)} most (${times(r.count)})`).join(' · '),
+    });
+  }
+  add('Fighting for survival', t.alwaysFightingForSurvival, (n) => `bottom two ${times(n)}`);
+  add('Biggest pick-up', t.biggestPickUp, (n) => `${n} ${n === 1 ? 'card' : 'cards'} in one slap`);
+  add('Most forfeits', t.mostForfeits, (n) => String(n));
+  add('Most reshuffles called', t.mostReshuffleVotes, (n) => String(n));
+  add('Slowest reaction', t.slowestReaction, (n) => `${n} ms`);
+  return out;
+}
+
+/** R2: the first three awards as small cards; "More" opens the rest and the slapped-by table. */
+export function awardsRow(s: Session): HTMLElement {
+  const list = awards(s);
+  const open = getState().armed === 'trivia';
+  if (!list.length) return h('p', { class: 'muted small center' }, 'No slaps yet. Suspiciously peaceful.');
+  return h('div', { class: 'stack' },
+    h('div', { class: 'awards' },
+      list.slice(0, 3).map((a) => h('div', { class: 'award' }, h('b', null, a.label), a.short)),
+      h('button', { class: 'award more', 'aria-expanded': open ? 'true' : 'false', onclick: () => update({ armed: open ? null : 'trivia' }) },
+        h('b', null, open ? 'Less' : 'More'), open ? 'Hide' : `${Math.max(0, list.length - 3)} more`),
+    ),
+    open ? triviaPanel(s) : null,
+  );
+}
+
 export function triviaPanel(s: Session): HTMLElement {
   const t = computeTrivia(s.log, s.order);
-  const rows: [string, string, string][] = [];
-  if (t.mostSlapped) rows.push(['😵', 'Most slapped', topText(s, t.mostSlapped, times)]);
-  if (t.mostSlapper) rows.push(['👋', 'Most slapper', topText(s, t.mostSlapper, (n) => `${n} ${n === 1 ? 'slap' : 'slaps'}`)]);
-  if (t.rivals.length) {
-    rows.push(['⚔️', 'Rivals', t.rivals.map((r) => `${nameOf(s, r.slapper)} slaps ${nameOf(s, r.slapped)} most (${times(r.count)})`).join(' · ')]);
-  }
-  if (t.alwaysFightingForSurvival) {
-    rows.push(['🛟', 'Always fighting for survival', topText(s, t.alwaysFightingForSurvival, (n) => `bottom two ${times(n)}`)]);
-  }
-  if (t.biggestPickUp) rows.push(['📦', 'Biggest pick-up', topText(s, t.biggestPickUp, (n) => `${n} ${n === 1 ? 'card' : 'cards'} in one slap`)]);
-  if (t.mostForfeits) rows.push(['🏳️', 'Most forfeits', topText(s, t.mostForfeits, (n) => String(n))]);
-  if (t.mostReshuffleVotes) rows.push(['🔀', 'Most reshuffle votes called', topText(s, t.mostReshuffleVotes, (n) => String(n))]);
-  if (t.slowestReaction) rows.push(['🐢', 'Slowest reaction', topText(s, t.slowestReaction, (n) => `${n} ms`)]);
+  const rows: [string, string][] = awards(s).map((a) => [a.label, a.long]);
 
   const who = (top: Top | null): Child => (top ? `${names(s, top.players)} ×${top.count}` : h('span', { class: 'muted' }, '—'));
   return h('section', { class: 'panel trivia' },
     h('h2', null, 'Trivia'),
     rows.length
-      ? h('ul', { class: 'trivia-list' }, rows.map(([icon, label, text]) =>
-        h('li', null, h('span', { class: 'trivia-icon', 'aria-hidden': 'true' }, icon),
-          h('span', null, h('b', null, `${label}: `), text))))
+      ? h('ul', { class: 'trivia-list' }, rows.map(([label, text]) =>
+        h('li', null, h('span', null, h('b', null, `${label}: `), text))))
       : h('p', { class: 'muted' }, 'No slaps yet. Suspiciously peaceful.'),
     h('table', { class: 'trivia-table' },
       h('thead', null, h('tr', null, h('th', null, 'Player'), h('th', null, 'Slapped by most'), h('th', null, 'Slapped most'))),
@@ -123,7 +152,6 @@ export function triviaPanel(s: Session): HTMLElement {
         return h('tr', null, h('td', null, nameOf(s, id)), h('td', null, who(p.slappedByMost)), h('td', null, who(p.slappedMost)));
       })),
     ),
-    h('p', { class: 'muted small' }, 'This game so far. Trivia never changes the score.'),
   );
 }
 
@@ -134,60 +162,91 @@ export function triviaPanel(s: Session): HTMLElement {
 let targetDraft = 10;
 const TARGET_MAX = 99;
 
-/** "Propose a target" panel: before round 1 starts, or on the results screen. */
-export function targetPanel(s: Session): HTMLElement | null {
-  if (!targetVoteAllowed(s)) return null;
+/**
+ * T1: the target score as one slim row ("Target score · none · Propose"),
+ * on the before-the-round screen in round 1 and on the results screen.
+ * Propose opens the points picker, then "who is proposing?".
+ */
+export function targetRow(s: Session): HTMLElement | null {
+  const allowed = targetVoteAllowed(s);
+  if (!allowed && s.target === null) return null;
   const st = getState();
+  const open = allowed && (st.armed === 'target' || st.armed === 'targetcaller');
   const choosing = st.armed === 'targetcaller';
   const min = minimumTarget(s);
   if (targetDraft < min) targetDraft = Math.min(TARGET_MAX, min);
   const set = (n: number): void => { targetDraft = Math.max(min, Math.min(TARGET_MAX, n)); update({}); };
-  return h('section', { class: 'panel' },
-    h('h2', null, '🎯 Target score'),
-    h('p', { class: 'muted small' },
-      s.order.length === 2
-        ? 'Optional. Either of you can propose a points goal; it’s set only if you both agree. Once agreed it’s fixed. When someone reaches it, you’re asked about the Ultimate Round.'
-        : 'Optional. Anyone can propose a points goal; everyone votes. Once agreed it’s fixed. When someone reaches it, an Ultimate Round vote starts.',
-      min > 1 ? ` It can’t be lower than the highest score (${min}). Choosing ${min} means the Ultimate Round vote starts straight away.` : ''),
-    h('div', { class: 'stepper' },
-      h('button', { class: 'secondary step', 'aria-label': 'One less', onclick: () => set(targetDraft - 1) }, '−'),
-      h('span', { class: 'step-value', 'aria-live': 'polite' }, `${targetDraft} pts`),
-      h('button', { class: 'secondary step', 'aria-label': 'One more', onclick: () => set(targetDraft + 1) }, '+'),
+  return h('section', { class: open ? 'slim-panel open' : 'slim-panel' },
+    h('div', { class: 'slim' },
+      icon('target'), h('span', null, 'Target score'),
+      h('span', { class: 'v' }, s.target !== null ? `${s.target} points` : 'none'),
+      allowed && !open ? h('button', { class: 'act', onclick: () => update({ armed: 'target' }) }, 'Propose') : null,
+      open ? h('button', { class: 'act ghost-act', onclick: () => update({ armed: null }) }, 'Cancel') : null,
     ),
-    h('div', { class: 'chips' }, [5, 10, 15, 20].filter((n) => n >= min).map((n) =>
-      h('button', { class: n === targetDraft ? 'quick on' : 'quick', onclick: () => set(n) }, String(n)))),
-    choosing
+    open
       ? [
-        h('p', null, `Who is proposing ${targetDraft} points?`),
-        nameChips(s, (id) => send([{ type: 'callVote', by: id, kind: 'target', value: targetDraft }]), { label: 'Proposed by' }),
-        h('button', { class: 'ghost', onclick: () => update({ armed: null }) }, 'Cancel'),
+        h('div', { class: 'stepper' },
+          h('button', { class: 'secondary step', 'aria-label': 'One less', onclick: () => set(targetDraft - 1) }, '−'),
+          h('span', { class: 'step-value', 'aria-live': 'polite' }, `${targetDraft}`),
+          h('button', { class: 'secondary step', 'aria-label': 'One more', onclick: () => set(targetDraft + 1) }, '+'),
+        ),
+        h('div', { class: 'chips center-chips' }, [5, 10, 15, 20].filter((n) => n >= min).map((n) =>
+          h('button', { class: n === targetDraft ? 'quick on' : 'quick', onclick: () => set(n) }, String(n)))),
+        choosing
+          ? [h('p', { class: 'small center' }, 'Who is proposing?'),
+            nameChips(s, (id) => send([{ type: 'callVote', by: id, kind: 'target', value: targetDraft }]), { label: 'Proposed by' })]
+          : h('button', { class: 'secondary', onclick: () => update({ armed: 'targetcaller' }) }, `Propose ${targetDraft} points`),
       ]
-      : h('button', { class: 'secondary', onclick: () => update({ armed: 'targetcaller' }) }, `Propose ${targetDraft} points`),
+      : null,
   );
 }
 
-function ultimatePanel(s: Session): HTMLElement | null {
-  if (s.ultimateRound) return null;
-  const choosing = getState().armed === 'ultimatecaller';
-  return h('section', { class: 'panel' },
-    h('h2', null, '⚡ Ultimate Round'),
-    h('p', { class: 'muted small' },
-      s.order.length === 2
-        ? 'One final round outside the score. The winner takes the game; the loser ranks last. Either of you can ask; it happens only if you both agree.'
-        : 'One final round outside the score. The winner takes the game; the loser ranks last. Anyone can call the vote.'),
-    choosing
-      ? [
-        h('p', null, 'Who is calling the vote?'),
-        nameChips(s, (id) => send([{ type: 'callVote', by: id, kind: 'ultimate' }]), { label: 'Called by' }),
-        h('button', { class: 'ghost', onclick: () => update({ armed: null }) }, 'Cancel'),
-      ]
-      : h('button', { class: 'secondary', onclick: () => update({ armed: 'ultimatecaller' }) }, s.order.length === 2 ? 'Ask to play the Ultimate Round' : 'Call an Ultimate Round vote'),
-  );
-}
+/** Kept for older callers: the target row. */
+export const targetPanel = targetRow;
 
 // ---------------------------------------------------------------------------
 // Results screen
 // ---------------------------------------------------------------------------
+
+/** R1: places as a podium (1st, 2nd, Last for three; top three and a short list for more). */
+export function podium(s: Session, rec: RoundRecord): HTMLElement {
+  const order = rec.finishingOrder;
+  const n = order.length;
+  const place = (i: number): number | 'last' => (i === n - 1 ? 'last' : i + 1);
+  const pts = (id: PlayerId): string => rec.ultimate ? `${rec.totals[id] ?? 0}` : `${signed(rec.points[id] ?? 0)} · ${rec.totals[id] ?? 0}`;
+  const step = (i: number): HTMLElement => {
+    const id = order[i]!;
+    const p = place(i);
+    return h('div', { class: `step ${i === 0 ? 'p1' : p === 'last' ? 'plast' : `p${i + 1}`}` },
+      placeBadge(p),
+      h('span', { class: 'step-name' }, nameOf(s, id)),
+      h('small', null, pts(id)),
+      rec.forfeitedBy === id ? h('small', { class: 'forfeit' }, 'forfeit') : null);
+  };
+  const top = n <= 3 ? order.map((_, i) => i) : [0, 1, 2];
+  const visual = top.length === 3 ? [top[1]!, top[0]!, top[2]!] : top.length === 2 ? [top[1]!, top[0]!] : top;
+  const rest = n > 3 ? order.slice(3).map((id, k) => {
+    const i = k + 3;
+    return h('li', null, placeBadge(place(i)), h('span', { class: 'grow' }, nameOf(s, id), rec.forfeitedBy === id ? h('small', { class: 'forfeit' }, ' forfeit') : null), h('span', { class: 'muted' }, pts(id)));
+  }) : [];
+  return h('section', { class: 'podium-wrap', 'aria-label': `Results: ${order.map((id, i) => `${p2s(place(i))} ${nameOf(s, id)}`).join(', ')}` },
+    h('div', { class: 'podium' }, visual.map(step)),
+    rest.length ? h('ol', { class: 'rest-list' }, rest) : null,
+    h('p', { class: 'muted small center' }, rec.ultimate ? 'Total' : 'Round · total'),
+  );
+}
+
+const p2s = (p: number | 'last'): string => (p === 'last' ? 'Last' : ordinal(p));
+
+/** R4: Ultimate Round button next to Next round; tap it, then pick who is calling. */
+function ultimateCall(s: Session): HTMLElement | null {
+  if (s.ultimateRound || getState().armed !== 'ultimatecaller') return null;
+  return h('section', { class: 'panel' },
+    h('p', { class: 'small center' }, s.order.length === 2 ? 'Who is asking for the Ultimate Round?' : 'Who is calling the Ultimate Round vote?'),
+    nameChips(s, (id) => send([{ type: 'callVote', by: id, kind: 'ultimate' }]), { label: 'Called by' }),
+    h('button', { class: 'ghost', onclick: () => update({ armed: null }) }, 'Cancel'),
+  );
+}
 
 export function resultsStage(g: SavedGame): Child {
   const s = g.session;
@@ -195,41 +254,32 @@ export function resultsStage(g: SavedGame): Child {
   if (!rec) return h('p', null, 'No results yet.');
   const armed = getState().armed === 'endsession';
   const host = nameOf(s, s.hostId);
-  const loser = s.previous?.loser;
   const ready = (id: PlayerId): void => {
     if (s.ready.includes(id)) return;
     send([{ type: 'readyUp', by: id }]);
   };
   return h('div', { class: 'stack' },
-    h('div', { class: 'banner' },
-      h('div', { class: 'banner-big' }, `🏆 ${nameOf(s, rec.finishingOrder[0])} is the winner`),
-      h('div', { class: 'small' }, `Round ${rec.round}${s.target !== null ? ` · Target: ${s.target} points` : ''}`),
+    h('h2', { class: 'center results-head' }, icon('trophy'), ` ${nameOf(s, rec.finishingOrder[0])} wins ${rec.ultimate ? 'the Ultimate Round' : `round ${rec.round}`}`),
+    s.ultimateRound ? h('p', { class: 'center' }, h('span', { class: 'chip-info gold' }, icon('bolt'), ' Next: Ultimate Round')) : null,
+    podium(s, rec),
+    awardsRow(s),
+    targetRow(s),
+    h('div', { class: 'ready-row', 'aria-label': 'Ready' }, h('span', { class: 'muted small' }, 'Ready'), nameChips(s, ready, { on: s.ready, label: 'Ready:' })),
+    ultimateCall(s),
+    h('div', { class: 'row' },
+      h('button', { class: 'big grow', onclick: () => send([{ type: 'advance', by: s.hostId }]) },
+        icon('play'), s.ultimateRound ? ` Start the Ultimate Round · ${host}` : ` Next round · ${host}`),
+      !s.ultimateRound
+        ? h('button', { class: getState().armed === 'ultimatecaller' ? 'secondary on' : 'secondary', 'aria-label': 'Ultimate Round', onclick: () => update({ armed: getState().armed === 'ultimatecaller' ? null : 'ultimatecaller' }) }, icon('bolt'), ' Ultimate')
+        : null,
     ),
-    s.ultimateRound
-      ? h('div', { class: 'banner ultimate' },
-        h('div', { class: 'banner-big' }, '⚡ Next: the Ultimate Round'),
-        h('div', { class: 'small' }, 'No points. The winner takes the game, the loser ranks last. The game ends after it.'))
-      : null,
-    resultsTable(s, rec),
-    loser ? h('p', { class: 'muted center small' }, `${nameOf(s, loser)} deals next. ${nameOf(s, rec.finishingOrder[0])} picks who leads.`) : null,
-    triviaPanel(s),
-    h('section', { class: 'panel' },
-      h('h2', null, 'Ready?'),
-      h('p', { class: 'muted small' }, `Tap your name when you’re ready. ${host} (host) decides when to start.`),
-      nameChips(s, ready, { on: s.ready, label: 'Ready:' }),
-      h('p', { class: 'small' }, `${s.ready.length} of ${s.order.length} ready`),
-    ),
-    targetPanel(s),
-    ultimatePanel(s),
-    h('button', { class: 'big', onclick: () => send([{ type: 'advance', by: s.hostId }]) },
-      s.ultimateRound ? `Start the Ultimate Round (${host})` : `Next round (${host})`),
     h('button', {
-      class: armed ? 'danger' : 'secondary',
+      class: armed ? 'danger' : 'ghost',
       onclick: () => {
         if (!armed) { update({ armed: 'endsession' }); return; }
         send([{ type: 'endSession', by: s.hostId }]);
       },
-    }, armed ? `Tap again: ${host} ends the game` : `End the game (${host})`),
+    }, armed ? `Tap again: ${host} ends the game` : `End the game · ${host}`),
   );
 }
 
@@ -237,7 +287,7 @@ export function resultsStage(g: SavedGame): Child {
 export function resultsSummary(s: Session): HTMLElement | null {
   if (s.phase !== 'results') return null;
   const rec = s.rounds[s.rounds.length - 1];
-  return rec ? resultsTable(s, rec) : null;
+  return rec ? podium(s, rec) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -257,14 +307,14 @@ export function gameOverStage(g: SavedGame): Child {
   return h('div', { class: 'stack' },
     h('div', { class: 'banner' },
       h('div', { class: 'banner-big' }, end.reason === 'drawDeclined'
-        ? `🤝 Draw: ${names(s, end.winners)} share the top score`
-        : `🏆 ${names(s, end.winners)} ${end.winners.length > 1 ? 'win' : 'wins'} the game`),
+        ? `Draw: ${names(s, end.winners)} share the top score`
+        : `${names(s, end.winners)} ${end.winners.length > 1 ? 'win' : 'wins'} the game`),
       h('div', { class: 'small' }, why),
     ),
     labels
       ? h('section', { class: 'panel titles' },
-        labels.winner ? h('div', { class: 'title-line' }, '👑 Ultimate Winner: ', h('b', null, nameOf(s, labels.winner))) : null,
-        labels.losers.length ? h('div', { class: 'title-line' }, `💀 Ultimate ${labels.losers.length > 1 ? 'Losers' : 'Loser'}: `, h('b', null, names(s, labels.losers))) : null,
+        labels.winner ? h('div', { class: 'title-line' }, icon('crown'), ' Ultimate Winner: ', h('b', null, nameOf(s, labels.winner))) : null,
+        labels.losers.length ? h('div', { class: 'title-line' }, placeBadge('last'), ` Ultimate ${labels.losers.length > 1 ? 'Losers' : 'Loser'}: `, h('b', null, names(s, labels.losers))) : null,
       )
       : null,
     h('section', { class: 'panel' },
@@ -276,8 +326,8 @@ export function gameOverStage(g: SavedGame): Child {
             labels?.losers.includes(id) ? h('span', { class: 'tag' }, 'Ultimate Loser') : null),
           h('b', null, `${s.scores[id] ?? 0} pts`)))),
     ),
-    last?.ultimate ? [h('h2', { class: 'center' }, 'Ultimate Round'), resultsTable(s, last)] : null,
-    triviaPanel(s),
+    last?.ultimate ? [h('h2', { class: 'center' }, 'Ultimate Round'), podium(s, last)] : null,
+    awardsRow(s),
     h('p', { class: 'muted small center' }, `${s.rounds.length} ${s.rounds.length === 1 ? 'round' : 'rounds'} played.`),
     gameOverSaved(g.recordId),
     h('button', { class: 'big', onclick: () => update({ game: null, screen: 'home', popups: [] }) }, 'Back to home'),
@@ -309,11 +359,8 @@ export function takePrompts(s: Session, me: PlayerId): HTMLElement | null {
     send(asks.map((r) => ({ type: 'answerTake' as const, by: me, requester: r.requester, accept: false })));
   };
   return h('section', { class: 'panel take-ask' },
-    h('h2', null, asks.length > 1 ? `🤝 ${who} all want your cards` : `🤝 ${who} wants your cards`),
-    h('p', null, asks.length > 1
-      ? `You choose who gets them. They take all your cards, unseen, before this trick starts. You go out at once and take the next place (${ordinal(nextPlace)}).`
-      : `If you agree, ${who} takes all your cards, unseen, before this trick starts. You go out at once and take the next place (${ordinal(nextPlace)}).`),
-    h('p', { class: 'muted small' }, 'Only the players asking know about this.'),
+    h('h2', null, icon('take'), asks.length > 1 ? ` ${who} all want your cards` : ` ${who} wants your cards`),
+    h('p', { class: 'small' }, `Give them and you go out ${ordinal(nextPlace)}. Private.`),
     asks.length > 1
       ? [
         h('div', { class: 'stack' }, asks.map((r) =>
@@ -341,44 +388,50 @@ export function takeControls(s: Session, me: PlayerId): HTMLElement | null {
   if (s.phase !== 'playing' || !play || play.over || !betweenTricks(play)) return null;
   const mine = s.takeRequests.filter((r) => r.requester === me);
   const targets = takeTargets(s, me);
-  if (!mine.length && !targets.length) return null;
-  const choosing = getState().armed === 'take';
+  const choosing = getState().armed === 'take' && targets.length > 0;
+  if (!mine.length && !choosing) return null;
   return h('section', { class: 'panel take-panel' },
     mine.map((r) => h('div', { class: 'row take-mine' },
-      h('span', { class: 'grow small' }, `You asked ${nameOf(s, r.target)}: `,
-        h('b', null, r.agreed ? 'agreed' : 'waiting for an answer')),
+      h('span', { class: 'grow small' }, icon('take'), ` ${nameOf(s, r.target)}: `,
+        h('b', null, r.agreed ? 'agreed' : 'waiting')),
       h('button', { class: 'ghost', onclick: () => send([{ type: 'withdrawTake', by: me, target: r.target }], { stage: 'hand', holder: me }) }, 'Withdraw'))),
-    targets.length
-      ? choosing
-        ? [
-          h('p', { class: 'small' }, 'Take all the cards of… (you won’t see them first, and you can ask one player at a time)'),
-          nameChips(s, (id) => send([{ type: 'requestTake', by: me, target: id }]), { only: targets, label: 'Ask' }),
-          h('button', { class: 'ghost', onclick: () => update({ armed: null }) }, 'Cancel'),
-        ]
-        : h('button', { class: 'ghost take-btn', onclick: () => update({ armed: 'take' }) }, '🤝 Ask to take someone’s cards')
+    choosing
+      ? [
+        h('p', { class: 'small' }, 'Take all the cards of:'),
+        nameChips(s, (id) => send([{ type: 'requestTake', by: me, target: id }]), { only: targets, label: 'Ask' }),
+        h('button', { class: 'ghost', onclick: () => update({ armed: null }) }, 'Cancel'),
+      ]
       : null,
-    h('p', { class: 'muted small' }, 'Only before a trick starts.'),
   );
 }
 
-/**
- * On the hand-off screen before a trick: any player can ask to take cards.
- * Pick who's asking, then the phone goes to them in private.
- */
+/** On the hand-off screen before a trick: pick who is asking, then the phone goes to them in private. */
 export function askToTake(g: SavedGame): HTMLElement | null {
   const s = g.session;
   const askers = s.order.filter((p) => takeTargets(s, p).length > 0);
-  if (!askers.length) return null;
-  const choosing = getState().armed === 'asker';
+  if (!askers.length || getState().armed !== 'asker') return null;
   return h('section', { class: 'panel take-panel' },
-    choosing
-      ? [
-        h('p', { class: 'small' }, 'Who wants to ask? The phone goes to them.'),
-        nameChips(s, (id) => update({ game: { ...g, stage: 'hand', holder: id }, armed: 'take' }), { only: askers, label: 'Asking:' }),
-        h('button', { class: 'ghost', onclick: () => update({ armed: null }) }, 'Cancel'),
-      ]
-      : h('button', { class: 'ghost take-btn', onclick: () => update({ armed: 'asker' }) }, '🤝 Someone wants to take cards'),
+    h('p', { class: 'small' }, 'Who wants to take cards?'),
+    nameChips(s, (id) => update({ game: { ...g, stage: 'hand', holder: id }, armed: 'take' }), { only: askers, label: 'Asking:' }),
+    h('button', { class: 'ghost', onclick: () => update({ armed: null }) }, 'Cancel'),
   );
+}
+
+/** H6: the take-cards button in the top bar (before a trick, when someone can ask). */
+export function takeButton(g: SavedGame): HTMLElement | null {
+  const s = g.session;
+  if (s.phase !== 'playing' || !s.play || s.play.over || !betweenTricks(s.play) || s.paused) return null;
+  const onHand = g.stage === 'hand';
+  const can = onHand ? takeTargets(s, g.holder).length > 0 : s.order.some((p) => takeTargets(s, p).length > 0);
+  if (!can) return null;
+  const mode = onHand ? 'take' : 'asker';
+  const open = getState().armed === mode;
+  return h('button', {
+    class: open ? 'icon-btn on' : 'icon-btn',
+    'aria-label': onHand ? 'Ask to take someone’s cards' : 'Someone wants to take cards',
+    'aria-expanded': open ? 'true' : 'false',
+    onclick: () => update({ armed: open ? null : mode, menuOpen: false }),
+  }, icon('take'));
 }
 
 /** For a player holding the phone out of turn (asking to take cards): hide and pass on. */
@@ -419,7 +472,7 @@ function sendKeep(g: SavedGame, actions: Parameters<typeof send>[0]): boolean {
 export function pauseButton(s: Session): HTMLElement | null {
   if (!canPause(s)) return null;
   const open = getState().armed === 'pause';
-  return h('button', { class: open ? 'ghost pause-btn on' : 'ghost pause-btn', 'aria-expanded': open ? 'true' : 'false', onclick: () => update({ armed: open ? null : 'pause', menuOpen: false }) }, '⏸ Pause');
+  return h('button', { class: open ? 'icon-btn on' : 'icon-btn', 'aria-label': 'Pause', 'aria-expanded': open ? 'true' : 'false', onclick: () => update({ armed: open ? null : 'pause', menuOpen: false }) }, icon('pause'));
 }
 
 export function pausePanel(g: SavedGame): HTMLElement | null {
@@ -431,7 +484,7 @@ export function pausePanel(g: SavedGame): HTMLElement | null {
     h('button', {
       class: 'big',
       onclick: () => { resetTap(); sendKeep(g, [{ type: 'pause', by: s.hostId, at: Date.now() }]); update({ armed: null }); },
-    }, `⏸ Pause now (${host})`),
+    }, icon('pause'), ` Pause now · ${host}`),
     askers.length
       ? [
         h('p', { class: 'small' }, 'Or ask the host to pause:'),
@@ -449,7 +502,7 @@ export function pauseRequestsBanner(g: SavedGame): HTMLElement | null {
   const host = nameOf(s, s.hostId);
   return h('div', { class: 'stack' }, s.pauseRequests.map((p) =>
     h('section', { class: 'note pause-req' },
-      h('div', null, `⏸ ${nameOf(s, p)} asks to pause. ${host} (host):`),
+      h('div', null, icon('pause'), ` ${nameOf(s, p)} asks to pause. ${host}:`),
       h('div', { class: 'row' },
         h('button', { class: 'secondary grow', onclick: () => { resetTap(); sendKeep(g, [{ type: 'respondPause', by: s.hostId, requester: p, approve: true, at: Date.now() }]); } }, 'Pause'),
         h('button', { class: 'ghost grow', onclick: () => sendKeep(g, [{ type: 'respondPause', by: s.hostId, requester: p, approve: false, at: Date.now() }]) }, 'Say no'),
@@ -486,11 +539,11 @@ export function pauseLayer(): HTMLElement | null {
     : null;
   return h('div', { class: 'overlay pause-overlay', role: 'dialog', 'aria-label': 'Paused' },
     h('div', { class: 'pause-box' },
-      h('div', { class: 'pause-icon', 'aria-hidden': 'true' }, '⏸'),
+      h('div', { class: 'pause-icon' }, icon('pause')),
       h('h1', null, 'Paused'),
       h('p', { class: 'muted' }, by ? `${nameOf(s, by)} asked, ${host} (host) said yes.` : `${host} (host) paused the game.`),
       left !== null ? h('div', { class: 'pause-clock', 'aria-live': 'polite' }, `Back in ${clock(left)}`) : null,
-      h('button', { class: 'big', onclick: () => sendKeep(g, [{ type: 'resume', by: s.hostId }]) }, `▶ Resume (${host})`),
+      h('button', { class: 'big', onclick: () => sendKeep(g, [{ type: 'resume', by: s.hostId }]) }, icon('play'), ` Resume · ${host}`),
       h('p', { class: 'small' }, 'Host: pause time limit'),
       h('div', { class: 'chips center-chips' }, PAUSE_LIMITS.map((o) =>
         h('button', {

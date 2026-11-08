@@ -20,12 +20,14 @@ import { defaultRng } from '../rules/rng.ts';
 import { createSession } from '../session/session.ts';
 import { h } from './dom.ts';
 import { pauseLayer } from './between.ts';
-import { afterRender, gameScreen, popupLayer, reactionsLayer } from './game.ts';
+import { afterRender, gameScreen, popupLayer, reactionsLayer, startShuffle } from './game.ts';
 import { csvSheetLayer, pastGamesScreen, profileDetails } from './history.ts';
 import { renderMarkdown } from './markdown.ts';
 import { joinFromLink, netTestScreen, stopNetTest } from './nettest.ts';
 import { addProfile, deleteProfile, findProfile, loadGame, loadProfiles, loadRecords, saveProfiles } from './storage.ts';
 import { getState, initState, say, update, type SetupSeat, type SetupState, type State } from './store.ts';
+import { setupSound, soundButton, soundOverlay, syncSound } from './sound.ts';
+import { icon } from './icons.ts';
 
 const NAME_MAX = 16;
 const PAUSE_LIMITS: readonly { label: string; sec: number | null }[] = [
@@ -47,6 +49,7 @@ export function startApp(target: HTMLElement): void {
     setup: freshSetup(),
     game: loadGame(),
     rulesOpen: false,
+    soundOpen: false,
     menuOpen: false,
     armed: null,
     message: null,
@@ -65,6 +68,7 @@ export function startApp(target: HTMLElement): void {
     initial.screen = 'nettest';
   }
   initState(initial, render);
+  setupSound();
   render();
   if (link) joinFromLink(link);
   setupBack();
@@ -78,7 +82,7 @@ export function startApp(target: HTMLElement): void {
     if (!location.hash.startsWith('#join=')) return;
     const again = location.href;
     history.replaceState(history.state, '', location.pathname + location.search);
-    update({ screen: 'nettest', menuOpen: false, rulesOpen: false, exitAsk: false });
+    update({ screen: 'nettest', menuOpen: false, rulesOpen: false, soundOpen: false, exitAsk: false });
     joinFromLink(again);
   });
 }
@@ -104,17 +108,20 @@ function render(): void {
   if (st.screen !== 'nettest') stopNetTest();
   const parts: (HTMLElement | null)[] = [
     screen,
-    h('button', { class: 'rules-btn', 'aria-label': 'Quick rules', onclick: () => update({ rulesOpen: true }) }, '?'),
+    h('button', { class: 'rules-btn', 'aria-label': 'Quick rules', onclick: () => update({ rulesOpen: true, rulesTopic: rulesTopicFor(st) }) }, icon('help')),
+    st.screen === 'bye' ? null : soundButton(),
     st.screen === 'game' ? popupLayer() : null,
     st.screen === 'game' ? pauseLayer() : null,
     ...(st.screen === 'game' && st.game ? reactionsLayer() : []),
     st.rulesOpen ? rulesOverlay() : null,
+    st.soundOpen ? soundOverlay() : null,
     csvSheetLayer(),
     st.exitAsk ? exitOverlay() : null,
     st.message ? h('div', { class: 'toast', role: 'status' }, st.message) : null,
   ];
   root.replaceChildren(...parts.filter((p): p is HTMLElement => p !== null));
   afterRender();
+  syncSound();
 }
 
 function exitOverlay(): HTMLElement {
@@ -130,10 +137,41 @@ function exitOverlay(): HTMLElement {
   );
 }
 
+/** G2: the ? opens straight at the rules card for the screen on show. */
+function rulesTopicFor(st: State): string | null {
+  const s = st.screen === 'game' ? st.game?.session : null;
+  if (!s) return null;
+  if (s.vote) return 'Votes';
+  switch (s.phase) {
+    case 'dealing':
+    case 'reshuffle': return 'Dealing';
+    case 'swap': return 'Hidden decks';
+    case 'reactionTap': return 'Missing a suit';
+    case 'chooseLeader': return 'How to win';
+    case 'results': return 'Scoring';
+    case 'gameOver': return 'Ultimate Round';
+    case 'playing': {
+      const left = s.play ? s.order.filter((p) => (s.play!.hands[p]?.length ?? 0) > 0).length : 0;
+      return left <= 2 || s.play?.pendingFinalTwo ? 'The last two' : 'Playing a trick';
+    }
+  }
+  return null;
+}
+
+let rulesScrolledFor: string | null = null;
+
 function rulesOverlay(): HTMLElement {
-  const close = (): void => update({ rulesOpen: false });
+  const close = (): void => { rulesScrolledFor = null; update({ rulesOpen: false, rulesTopic: null }); };
+  const topic = getState().rulesTopic ?? null;
+  if (topic && rulesScrolledFor !== topic) {
+    rulesScrolledFor = topic;
+    requestAnimationFrame(() => {
+      const hd = Array.from(document.querySelectorAll<HTMLElement>('.rules-sheet .md h3')).find((x) => (x.textContent ?? '').startsWith(topic));
+      if (hd) { hd.scrollIntoView({ block: 'start' }); hd.classList.add('flash-topic'); }
+    });
+  }
   return h('div', { class: 'overlay', onclick: (e) => { if (e.target === e.currentTarget) close(); } },
-    h('div', { class: 'sheet', role: 'dialog', 'aria-label': 'Quick rules' },
+    h('div', { class: 'sheet rules-sheet', role: 'dialog', 'aria-label': 'Quick rules' },
       h('div', { class: 'sheet-head' },
         h('h2', null, 'Quick rules'),
         h('button', { class: 'ghost', onclick: close }, 'Close'),
@@ -156,7 +194,7 @@ function homeScreen(): HTMLElement {
       h('div', { class: 'logo-cards', 'aria-hidden': 'true' },
         h('span', { class: 'mini-card' }, 'A♠'),
         h('span', { class: 'mini-card red' }, 'K♥'),
-        h('span', { class: 'mini-card' }, '🃏'),
+        h('span', { class: 'mini-card' }, '★'),
       ),
       h('h1', null, 'Pubby'),
       h('p', { class: 'tagline' }, 'Get rid of your cards. Don’t be last.'),
@@ -438,6 +476,7 @@ function startGame(): void {
       jokerRuleEnabled: s.jokers,
       pauseTimeLimitSec: s.pauseLimit,
     }, rng);
+    startShuffle();
     update({ game: { session, stage: 'table', holder: session.hostId, trickLog: [], lastTrick: null }, screen: 'game', menuOpen: false, armed: null, popups: [] });
   } catch (e) {
     say(e instanceof Error ? e.message : 'Could not start the game.');

@@ -29,9 +29,11 @@ import { getState, say, update, type Popup } from './store.ts';
 import { saveFinishedGame } from './history.ts';
 import { reshuffleStage, roundStartHolder, roundStartScreen, voteOutcome } from './roundstart.ts';
 import { lockedSeats } from '../rules/deal.ts';
+import { cardSound, eventSounds, sfx } from '../audio/sfx.ts';
+import { icon, type IconName } from './icons.ts';
 import {
   askToTake, gameOverStage, notesPanel, passOnButton, pauseButton, pausePanel, pauseRequestsBanner, pauseTick, resultsStage,
-  takeControls, takeHolder, takePrompts, targetPanel,
+  takeButton, takeControls, takeHolder, takePrompts,
 } from './between.ts';
 
 const rng = defaultRng();
@@ -46,6 +48,55 @@ const CATCH_PHRASES = catchPhrasesMd
 
 /** The SLAP! pop-up closes by itself after this long. */
 const SLAP_MS = 4000;
+/** Every other pop-up closes by itself after this long (tap to skip). */
+const POP_MS = 2400;
+/** How long a pop-up stays up. */
+function popupMs(p: Popup): number {
+  return p.kind === 'slap' || p.kind === 'haha' ? SLAP_MS : p.kind === 'lastTwo' ? POP_MS + 600 : POP_MS;
+}
+/** A finished trick stays on the felt this long before its cards move. */
+const TRICK_HOLD_MS = 700;
+/** Cards sliding to the waste pile or into the slapped player's seat. */
+const TRICK_FLY_MS = 480;
+/** Shuffle animation before the deal (two riffles). */
+const SHUFFLE_MS = 1700;
+
+/**
+ * End-of-trick animation (user, 2026-11-08): the finished trick stays on the
+ * felt, then (after the SLAP! pop-up, if there was a slap) its cards slide to
+ * the waste pile or into the slapped player's seat. Taps wait until it is done;
+ * the other pop-ups and sounds come after it.
+ */
+interface TrickAnim {
+  plays: TrickPlay[];
+  slapped: PlayerId | null;
+  slapPopup: Popup | null;
+  step: 'hold' | 'wait' | 'fly';
+  timer: number | null;
+  flying: boolean;
+  /** Events of the move that ended the trick: their sounds play when the animation is done. */
+  after: readonly SessionEvent[];
+}
+let trickAnim: TrickAnim | null = null;
+
+/** True while a finished trick is still being shown or moved. */
+export function trickAnimating(): boolean {
+  return trickAnim !== null;
+}
+
+let shuffleUntil = 0;
+
+/** Shuffle animation and sound before the deal (game start, new round, after a reshuffle vote). */
+export function startShuffle(): void {
+  shuffleUntil = Date.now() + SHUFFLE_MS;
+  sfx('shuffle');
+  sfx('shuffle', 750);
+  window.setTimeout(() => { if (getState().screen === 'game') update({}); else afterRender(); }, SHUFFLE_MS + 30);
+}
+
+export function shuffling(): boolean {
+  return Date.now() < shuffleUntil;
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -128,6 +179,7 @@ export function send(actions: readonly SessionAction[], opts: { stage?: GameStag
       events.push(...r.events);
     }
   } catch (e) {
+    sfx('notAllowed');
     say(e instanceof Error ? e.message : 'Not allowed.');
     return false;
   }
@@ -136,13 +188,17 @@ export function send(actions: readonly SessionAction[], opts: { stage?: GameStag
   let trickLog = g.trickLog.slice();
   let lastTrick: LastTrick | null = g.lastTrick;
   let slap: LastTrick['slap'] = null;
+  let finished: { plays: TrickPlay[]; slapped: PlayerId | null } | null = null;
   for (const e of events) {
     if (e.type === 'roundStarted') { trickLog = []; lastTrick = null; }
     if (e.type === 'cardPlayed') trickLog.push({ player: e.player, card: e.card.id, label: shortLabel(e.card) });
     if (e.type === 'jokerPlayed') trickLog.push({ player: e.player, card: 'joker', label: 'Joker' });
     if (e.type === 'slapped') slap = { slapper: e.slapper, slapped: e.slapped };
     if (e.type === 'trickResolved') {
-      if (trickLog.length) lastTrick = { plays: trickLog, slap, nextLeader: e.nextLeader };
+      if (trickLog.length) {
+        lastTrick = { plays: trickLog, slap, nextLeader: e.nextLeader };
+        finished = { plays: trickLog, slapped: slap?.slapped ?? null };
+      }
       trickLog = [];
       slap = null;
     }
@@ -189,7 +245,23 @@ export function send(actions: readonly SessionAction[], opts: { stage?: GameStag
     if (saved.ok) recordId = saved.recordId;
   }
 
-  const popups = [...getState().popups, ...popupsFor(session, events)];
+  const fresh = popupsFor(session, events);
+  const popups = [...getState().popups, ...fresh];
+
+  // Sound effects and animations for what just happened (PROJECT.md 12b).
+  if (actions.some((a) => a.type === 'autoDealStep' || a.type === 'manualDealCard' || a.type === 'autoDealAll')) sfx('deal');
+  cardSound(events);
+  if (finished) {
+    if (trickAnim?.timer) window.clearTimeout(trickAnim.timer);
+    trickAnim = {
+      plays: finished.plays, slapped: finished.slapped, step: 'hold', timer: null, flying: false, after: events,
+      slapPopup: finished.slapped ? fresh.find((p) => p.kind === 'slap') ?? null : null,
+    };
+  } else {
+    eventSounds(events, true);
+  }
+  if (events.some((e) => e.type === 'reshuffled' || e.type === 'roundStarted')) startShuffle();
+
   update({ game: { session, stage, holder, trickLog, lastTrick, notes, recordId }, popups, selected: null, armed: null });
   return true;
 }
@@ -210,26 +282,30 @@ function popupsFor(s: Session, events: readonly SessionEvent[]): Popup[] {
         if (resolved && resolved.type === 'trickResolved' && resolved.nextLeader
           && s.play?.trick.participants.length === 2 && !events.some((x) => x.type === 'cardPlayed')) {
           out.push({
-            kind: 'info', icon: '🃏', title: 'Missed round!',
-            text: `${nameOf(s, e.player)} answered with a joker too, so nobody played a card. ${nameOf(s, resolved.nextLeader)} played first, so they lead again.`,
+            kind: 'info', icon: 'joker', title: 'Missed round',
+            text: `Two jokers. ${nameOf(s, resolved.nextLeader)} leads again.`,
           });
           break;
         }
         out.push({
-          kind: 'info', icon: '🃏', title: 'Joker!',
-          text: `${nameOf(s, e.player)} played a joker.${!e.asLeader ? ''
-            : jokerLed(s) && s.play?.turn ? ` It's still the same trick: ${nameOf(s, s.play.turn)} plays next and any card sets the suit.`
-            : ''}`,
+          kind: 'info', icon: 'joker', title: 'Joker',
+          text: `${nameOf(s, e.player)}${e.asLeader && jokerLed(s) && s.play?.turn ? ` · same trick, ${nameOf(s, s.play.turn)} plays any card` : ''}`,
         });
         break;
       }
       case 'playerOut':
         if (!lastTwo.includes(e.player)) out.push({ kind: 'out', player: e.player, place: e.place });
         break;
+      case 'finalTwoChoice': {
+        const v = publicView(s);
+        const laugher = v.players.find((p) => p.place === null && p.id !== e.player)?.id;
+        if (laugher) out.push({ kind: 'haha', laugher, loser: e.player });
+        break;
+      }
       case 'wastePilePickedUp':
         out.push({
-          kind: 'info', icon: '🗑️', title: 'Waste pile picked up',
-          text: `${nameOf(s, e.player)} picks up the waste pile (${e.cards} cards) and leads.`,
+          kind: 'info', icon: 'take', title: 'Picked up',
+          text: `${nameOf(s, e.player)} · ${e.cards} cards · leads`,
         });
         break;
       case 'roundEnded':
@@ -240,68 +316,68 @@ function popupsFor(s: Session, events: readonly SessionEvent[]): Popup[] {
         const what = e.kind === 'reshuffle' ? 'a reshuffle' : e.kind === 'target' ? `a target of ${e.value} points` : 'the Ultimate Round';
         if (s.order.length === 2) {
           const other = s.order.find((p) => p !== e.by)!;
-          out.push({ kind: 'info', icon: '🤝', title: 'Do you agree?', text: `${nameOf(s, e.by)} wants ${what}. It only happens if ${nameOf(s, other)} agrees.` });
+          out.push({ kind: 'info', icon: 'vote', title: 'Do you agree?', text: `${nameOf(s, e.by)} wants ${what}. ${nameOf(s, other)} decides.` });
         } else {
-          out.push({ kind: 'info', icon: '🗳️', title: 'Vote!', text: `${nameOf(s, e.by)} called a ${e.kind === 'reshuffle' ? 'reshuffle' : e.kind === 'target' ? `target (${e.value} points)` : 'Ultimate Round'} vote. Pass the phone round to vote.` });
+          out.push({ kind: 'info', icon: 'vote', title: 'Vote', text: `${nameOf(s, e.by)} wants ${what}` });
         }
         break;
       }
       case 'drawAtEnd':
         out.push({
-          kind: 'info', icon: '🤝', title: 'It\'s a draw!',
-          text: `${e.players.map((x) => nameOf(s, x)).join(' and ')} share the top score. Vote now: play the Ultimate Round to settle it?`,
+          kind: 'info', icon: 'equal', title: 'It\'s a draw',
+          text: `${e.players.map((x) => nameOf(s, x)).join(' and ')} · Ultimate Round vote`,
         });
         break;
       case 'drawCoward':
         out.push({
-          kind: 'info', icon: '🐔', title: 'No one\'s a winner! Coward!',
-          text: `${e.players.map((x) => nameOf(s, x)).join(' and ')} are still level. One last chance: play the Ultimate Round? If it's a no again, you share the top score.`,
+          kind: 'info', icon: 'flag', title: 'No one\'s a winner! Coward!',
+          text: 'One last chance: Ultimate Round?',
         });
         break;
       case 'voteNeedsHost':
-        out.push({ kind: 'info', icon: '⚖️', title: 'No majority', text: `${nameOf(s, s.hostId)} (host) decides.` });
+        out.push({ kind: 'info', icon: 'equal', title: 'No majority', text: `${nameOf(s, s.hostId)} decides` });
         break;
       case 'voteResolved':
         out.push({ kind: 'vote', decidedBy: s.order.length === 2 ? 'both' : e.decidedBy, result: e.result, text: voteOutcome(s, e.kind, e.result, e.value) });
         break;
       case 'jokersDiscarded':
         out.push({
-          kind: 'info', icon: '🃏', title: 'Jokers thrown away',
-          text: `${nameOf(s, e.player)} played their last normal card, so their ${e.count === 1 ? 'joker is' : `${e.count} jokers are`} thrown away. That was their last card.`,
+          kind: 'info', icon: 'joker', title: 'Jokers out',
+          text: `${nameOf(s, e.player)} · last card played, ${e.count === 1 ? 'joker' : `${e.count} jokers`} thrown away`,
         });
         break;
       case 'targetReached':
         out.push({
-          kind: 'info', icon: '🎯', title: 'Target reached!',
-          text: `${e.players.map((x) => nameOf(s, x)).join(' and ')} reached ${e.target} points. Vote now: play the Ultimate Round? If the vote fails, the game ends and the highest score wins.`,
+          kind: 'info', icon: 'target', title: 'Target reached',
+          text: `${e.players.map((x) => nameOf(s, x)).join(' and ')} · ${e.target} points · Ultimate Round vote`,
         });
         break;
       case 'cardsTaken':
         out.push({
-          kind: 'info', icon: '🤝', title: 'Cards taken!',
-          text: `${nameOf(s, e.requester)} took all ${e.count} of ${nameOf(s, e.target)}'s cards.`,
+          kind: 'info', icon: 'take', title: 'Cards taken',
+          text: `${nameOf(s, e.requester)} took ${nameOf(s, e.target)}'s ${e.count} cards`,
         });
         break;
       case 'pauseDeclined':
-        out.push({ kind: 'info', icon: '▶️', title: 'No pause', text: `${nameOf(s, s.hostId)} (host) said no to ${nameOf(s, e.requester)}'s pause request.` });
+        out.push({ kind: 'info', icon: 'play', title: 'No pause', text: `${nameOf(s, s.hostId)} said no to ${nameOf(s, e.requester)}` });
         break;
       case 'resumed':
-        if (e.reason === 'timeLimit') out.push({ kind: 'info', icon: '⏰', title: 'Pause over', text: 'The pause time limit ran out. Back to the game.' });
+        if (e.reason === 'timeLimit') out.push({ kind: 'info', icon: 'play', title: 'Pause over', text: 'Time limit reached' });
         break;
       case 'reactionTapReplay':
-        out.push({ kind: 'info', icon: '🔁', title: 'Tie for slowest!', text: `${e.players.map((x) => nameOf(s, x)).join(' and ')} tap again.` });
+        out.push({ kind: 'info', icon: 'repeat', title: 'Tie', text: `${e.players.map((x) => nameOf(s, x)).join(' and ')} tap again` });
         break;
       case 'leaderChosen': {
         const who = nameOf(s, e.leader);
         const lines = missing.map((m) => m.type === 'missingSuitDeclared'
-          ? `${nameOf(s, m.player)} has no ${m.suits.map((x) => `${SUIT_SYMBOL[x]} ${SUIT_NAME[x]}`).join(' or ')}.`
+          ? `${nameOf(s, m.player)}: no ${m.suits.map((x) => SUIT_SYMBOL[x]).join(' ')}`
           : '');
         const why =
-          e.reason === 'missingSuit' ? `${who} is missing a suit, so ${who} leads.`
-          : e.reason === 'reactionTap' ? `${who} was slowest in Reaction Tap, so ${who} leads.`
-          : e.reason === 'host' ? `${who} is the host and leads round 1.`
-          : `${who} leads.`;
-        out.push({ kind: 'info', icon: '▶️', title: `${who} leads`, text: [...lines, why].join(' ') });
+          e.reason === 'missingSuit' ? 'Missing a suit'
+          : e.reason === 'reactionTap' ? 'Slowest in Reaction Tap'
+          : e.reason === 'host' ? 'Host leads round 1'
+          : '';
+        out.push({ kind: 'info', icon: 'play', title: `${who} leads`, text: [...lines, why].filter(Boolean).join(' · ') });
         break;
       }
       default:
@@ -320,8 +396,10 @@ export function gameScreen(g: SavedGame): HTMLElement {
   const s = g.session;
   const st = getState();
   let body: Child;
-  const rs = roundStartScreen(g);
-  if (rs) {
+  const rs = trickAnim ? null : roundStartScreen(g);
+  if (trickAnim) {
+    body = trickFinishStage(g, trickAnim);
+  } else if (rs) {
     body = rs;
   } else if (s.phase === 'playing') {
     body = g.stage === 'hand' ? playHandStage(g) : playHandoffStage(g);
@@ -332,17 +410,15 @@ export function gameScreen(g: SavedGame): HTMLElement {
   } else {
     body = tableStage(g);
   }
-  const label = s.phase === 'gameOver' ? 'Game over'
-    : s.ultimateRound && s.phase !== 'results' ? '⚡ Ultimate Round'
-    : `Round ${s.round}`;
+  const label: Child = s.phase === 'gameOver' ? 'End'
+    : s.ultimateRound && s.phase !== 'results' ? [icon('bolt'), ' Ultimate']
+    : `R${s.round}`;
   return h('main', { class: 'screen game' },
     h('div', { class: 'game-bar' },
-      h('button', { class: 'ghost', onclick: () => update({ menuOpen: !st.menuOpen, armed: null }) }, '☰ Menu'),
-      h('span', { class: 'bar-right' },
-        h('span', { class: 'muted' }, label),
-        s.target !== null && s.phase !== 'gameOver' ? h('span', { class: 'tag gold' }, `🎯 ${s.target}`) : null,
-        pauseButton(s),
-      ),
+      h('button', { class: 'icon-btn', 'aria-label': 'Menu', 'aria-expanded': st.menuOpen ? 'true' : 'false', onclick: () => update({ menuOpen: !st.menuOpen, armed: null }) }, icon('menu')),
+      h('span', { class: 'round-chip', 'aria-label': s.phase === 'gameOver' ? 'Game over' : s.ultimateRound && s.phase !== 'results' ? 'Ultimate Round' : `Round ${s.round}` }, label),
+      pauseButton(s),
+      takeButton(g),
     ),
     st.menuOpen ? gameMenu() : null,
     pausePanel(g),
@@ -376,7 +452,7 @@ export function seatStrip(s: Session, v: PlayerView, opts: { highlight?: PlayerI
     const cls = ['seat-chip', id === opts.highlight ? 'turn' : '', out ? 'out' : '', opts.onTap ? 'tappable' : ''].join(' ');
     const inner: Child[] = [
       h('span', { class: 'seat-name' }, p.sessionName),
-      h('span', { class: 'seat-count' }, out ? `${ordinal(p.place!)}` : `${p.cardCount} 🂠`),
+      h('span', { class: 'seat-count' }, out ? `${ordinal(p.place!)}` : [String(p.cardCount), h('span', { class: 'mini-back', 'aria-hidden': 'true' })]),
       id === s.dealer && s.phase === 'dealing' ? h('span', { class: 'seat-tag' }, 'Deals') : null,
       p.isHost ? h('span', { class: 'seat-host', 'aria-label': 'Host' }, '★') : null,
     ];
@@ -387,33 +463,108 @@ export function seatStrip(s: Session, v: PlayerView, opts: { highlight?: PlayerI
 }
 
 function trickArea(s: Session, g: SavedGame, v: PlayerView): HTMLElement {
-  const turn = v.pendingFinalTwo ? null : v.turn;
   const plays = g.trickLog;
-  const felt = h('section', { class: 'felt' },
+  const red = v.ledSuit === 'hearts' || v.ledSuit === 'diamonds';
+  const felt = h('section', { class: 'felt', 'aria-label': v.ledSuit ? `Trick: ${SUIT_NAME[v.ledSuit]} led` : 'Trick' },
+    v.ledSuit ? h('span', { class: red ? 'led-mark red' : 'led-mark', 'aria-hidden': 'true' }, SUIT_SYMBOL[v.ledSuit]) : null,
     h('div', { class: 'felt-top' },
-      h('span', null, v.ledSuit ? h('span', { class: 'led' }, 'Led: ', h('b', { class: v.ledSuit === 'hearts' || v.ledSuit === 'diamonds' ? 'red-text' : '' }, `${SUIT_SYMBOL[v.ledSuit]} ${SUIT_NAME[v.ledSuit]}`)) : h('span', { class: 'muted' }, 'New trick')),
+      h('span', null),
       h('span', { class: 'waste', 'aria-label': `Waste pile: ${v.wastePileCount} cards` }, h('span', { class: 'waste-pile', 'aria-hidden': 'true' }), `${v.wastePileCount}`),
     ),
-    plays.length
-      ? h('div', { class: 'trick' }, plays.map((p, i) => h('div', { class: i >= shownTrickCount ? 'trick-play new' : 'trick-play', style: `--i:${i}` },
-        cardFaceFromId(p.card, 'small-card'),
-        h('span', { class: 'trick-name' }, nameOf(s, p.player)))))
-      : h('div', { class: 'trick empty-trick' }, turn ? `${nameOf(s, turn)} to lead` : ''),
-    turn && plays.length ? h('p', { class: 'small center' }, `${nameOf(s, turn)} to play`) : null,
+    h('div', { class: plays.length ? 'trick' : 'trick empty-trick' }, plays.map((p, i) => h('div', { class: i >= shownTrickCount ? 'trick-play new' : 'trick-play', style: `--i:${i}` },
+      cardFaceFromId(p.card, 'small-card'),
+      h('span', { class: 'trick-name' }, nameOf(s, p.player))))),
     g.lastTrick ? lastTrickRow(s, g.lastTrick) : null,
   );
   shownTrickCount = plays.length;
   return felt;
 }
 
+/** The finished trick on the felt while its cards move (see TrickAnim). */
+function trickFinishStage(g: SavedGame, a: TrickAnim): Child {
+  const s = g.session;
+  const v = publicView(s);
+  const waste = Math.max(0, v.wastePileCount - (a.slapped ? 0 : a.plays.length));
+  const last = a.plays.length - 1;
+  const firstDraw = shownTrickCount !== -1;
+  shownTrickCount = -1;
+  return h('div', { class: 'stack' },
+    seatStrip(s, v, { highlight: a.slapped }),
+    h('section', { class: 'felt' },
+      h('div', { class: 'felt-top' },
+        h('span', null),
+        h('span', { class: 'waste', 'aria-label': `Waste pile: ${waste} cards` }, h('span', { class: 'waste-pile', 'aria-hidden': 'true' }), `${waste}`),
+      ),
+      h('div', { class: 'trick' }, a.plays.map((p, i) => h('div', { class: i === last && firstDraw ? 'trick-play new' : 'trick-play', style: `--i:${i}` },
+        cardFaceFromId(p.card, 'small-card'),
+        h('span', { class: 'trick-name' }, nameOf(s, p.player))))),
+    ),
+    h('div', { class: 'anim-block', 'aria-hidden': 'true' }),
+  );
+}
+
+/** Slide the trick's cards to the waste pile, or into the slapped player's seat. */
+function flyTrick(a: TrickAnim, done: () => void): void {
+  const target = a.slapped ? document.querySelector(`[data-seat="${a.slapped}"]`) : document.querySelector('.felt .waste-pile');
+  const cards = Array.from(document.querySelectorAll<HTMLElement>('.felt .trick-play'));
+  const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || !('animate' in HTMLElement.prototype);
+  if (!target || !cards.length || still) { window.setTimeout(done, 250); return; }
+  const b = target.getBoundingClientRect();
+  cards.forEach((el, i) => {
+    const r = el.getBoundingClientRect();
+    const dx = b.left + b.width / 2 - (r.left + r.width / 2);
+    const dy = b.top + b.height / 2 - (r.top + r.height / 2);
+    el.animate(
+      [
+        { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+        { transform: `translate(${dx * 0.25}px, ${dy * 0.25 - 12}px) scale(0.9)`, opacity: 1, offset: 0.3 },
+        { transform: `translate(${dx}px, ${dy}px) scale(0.35)`, opacity: 0.15 },
+      ],
+      { duration: TRICK_FLY_MS, delay: i * 45, easing: 'cubic-bezier(.4,0,.6,1)', fill: 'forwards' },
+    );
+  });
+  window.setTimeout(done, TRICK_FLY_MS + cards.length * 45 + 60);
+}
+
+/** Moves the end-of-trick animation on; called after every draw. */
+function driveTrickAnim(): void {
+  const a = trickAnim;
+  if (!a) return;
+  if (a.step === 'hold' && a.timer === null) {
+    a.timer = window.setTimeout(() => {
+      a.timer = null;
+      if (trickAnim !== a) return;
+      if (a.slapped && a.slapPopup && getState().popups.includes(a.slapPopup)) { a.step = 'wait'; sfx('slap'); }
+      else { a.step = 'fly'; if (a.slapped) sfx('slap'); }
+      update({});
+    }, TRICK_HOLD_MS);
+  } else if (a.step === 'wait' && !(a.slapPopup && getState().popups.includes(a.slapPopup))) {
+    a.step = 'fly';
+    window.setTimeout(() => { if (trickAnim === a) update({}); }, 0);
+  } else if (a.step === 'fly' && !a.flying) {
+    a.flying = true;
+    sfx(a.slapped ? 'pickUp' : 'trickDone');
+    flyTrick(a, () => {
+      if (trickAnim !== a) return;
+      trickAnim = null;
+      shownTrickCount = 0;
+      eventSounds(a.after, false);
+      update({});
+    });
+  }
+}
+
+/** The last trick as a row of tiny cards; the slapped player's card is ringed. */
 function lastTrickRow(s: Session, t: LastTrick): HTMLElement {
-  const result = t.slap
-    ? `${nameOf(s, t.slap.slapper)} slapped ${nameOf(s, t.slap.slapped)}`
-    : t.nextLeader ? `${nameOf(s, t.nextLeader)} leads next` : '';
-  return h('div', { class: 'last-trick' },
-    h('span', { class: 'muted small' }, 'Last trick: '),
-    t.plays.map((p: TrickPlay) => h('span', { class: 'lt-card' }, `${nameOf(s, p.player)} `, h('b', { class: /[♥♦]/.test(p.label) ? 'red-text' : '' }, p.label))),
-    result ? h('span', { class: 'small lt-result' }, ` · ${result}`) : null,
+  const label = `Last trick: ${t.plays.map((p) => `${nameOf(s, p.player)} ${p.label}`).join(', ')}${t.slap ? `. ${nameOf(s, t.slap.slapper)} slapped ${nameOf(s, t.slap.slapped)}` : ''}`;
+  return h('div', { class: 'last-trick', 'aria-label': label },
+    h('span', { class: 'lt-label', 'aria-hidden': 'true' }, 'last'),
+    t.plays.map((p: TrickPlay) => {
+      const el = cardFaceFromId(p.card, `tiny-card${t.slap?.slapped === p.player ? ' slapped' : ''}`);
+      el.setAttribute('aria-hidden', 'true');
+      return el;
+    }),
+    t.slap ? h('span', { class: 'lt-slap', 'aria-hidden': 'true' }, icon('hand')) : null,
   );
 }
 
@@ -448,34 +599,42 @@ function dealingStage(g: SavedGame): Child {
     : manual
       ? (id: PlayerId) => { pendingFly = id; send([{ type: 'manualDealCard', by: dealer, seat: id }]); }
       : undefined;
+  // D1: jokers and hidden decks as two small chips (the details are in ? rules).
+  const chips = h('div', { class: 'info-chips' },
+    h('span', { class: s.jokerRuleEnabled ? 'chip-info gold' : 'chip-info' }, icon('joker'), s.jokerRuleEnabled ? ` ${s.jokerTotal} jokers` : ' No jokers'),
+    s.order.length <= 3
+      ? h('button', { class: 'chip-info', 'aria-label': `${s.order.length === 2 ? 2 : 1} hidden ${s.order.length === 2 ? 'decks' : 'deck'}: what is this?`, onclick: () => update({ rulesOpen: true, rulesTopic: 'Hidden decks' }) },
+        icon('eyeoff'), ` ${s.order.length === 2 ? 2 : 1} hidden ${s.order.length === 2 ? 'decks' : 'deck'} `, icon('info'))
+      : null,
+  );
+  if (shuffling()) {
+    return h('div', { class: 'stack' },
+      chips,
+      h('h2', { class: 'center' }, `${nameOf(s, dealer)} shuffles`),
+      seatStrip(s, v),
+      h('div', { class: 'deck-area' },
+        h('div', { class: 'deck shuffling', 'aria-label': 'Shuffling' },
+          [0, 1, 2].map((k) => h('div', { class: 'card-back l', style: `--k:${k}` })),
+          [0, 1, 2].map((k) => h('div', { class: 'card-back r', style: `--k:${k}` })),
+        ),
+      ),
+    );
+  }
+  const setMode = (mode: 'auto' | 'manual'): void => { if (mode !== d.mode) send([{ type: 'setDealMode', by: dealer, mode }]); };
   return h('div', { class: 'stack' },
-    s.round === 1 ? h('div', { class: 'banner' },
-      h('div', { class: 'banner-big' }, s.jokerRuleEnabled ? `🃏 ${s.jokerTotal} jokers this game` : 'No jokers this game'),
-      h('div', { class: 'small' }, `${s.order.length} players · Host: ${nameOf(s, s.hostId)}`),
-      s.jokerRuleEnabled && s.order.length <= 3
-        ? h('div', { class: 'small' }, `This game has hidden decks (${s.order.length === 2 ? 'two' : 'one'}, face down, never shown), and jokers can end up in them. So fewer jokers may be in play. See the ? rules.`)
-        : null,
-    ) : null,
-    h('h2', { class: 'center' }, `${nameOf(s, dealer)} deals`),
+    chips,
     seatStrip(s, v, { highlight: manual || notStarted ? null : d.nextSeat, onTap: tap, tapLabel: notStarted ? 'First card to' : 'Deal a card to', disabled: manual && s.deal ? lockedSeats(s.deal) : [] }),
     h('div', { class: 'deck-area' },
-      h('div', { class: 'deck', id: 'deck', 'aria-label': `${d.remaining} cards left to deal` },
+      h('div', { class: 'deck', id: 'deck', 'aria-label': `${d.remaining} of ${total} cards left to deal` },
         h('div', { class: 'card-back' }), h('div', { class: 'card-back' }), h('div', { class: 'card-back top' }),
         h('span', { class: 'deck-count' }, String(d.remaining))),
-      h('p', { class: 'muted small' }, `${total - d.remaining} of ${total} dealt`),
     ),
-    notStarted
-      ? h('p', { class: 'note center' }, `${nameOf(s, dealer)}: tap who gets the ${total - d.remaining === 0 ? 'first' : 'next'} card. Cards go clockwise from them.`)
-      : manual
-        ? h('p', { class: 'note center' }, 'Manual deal: tap a name to give them one card. Once someone has a card they’re greyed out until everyone has one, so the deal stays even.')
-        : h('p', { class: 'muted center' }, 'Dealing clockwise…'),
-    notStarted ? null : h('div', { class: 'row' },
-      manual
-        ? h('button', { class: 'secondary grow', onclick: () => send([{ type: 'setDealMode', by: dealer, mode: 'auto' }]) }, d.nextSeat ? 'Back to auto deal' : 'Switch to auto deal')
-        : h('button', { class: 'secondary grow', onclick: () => send([{ type: 'setDealMode', by: dealer, mode: 'manual' }]) }, 'Switch to manual'),
-      !manual ? h('button', { class: 'ghost', onclick: () => send([{ type: 'autoDealAll', by: dealer }]) }, 'Deal the rest now') : null,
+    h('p', { class: 'hint center' }, notStarted ? `${nameOf(s, dealer)}: tap who gets the first card` : manual ? 'Tap a name to deal' : 'Dealing…'),
+    notStarted ? null : h('div', { class: 'seg', role: 'group', 'aria-label': 'Deal mode' },
+      h('button', { class: manual ? 'seg-btn on' : 'seg-btn', 'aria-pressed': manual ? 'true' : 'false', onclick: () => setMode('manual') }, icon('hand'), ' Manual'),
+      h('button', { class: manual ? 'seg-btn' : 'seg-btn on', 'aria-pressed': manual ? 'false' : 'true', onclick: () => setMode('auto') }, icon('play'), ' Auto'),
+      !manual ? h('button', { class: 'seg-btn', onclick: () => send([{ type: 'autoDealAll', by: dealer }]) }, 'Deal all') : null,
     ),
-    targetPanel(s),
   );
 }
 
@@ -484,12 +643,8 @@ function chooseLeaderStage(g: SavedGame): Child {
   const v = publicView(s);
   const winner = s.previous!.winner;
   return h('div', { class: 'stack' },
-    h('div', { class: 'banner' },
-      h('div', { class: 'banner-big' }, `${nameOf(s, winner)} picks who leads`),
-      h('div', { class: 'small' }, 'Last round’s winner chooses, and can choose themselves.'),
-    ),
+    h('h2', { class: 'center' }, `${nameOf(s, winner)}: who leads?`),
     seatStrip(s, v, { onTap: (id) => send([{ type: 'chooseLeader', by: winner, leader: id }]), tapLabel: 'Leads:' }),
-    h('p', { class: 'muted center small' }, 'Tap a name.'),
   );
 }
 
@@ -497,16 +652,22 @@ function chooseLeaderStage(g: SavedGame): Child {
 // Looking at hands before the round (pass the phone round)
 // ---------------------------------------------------------------------------
 
+/** P1: pass the phone: phone and arrow, the name big, one "I'm X" button. */
+export function handoffBlock(name: string, onGo: () => void, opts: { compact?: boolean; note?: string | null } = {}): HTMLElement {
+  return h('div', { class: opts.compact ? 'handoff compact' : 'handoff', 'aria-label': `Pass the phone to ${name}` },
+    h('div', { class: 'handoff-icon' }, icon('phone'), icon('arrow')),
+    opts.note ? h('p', { class: 'muted small' }, opts.note) : null,
+    h('h1', { class: 'handoff-name' }, name),
+    h('button', { class: 'big', onclick: onGo }, icon('eye'), ` I'm ${name}`),
+  );
+}
+
 function lookHandoffStage(g: SavedGame): Child {
   const s = g.session;
   const who = nameOf(s, g.holder);
-  return h('div', { class: 'handoff' },
-    h('div', { class: 'handoff-icon', 'aria-hidden': 'true' }, '📱'),
-    h('p', { class: 'muted' }, 'Pass the phone to'),
-    h('h1', { class: 'handoff-name' }, who),
-    h('p', { class: 'muted small' }, 'Everyone else, look away.'),
-    h('button', { class: 'big', onclick: () => update({ game: { ...g, stage: 'hand' } }) }, `I'm ${who}, show my cards`),
-    h('button', { class: 'ghost', onclick: () => update({ game: { ...g, stage: 'table' } }) }, 'Everyone has looked · back to the table'),
+  return h('div', { class: 'stack' },
+    handoffBlock(who, () => update({ game: { ...g, stage: 'hand' } })),
+    h('button', { class: 'ghost', onclick: () => update({ game: { ...g, stage: 'table' } }) }, 'Back to the table'),
   );
 }
 
@@ -517,8 +678,8 @@ function lookHandStage(g: SavedGame): Child {
   return h('div', { class: 'stack' },
     handBlock(s, v, null),
     h('button', { class: 'big', onclick: () => update({ game: { ...g, stage: 'handoff', holder: next } }) },
-      `Hide my cards · pass to ${nameOf(s, next)}`),
-    h('button', { class: 'ghost', onclick: () => update({ game: { ...g, stage: 'table' } }) }, 'Hide my cards · back to the table'),
+      `Hide · pass to ${nameOf(s, next)}`),
+    h('button', { class: 'ghost', onclick: () => update({ game: { ...g, stage: 'table' } }) }, 'Hide · back to the table'),
   );
 }
 
@@ -536,12 +697,9 @@ function playHandoffStage(g: SavedGame): Child {
   return h('div', { class: 'stack' },
     seatStrip(s, v, { highlight: actor }),
     trickArea(s, g, v),
-    h('div', { class: 'handoff compact' },
-      h('p', { class: 'muted' }, choosing ? 'Decision time. Pass the phone to' : 'Pass the phone to'),
-      h('h1', { class: 'handoff-name' }, who),
-      h('button', { class: 'big', onclick: () => update({ game: { ...g, stage: 'hand', holder: actor } }) }, `I'm ${who}, show my cards`),
-      asked ? h('p', { class: 'muted small' }, `Something for ${who} only.`) : null,
-    ),
+    handoffBlock(who, () => update({ game: { ...g, stage: 'hand', holder: actor } }), {
+      compact: true, note: choosing ? 'Pick up or forfeit' : asked ? `For ${who} only` : null,
+    }),
     askToTake(g),
   );
 }
@@ -555,7 +713,7 @@ export function handBlock(
   s: Session,
   v: PlayerView,
   onTap: ((c: Card) => void) | null,
-  opts: { picked?: ReadonlySet<string>; all?: boolean; mark?: boolean } = {},
+  opts: { picked?: ReadonlySet<string>; all?: boolean; mark?: boolean; head?: boolean } = {},
 ): HTMLElement {
   const hand = sortHand(v.myHand);
   const legal = new Set(opts.all ? v.myHand.map((c) => c.id) : v.legalCardIds);
@@ -564,9 +722,9 @@ export function handBlock(
   const key = `${s.round}:${v.me}:${s.phase}`;
   const fresh = key !== shownHandKey;
   shownHandKey = key;
-  return h('section', { class: 'hand-section' },
-    h('div', { class: 'hand-head' },
-      h('h2', null, `${nameOf(s, v.me)}'s cards`),
+  return h('section', { class: 'hand-section', 'aria-label': `${nameOf(s, v.me)}'s cards` },
+    opts.head === false ? null : h('div', { class: 'hand-head' },
+      h('h2', null, nameOf(s, v.me)),
       h('span', { class: 'count' }, String(hand.length)),
     ),
     hand.length
@@ -574,6 +732,7 @@ export function handBlock(
         const playable = onTap !== null && legal.has(c.id);
         const el = cardFace(c, [onTap && !playable ? 'dim' : '', raised(c.id) ? 'selected' : '', playable ? 'playable' : '', opts.mark && opts.picked?.has(c.id) ? 'new-card' : ''].join(' '));
         el.style.setProperty('--i', String(i));
+        if (onTap && !playable) el.addEventListener('click', () => sfx('notAllowed'));
         if (playable) {
           el.setAttribute('role', 'button');
           el.setAttribute('tabindex', '0');
@@ -592,7 +751,6 @@ function playHandStage(g: SavedGame): Child {
   const st = getState();
   const myTurn = v.turn === v.me && !v.pendingFinalTwo;
   const choosing = v.pendingFinalTwo === v.me;
-  const other = s.play ? s.order.find((p) => p !== v.me && (s.play!.hands[p]?.length ?? 0) > 0) : undefined;
   const selected = st.selected && v.legalCardIds.includes(st.selected) ? st.selected : null;
   const selCard = selected ? v.myHand.find((c) => c.id === selected) : undefined;
 
@@ -618,31 +776,27 @@ function playHandStage(g: SavedGame): Child {
     takePrompts(s, v.me),
     choosing
       ? h('section', { class: 'panel choice' },
-        h('h2', null, 'Your last card was higher'),
-        h('p', null, `It beat ${nameOf(s, other)}'s card, so you don't go out. Choose:`),
+        h('h2', null, 'Pick up or forfeit'),
         h('button', { class: 'big', onclick: () => send([{ type: 'pickUpWastePile', by: v.me }]) },
           `Pick up the waste pile (${v.wastePileCount} cards) and lead`),
-        h('p', { class: 'muted small' }, 'You can still forfeit later while two players are left.'),
         forfeitBtn,
       )
       : null,
-    handBlock(s, v, onTap),
+    myTurn && jokerLed(s) && s.play
+      ? h('p', { class: 'note center' }, icon('joker'), ` Joker lead by ${nameOf(s, s.play.trick.acted[0] as string)}: same trick, play any card`)
+      : null,
+    handBlock(s, v, onTap, { head: false }),
     myTurn
       ? h('div', { class: 'play-bar' },
         h('button', { class: 'big grow', disabled: !selCard, onclick: () => selected && play(selected) },
-          selCard ? `Play ${shortLabel(selCard)}`
-            : v.trick.length ? (v.ledSuit ? `Play a card (follow ${SUIT_SYMBOL[v.ledSuit]} if you can)` : 'Play a card')
-            : jokerLed(s) ? 'Play any card' : 'Lead any card'),
+          selCard ? ['Play ', h('span', { class: selCard.kind === 'standard' && (selCard.suit === 'hearts' || selCard.suit === 'diamonds') ? 'play-red' : '' }, shortLabel(selCard))]
+            : v.trick.length || jokerLed(s) ? 'Pick a card' : 'Pick a card to lead'),
       )
-      : null,
-    myTurn && jokerLed(s) && s.play
-      ? h('p', { class: 'note' }, `${nameOf(s, s.play.trick.acted[0] as string)} started this trick with a joker. It's still the same trick: play any card.`)
       : null,
     myTurn && selCard?.kind === 'joker' && jokerGivesWin(s, v.me)
       ? h('p', { class: 'note warn' }, `Careful: if you play this joker, ${nameOf(s, jokerGivesWin(s, v.me))} ${
         (s.play?.hands[jokerGivesWin(s, v.me)!]?.length ?? 0) === 0 ? 'goes out with their last card unopposed and wins' : 'can play their last card unopposed and win'} the round.`)
       : null,
-    myTurn ? h('p', { class: 'muted small center' }, 'Tap a card, then Play. Or tap the same card twice.') : null,
     !choosing ? forfeitBtn : null,
     takeControls(s, v.me),
     !myTurn && !choosing && !s.takeRequests.some((r) => r.target === v.me && !r.agreed)
@@ -661,7 +815,18 @@ const slapShownAt = new WeakMap<Popup, number>();
 function slapElapsed(p: Popup): number {
   const now = Date.now();
   if (!slapShownAt.has(p)) slapShownAt.set(p, now);
-  return Math.min(SLAP_MS, now - slapShownAt.get(p)!);
+  return Math.min(popupMs(p), now - slapShownAt.get(p)!);
+}
+
+/** The countdown bar under a pop-up that closes by itself. */
+function popupTimer(p: Popup): HTMLElement {
+  return h('div', { class: 'slap-timer', 'aria-hidden': 'true' }, h('span', { style: `animation-duration:${popupMs(p)}ms;animation-delay:-${slapElapsed(p)}ms` }));
+}
+
+/** Coloured place badge: 1st gold, 2nd silver, 3rd bronze, Last red. */
+export function placeBadge(place: number | 'last'): HTMLElement {
+  const cls = place === 'last' ? 'last' : place <= 3 ? `p${place}` : '';
+  return h('span', { class: `place ${cls}` }, place === 'last' ? 'Last' : ordinal(place));
 }
 
 /** Pop-ups already on screen, so a redraw doesn't replay their entrance. */
@@ -672,24 +837,33 @@ export function popupLayer(): HTMLElement | null {
   const p = st.popups[0];
   const g = st.game;
   if (!p || !g) return null;
+  // During the end-of-trick animation only the SLAP! pop-up shows, at its turn.
+  if (trickAnim && trickAnim.step !== 'wait') return null;
   const s = g.session;
   const next = (): void => update({ popups: st.popups.slice(1) });
   let body: Child;
   let cls = shownPopups.has(p) ? 'popup seen' : 'popup';
   shownPopups.add(p);
-  if (p.kind === 'slap') {
+  if (p.kind === 'haha') {
+    cls += ' slap haha';
+    body = [
+      h('div', { class: 'slap-word', 'aria-label': 'Ha ha ha!' }, 'HAHAHA!'),
+      h('div', { class: 'slap-who' }, `${nameOf(s, p.laugher)} played a lower card than ${nameOf(s, p.loser)}!`),
+      popupTimer(p),
+    ];
+  } else if (p.kind === 'slap') {
     cls += ' slap';
     body = [
       h('div', { class: 'slap-word', 'aria-label': 'Slap!' }, 'SLAP!'),
       h('div', { class: 'slap-who' }, `${nameOf(s, p.slapper)} slapped ${nameOf(s, p.slapped)}`),
       h('div', { class: 'small' }, `${nameOf(s, p.slapped)} picks up ${p.cards} ${p.cards === 1 ? 'card' : 'cards'} and leads.`),
-      h('div', { class: 'slap-timer', 'aria-hidden': 'true' }, h('span', { style: `animation-duration:${SLAP_MS}ms;animation-delay:-${slapElapsed(p)}ms` })),
+      popupTimer(p),
     ];
   } else if (p.kind === 'out') {
     body = [
-      h('div', { class: 'popup-icon' }, p.place === 1 ? '🏆' : '🎉'),
-      h('div', { class: 'popup-title' }, `${nameOf(s, p.player)} is out!`),
-      h('div', null, `Came ${ordinal(p.place)}`),
+      h('div', { class: 'popup-icon' }, icon(p.place === 1 ? 'trophy' : 'out')),
+      h('div', { class: 'popup-title' }, `${nameOf(s, p.player)} is out`),
+      placeBadge(p.place),
     ];
   } else if (p.kind === 'lastTwo') {
     body = lastTwoBody(s, p);
@@ -702,48 +876,37 @@ export function popupLayer(): HTMLElement | null {
     ];
   } else {
     body = [
-      h('div', { class: 'popup-icon' }, p.icon),
+      h('div', { class: 'popup-icon' }, icon(p.icon)),
       h('div', { class: 'popup-title' }, p.title),
-      h('div', null, p.text),
+      p.text ? h('div', { class: 'popup-text' }, p.text) : null,
     ];
   }
-  // The SLAP! pop-up closes by itself (afterRender); the others wait for a tap.
-  if (p.kind === 'slap') {
+  // Every pop-up closes by itself (afterRender). SLAP! and HAHAHA! stay their full time; the others can be tapped away.
+  if (p.kind === 'slap' || p.kind === 'haha') {
     return h('div', { class: 'overlay popup-overlay' }, h('div', { class: cls, role: 'alert' }, body));
   }
-  return h('div', { class: 'overlay popup-overlay', onclick: next },
-    h('div', { class: cls, role: 'alertdialog' },
-      body,
-      h('button', { class: 'popup-ok', onclick: (e) => { e.stopPropagation(); next(); } }, st.popups.length > 1 ? 'Next' : 'OK'),
-    ),
-  );
+  return h('div', { class: 'overlay popup-overlay', 'data-skip': 'true', onclick: next },
+    h('div', { class: cls, role: 'alert' }, body, popupTimer(p)));
 }
 
 function lastTwoBody(s: Session, p: Extract<Popup, { kind: 'lastTwo' }>): Child[] {
   const n = p.order.length;
   if (p.shared) {
     return [
-      h('div', { class: 'popup-icon' }, '🃏🃏'),
-      h('div', { class: 'popup-title' }, 'Both out on jokers!'),
-      h('div', null, `${p.shared.map((x) => nameOf(s, x)).join(' and ')} share ${ordinal(n - 1)} place.`),
+      h('div', { class: 'popup-icon' }, icon('joker')),
+      h('div', { class: 'popup-title' }, 'Both out on jokers'),
+      h('div', { class: 'popup-text' }, placeBadge(n - 1), ` ${p.shared.map((x) => nameOf(s, x)).join(' and ')}`),
     ];
   }
   const second = p.order[n - 2]!;
   const loser = p.order[n - 1]!;
-  const forfeit = p.forfeitedBy ? h('div', { class: 'small' }, `${nameOf(s, p.forfeitedBy)} forfeited.`) : null;
-  if (n === 2) {
-    return [
-      h('div', { class: 'popup-icon' }, '🏁'),
-      h('div', { class: 'popup-title' }, `${nameOf(s, second)} wins!`),
-      h('div', { class: 'loser-line' }, `${nameOf(s, loser)} is the loser`),
-      forfeit,
-    ];
-  }
+  const forfeit = p.forfeitedBy ? h('div', { class: 'popup-text small' }, `${nameOf(s, p.forfeitedBy)} forfeited`) : null;
   return [
-    h('div', { class: 'popup-icon' }, '🏁'),
+    h('div', { class: 'popup-icon' }, icon('flag')),
     h('div', { class: 'popup-title' }, 'Round over'),
-    h('div', null, `${nameOf(s, second)} came ${ordinal(n - 1)}.`),
-    h('div', { class: 'loser-line' }, `${nameOf(s, loser)} is the loser`),
+    h('div', { class: 'popup-text places' },
+      h('span', null, placeBadge(n === 2 ? 1 : n - 1), ` ${nameOf(s, second)}`),
+      h('span', null, placeBadge('last'), ` ${nameOf(s, loser)}`)),
     forfeit,
   ];
 }
@@ -778,6 +941,7 @@ export function reactionsLayer(): HTMLElement[] {
 }
 
 function floatText(text: string, e: MouseEvent, emoji: boolean): void {
+  sfx('reaction');
   const el = document.createElement('div');
   el.className = emoji ? 'float-emoji' : 'float-phrase';
   el.textContent = text;
@@ -801,14 +965,15 @@ let slapTimer: { popup: Popup; id: number } | null = null;
 
 export function afterRender(): void {
   pauseTick();
-  const top = getState().popups[0];
-  if (top?.kind === 'slap' && slapTimer?.popup !== top) {
+  driveTrickAnim();
+  const top = trickAnim && trickAnim.step !== 'wait' ? undefined : getState().popups[0];
+  if (top && slapTimer?.popup !== top) {
     if (slapTimer) window.clearTimeout(slapTimer.id);
     const id = window.setTimeout(() => {
       slapTimer = null;
       const cur = getState().popups;
       if (cur[0] === top) update({ popups: cur.slice(1) });
-    }, SLAP_MS);
+    }, Math.max(300, popupMs(top) - slapElapsed(top)));
     slapTimer = { popup: top, id };
   }
   if (pendingFly) {
@@ -817,7 +982,7 @@ export function afterRender(): void {
   }
   const st = getState();
   const s = st.game?.session;
-  const dealing = st.screen === 'game' && s?.phase === 'dealing' && s.deal?.mode === 'auto' && s.deal.nextSeat !== null && !s.vote && !s.paused;
+  const dealing = st.screen === 'game' && s?.phase === 'dealing' && s.deal?.mode === 'auto' && s.deal.nextSeat !== null && !s.vote && !s.paused && !shuffling();
   if (!dealing) {
     if (dealTimer !== null) { window.clearTimeout(dealTimer); dealTimer = null; }
     return;

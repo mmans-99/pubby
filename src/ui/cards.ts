@@ -29,7 +29,7 @@ export function sortHand(cards: readonly Card[]): Card[] {
 export function cardFace(c: Card, extraClass = ''): HTMLElement {
   if (c.kind === 'joker') {
     return h('div', { class: `card joker ${extraClass}`, 'aria-label': 'Joker' },
-      h('span', { class: 'rank' }, '🃏'), h('span', { class: 'suit tiny' }, 'Joker'));
+      h('span', { class: 'rank' }, '★'), h('span', { class: 'suit tiny' }, 'Joker'));
   }
   const rank = rankLabel(c.rank);
   return h('div', { class: `card ${isRed(c.suit) ? 'red' : ''} ${extraClass}`, 'aria-label': `${rank} of ${c.suit}` },
