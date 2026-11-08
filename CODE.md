@@ -280,6 +280,13 @@ Every function is pure: it returns a new state and never changes the one passed 
 - **`src/net/scan.ts`:** back camera, checked every 150 ms. Uses the browser's `BarcodeDetector` where there is one (Chrome and Samsung Internet on Android; switches to Pubby's reader if it keeps failing), otherwise draws the frame (longest side 720 px) to a canvas and runs `readQr`. `canScan()` = the phone has a camera API, so every phone can host and join. Camera permission also stops Chrome hiding the phone's local address behind a `.local` name which should help phones find each other (not confirmed: headless Chromium kept hidden names).
 - **`src/ui/nettest.ts`:** the Connection test screen. Keeps its own element and state so the camera and link survive the app's re-renders; `stopNetTest()` (called when the app leaves the screen, including by the back gesture) stops the camera and closes the link. The host allows the camera before making its code (`warmCamera()`), hoping Chrome then puts the real local address in the code; headless Chromium kept the hidden name either way, so this is checked on phones. Pings every second both ways; a ping with no reply after 3 s counts as lost. Keeps the screen awake while connected (Wake Lock, where allowed). `window.pubbyNetTest` lets `net_check.py` feed scanned codes.
 
+## 9g. Sound (Phase 5, planned, not built)
+
+- **No audio files:** every sound is synthesised with the Web Audio API, as on the sample page (https://claude.ai/artifact/Q54YRtsC8xME6LN7uAHzvZ). Small, offline, no licences. The sample page's code (instruments `feltPiano`, `upright`, `softBrush`, `softKick`, `crackle`, the `TEMPLATES` menu / play / ultimate / results and the `SETS.piano` set, the effect functions) is the starting point for `src/audio/`.
+- **Planned shape (to be approved):** `src/audio/engine.ts` (one AudioContext started on the first tap, music and effects buses with their own volume, a compressor), `src/audio/music.ts` (the four Fireside Piano tracks, a look-ahead scheduler, fade between tracks when the screen changes), `src/audio/sfx.ts` (named effects played from session events: `slapped`, `playerOut`, `voteResolved`, `gamePaused` and so on). Settings saved with the profile on this phone; mute button per section 12a.
+- **Phones:** iPhones play nothing while the silent switch is on (Web Audio follows it); say so next to the sound setting. Audio must start from a tap.
+- **Multiplayer:** each phone plays its own sounds from the events it receives; nothing extra is sent.
+
 ## 8a. Playable test builds (required before every commit)
 
 `CLAUDE.md` rule 5: the user tests every change on their phone before approving a commit.

@@ -163,7 +163,13 @@ Built in slices; each slice gets a test link and a checklist.
 ## Phase 5 — Polish
 
 - [ ] Animations for slap and trick resolution
-- [ ] Sound (optional, DECIDE)
+- [~] **Sound and music** (`PROJECT.md` 12b, `CODE.md` 9g; samples: https://claude.ai/artifact/Q54YRtsC8xME6LN7uAHzvZ)
+  - [x] Feel decided: cosy pub card night, comic effects, not sentimental
+  - [x] Music: Fireside Piano set (menu, during play, Ultimate Round, results) (2026-11-08)
+  - [x] Paused = Click; take-cards request = Knock knock
+  - [ ] Choose SLAP! (original / Big / Huge), fireplace crackle yes or no, confirm Resumed and the other effects
+  - [ ] Decide sound on or off by default, and the mute button
+  - [ ] Plan for `src/audio/` approved, then build, test on phones (iPhone silent switch)
 - [ ] Accessibility pass (contrast, tap targets, screen reader labels)
 - [ ] User adds more catch-phrases to `src/content/`
 

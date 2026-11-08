@@ -4,6 +4,23 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-07 / 08 (late night) — Choosing sound and music
+
+**Done**
+- **User (23:35):** asked for music and sound effects, starting with how the game should sound. Described it as a cosy pub card night: cheeky, comic effects, music quietly underneath. Built a sample page that makes every sound live in the browser (no files): https://claude.ai/artifact/Q54YRtsC8xME6LN7uAHzvZ
+- Rounds of feedback (23:44 to 00:04): Paused = Click; take-cards = Knock knock; a slap with more oomph (Big and Huge versions added); Boogie Woogie for play, made longer; results music must not be sentimental; menu slower; then "cosier versions of all the songs, with an instrument theme; they all seem disjointed".
+- Rebuilt the music as three cosy sets, each with one instrument theme and one shared Pubby tune across menu, play, Ultimate Round and results: Fireside Piano, Snug Guitar, Lamplight Keys. Fireplace crackle option.
+- **User chose Fireside Piano (00:12)** and asked to save it in the MD files to carry on in another chat.
+- `PROJECT.md` 12b (sound and music: what's chosen, what's left, what was turned down), `CODE.md` 9g (planned audio modules), `TODO.md` Phase 5 sound tasks. `CLAUDE.md` checked, no changes. Doc-only: no code, no version bump.
+- Still from earlier tonight: user's v1.5 zoom test on the Samsung phone not reported yet.
+
+**Next**
+- User picks SLAP! (original / Big / Huge), fireplace crackle yes or no, the remaining effects, sound on or off by default.
+- Then a plan for `src/audio/` for approval (`CODE.md` 9g), build, phone test.
+- Also open: v1.5 zoom check on Samsung Internet; home Wi-Fi connection test; Phase 4 slice 1 (network lobby).
+
+---
+
 ## 2026-11-07 (night) — Version 1.5: zoom fix
 
 **Done**

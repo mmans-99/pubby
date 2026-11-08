@@ -387,6 +387,28 @@ The testbed (`CODE.md` section 8a) is only a rules test tool and does not use th
 
 ---
 
+## 12b. Sound and music (Phase 5, being chosen)
+
+Chosen from a sample page the user listens to on their phone: **Pubby sound samples**, https://claude.ai/artifact/Q54YRtsC8xME6LN7uAHzvZ (a private Claude artifact owned by the user; open it, or read it in a new chat, to hear and reuse every sound). All sounds are made live in the browser (Web Audio), so there are no audio files, nothing is borrowed, and it all works offline.
+
+**Feel:** a cosy, warm pub card night: cheeky and fun, never sentimental. Music sits quietly under the game; effects are comic.
+
+**Music (decided 2026-11-08 00:12): "Fireside Piano" soundtrack.** One instrument theme for every screen (soft felt piano, upright bass, brushes) and one shared Pubby tune in every track, so it all sounds like one game:
+- **Menu and lobby:** slow and settled (66 bpm), the Pubby tune played slowly.
+- **During play:** a softened boogie woogie (112 bpm), two 12-bar choruses, the Pubby tune in the second chorus, a turnaround before it loops.
+- **Ultimate Round:** heartbeat kick and a minor-key piano pattern, the tune in a minor key from the second half.
+- **Results:** light and bouncy (104 bpm), the tune again. Not sentimental.
+
+**Sound effects chosen so far:**
+- **Paused:** Click (one soft click down). **Resumed:** a matching click up (offered, not yet confirmed).
+- **Take-cards request:** Knock knock (two knocks on a door).
+
+**Still to choose** (all on the sample page): which SLAP! (original, Big, Huge); whether to keep the fireplace crackle under the music (on in the samples); the other effects (tap, shuffle, deal, play a card, picked up the pile, trick done, joker, got away, last place (sad trombone), round winner, Ultimate Winner, Coward!, vote result, Reaction Tap countdown, 😂 reaction, your turn, not allowed); sound on or off by default; a mute button (section 12a already has a round sound button).
+
+**Earlier samples the user turned down:** Pub Piano, Knees-Up, Saloon Rag, Skank Night, Darts Night (menu: wanted slower and cosier); Back Room, Bossa Table, Smoky Corner (play); Last Orders (results: "I don't need it sentimental"), Scoreboard, Closing Time Shuffle, Victory Lap; the two other cosy sets (Snug Guitar, Lamplight Keys). The user liked the original Ultimate Round track and Boogie Woogie; both live on in the Fireside Piano set. Paused three-note bells and the first take-cards sound were turned down.
+
+---
+
 ## 13. Quick rules (in-game help)
 
 - **What it is:** A short, simplified rules guide inside the app.
