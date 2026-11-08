@@ -853,3 +853,64 @@ button.secondary.on { box-shadow: 0 0 0 3px var(--gold); }
 .netlobby .seat-top .chip-info { flex: none; }
 .chip-info.lost { background: var(--danger); color: var(--cream); }
 .netlobby .net-big .ic { vertical-align: -2px; }
+
+/* ---- 2.4: the round table (table.ts) ---- */
+.round-table { position: relative; width: 100%; height: 330px; margin: 2px 0; }
+.round-table.n6, .round-table.n7, .round-table.n8 { height: 370px; }
+.table-oval {
+  position: absolute; left: 10%; right: 10%; top: 9%; bottom: 9%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 42%, #2f8038, #1d5a24 72%);
+  border: 7px solid #5a3a1e;
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.45), 0 6px 18px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+.table-oval .led-mark { position: absolute; left: 50%; top: 50%; right: auto; bottom: auto; translate: -50% -50%; font-size: 9rem; }
+.table-middle { position: absolute; left: 50%; top: 50%; translate: -50% -50%; z-index: 1; }
+.table-middle .deck { width: 54px; height: 75px; }
+.table-middle .deck .card-back { width: 54px; height: 75px; border-width: 2px; }
+.table-middle .deck-count { font-size: 0.85rem; padding: 1px 8px; }
+.table-seat { position: absolute; translate: -50% -50%; z-index: 3; min-width: 72px; min-height: 48px; padding: 4px 8px; background: rgba(0, 0, 0, 0.32); }
+button.table-seat { background: var(--cream); }
+.table-seat.me { min-width: 64px; }
+.table-play { position: absolute; translate: -50% -50%; z-index: 2; }
+.table-play .card.small-card { width: 40px; box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4); }
+.table-waste { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.table-waste .waste-pile { width: 34px; height: 48px; border-radius: 5px; box-shadow: 2px 2px 0 #8e1d1d, 4px 4px 0 #6d1616; }
+.waste-count { font-weight: 800; font-size: 0.85rem; background: rgba(0, 0, 0, 0.35); border-radius: 999px; padding: 0 8px; }
+.mini-fan { display: inline-flex; margin-right: 3px; }
+.mini-fan .mini-back { rotate: var(--r, 0deg); }
+.mini-fan .mini-back + .mini-back { margin-left: -6px; }
+.place-badge { background: var(--gold); color: var(--ink); border-radius: 999px; padding: 0 7px; font-weight: 800; font-size: 0.72rem; }
+.seat-chip.out .place-badge { opacity: 1; }
+
+/* 2.4: another phone's reaction rises from the sender's seat */
+.float-react {
+  position: fixed; z-index: 60; pointer-events: none;
+  translate: -50% -50%;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  max-width: 150px; padding: 6px 10px; border-radius: 14px;
+  background: var(--cream); color: var(--ink); text-align: center;
+  font-weight: 800; font-size: 0.95rem; line-height: 1.15;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  animation: react-rise 2.6s ease-out forwards;
+}
+.float-react.emoji .float-react-text { font-size: 2rem; line-height: 1; }
+.float-react-name { font-size: 0.72rem; font-weight: 700; opacity: 0.7; }
+@keyframes react-rise {
+  0% { transform: translateY(10px) scale(0.6); opacity: 0; }
+  12% { transform: translateY(0) scale(1.05); opacity: 1; }
+  70% { transform: translateY(-46px) scale(1); opacity: 1; }
+  100% { transform: translateY(-90px) scale(0.95); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .float-react { animation: fade 2.6s ease-out reverse forwards; } }
+
+/* 2.4: the host is deciding / setting up (other phones) */
+.host-line {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(0, 0, 0, 0.3); border: 2px solid var(--gold); border-radius: var(--radius);
+  padding: 10px 14px; font-weight: 600; text-align: left;
+}
+.host-line .ic { color: var(--gold); flex: none; animation: host-wait 2.4s ease-in-out infinite; }
+@keyframes host-wait { 0%, 40% { rotate: 0deg; } 50%, 90% { rotate: 180deg; } 100% { rotate: 180deg; } }
+@media (prefers-reduced-motion: reduce) { .host-line .ic { animation: none; } }

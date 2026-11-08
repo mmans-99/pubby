@@ -31,7 +31,8 @@ import { reshuffleStage, roundStartHolder, roundStartScreen, voteOutcome } from 
 import { lockedSeats } from '../rules/deal.ts';
 import { cardSound, eventSounds, sfx } from '../audio/sfx.ts';
 import { icon, type IconName } from './icons.ts';
-import { hostBroadcast, joinSend } from './netplay.ts';
+import { hostBroadcast, joinSend, sendReaction } from './netplay.ts';
+import { roundTable, wasteMiddle } from './table.ts';
 import { netGameBody, netMenu } from './netscreens.ts';
 import {
   askToTake, gameOverStage, notesPanel, passOnButton, pauseButton, pausePanel, pauseRequestsBanner, pauseTick, resultsStage,
@@ -524,22 +525,24 @@ export function seatStrip(s: Session, v: PlayerView, opts: { highlight?: PlayerI
   }));
 }
 
-function trickArea(s: Session, g: SavedGame, v: PlayerView): HTMLElement {
+/** Who sits at the bottom of the table: this phone's player, or (one phone) whoever holds it. */
+function bottomSeat(g: SavedGame, holder: PlayerId): PlayerId {
+  return g.net ? g.net.me : holder;
+}
+
+/** The table during play: players around it, this trick's cards in front of them, the last trick below. */
+function trickArea(s: Session, g: SavedGame, v: PlayerView, bottom: PlayerId, highlight: PlayerId | null): Child {
   const plays = g.trickLog;
-  const red = v.ledSuit === 'hearts' || v.ledSuit === 'diamonds';
-  const felt = h('section', { class: 'felt', 'aria-label': v.ledSuit ? `Trick: ${SUIT_NAME[v.ledSuit]} led` : 'Trick' },
-    v.ledSuit ? h('span', { class: red ? 'led-mark red' : 'led-mark', 'aria-hidden': 'true' }, SUIT_SYMBOL[v.ledSuit]) : null,
-    h('div', { class: 'felt-top' },
-      h('span', null),
-      h('span', { class: 'waste', 'aria-label': `Waste pile: ${v.wastePileCount} cards` }, h('span', { class: 'waste-pile', 'aria-hidden': 'true' }), `${v.wastePileCount}`),
-    ),
-    h('div', { class: plays.length ? 'trick' : 'trick empty-trick' }, plays.map((p, i) => h('div', { class: i >= shownTrickCount ? 'trick-play new' : 'trick-play', style: `--i:${i}` },
-      cardFaceFromId(p.card, 'small-card'),
-      h('span', { class: 'trick-name' }, nameOf(s, p.player))))),
-    g.lastTrick ? lastTrickRow(s, g.lastTrick) : null,
-  );
+  const table = roundTable(s, v, {
+    bottom: bottomSeat(g, bottom),
+    highlight,
+    plays,
+    newFrom: shownTrickCount,
+    middle: wasteMiddle(v.wastePileCount),
+    ledSuit: v.ledSuit,
+  });
   shownTrickCount = plays.length;
-  return felt;
+  return [table, g.lastTrick ? lastTrickRow(s, g.lastTrick) : null];
 }
 
 /** The finished trick on the felt while its cards move (see TrickAnim). */
@@ -551,24 +554,21 @@ function trickFinishStage(g: SavedGame, a: TrickAnim): Child {
   const firstDraw = shownTrickCount !== -1;
   shownTrickCount = -1;
   return h('div', { class: 'stack' },
-    seatStrip(s, v, { highlight: a.slapped }),
-    h('section', { class: 'felt' },
-      h('div', { class: 'felt-top' },
-        h('span', null),
-        h('span', { class: 'waste', 'aria-label': `Waste pile: ${waste} cards` }, h('span', { class: 'waste-pile', 'aria-hidden': 'true' }), `${waste}`),
-      ),
-      h('div', { class: 'trick' }, a.plays.map((p, i) => h('div', { class: i === last && firstDraw ? 'trick-play new' : 'trick-play', style: `--i:${i}` },
-        cardFaceFromId(p.card, 'small-card'),
-        h('span', { class: 'trick-name' }, nameOf(s, p.player))))),
-    ),
+    roundTable(s, v, {
+      bottom: bottomSeat(g, g.holder),
+      highlight: a.slapped,
+      plays: a.plays,
+      newFrom: firstDraw ? last : a.plays.length,
+      middle: wasteMiddle(waste),
+    }),
     h('div', { class: 'anim-block', 'aria-hidden': 'true' }),
   );
 }
 
 /** Slide the trick's cards to the waste pile, or into the slapped player's seat. */
 function flyTrick(a: TrickAnim, done: () => void): void {
-  const target = a.slapped ? document.querySelector(`[data-seat="${a.slapped}"]`) : document.querySelector('.felt .waste-pile');
-  const cards = Array.from(document.querySelectorAll<HTMLElement>('.felt .trick-play'));
+  const target = a.slapped ? document.querySelector(`[data-seat="${a.slapped}"]`) : document.querySelector('.round-table .waste-pile');
+  const cards = Array.from(document.querySelectorAll<HTMLElement>('.round-table .trick-play'));
   const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || !('animate' in HTMLElement.prototype);
   if (!target || !cards.length || still) { window.setTimeout(done, 250); return; }
   const b = target.getBoundingClientRect();
@@ -674,25 +674,31 @@ export function dealingStage(g: SavedGame): Child {
   if (shuffling()) {
     return h('div', { class: 'stack' },
       chips,
-      h('h2', { class: 'center' }, `${nameOf(s, dealer)} shuffles`),
-      seatStrip(s, v),
-      h('div', { class: 'deck-area' },
-        h('div', { class: 'deck shuffling', 'aria-label': 'Shuffling' },
+      roundTable(s, v, {
+        bottom: bottomSeat(g, dealer),
+        dealer,
+        middle: h('div', { class: 'deck shuffling', 'aria-label': 'Shuffling' },
           [0, 1, 2].map((k) => h('div', { class: 'card-back l', style: `--k:${k}` })),
           [0, 1, 2].map((k) => h('div', { class: 'card-back r', style: `--k:${k}` })),
         ),
-      ),
+      }),
+      h('p', { class: 'hint center' }, `${nameOf(s, dealer)} shuffles`),
     );
   }
   const setMode = (mode: 'auto' | 'manual'): void => { if (mode !== d.mode) send([{ type: 'setDealMode', by: dealer, mode }]); };
   return h('div', { class: 'stack' },
     chips,
-    seatStrip(s, v, { highlight: manual || notStarted ? null : d.nextSeat, onTap: tap, tapLabel: notStarted ? 'First card to' : 'Deal a card to', disabled: manual && s.deal ? lockedSeats(s.deal) : [] }),
-    h('div', { class: 'deck-area' },
-      h('div', { class: 'deck', id: 'deck', 'aria-label': `${d.remaining} of ${total} cards left to deal` },
+    roundTable(s, v, {
+      bottom: bottomSeat(g, dealer),
+      dealer,
+      highlight: manual || notStarted ? null : d.nextSeat,
+      onTap: tap,
+      tapLabel: notStarted ? 'First card to' : 'Deal a card to',
+      disabled: manual && s.deal ? lockedSeats(s.deal) : [],
+      middle: h('div', { class: 'deck', id: 'deck', 'aria-label': `${d.remaining} of ${total} cards left to deal` },
         h('div', { class: 'card-back' }), h('div', { class: 'card-back' }), h('div', { class: 'card-back top' }),
         h('span', { class: 'deck-count' }, String(d.remaining))),
-    ),
+    }),
     h('p', { class: 'hint center' }, watching ? (notStarted || manual ? `${nameOf(s, dealer)} is dealing` : 'Dealing…')
       : notStarted ? `${g.net ? 'You' : nameOf(s, dealer)}: tap who gets the first card` : manual ? 'Tap a name to deal' : 'Dealing…'),
     notStarted || watching ? null : h('div', { class: 'seg', role: 'group', 'aria-label': 'Deal mode' },
@@ -708,8 +714,8 @@ export function chooseLeaderStage(g: SavedGame): Child {
   const v = publicView(s);
   const winner = s.previous!.winner;
   return h('div', { class: 'stack' },
-    h('h2', { class: 'center' }, `${nameOf(s, winner)}: who leads?`),
-    seatStrip(s, v, { onTap: (id) => send([{ type: 'chooseLeader', by: winner, leader: id }]), tapLabel: 'Leads:' }),
+    h('h2', { class: 'center' }, `${g.net ? 'You' : nameOf(s, winner)}: who leads?`),
+    roundTable(s, v, { bottom: bottomSeat(g, winner), onTap: (id) => send([{ type: 'chooseLeader', by: winner, leader: id }]), tapLabel: 'Leads:' }),
   );
 }
 
@@ -760,8 +766,7 @@ function playHandoffStage(g: SavedGame): Child {
   const who = nameOf(s, actor);
   const choosing = !asked && v.pendingFinalTwo === actor;
   return h('div', { class: 'stack' },
-    seatStrip(s, v, { highlight: actor }),
-    trickArea(s, g, v),
+    trickArea(s, g, v, actor, actor),
     handoffBlock(who, () => update({ game: { ...g, stage: 'hand', holder: actor } }), {
       compact: true, note: choosing ? 'Pick up or forfeit' : asked ? `For ${who} only` : null,
     }),
@@ -840,8 +845,7 @@ export function playHandStage(g: SavedGame): Child {
     ? h('p', { class: 'hint center wait-line' }, v.pendingFinalTwo === actor ? `${nameOf(s, actor)}: pick up or forfeit` : `${nameOf(s, actor)}’s turn`)
     : null;
   return h('div', { class: 'stack' },
-    seatStrip(s, v, { highlight: g.net ? actor : v.me }),
-    trickArea(s, g, v),
+    trickArea(s, g, v, v.me, actor ?? v.me),
     waitLine,
     g.net ? null : notesPanel(g, v.me),
     g.net ? null : takePrompts(s, v.me),
@@ -993,6 +997,8 @@ function lastTwoBody(s: Session, p: Extract<Popup, { kind: 'lastTwo' }>): Child[
 let drawerWasOpen = false;
 
 export function reactionsLayer(): HTMLElement[] {
+  // Reactions show from the start of the game to the end (user, 2.4).
+  if (getState().game?.session.phase === 'gameOver') return [];
   const open = getState().reactionsOpen;
   const opening = open && !drawerWasOpen;
   drawerWasOpen = open;
@@ -1004,11 +1010,55 @@ export function reactionsLayer(): HTMLElement[] {
   }, open ? '✕' : '😂');
   if (!open) return [toggle];
   const drawer = h('section', { class: opening ? 'reactions-drawer opening' : 'reactions-drawer', 'aria-label': 'Reactions' },
-    h('button', { class: 'emoji-btn', 'aria-label': 'Laugh', onclick: (e) => floatText('😂', e as MouseEvent, true) }, '😂'),
-    h('div', { class: 'phrase-chips' }, CATCH_PHRASES.map((ph) =>
-      h('button', { class: 'phrase-chip', onclick: (e) => floatText(ph, e as MouseEvent, false) }, ph))),
+    h('button', { class: 'emoji-btn', 'aria-label': 'Laugh', onclick: (e) => react(-1, e as MouseEvent) }, '😂'),
+    h('div', { class: 'phrase-chips' }, CATCH_PHRASES.map((ph, i) =>
+      h('button', { class: 'phrase-chip', onclick: (e) => react(i, e as MouseEvent) }, ph))),
   );
   return [drawer, toggle];
+}
+
+/** -1 = the laugh, else a catch-phrase number (the same list on every phone). */
+function reactionText(r: number): string | null {
+  return r === -1 ? '😂' : (CATCH_PHRASES[r] ?? null);
+}
+
+/** This phone's reaction: shown here where it was tapped, and sent to the other phones (network game). */
+function react(r: number, e: MouseEvent): void {
+  const text = reactionText(r);
+  if (!text) return;
+  floatText(text, e, r === -1);
+  sendReaction(r);
+}
+
+/**
+ * Another phone's reaction: it rises from the sender's seat with their name.
+ * Returns false if it isn't a known reaction (or isn't shown now).
+ */
+export function showReaction(from: PlayerId, r: number): boolean {
+  const text = reactionText(r);
+  const st = getState();
+  const s = st.game?.session;
+  if (!text || !s || st.screen !== 'game' || s.phase === 'gameOver') return false;
+  sfx('reaction');
+  const seat = document.querySelector(`.round-table [data-seat="${from}"]`) ?? document.querySelector(`[data-seat="${from}"]`);
+  const box = seat?.getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = r === -1 ? 'float-react emoji' : 'float-react';
+  const t = document.createElement('span');
+  t.className = 'float-react-text';
+  t.textContent = text;
+  const who = document.createElement('span');
+  who.className = 'float-react-name';
+  who.textContent = nameOf(s, from);
+  el.append(t, who);
+  const x = box ? box.left + box.width / 2 : window.innerWidth / 2;
+  const y = box ? box.top + box.height / 2 : 120;
+  el.style.left = `${Math.max(70, Math.min(window.innerWidth - 70, x))}px`;
+  el.style.top = `${y}px`;
+  document.body.appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
+  window.setTimeout(() => el.remove(), 3200);
+  return true;
 }
 
 function floatText(text: string, e: MouseEvent, emoji: boolean): void {

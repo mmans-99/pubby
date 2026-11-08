@@ -17,7 +17,7 @@ import type { PlayerId, Session, SessionAction, SessionEvent } from '../session/
 import { eventFor, logFor, phoneActions, redactSession, type GameUpdate, type NetInfo } from '../net/netgame.ts';
 import type { ToJoiner } from '../net/lobby.ts';
 import { getState, say, update } from './store.ts';
-import { receive, runActions, startShuffle } from './game.ts';
+import { receive, runActions, showReaction, startShuffle } from './game.ts';
 import { sfx } from '../audio/sfx.ts';
 import { clearSwapReveal } from './roundstart.ts';
 import type { SavedGame } from './storage.ts';
@@ -62,8 +62,9 @@ export function hostStart(session: Session, links: Record<PlayerId, string>, me:
   for (const [p, l] of Object.entries(links)) if (l !== 'host') linkOf[p] = l;
   sentLog.clear();
   const g: SavedGame = { session, stage: 'hand', holder: me, trickLog: [], lastTrick: null, notes: {}, net: { role: 'host', me } };
-  update({ game: g, screen: 'game', popups: [], selected: null, armed: null, menuOpen: false });
+  // Shuffle first, so the first screen drawn already shows it (2.4 fix).
   startShuffle();
+  update({ game: g, screen: 'game', popups: [], selected: null, armed: null, menuOpen: false });
   for (const p of Object.keys(linkOf)) sendUpdate(p, session, [], true);
 }
 
@@ -130,8 +131,8 @@ export function joinGotGame(m: GameUpdate): void {
   if (!have) {
     // First message: the game starts on this phone.
     const fresh: SavedGame = { session, stage: 'hand', holder: m.me, trickLog: [], lastTrick: null, notes: {}, net: { role: 'join', me: m.me } };
-    update({ game: fresh, screen: 'game', popups: [], selected: null, armed: null, menuOpen: false, rulesOpen: false });
     startShuffle();
+    update({ game: fresh, screen: 'game', popups: [], selected: null, armed: null, menuOpen: false, rulesOpen: false });
     return;
   }
   receive(session, m.events);
@@ -141,6 +142,41 @@ export function joinNope(why: string): void {
   clearSwapReveal();
   sfx('notAllowed');
   say(why);
+}
+
+// ---------------------------------------------------------------------------
+// Reactions (2.4): shown on every phone, from the sender's seat
+// ---------------------------------------------------------------------------
+
+/** Host: when each link last sent reactions, to keep a stuck finger from flooding the table. */
+const reactTimes = new Map<string, number[]>();
+const REACT_BURST = 6;
+const REACT_WINDOW_MS = 3000;
+
+/** This phone sent a reaction (already shown here): pass it on. */
+export function sendReaction(r: number): void {
+  const g = getState().game;
+  if (!g?.net || !transport) return;
+  if (g.net.role === 'join') { transport.sendHost({ t: 'react', r }); return; }
+  for (const link of Object.values(linkOf)) transport.sendTo(link, { t: 'react', from: g.net.me, r });
+}
+
+/** Host: a reaction from another phone: show it, and pass it to the rest. */
+export function hostGotReact(linkId: string, r: number): void {
+  const g = getState().game;
+  const p = playerOfLink(linkId);
+  if (!g?.net || g.net.role !== 'host' || !p) return;
+  const now = Date.now();
+  const recent = (reactTimes.get(linkId) ?? []).filter((t) => now - t < REACT_WINDOW_MS);
+  if (recent.length >= REACT_BURST) return;
+  recent.push(now);
+  reactTimes.set(linkId, recent);
+  if (!showReaction(p, r)) return;
+  for (const [q, link] of Object.entries(linkOf)) if (q !== p) transport?.sendTo(link, { t: 'react', from: p, r });
+}
+
+export function joinGotReact(from: PlayerId, r: number): void {
+  if (getState().game?.net?.role === 'join') showReaction(from, r);
 }
 
 // ---------------------------------------------------------------------------

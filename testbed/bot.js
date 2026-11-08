@@ -16,9 +16,11 @@
   function click(el, what) { el.click(); return what; }
 
   function seatCounts() {
-    return [...document.querySelectorAll('.seat-strip')][0]
-      ? [...document.querySelectorAll('.seat-strip')[0].querySelectorAll('.seat-count')]
-        .map((x) => parseInt(x.textContent, 10)).filter((n) => !Number.isNaN(n))
+    // 2.4: seats are around the round table (or in a strip on other screens).
+    const box = document.querySelector('.round-table') || document.querySelector('.seat-strip');
+    return box
+      ? [...box.querySelectorAll('.seat-count')]
+        .map((x) => parseInt(x.textContent.replace(/\D+/g, ' ').trim(), 10)).filter((n) => !Number.isNaN(n))
       : [];
   }
 

@@ -104,7 +104,14 @@ test('messages: good ones are read, anything else is ignored', () => {
 
   const l = addSeat(newLobby('Sam'), 'c1', 'Ali', '');
   const back = readToJoiner(JSON.parse(JSON.stringify({ t: 'lobby', you: 'c1', lobby: l })));
-  assert.deepEqual(back, { t: 'lobby', you: 'c1', lobby: l });
+  assert.deepEqual(back, { t: 'lobby', you: 'c1', lobby: { ...l, adding: false } });
+  const busy = readToJoiner({ t: 'lobby', you: 'c1', lobby: { ...l, adding: true } });
+  assert.equal(busy?.t === 'lobby' && busy.lobby.adding, true);
+  // 2.4: reactions both ways; anything that isn't a whole number is ignored.
+  assert.deepEqual(readToHost({ t: 'react', r: -1 }), { t: 'react', r: -1 });
+  assert.equal(readToHost({ t: 'react', r: 'x' }), null);
+  assert.deepEqual(readToJoiner({ t: 'react', from: 'p2', r: 3 }), { t: 'react', from: 'p2', r: 3 });
+  assert.equal(readToJoiner({ t: 'react', r: 3 }), null);
   assert.equal(readToJoiner({ t: 'lobby', you: 'c1', lobby: { seats: [{ id: 1 }] } }), null);
   assert.deepEqual(readToJoiner({ t: 'refused' }), { t: 'refused', why: 'The host said no.' });
   assert.equal(readToJoiner({ t: 'removed' })?.t, 'removed');

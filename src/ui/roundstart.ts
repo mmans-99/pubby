@@ -14,6 +14,7 @@ import type { PlayerId, Session, VoteKind } from '../session/types.ts';
 import { playerView } from '../session/view.ts';
 import { h, type Child } from './dom.ts';
 import { handBlock, handoffBlock, nameOf, nextClockwise, publicView, seatStrip, send } from './game.ts';
+import { hostLine } from './netscreens.ts';
 import { icon, type IconName } from './icons.ts';
 import type { SavedGame } from './storage.ts';
 import { getState, update } from './store.ts';
@@ -122,7 +123,8 @@ function waitStage(g: SavedGame, me: PlayerId, what: 'vote' | 'swap' | 'tap', wa
   const who = waitingFor.map((p) => nameOf(s, p)).join(', ');
   return h('div', { class: 'stack' },
     h('div', { class: 'step-head' }, h('div', { class: 'step-title' }, icon(ic), ` ${title}`),
-      h('div', { class: 'muted small' }, v?.awaitingHost ? `No majority · ${nameOf(s, s.hostId)} decides` : `Waiting for ${who}`)),
+      v?.awaitingHost ? h('div', { class: 'muted small' }, 'No majority') : h('div', { class: 'muted small' }, `Waiting for ${who}`)),
+    v?.awaitingHost ? hostLine(`${nameOf(s, s.hostId)} (host) is deciding the vote`) : null,
     seatStrip(s, publicView(s), {}),
     s.phase === 'results' ? resultsSummary(s) : handBlock(s, playerView(s, me), null, { head: false }),
   );

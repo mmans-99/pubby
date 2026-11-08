@@ -10,8 +10,8 @@
 import { jokerCount, MAX_PLAYERS, MIN_PLAYERS } from '../rules/cards.ts';
 import { readGameUpdate, type GameRefused, type GameUpdate } from './netgame.ts';
 
-/** Bumped when the messages change, so mixed phones refuse each other. 2: game messages (slice 2). */
-export const LOBBY_PROTOCOL = 2;
+/** Bumped when the messages change, so mixed phones refuse each other. 2: game messages (slice 2). 3: reactions, host adding (2.4). */
+export const LOBBY_PROTOCOL = 3;
 export const NAME_MAX = 16;
 
 export interface LobbySeat {
@@ -31,6 +31,8 @@ export interface Lobby {
   pauseLimit: number | null;
   /** The host pressed Start: no more joining (no late joining). */
   started: boolean;
+  /** The host is adding a player right now (2.4: shown on the other phones). */
+  adding?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -46,7 +48,9 @@ export type ToHost =
   /** Moves in a network game; checked with `phoneActions` (netgame.ts). */
   | { t: 'act'; actions: unknown }
   /** Send me the whole game again. */
-  | { t: 'sync' };
+  | { t: 'sync' }
+  /** A reaction (2.4): -1 = the laugh, else a catch-phrase number. */
+  | { t: 'react'; r: number };
 
 /** Host → joining phone. */
 export type ToJoiner =
@@ -56,7 +60,9 @@ export type ToJoiner =
   | { t: 'closed' }
   | { t: 'ping' }
   | GameUpdate
-  | GameRefused;
+  | GameRefused
+  /** Someone's reaction, for every other phone (2.4). */
+  | { t: 'react'; from: string; r: number };
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null;
 const isStr = (x: unknown): x is string => typeof x === 'string';
@@ -74,6 +80,7 @@ export function readToHost(raw: unknown): ToHost | null {
     case 'ping': return { t: 'ping' };
     case 'act': return { t: 'act', actions: raw['actions'] };
     case 'sync': return { t: 'sync' };
+    case 'react': return Number.isInteger(raw['r']) ? { t: 'react', r: raw['r'] as number } : null;
   }
   return null;
 }
@@ -93,7 +100,7 @@ export function readToJoiner(raw: unknown): ToJoiner | null {
       const pl = l['pauseLimit'];
       return {
         t: 'lobby', you: raw['you'],
-        lobby: { seats, jokers: l['jokers'] !== false, pauseLimit: typeof pl === 'number' ? pl : null, started: l['started'] === true },
+        lobby: { seats, jokers: l['jokers'] !== false, pauseLimit: typeof pl === 'number' ? pl : null, started: l['started'] === true, adding: l['adding'] === true },
       };
     }
     case 'refused': return { t: 'refused', why: isStr(raw['why']) ? raw['why'] : 'The host said no.' };
@@ -102,6 +109,7 @@ export function readToJoiner(raw: unknown): ToJoiner | null {
     case 'ping': return { t: 'ping' };
     case 'game': return readGameUpdate(raw);
     case 'nope': return { t: 'nope', why: isStr(raw['why']) ? raw['why'] : 'Not allowed.' };
+    case 'react': return isStr(raw['from']) && Number.isInteger(raw['r']) ? { t: 'react', from: raw['from'], r: raw['r'] as number } : null;
   }
   return null;
 }

@@ -30,7 +30,8 @@ import {
 import { MAX_PLAYERS } from '../rules/cards.ts';
 import { createSession } from '../session/session.ts';
 import { defaultRng } from '../rules/rng.ts';
-import { hostGotAct, hostStart, hostSync, inNetGame, joinEnded, joinGotGame, joinNope, netChanged, setTransport } from './netplay.ts';
+import { hostLine } from './netscreens.ts';
+import { hostGotAct, hostGotReact, hostStart, hostSync, inNetGame, joinEnded, joinGotGame, joinGotReact, joinNope, netChanged, setTransport } from './netplay.ts';
 
 type Role = 'host' | 'join';
 type Step =
@@ -462,8 +463,10 @@ function kick(id: string): void {
 
 function broadcast(): void {
   if (!lobby) return;
+  // 2.4: the other phones see when the host is adding a player.
+  const out: Lobby = { ...lobby, adding: adding !== null };
   for (const [id, l] of links) {
-    if (l.seated) l.peer.send({ t: 'lobby', you: id, lobby } satisfies ToJoiner);
+    if (l.seated) l.peer.send({ t: 'lobby', you: id, lobby: out } satisfies ToJoiner);
   }
 }
 
@@ -498,6 +501,7 @@ async function startAdding(): Promise<void> {
   const p = new Peer('host');
   const a: Adding = { peer: p, id, code: '', stage: 'making', failText: '' };
   adding = a;
+  broadcast();
   draw();
   // The joining phone sends its name as soon as its side opens, which can
   // arrive before this side's own "open" event: either one moves the link in.
@@ -506,6 +510,7 @@ async function startAdding(): Promise<void> {
     clearTimeout(connectTimer);
     stopScan();
     adding = null;
+    broadcast();
     const link: Link = { peer: p, lastHeard: performance.now(), seated: false };
     links.set(id, link);
     p.onClose = () => linkLost(id);
@@ -538,6 +543,7 @@ function cancelAdding(): void {
   adding = null;
   clearTimeout(connectTimer);
   stopScan();
+  broadcast();
   draw();
 }
 
@@ -596,9 +602,10 @@ function hostGot(id: string, raw: unknown): void {
   const m = readToHost(raw);
   if (!m) return;
   if (m.t === 'ping') return;
-  if (m.t === 'act' || m.t === 'sync') {
+  if (m.t === 'act' || m.t === 'sync' || m.t === 'react') {
     if (!link.seated || !lobby.started) return;
     if (m.t === 'act') hostGotAct(id, m.actions);
+    else if (m.t === 'react') hostGotReact(id, m.r);
     else hostSync(id);
     return;
   }
@@ -675,6 +682,13 @@ function joinCodeView(): View {
   ];
 }
 
+/** 2.4: what the host is doing, for the other phones. */
+function hostDoing(l: Lobby): string {
+  const host = l.seats.find((x) => x.isHost);
+  const name = host ? seatName(host) : 'The host';
+  return l.adding ? `${name} is adding a player…` : `${name} is setting up the game`;
+}
+
 function joinLobbyView(): View {
   const l = seen!;
   if (l.started) return startedView(l, 'join');
@@ -684,8 +698,8 @@ function joinLobbyView(): View {
     topBar('Join a game'),
     h('div', { class: 'panel center' },
       h('p', { class: 'net-big ok' }, icon('check'), ' You’re in'),
-      h('p', { class: 'muted small' }, 'Waiting for the host to start.'),
     ),
+    hostLine(hostDoing(l)),
     h('section', { class: 'panel' },
       h('h2', null, 'Players ', h('span', { class: 'count' }, `${l.seats.length} / ${MAX_PLAYERS}`)),
       h('ol', { class: 'seats' }, l.seats.map((seat, i) =>
@@ -765,6 +779,8 @@ function joinGot(raw: unknown): void {
   if (!m || m.t === 'ping') return;
   if (m.t === 'game') {
     joinGotGame(m);
+  } else if (m.t === 'react') {
+    joinGotReact(m.from, m.r);
   } else if (m.t === 'nope') {
     joinNope(m.why);
   } else if (m.t === 'lobby') {

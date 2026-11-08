@@ -14,12 +14,14 @@
 import { h, type Child } from './dom.ts';
 import { icon } from './icons.ts';
 import type { SavedGame } from './storage.ts';
+import type { Session } from '../session/types.ts';
 import { getState, update } from './store.ts';
-import { chooseLeaderStage, dealingStage, handBlock, nameOf, playHandStage, publicView, seatStrip, send } from './game.ts';
+import { chooseLeaderStage, dealingStage, handBlock, nameOf, playHandStage, publicView, send } from './game.ts';
 import { netRoundStart } from './roundstart.ts';
 import { awardsRow, gameOverStage, podium } from './between.ts';
 import { playerView } from '../session/view.ts';
 import { netSeats } from './netlobby.ts';
+import { roundTable, wasteMiddle } from './table.ts';
 import { seatName } from '../net/lobby.ts';
 
 export function netGameBody(g: SavedGame): Child {
@@ -53,10 +55,22 @@ function connectionNotice(g: SavedGame): HTMLElement | null {
     g.net!.role === 'host' ? 'close the game from the menu and start again.' : 'the host can close the game.');
 }
 
+/**
+ * 2.4: on the other phones whenever the host is the one deciding
+ * ("Cat (host) is deciding: next round or end the game").
+ */
+export function hostLine(text: string): HTMLElement {
+  return h('div', { class: 'host-line', role: 'status' }, icon('wait'), h('span', null, text));
+}
+
+function hostDeciding(s: Session, what: string): HTMLElement {
+  return hostLine(`${nameOf(s, s.hostId)} (host) is deciding: ${what}`);
+}
+
 function waitingFor(g: SavedGame, text: string): Child {
   const s = g.session;
   return h('div', { class: 'stack' },
-    seatStrip(s, publicView(s)),
+    roundTable(s, publicView(s), { bottom: g.net!.me, middle: wasteMiddle(0) }),
     h('p', { class: 'hint center wait-line' }, text),
     handBlock(s, playerView(s, g.net!.me), null, { head: false }),
   );
@@ -67,11 +81,11 @@ function beforeRound(g: SavedGame): Child {
   const s = g.session;
   const host = g.net!.role === 'host';
   return h('div', { class: 'stack' },
-    seatStrip(s, publicView(s)),
+    roundTable(s, publicView(s), { bottom: g.net!.me, middle: wasteMiddle(0) }),
     handBlock(s, playerView(s, g.net!.me), null, { head: false }),
     host
       ? h('button', { class: 'big', onclick: () => send([{ type: 'startRound', by: s.hostId }]) }, icon('play'), ' Start the round')
-      : h('p', { class: 'hint center wait-line' }, `Waiting for ${nameOf(s, s.hostId)} to start`),
+      : hostDeciding(s, 'when to start the round'),
   );
 }
 
@@ -98,7 +112,7 @@ function results(g: SavedGame): Child {
           },
         }, armed ? 'Tap again to end the game' : 'End the game'),
       ]
-      : h('p', { class: 'hint center wait-line' }, `Waiting for ${nameOf(s, s.hostId)}: next round or end the game`),
+      : hostDeciding(s, s.ultimateRound ? 'when to start the Ultimate Round' : 'next round or end the game'),
   );
 }
 

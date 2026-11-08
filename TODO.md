@@ -181,7 +181,12 @@ Built in slices; each slice gets a test link and a checklist.
   - [x] Checks: `tests/net/netgame.test.ts` (6), unit tests 147; `testbed/netgame_check.py` (2, 3, 5 players, leaving, closing, one-phone game kept); `lobby_check.py` updated for the new Start
   - [x] Commit and push v2.3 as the GitHub Pages test build (user approved 16:14)
   - [ ] User tests v2.3 on phones (2 and 3 or more phones)
-- [ ] **Slice 3: votes, swap, Reaction Tap, requests, pause, reactions, results on every phone** (2.3 already has the swap, Reaction Tap and answering votes on each phone; still to do: calling the reshuffle, target and Ultimate votes, open votes showing who voted what, take-cards, pause, reactions across phones, ready-up)
+- [~] **Version 2.4: table and fixes from the v2.3 test** (user 16:38 and 17:55; mockup https://claude.ai/artifact/RBHyfJN8dkByCmMG9aCe6B approved 18:43 "Looks good"; built, `CODE.md` 9k; pushed 19:22 as the GitHub Pages test build; waiting for the user's phone test)
+  - [x] Fix: no shuffle animation at the start of a network game (first screen drawn before the shuffle starts)
+  - [x] Players around an oval table, you at the bottom (one-phone games too: whoever holds the phone), others clockwise; played cards in front of each player, waste pile in the middle, glowing seat for whose turn; deal and end-of-trick animations to the seats
+  - [x] Reactions (emoji and catch-phrases) sent to every phone, floating from the sender's seat with their name; shown from the start of the game to the end only
+  - [x] "Host is deciding / setting up" line on other phones wherever the host makes a decision (lobby: adding a player, settings, seat order, starting; game: starting the round, next round or end, no-majority votes, removing a player)
+- [ ] **Slice 3: votes, swap, Reaction Tap, requests, pause, reactions, results on every phone** (2.3 already has the swap, Reaction Tap and answering votes on each phone; still to do: calling the reshuffle, target and Ultimate votes, open votes showing who voted what, take-cards, pause, ready-up; reactions across phones came in 2.4)
 - [ ] **Slice 4: drops, rejoining, screen kept awake**
 - [x] QR code: host display and camera scanner (bundled maker; Android built-in reader; Camera app join link)
 - [x] Bundled QR reader so an iPhone can scan in Pubby and host (v1.4, user asked 22:23)

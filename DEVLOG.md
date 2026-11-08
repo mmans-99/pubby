@@ -4,6 +4,36 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-08 (evening, later) — Version 2.4 built: round table, reactions on every phone, host line, shuffle fix
+
+**Done**
+- **User (18:43):** "Looks good" to the mockup; built version 2.4 (minor bump: changes from testing 2.3).
+- Round table (`src/ui/table.ts`, `CODE.md` 9k): one-phone and network games, during the shuffle, dealing, play, the end of a trick and picking who leads (network: also before the round). Bottom seat = this phone's player (network) or whoever holds the phone.
+- Shuffle fix: the shuffle now shows at the start of a network game on every phone.
+- Reactions sent to every phone, rising from the sender's seat with their name; button hidden on game over.
+- Host line on other phones: lobby "X is adding a player…" / "X is setting up the game"; game "X (host) is deciding: when to start the round / next round or end the game / when to start the Ultimate Round", "X (host) is deciding the vote".
+- Checks: unit tests 147 (lobby test for `adding` and `react`); `npm run check` clean; `netgame_check.py` 3 players 29 of 29, 2 and 5 players + leaving + kept 65 of 65; `lobby_check.py` 67 of 67 (now reads the version from `package.json`); back 14 of 14; offline 20 of 20; sound 44 of 44; playthrough 53 of 53; after moving the before-round screen onto the table, 2 players again 28 of 28.
+- Docs: `PROJECT.md` 12 (2.4 network notes) and 12a (round table); `CODE.md` 7, version history, new 9k; `TODO.md` Version 2.4 items ticked; this entry. `CLAUDE.md` checked: no rule changes.
+- **User (19:22): "Push".** Committed and pushed to main; GitHub Pages deploys it.
+
+**Next**
+- User tests v2.4 on phones (one-phone game and 2 or more phones).
+
+---
+
+## 2026-11-08 (evening) — Plan for version 2.4 (from the v2.3 phone test)
+
+**Done**
+- **User (16:38), from testing v2.3:** no shuffling animation; wants all players around the board instead of names on top; emojis and catch-phrases didn't show on the other phone; asked for a note saying the host is setting up.
+- Findings: the shuffle bug is real (network game start draws the first screen before the shuffle starts, so nothing redraws until it's over); reactions across phones were planned for slice 3.
+- **User (17:55):** table layout on one-phone games too; reactions visible from the start of the game until it ends; the host note anywhere the host is making a decision.
+- Mockup made for approval: https://claude.ai/artifact/RBHyfJN8dkByCmMG9aCe6B (now vs after at 4, 8 and 2 players; host deciding on results; host setting up in the lobby). Plan recorded in `TODO.md` (Version 2.4). Nothing coded.
+
+**Next**
+- User approves (or changes) the mockup, then build 2.4.
+
+---
+
 ## 2026-11-08 (afternoon, later) — Phase 4 slice 2: play over the network (version 2.3)
 
 **Done**

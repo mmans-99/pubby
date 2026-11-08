@@ -14,6 +14,7 @@ in a saved game (can't be deleted; a missing one blocks Carry on).
 
 Usage: npm run build && python3 testbed/lobby_check.py
 """
+import json
 import functools
 import http.server
 import pathlib
@@ -163,7 +164,8 @@ def main():
         host, ali, bea = pages
 
         check('main menu has Play on several phones', host.get_by_role('button', name='Play on several phones').count() == 1)
-        check('version 2.2 on the main menu', 'Version 2.2' in host.inner_text('main'))
+        want = '.'.join(json.loads((ROOT / 'package.json').read_text())['version'].split('.')[:2])
+        check(f'version {want} on the main menu', f'Version {want}' in host.inner_text('main'))
         check('no connection test on the main menu (removed in 2.2)', 'Connection test' not in host.inner_text('main'))
 
         open_lobby(host, True, 'Hosty')

@@ -144,16 +144,53 @@ def setup(browser, base, n, errors):
     return pages, joined
 
 
+def adding_seen(pages):
+    """2.4: while the host adds a player, the phones already in see it (then back to setting up)."""
+    if len(pages) < 3:
+        return None
+    a = pages[1].get_by_text(f'{NAMES[0]} is setting up the game').count() == 1
+    return a
+
+
 def play(cfg, browser, base):
     n = cfg['players']
     errors = []
-    pages, joined = setup(browser, base, n, errors)
+    pages = [new_page(browser, base, errors, NAMES[i]) for i in range(n)]
+    open_lobby(pages[0], True, NAMES[0])
+    joined = True
+    adding_line = []
+    for i in range(1, n):
+        open_lobby(pages[i], False, NAMES[i])
+        if i >= 2:
+            pages[0].get_by_role('button', name='Add player').click()
+            adding_line.append(wait_for(lambda: pages[1].get_by_text(f'{NAMES[0]} is adding a player…').count() == 1, 5))
+            pages[0].get_by_role('button', name='‹ Back').click()
+            adding_line.append(wait_for(lambda: pages[1].get_by_text(f'{NAMES[0]} is setting up the game').count() == 1, 5))
+        joined = add(pages[0], pages[i]) and joined
     check(f'{n} players: every phone joined the lobby', joined)
+    if n >= 3:
+        check(f'{n} players: other phones see "is adding a player…", then "is setting up the game"', all(adding_line), str(adding_line))
     for p in pages:
         p.evaluate(POPUP_WATCH_JS)
     pages[0].get_by_role('button', name='Start').click()
     in_game = wait_for(lambda: all(p.locator('.screen.game').count() == 1 for p in pages), 15)
     check(f'{n} players: Start puts every phone in the game', in_game)
+    shuffles = [p.locator('.deck.shuffling').count() for p in pages]
+    check(f'{n} players: the shuffle shows on every phone at the start', all(x == 1 for x in shuffles), str(shuffles))
+    me_seats = [p.evaluate("() => { const e = document.querySelector('.round-table .table-seat.me'); return e && e.getAttribute('data-seat'); }") for p in pages]
+    check(f'{n} players: round table on every phone, own seat at the bottom', me_seats == [f'p{k + 1}' for k in range(n)], str(me_seats))
+    # Reactions: a joining phone laughs, the host sends a catch-phrase; every other phone shows them from the sender's seat.
+    pages[1].get_by_role('button', name='Open reactions').click()
+    pages[1].get_by_role('button', name='Laugh').click()
+    got = wait_for(lambda: all(p.evaluate("n => [...document.querySelectorAll('.float-react')].some((e) => e.textContent.includes(n))", NAMES[1]) for k, p in enumerate(pages) if k != 1), 3)
+    check(f'{n} players: a reaction shows on every other phone with the sender\'s name', got)
+    check(f'{n} players: the sender sees its own reaction once (not echoed back)', pages[1].locator('.float-react').count() == 0 and pages[1].locator('.float-emoji').count() >= 1)
+    pages[0].get_by_role('button', name='Open reactions').click()
+    pages[0].locator('.phrase-chip').first.click()
+    got2 = wait_for(lambda: all(p.evaluate("n => [...document.querySelectorAll('.float-react')].some((e) => e.textContent.includes(n))", NAMES[0]) for p in pages[1:]), 3)
+    check(f'{n} players: the host\'s catch-phrase shows on every other phone', got2)
+    for p in pages[:2]:
+        p.get_by_role('button', name='Put reactions away').click()
     infos = [p.evaluate('window.pubbyNet.info()') for p in pages]
     check(f'{n} players: each phone plays its own seat (host p1)',
           [i and i['me'] for i in infos] == [f'p{k + 1}' for k in range(n)] and infos[0]['role'] == 'host'
@@ -187,6 +224,7 @@ def play(cfg, browser, base):
     last_log = -1
     done = False
     acts = {}
+    host_lines = set()
     shots = set()
     shot_dir = pathlib.Path('/tmp/pubby-net-shots')
     shot_dir.mkdir(exist_ok=True)
@@ -197,6 +235,9 @@ def play(cfg, browser, base):
             acts[key] = acts.get(key, 0) + 1
             if act.startswith('play ') or act.startswith('pick up') or act.startswith('forfeit'):
                 turns_by.add(i)
+        for p in pages[1:]:
+            if p.locator('.host-line').count():
+                host_lines.add(p.locator('.host-line').first.inner_text())
         snaps = [p.evaluate(SNAP_JS) for p in pages]
         # Screenshots of a joining phone for a look by eye (not checked).
         s1 = snaps[1]
@@ -230,6 +271,9 @@ def play(cfg, browser, base):
     if cfg['players'] <= 3:
         check(f'{n} players: hidden swap on each phone', acts.get('keep', 0) + acts.get('swap', 0) >= n, json.dumps(acts))
     print('   bot actions:', json.dumps(acts), flush=True)
+    want = [f'{NAMES[0]} (host) is deciding: when to start the round', f'{NAMES[0]} (host) is deciding: next round or end the game']
+    check(f'{n} players: other phones see the host deciding (start the round, next round)', all(any(w in x for x in host_lines) for w in want) if cfg['rounds'] > 1 else any(want[0] in x for x in host_lines), str(sorted(host_lines)))
+    check(f'{n} players: no reactions button on game over', all(p.locator('.reactions-toggle').count() == 0 for p in pages))
     snaps = [p.evaluate(SNAP_JS) for p in pages]
     check(f'{n} players: same final standings on every phone', all(s['ended'] == snaps[0]['ended'] for s in snaps) and snaps[0]['ended'], str([s['ended'] for s in snaps]))
     pops = [p.evaluate('window.__pops') for p in pages]
