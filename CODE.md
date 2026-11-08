@@ -78,11 +78,11 @@ Joining must work with no internet. The options that were considered:
 
 **Slices (each gets a test link and a checklist, `CLAUDE.md` rule 5).**
 - **Slice 0: connection test (go / no-go).** Built 2026-11-07 (version 1.3, section 9f). **Go:** the user's test passed on a phone hotspot (Android + Android, Android + iPhone, mobile data on and off). Version 1.4 adds in-app scanning on iPhones. A "Connection test" screen: two phones do the two scans, then send pings and show the round-trip time. Test on home Wi-Fi, on a phone hotspot, and with mobile data off. If phones can't connect, stop and talk before building more.
-- **Slice 1: network lobby.** Host or join from the home screen, scan to add players, names and profiles from each phone, seat order, host settings, start the game.
+- **Slice 1: network lobby.** Host or join from the home screen, scan to add players, names and profiles from each phone, seat order, host settings, start the game. **Built 2026-11-08 (version 2.1, section 9i).** Start shows every phone the same "All set" list for now; the deal comes in slice 2.
 - **Slice 2: play over the network.** Every phone shows its own hand and the table; turns, slaps, final two, pop-ups on every phone. No pass-the-phone screens in network games.
 - **Slice 3: everything between tricks and rounds.** Votes on each player's own phone (secret by default), reshuffle, hidden swap, Reaction Tap on every phone at once, take-cards requests, pause requests, reactions on every phone from the sender's side, results and Ultimate Round.
 - **Slice 4: drops and rejoining.** Lost connection, rejoining a seat, the host's phone dropping, screen kept awake, game saved on the host's phone.
-- **Slice 5: playtest with 2 to 8 phones.** Release as version 2.0 (a new phase: major bump).
+- **Slice 5: playtest with 2 to 8 phones.** Release as version 3.0 (a new phase: major bump; 2.0 went to sound and the less-text redesign).
 
 **Automated tests.** Two or more headless browser pages on one computer, joined over WebRTC by passing the QR text directly, then the bot playthrough on each page. Real QR scanning and real networks are only checked on phones.
 
@@ -152,17 +152,17 @@ pubby/
     rules/        # pure rules engine
     session/      # state, turns, hidden info, join/leave
     ui/           # rendering, popups, emojis
-    net/          # WebRTC link (peer.ts), short QR codes (signal.ts), QR maker (qr.ts), camera scanner (scan.ts)
+    net/          # WebRTC link (peer.ts), short QR codes (signal.ts), QR maker (qr.ts), camera scanner (scan.ts), QR reader (qrread.ts), lobby (lobby.ts)
     content/      # catch-phrases, emoji set, text (easy to edit)
     pwa/          # icon.svg (+ pre-rendered PNGs), manifest.webmanifest, sw.js template
     index.html    # page template (styles and script are inlined by build.mjs)
     main.ts       # starts the app
   build.mjs       # builds dist/ (index.html, sw.js, manifest, icons)
-  testbed/        # rules test page (Phase 1), playthrough script (bot.js, playthrough.py), offline_check.py, back_check.py, net_check.py
+  testbed/        # rules test page (Phase 1), playthrough script (bot.js, playthrough.py), offline_check.py, back_check.py, net_check.py, sound_check.py, lobby_check.py
   tests/
     rules/
     session/
-    net/          # short codes and QR maker
+    net/          # short codes, QR maker and reader, lobby
   .github/workflows/pages.yml   # builds and deploys dist/ to GitHub Pages on push to main
 ```
 
@@ -183,6 +183,7 @@ The `content/` folder keeps catch-phrases and emojis in one editable place, sinc
 - **Forfeit:** Tests that a forfeit scores last place and gives the other player the higher place, straight away or later after a pick-up.
 - **Final two:** Tests for every last-card case: lower, higher (pick up or forfeit), slap, both out in one trick, missed round (both play jokers), no jokers while the other player is on their last normal card, last normal card with jokers left (jokers thrown away, also on pick-up), and that it applies from the first trick in a 2-player game.
 - **Network (Phase 4):** `tests/net/` unit tests for the short codes (pack, unpack, rebuilt SDP, wrong codes) and the QR maker. `testbed/net_check.py` opens two phone-sized pages, reads each on-screen QR code from a screenshot with OpenCV (like a camera), feeds it to the other page, and checks the link, pings, 😂, wrong codes, Disconnect and Back, plus the join link (opened fresh, and set while Pubby is already open), Exit Pubby, and a real camera scan: a second browser's fake camera plays a video of the host's on-screen code, read by Pubby's reader (37 checks). `tests/net/qrread.test.ts`: Pubby's reader on turned, tilted, noisy and shaded codes, versions 1 to 15, mirrored codes, damaged grids and Reed-Solomon. Also checked against 60 OpenCV-made photos (levels L, M, Q, H; numeric, letters, bytes, emoji; perspective, blur, shading, JPEG): 60 of 60 read (OpenCV itself read 49), about 11 ms each.
+- **Network lobby (slice 1):** `tests/net/lobby.test.ts` (seats, names, problems, joining rules, messages, link kinds, session players accepted by `createSession`). `testbed/lobby_check.py` opens four phone-sized pages (a host and three joining phones), reads the QR codes from screenshots and checks the whole lobby (50 checks, section 9i).
 - **Manual:** Pass-and-play playthroughs at 2, 3, 5, and 8 players before each release.
 
 ## 9a. Rules engine modules (built so far)
@@ -306,6 +307,24 @@ Every function is pure: it returns a new state and never changes the one passed 
 - **Pop-ups:** all close by themselves (`popupMs`: SLAP! / HAHAHA! 4 s, round over 3 s, others 2.4 s) with a timer bar; non-slap ones can be tapped away (`data-skip`). `placeBadge(place | 'last')`.
 - **Screens:** dealing chips and Manual / Auto / Deal all segment; `reshuffleStage` tiles; `targetRow` (between.ts, replaces the target panel; `targetPanel` kept as an alias); votes with `voteShort` / `voteIcon`; `handoffBlock(name, onGo, { compact, note })` for every pass-the-phone screen; felt `.led-mark` watermark and tiny last-trick cards; `handBlock(..., { head: false })`; `podium(s, rec)` and `awardsRow(s)` on results and game over.
 - **Bot (`testbed/bot.js`):** follows the new labels (skips tappable pop-ups, "I'm X", Keep / Swap N, Deal all, "Deal again? Call…", "Start ·", round from `.round-chip`, Ultimate button).
+
+## 9i. Network lobby (Phase 4 slice 1, version 2.1)
+
+- **Main menu:** "New game · one phone" (pass-and-play, unchanged) and "Play on several phones" (new). The connection test link stays.
+- **`src/net/lobby.ts` (pure, unit-tested):** the `Lobby` (seats in order, joker rule, pause limit, `started`) kept on the host's phone, and the messages. Seats have a link id (`host`, `c1`, `c2`…), profile name, optional name for this game, host flag and `connected`. `joinProblem()` refuses a phone with a different Pubby version or `LOBBY_PROTOCOL`, a game already started (no late joining) and a full game (8). `lobbyProblems()` = at least 2 players and no two shown names alike (same check as the one-phone setup). `sessionPlayers()` turns the seats into `p1`, `p2`… in seat order with the host's id and the link id of each player, ready for `createSession` in slice 2.
+- **Messages (JSON over the data channel):** joining phone → host: `hello` (protocol, version, profile name, game name), `rename`, `leave`, `ping`. Host → joining phone: `lobby` (the whole lobby and which seat is yours, sent after every change), `refused` (why), `removed`, `closed`, `ping`. `readToHost` / `readToJoiner` check every message and ignore anything else.
+- **`src/net/signal.ts`:** "Add player" codes are links with their own marker, `<page address>#lobby=<code>`, so the lobby and the connection test never take each other's codes (`linkKind()`; each screen refuses the other's code with a message). `app.ts` opens the lobby's join screen for `#lobby=` at start-up or on `hashchange`, like `#join=`.
+- **`src/ui/netlobby.ts`:** the screen, built like the connection test (own element and state, so the camera and links survive the app's redraws; `stopNetLobby()` when the app leaves the screen tells the other phones and closes every link). Steps: Host or Join › "Who's on this phone?" (profile chips or a new name, saved as a profile) › host: the lobby; joining phone: scan the host's code, show its own code, then the lobby the host sends.
+  - **Host:** seat list (arrows to reorder, ✕ then "Remove?" to remove; the host's own seat can't be removed), "Add player" (one at a time: code 1 as a lobby link QR, "Scan their code", connecting, or "Couldn't connect" with Try again), "Your name for this game", host options (joker rule, pause limit), and Start (off while there are problems or a phone is still connecting). Each added phone gets a new `Peer`. A phone that connects but sends no name within 10 s is dropped.
+  - **Joining phone:** "You're in", the seat list with tags (Host, You), the settings line, "Your name for this game", the duplicate-name warning, and Leave.
+  - **Start:** the host checks `createSession` accepts the players, sets `started` (phones still connecting are refused) and every phone shows "All set · N players" with the same seat list and settings. Test-build note: dealing to every phone comes next. The host can go "Back to the lobby" (phones that dropped since the start lose their seat) or close the game.
+  - **Keep-alive:** both sides ping every 2 s; a phone not heard from for 20 s is gone (10 s was too quick: a short app switch would cost a seat). In the lobby its seat is removed and everyone sees "X lost connection"; after Start it shows "Lost link". The joining phone shows "Connection lost" with "Join again" (the host adds it again; rejoining a seat is slice 4).
+  - **Race fixed in testing:** the joining phone sends `hello` as soon as its side of the link opens, which can arrive before the host's own `open` event; the host now takes the link in on whichever comes first.
+  - **Back gesture (`back.ts`):** closes Add player; in a lobby with other phones asks "Close the game?" / "Leave the game?" (Stay / Close or Leave); otherwise back to the main menu.
+  - **Name box:** one input kept across redraws; redraws wait while it has focus, so the keyboard stays open when someone joins. Lobby messages use their own toast, which doesn't redraw the screen.
+  - **Screen kept awake** in the lobby (Wake Lock, where allowed).
+  - `window.pubbyLobby` lets `lobby_check.py` feed scanned codes.
+- **Checks:** `python3 testbed/lobby_check.py` (50 checks: main menu button and version, host seated, Start off with one player, new name saved as a profile, lobby link QR, random and connection-test codes refused, host refuses its own code, joining, every phone sees the same seats, "You" tag, camera off after joining, duplicate names block Start and every phone sees why, renaming on the joining phone, seat order / joker rule / pause limit / host's name reach every phone, joining by link (name first, link removed from the address bar), remove asks first and tells the phone, Leave asks first, joining again with a saved profile, Start shows every phone the same list, no Add player after Start, Back to the lobby, a phone that goes away is dropped within ~20 s, the host's back gesture asks, Close tells every phone, one-phone New game still opens, no page errors).
 
 ## 8a. Playable test builds (required before every commit)
 

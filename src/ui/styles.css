@@ -858,3 +858,9 @@ button.secondary.on { box-shadow: 0 0 0 3px var(--gold); }
 .md-table th, .md-table td { padding: 3px 6px; border-bottom: 1px solid rgba(0, 0, 0, 0.12); text-align: center; }
 .md-table th:first-child, .md-table td:first-child { text-align: left; font-weight: 700; }
 .rules-sheet .md h3 { scroll-margin-top: 60px; }
+
+/* Network lobby (netlobby.ts, Phase 4 slice 1) */
+.netlobby .big .ic, .home .big .ic { vertical-align: -3px; }
+.netlobby .seat-top .chip-info { flex: none; }
+.chip-info.lost { background: var(--danger); color: var(--cream); }
+.netlobby .net-big .ic { vertical-align: -2px; }

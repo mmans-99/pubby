@@ -24,6 +24,7 @@ import { afterRender, gameScreen, popupLayer, reactionsLayer, startShuffle } fro
 import { csvSheetLayer, pastGamesScreen, profileDetails } from './history.ts';
 import { renderMarkdown } from './markdown.ts';
 import { joinFromLink, netTestScreen, stopNetTest } from './nettest.ts';
+import { joinLobbyFromLink, netLobbyScreen, stopNetLobby } from './netlobby.ts';
 import { addProfile, deleteProfile, findProfile, loadGame, loadProfiles, loadRecords, saveProfiles } from './storage.ts';
 import { getState, initState, say, update, type SetupSeat, type SetupState, type State } from './store.ts';
 import { setupSound, soundButton, soundOverlay, syncSound } from './sound.ts';
@@ -62,15 +63,17 @@ export function startApp(target: HTMLElement): void {
     exitAsk: false,
   };
   // Opened from a host's QR code (iPhone Camera app): go straight to joining.
-  const link = location.hash.startsWith('#join=') ? location.href : null;
+  // #join= is the connection test's code, #lobby= a game's "Add player" code.
+  const link = location.hash.startsWith('#join=') || location.hash.startsWith('#lobby=') ? location.href : null;
+  const linkToLobby = location.hash.startsWith('#lobby=');
   if (link) {
     history.replaceState(history.state, '', location.pathname + location.search);
-    initial.screen = 'nettest';
+    initial.screen = linkToLobby ? 'netlobby' : 'nettest';
   }
   initState(initial, render);
   setupSound();
   render();
-  if (link) joinFromLink(link);
+  if (link && linkToLobby) { joinLobbyFromLink(link); render(); } else if (link) joinFromLink(link);
   setupBack();
   // A join link tapped while Pubby is already open (iPhone Safari reuses the
   // tab and only changes the #join=… part, so the page doesn't start again).
@@ -79,11 +82,13 @@ export function startApp(target: HTMLElement): void {
     if (!document.hidden && getState().screen === 'bye') update({ screen: 'home' });
   });
   window.addEventListener('hashchange', () => {
-    if (!location.hash.startsWith('#join=')) return;
+    const toLobby = location.hash.startsWith('#lobby=');
+    if (!toLobby && !location.hash.startsWith('#join=')) return;
     const again = location.href;
     history.replaceState(history.state, '', location.pathname + location.search);
-    update({ screen: 'nettest', menuOpen: false, rulesOpen: false, soundOpen: false, exitAsk: false });
-    joinFromLink(again);
+    // Not in the middle of a one-phone game's screen: the game stays saved.
+    update({ screen: toLobby ? 'netlobby' : 'nettest', menuOpen: false, rulesOpen: false, soundOpen: false, exitAsk: false });
+    if (toLobby) { joinLobbyFromLink(again); render(); } else joinFromLink(again);
   });
 }
 
@@ -103,9 +108,11 @@ function render(): void {
     : st.screen === 'setup' ? setupScreen()
     : st.screen === 'game' && st.game ? gameScreen(st.game)
     : st.screen === 'nettest' ? netTestScreen(() => update({ screen: 'home' }))
+    : st.screen === 'netlobby' ? netLobbyScreen(() => update({ screen: 'home' }))
     : st.screen === 'bye' ? byeScreen()
     : homeScreen();
   if (st.screen !== 'nettest') stopNetTest();
+  if (st.screen !== 'netlobby') stopNetLobby();
   const parts: (HTMLElement | null)[] = [
     screen,
     h('button', { class: 'rules-btn', 'aria-label': 'Quick rules', onclick: () => update({ rulesOpen: true, rulesTopic: rulesTopicFor(st) }) }, icon('help')),
@@ -202,7 +209,8 @@ function homeScreen(): HTMLElement {
     h('div', { class: 'stack' },
       g ? h('button', { class: 'big', onclick: () => update({ screen: 'game' }) },
         `Carry on game (round ${g.session.round})`) : null,
-      h('button', { class: g ? 'big secondary' : 'big', onclick: startSetup }, 'New game'),
+      h('button', { class: g ? 'big secondary' : 'big', onclick: startSetup }, 'New game · one phone'),
+      h('button', { class: 'big secondary', onclick: () => update({ screen: 'netlobby' }) }, icon('phone'), ' Play on several phones'),
       h('button', { class: 'big secondary', onclick: () => update({ screen: 'profiles', armed: null, openProfile: null }) },
         `Profiles (${Object.keys(getState().profiles).length})`),
       h('button', { class: 'big secondary', onclick: () => update({ screen: 'history', armed: null, openRecord: null }) },
@@ -210,7 +218,7 @@ function homeScreen(): HTMLElement {
     ),
     h('button', { class: 'big secondary', onclick: () => update({ exitAsk: true }) }, 'Exit Pubby'),
     h('button', { class: 'ghost small net-test-btn', onclick: () => update({ screen: 'nettest' }) }, 'Connection test (two phones)'),
-    h('p', { class: 'muted small center' }, 'Pass-and-play on one phone. Test build: the full game on one phone.'),
+    h('p', { class: 'muted small center' }, 'Test build: several phones gets as far as the lobby for now.'),
     h('p', { class: 'muted small center version' }, `Version ${VERSION}`),
   );
 }

@@ -43,13 +43,34 @@ export function joinLink(base: string, code: string): string {
   return `${base}#join=${code}`;
 }
 
-/** The code inside a join link (or the text itself if it's a bare code). */
+/**
+ * The network lobby's "Add player" code is a link too, with its own marker:
+ * <Pubby address>#lobby=<code>. It opens the lobby's join screen, while
+ * #join= opens the connection test, so a code from one isn't used in the other.
+ */
+export function lobbyLink(base: string, code: string): string {
+  return `${base}#lobby=${code}`;
+}
+
+/** Which screen a scanned link belongs to: the connection test, the lobby, or a bare code. */
+export function linkKind(text: string): 'join' | 'lobby' | null {
+  const t = text.trim();
+  if (t.includes('#lobby=')) return 'lobby';
+  if (t.includes('#join=')) return 'join';
+  return null;
+}
+
+/** The code inside a join or lobby link (or the text itself if it's a bare code). */
 export function codeFromText(text: string): string {
   const t = text.trim();
-  const i = t.indexOf('#join=');
-  if (i === -1) return t;
-  const raw = t.slice(i + 6);
-  try { return decodeURIComponent(raw); } catch { return raw; }
+  const marks = ['#join=', '#lobby='];
+  for (const m of marks) {
+    const i = t.indexOf(m);
+    if (i === -1) continue;
+    const raw = t.slice(i + m.length);
+    try { return decodeURIComponent(raw); } catch { return raw; }
+  }
+  return t;
 }
 
 /** Read a short code or join link. Throws CodeError if it isn't a Pubby code. */

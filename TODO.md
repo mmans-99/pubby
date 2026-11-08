@@ -149,13 +149,24 @@ Built in slices; each slice gets a test link and a checklist.
 - [x] **Slice 0: connection test** (go / no-go): version 1.3; user's test passed on a hotspot (Android + Android, Android + iPhone, mobile data on and off), 2026-11-07 22:18. Home Wi-Fi not tried yet.
 - [x] **Version 1.4:** Pubby's own QR reader (iPhones scan in Pubby and can host), join link fixed when Pubby is already open, Exit Pubby button. Pushed 22:44; connection test passed again on a hotspot (23:06)
 - [~] **Version 1.5:** stop pinch zoom slipping through in Samsung Internet. Pushed; user to test on the Samsung phone
-- [ ] **Slice 1: network lobby**
+- [~] **Slice 1: network lobby** (version 2.1, built 2026-11-08, `CODE.md` 9i; pushed; waiting for the user's phone test on GitHub Pages)
+  - [x] "Play on several phones" on the main menu; one-phone game renamed "New game · one phone"
+  - [x] Host or Join; "Who's on this phone?" (profile or new name)
+  - [x] Add player: code 1 as a `#lobby=` link QR, scan code 2, connect; one at a time; Try again / Cancel
+  - [x] Every phone sees the same seats and settings (Host / You tags); names for this game set on each phone
+  - [x] Host: seat order, remove (asks first), joker rule, pause limit, Start (2+ players, no duplicate names)
+  - [x] No late joining; different Pubby versions refused; lobby and connection-test codes kept apart
+  - [x] Keep-alive pings; a silent phone (20 s) loses its seat; Leave / Close ask first; back gesture handled
+  - [x] Start: every phone shows "All set" with the same list (deal is slice 2); host can go back to the lobby
+  - [x] Checks: `tests/net/lobby.test.ts` (9), `testbed/lobby_check.py` 50 of 50
+  - [x] Commit and push v2.1 as the GitHub Pages test build (user approved 13:16)
+  - [ ] User tests on phones (Android + iPhone, hotspot and home Wi-Fi)
 - [ ] **Slice 2: play over the network**
 - [ ] **Slice 3: votes, swap, Reaction Tap, requests, pause, reactions, results on every phone**
 - [ ] **Slice 4: drops, rejoining, screen kept awake**
 - [x] QR code: host display and camera scanner (bundled maker; Android built-in reader; Camera app join link)
 - [x] Bundled QR reader so an iPhone can scan in Pubby and host (v1.4, user asked 22:23)
-- [ ] Host session, join flow, and reconnection
+- [~] Host session, join flow (lobby done in slice 1), and reconnection (slice 4)
 - [ ] Per-player private views (hidden hands never leave the device)
 - [ ] Reactions sent to every phone, showing who sent them and floating in from the sender's side of the table
 - [ ] Multiplayer playtest with 2 to 8 devices

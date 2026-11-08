@@ -7,6 +7,8 @@
  *   2. in a game: nothing (user choice 2026-11-07; the game has its own menu);
  *   3. close an opened profile or past game;
  *   4. profiles, past games, new game setup: back to the main menu;
+ *      several phones: closes Add player, or asks before leaving a lobby
+ *      that has other phones in it (netlobby.ts `netLobbyBack`);
  *   5. main menu: ask "Exit Pubby?"; the next back gesture really exits.
  *
  * How it works: Pubby adds "guard" entries to the browser history (state
@@ -27,6 +29,7 @@
  * guards back. iPhones have no back gesture in an installed web app.
  */
 import { getState, update } from './store.ts';
+import { netLobbyBack } from './netlobby.ts';
 
 const KEY = 'pubby';
 const GUARDS = 2;
@@ -99,6 +102,8 @@ export function backStep(): boolean {
   if (st.csvSheet) { update({ csvSheet: null }); return true; }
   if (st.menuOpen) { update({ menuOpen: false }); return true; }
   if (st.screen === 'game') return true;
+  // Several phones: closes "Add player" or asks before leaving a lobby with others in it.
+  if (st.screen === 'netlobby' && netLobbyBack()) return true;
   if (st.screen === 'profiles' && st.openProfile) { update({ openProfile: null, armed: null }); return true; }
   if (st.screen === 'history' && st.openRecord) { update({ openRecord: null, armed: null }); return true; }
   if (st.screen !== 'home') {

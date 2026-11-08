@@ -4,6 +4,24 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-08 (midday) — Phase 4 slice 1: network lobby (version 2.1)
+
+**Done**
+- **User (12:23 / 12:26):** "What's next" → "Yes build it": build Phase 4 slice 1, the network lobby, on the approved Phase 4 plan (`CODE.md` 4a).
+- Built version 2.1 (minor bump: the first slice of Phase 4, not a whole phase): `src/net/lobby.ts` (lobby and messages, pure), `src/ui/netlobby.ts` (the screen), `#lobby=` links in `src/net/signal.ts`, "Play on several phones" on the main menu ("New game · one phone" for pass-and-play), back gesture in `back.ts`, link handling in `app.ts`, a few styles. Details in `CODE.md` 9i, behaviour in `PROJECT.md` 12.
+- Start doesn't deal yet: every phone shows "All set · N players" with the same seat list (slice 2 deals to every phone).
+- Found in testing: the joining phone's name could arrive before the host's own "open" event and was lost; the host now takes the link in on whichever comes first. A phone silent for 10 s lost its seat even under heavy test load, and a short app switch on a real phone would do the same, so the limit is now 20 s.
+- Checks: new `tests/net/lobby.test.ts` (9), unit tests 141 passing; `npm run check` clean; new `testbed/lobby_check.py` 50 of 50 (four pages: host and three joining phones); `net_check.py` 37 of 37; playthrough 53 of 53; back 14 of 14; offline 20 of 20; sound 44 of 44.
+- Docs: `CODE.md` 4a (slice 1 built; multiplayer release renamed 3.0 because 2.0 went to sound), 7, 8, new 9i; `PROJECT.md` 12 (lobby, plus two things for the user to confirm: the hosting phone is always the host; a silent phone loses its lobby seat after 20 s); `TODO.md` Phase 4. `CLAUDE.md` checked, no changes.
+- Test build: like v1.3 and v1.4, the lobby needs HTTPS and the camera, which the private test page blocks, so GitHub Pages is the test build (`CLAUDE.md` rule 5, explained before asking).
+- **User (13:16): "Yes"** to commit and push v2.1 as the test build. Committed and pushed to main; GitHub Pages deploys it.
+
+**Next**
+- User tests v2.1 on two or more phones (hotspot and home Wi-Fi) with the checklist; answers the two lobby choices in `PROJECT.md` 12.
+- Then slice 2: dealing and playing over the network.
+
+---
+
 ## 2026-11-08 (morning) — Last sound choices
 
 **Done**

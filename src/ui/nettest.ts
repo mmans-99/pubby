@@ -9,7 +9,7 @@
 import { h } from './dom.ts';
 import { makeQr, qrSvg } from '../net/qr.ts';
 import { Peer, type PathInfo } from '../net/peer.ts';
-import { joinLink } from '../net/signal.ts';
+import { joinLink, linkKind } from '../net/signal.ts';
 import { canScan, readerKind, startScanner, type Scanner } from '../net/scan.ts';
 
 type View = (HTMLElement | null)[];
@@ -327,6 +327,7 @@ async function onScanned(text: string): Promise<void> {
       go('connecting');
       startConnectTimer();
     } else {
+      if (linkKind(text) === 'lobby') throw new Error('That’s a code for joining a game, not the connection test. Open “Play on several phones” › Join instead.');
       peer = newPeer('join');
       try {
         code = await peer.answerOffer(text);
