@@ -7,7 +7,10 @@ message, every phone sees the same seats and settings, names come from each
 phone, duplicate names block Start, seat order and options reach every phone,
 remove, leave, join by link, Start shows every phone the same list, Back to
 the lobby, a phone that goes silent is dropped, the host's back gesture asks
-first and closing tells every phone.
+first and closing tells every phone. Since 2.2 (connection test removed) also:
+a lobby link tapped while Pubby is open, a real camera scan through Pubby's
+own reader (a fake camera playing the host's code), Exit Pubby, and profiles
+in a saved game (can't be deleted; a missing one blocks Carry on).
 
 Usage: npm run build && python3 testbed/lobby_check.py
 """
@@ -55,6 +58,24 @@ def read_qr(page):
         except Exception:
             pass
     return text
+
+
+def write_camera_video(png, path, w=640, h=480):
+    """A short Y4M video of the QR screenshot, a little turned and blurred, like a camera."""
+    img = cv2.imdecode(np.frombuffer(png, np.uint8), cv2.IMREAD_GRAYSCALE)
+    side = 300
+    img = cv2.resize(img, (side, side), interpolation=cv2.INTER_AREA)
+    with open(path, 'wb') as f:
+        f.write(f'YUV4MPEG2 W{w} H{h} F10:1 Ip A1:1 C420jpeg\n'.encode())
+        for k in range(10):
+            frame = np.full((h, w), 170, np.uint8)
+            src = np.float32([[0, 0], [side, 0], [side, side], [0, side]])
+            jig = 6 * np.sin(k)
+            dst = np.float32([[170 + jig, 90], [470, 80 + jig], [480, 400], [160, 390 - jig]])
+            m = cv2.getPerspectiveTransform(src, dst)
+            frame = cv2.warpPerspective(img, m, (w, h), dst=frame, borderMode=cv2.BORDER_TRANSPARENT)
+            frame = cv2.GaussianBlur(frame, (0, 0), 0.8)
+            f.write(b'FRAME\n' + frame.tobytes() + bytes([128]) * (w * h // 2))
 
 
 def step(page):
@@ -136,7 +157,8 @@ def main():
         host, ali, bea = pages
 
         check('main menu has Play on several phones', host.get_by_role('button', name='Play on several phones').count() == 1)
-        check('version 2.1 on the main menu', 'Version 2.1' in host.inner_text('main'))
+        check('version 2.2 on the main menu', 'Version 2.2' in host.inner_text('main'))
+        check('no connection test on the main menu (removed in 2.2)', 'Connection test' not in host.inner_text('main'))
 
         open_lobby(host, True, 'Hosty')
         check('host lobby opens with the host seated', step(host) == 'lobby' and names(host) == ['Hosty'])
@@ -154,7 +176,7 @@ def main():
         check('a random QR is refused with a message', wait_for(lambda: ali.locator('.scan-hint').count() == 1, 3) and step(ali) == 'join-scan')
         test_code = code1.replace('#lobby=', '#join=')
         ali.evaluate(f'window.pubbyLobby.scan({test_code!r})')
-        check('a connection-test code is refused', wait_for(lambda: 'connection test' in ali.locator('.scan-hint').inner_text(), 3))
+        check('an old connection-test link is refused', wait_for(lambda: 'isn’t a Pubby connection code' in ali.locator('.scan-hint').inner_text(), 3))
         ali.evaluate(f'window.pubbyLobby.scan({code1!r})')
         check('joining phone shows code 2', wait_for(lambda: step(ali) == 'join-code', 10))
         code2 = read_qr(ali)
@@ -245,9 +267,90 @@ def main():
         check('the other phone is told the game closed', wait_for(lambda: step(ali) == 'closed', 5))
         check('closed screen offers Join again', ali.get_by_role('button', name='Join again').count() == 1)
 
-        # One-phone game still there and fine.
+        # --- Lobby link tapped while Pubby is already open (iPhone Safari reuses the tab) ---
+        host.get_by_role('button', name='Play on several phones').click()
+        host.get_by_role('button', name='Host a game').click()
+        host.get_by_role('button', name='Hosty', exact=True).click()
+        host.get_by_role('button', name='Add player').click()
+        host.wait_for_selector('.qr')
+        link = read_qr(host)
+        ali.goto(url)
+        ali.wait_for_selector('h1')
+        ali.evaluate(f'location.hash = {link[link.index("#"):]!r}')
+        check('lobby link works when Pubby is already open', wait_for(lambda: step(ali) == 'name', 5))
+        check('and is removed from the address bar', '#lobby' not in ali.url, ali.url)
+        ali.get_by_role('button', name='Ali', exact=True).click()
+        wait_for(lambda: step(ali) == 'join-code', 10)
+        host.get_by_role('button', name='Scan their code').click()
+        host.evaluate(f'window.pubbyLobby.scan({read_qr(ali)!r})')
+        check('that phone joins', wait_for(lambda: step(ali) == 'lobby', 20) and wait_for(lambda: names(host) == ['Hosty', 'Ali'], 5))
+
+        # --- A real camera scan: fake camera plays the host's code, read by Pubby's reader ---
+        host.get_by_role('button', name='Add player').click()
+        host.wait_for_selector('.qr')
+        png = host.locator('.qr').screenshot()
+        video = pathlib.Path(tempfile.mkdtemp()) / 'host-code.y4m'
+        write_camera_video(png, video)
+        cam_browser = p.chromium.launch(args=['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
+                                              f'--use-file-for-fake-video-capture={video}'])
+        cctx = cam_browser.new_context(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True)
+        cctx.grant_permissions(['camera'])
+        cam = cctx.new_page()
+        cam.on('pageerror', lambda e: errors.append(str(e)))
+        cam.goto(url)
+        open_lobby(cam, False, 'Cam')
+        t0 = time.time()
+        check('camera + Pubby’s reader reads the host’s code', wait_for(lambda: step(cam) == 'join-code', 20), f'{time.time() - t0:.1f} s')
+        host.get_by_role('button', name='Scan their code').click()
+        host.evaluate(f'window.pubbyLobby.scan({read_qr(cam)!r})')
+        check('and joins', wait_for(lambda: step(cam) == 'lobby', 20) and wait_for(lambda: len(names(host)) == 3, 5))
+        cam_browser.close()
+        check('host drops the phone whose browser closed', wait_for(lambda: names(host) == ['Hosty', 'Ali'], 35))
+        host.get_by_role('button', name='‹ Back').click()
+        host.get_by_role('button', name='Close', exact=True).click()
+        wait_for(lambda: step(ali) == 'closed', 5)
+        check('camera off after leaving', host.evaluate('Array.from(document.querySelectorAll("video")).filter(v => v.srcObject).length') == 0)
+
+        # --- Exit Pubby button on the main menu ---
+        ali.get_by_role('button', name='Main menu').click()
+        ali.get_by_role('button', name='Exit Pubby').click()
+        check('Exit Pubby asks first', 'Exit Pubby?' in ali.inner_text('body'))
+        ali.get_by_role('button', name='Stay').click()
+        check('Stay keeps Pubby open', ali.inner_text('main h1') == 'Pubby')
+        ali.get_by_role('button', name='Exit Pubby').click()
+        ali.get_by_role('button', name='Exit', exact=True).click()
+        ali.wait_for_selector('.screen.bye', timeout=3000)
+        check('Exit shows how to close it here', 'See you next time' in ali.inner_text('main'))
+        ali.get_by_role('button', name='Open Pubby again').click()
+        check('Open Pubby again goes to the main menu', ali.inner_text('main h1') == 'Pubby')
+
+        # --- Profiles in a saved game (user 2026-11-08) ---
         host.get_by_role('button', name='New game · one phone').click()
         check('one-phone New game still opens', host.inner_text('main h1') == 'New game')
+        for n in ('Amy', 'Ben'):
+            host.get_by_placeholder('New player name').fill(n)
+            host.get_by_role('button', name='Add', exact=True).click()
+        host.get_by_role('button', name='Start game').click()
+        host.goto(url)
+        host.wait_for_selector('h1')
+        check('saved game offers Carry on', host.get_by_role('button', name='Carry on game').is_enabled())
+        host.get_by_role('button', name='Profiles').click()
+        host.locator('li', has_text='Amy').get_by_role('button', name='Delete').click()
+        check('a profile in the saved game can’t be deleted', 'Amy is in the game in progress' in host.inner_text('body')
+              and 'Tap to delete' not in host.inner_text('main'))
+        host.locator('li', has_text='Hosty').get_by_role('button', name='Delete').click()
+        host.locator('li', has_text='Hosty').get_by_role('button', name='Tap to delete').click()
+        check('a profile not in the game still can', 'Hosty' not in host.inner_text('main'))
+        # Storage losing a profile another way: Carry on is blocked.
+        host.evaluate('''() => { const p = JSON.parse(localStorage.getItem("pubby.profiles")); delete p["Amy"];
+                                  localStorage.setItem("pubby.profiles", JSON.stringify(p)); }''')
+        host.goto(url)
+        host.wait_for_selector('h1')
+        check('missing profile: Carry on is off and says why', host.get_by_role('button', name='Carry on game').is_disabled()
+              and 'Amy is missing from Profiles' in host.inner_text('main'))
+        host.get_by_role('button', name='New game · one phone').click()
+        host.get_by_role('button', name='New game · one phone').click()
+        check('New game twice ends it', host.inner_text('main h1') == 'New game')
 
         check('no page errors', not errors, '; '.join(errors))
         browser.close()

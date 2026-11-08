@@ -37,7 +37,7 @@ export type Popup =
   | { kind: 'vote'; decidedBy: 'majority' | 'host' | 'both'; result: boolean; text: string }
   | { kind: 'info'; icon: IconName; title: string; text: string };
 
-export type Screen = 'home' | 'profiles' | 'history' | 'setup' | 'game' | 'nettest' | 'netlobby' | 'bye';
+export type Screen = 'home' | 'profiles' | 'history' | 'setup' | 'game' | 'netlobby' | 'bye';
 
 export interface State {
   screen: Screen;

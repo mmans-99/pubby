@@ -23,7 +23,6 @@ import { pauseLayer } from './between.ts';
 import { afterRender, gameScreen, popupLayer, reactionsLayer, startShuffle } from './game.ts';
 import { csvSheetLayer, pastGamesScreen, profileDetails } from './history.ts';
 import { renderMarkdown } from './markdown.ts';
-import { joinFromLink, netTestScreen, stopNetTest } from './nettest.ts';
 import { joinLobbyFromLink, netLobbyScreen, stopNetLobby } from './netlobby.ts';
 import { addProfile, deleteProfile, findProfile, loadGame, loadProfiles, loadRecords, saveProfiles } from './storage.ts';
 import { getState, initState, say, update, type SetupSeat, type SetupState, type State } from './store.ts';
@@ -63,32 +62,31 @@ export function startApp(target: HTMLElement): void {
     exitAsk: false,
   };
   // Opened from a host's QR code (iPhone Camera app): go straight to joining.
-  // #join= is the connection test's code, #lobby= a game's "Add player" code.
-  const link = location.hash.startsWith('#join=') || location.hash.startsWith('#lobby=') ? location.href : null;
-  const linkToLobby = location.hash.startsWith('#lobby=');
+  // A game's "Add player" code (#lobby=…) opened from a Camera app.
+  const link = location.hash.startsWith('#lobby=') ? location.href : null;
   if (link) {
     history.replaceState(history.state, '', location.pathname + location.search);
-    initial.screen = linkToLobby ? 'netlobby' : 'nettest';
+    initial.screen = 'netlobby';
   }
   initState(initial, render);
   setupSound();
   render();
-  if (link && linkToLobby) { joinLobbyFromLink(link); render(); } else if (link) joinFromLink(link);
+  if (link) { joinLobbyFromLink(link); render(); }
   setupBack();
   // A join link tapped while Pubby is already open (iPhone Safari reuses the
-  // tab and only changes the #join=… part, so the page doesn't start again).
+  // tab and only changes the #lobby=… part, so the page doesn't start again).
   // Back from the app switcher after Exit: show the main menu again.
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && getState().screen === 'bye') update({ screen: 'home' });
   });
   window.addEventListener('hashchange', () => {
-    const toLobby = location.hash.startsWith('#lobby=');
-    if (!toLobby && !location.hash.startsWith('#join=')) return;
+    if (!location.hash.startsWith('#lobby=')) return;
     const again = location.href;
     history.replaceState(history.state, '', location.pathname + location.search);
-    // Not in the middle of a one-phone game's screen: the game stays saved.
-    update({ screen: toLobby ? 'netlobby' : 'nettest', menuOpen: false, rulesOpen: false, soundOpen: false, exitAsk: false });
-    if (toLobby) { joinLobbyFromLink(again); render(); } else joinFromLink(again);
+    // A one-phone game in progress stays saved.
+    update({ screen: 'netlobby', menuOpen: false, rulesOpen: false, soundOpen: false, exitAsk: false });
+    joinLobbyFromLink(again);
+    render();
   });
 }
 
@@ -107,11 +105,9 @@ function render(): void {
     : st.screen === 'history' ? pastGamesScreen(() => update({ screen: 'home', armed: null, openRecord: null }))
     : st.screen === 'setup' ? setupScreen()
     : st.screen === 'game' && st.game ? gameScreen(st.game)
-    : st.screen === 'nettest' ? netTestScreen(() => update({ screen: 'home' }))
     : st.screen === 'netlobby' ? netLobbyScreen(() => update({ screen: 'home' }))
     : st.screen === 'bye' ? byeScreen()
     : homeScreen();
-  if (st.screen !== 'nettest') stopNetTest();
   if (st.screen !== 'netlobby') stopNetLobby();
   const parts: (HTMLElement | null)[] = [
     screen,
@@ -207,8 +203,9 @@ function homeScreen(): HTMLElement {
       h('p', { class: 'tagline' }, 'Get rid of your cards. Don’t be last.'),
     ),
     h('div', { class: 'stack' },
-      g ? h('button', { class: 'big', onclick: () => update({ screen: 'game' }) },
+      g ? h('button', { class: 'big', disabled: missingProfiles().length > 0, onclick: carryOn },
         `Carry on game (round ${g.session.round})`) : null,
+      g && missingProfiles().length ? h('p', { class: 'note warn' }, missingText(missingProfiles())) : null,
       h('button', { class: g ? 'big secondary' : 'big', onclick: startSetup }, 'New game · one phone'),
       h('button', { class: 'big secondary', onclick: () => update({ screen: 'netlobby' }) }, icon('phone'), ' Play on several phones'),
       h('button', { class: 'big secondary', onclick: () => update({ screen: 'profiles', armed: null, openProfile: null }) },
@@ -217,10 +214,37 @@ function homeScreen(): HTMLElement {
         `Past games (${loadRecords().length})`),
     ),
     h('button', { class: 'big secondary', onclick: () => update({ exitAsk: true }) }, 'Exit Pubby'),
-    h('button', { class: 'ghost small net-test-btn', onclick: () => update({ screen: 'nettest' }) }, 'Connection test (two phones)'),
     h('p', { class: 'muted small center' }, 'Test build: several phones gets as far as the lobby for now.'),
     h('p', { class: 'muted small center version' }, `Version ${VERSION}`),
   );
+}
+
+/** Profile names used by the saved game. */
+function savedGameProfiles(): string[] {
+  return getState().game?.session.players.map((p) => p.profileName) ?? [];
+}
+
+function inSavedGame(profile: string): boolean {
+  return savedGameProfiles().includes(profile);
+}
+
+/**
+ * Carry on only if every player's profile is still on this phone (user
+ * 2026-11-08). Deleting is blocked, but storage can still lose a profile
+ * (cleared by the phone or the browser).
+ */
+function missingProfiles(): string[] {
+  return savedGameProfiles().filter((n) => !(n in getState().profiles));
+}
+
+function missingText(missing: string[]): string {
+  return `${missing.join(' and ')} ${missing.length > 1 ? 'are' : 'is'} missing from Profiles, so this game can’t carry on. Tap New game twice to end it.`;
+}
+
+function carryOn(): void {
+  const missing = missingProfiles();
+  if (missing.length) { say(missingText(missing)); return; }
+  update({ screen: 'game' });
 }
 
 /** After Exit, when the phone didn't let Pubby close itself. */
@@ -310,6 +334,8 @@ function profilesScreen(): HTMLElement {
           h('button', {
             class: armed ? 'danger small-btn' : 'ghost small-btn',
             onclick: () => {
+              // A profile in the saved game can't go (user 2026-11-08): its history would lose that game.
+              if (inSavedGame(n)) { say(`${n} is in the game in progress. Finish or end that game first.`); return; }
               if (!armed) { update({ armed: key }); return; }
               const profiles = deleteProfile(getState().profiles, n);
               saveProfiles(profiles);

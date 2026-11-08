@@ -4,6 +4,23 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-08 (afternoon) — Version 2.2: profiles in a saved game, connection test removed
+
+**Done**
+- **User (13:26–13:30):** asked what a quiet phone is (explained: no message for 20 s; screen lock, app switch, out of range, Pubby closed) and was fine with 20 s. Found on 2.1: with a game saved, they deleted one of its profiles and could still carry the game on; they don't think it should. Also: the connection test is still on the main menu.
+- Checked: the game carried on fine, but at the end `history.ts` only adds the game to profiles still on the phone, so the deleted player's game was silently left out.
+- **User picked:** block deleting a profile that's in the saved game (and block Carry on if one goes missing another way), and remove the connection test.
+- Built version 2.2 (minor: a fix and a removal): profiles screen refuses to delete a profile in the saved game; main menu turns Carry on off with a note naming who is missing (New game twice ends it). Connection test removed: home link, `src/ui/nettest.ts`, `#join=` links, `joinLink`/`linkKind`, `testbed/net_check.py`; its checks for a link tapped while Pubby is open, Exit Pubby and a real camera scan moved into `lobby_check.py`, plus checks for the profile rules.
+- Found while repeating the checks: the joining phone's name sometimes didn't reach the host (2 runs in 8), so the phone was dropped. It now resends its name every second until the host answers. 20 of 20 targeted runs and 4 of 4 full lobby runs pass since.
+- Checks: unit tests 141; `npm run check` clean; `lobby_check.py` 67 of 67 (four runs); back 14 of 14; offline 20 of 20; sound 44 of 44; playthrough 53 of 53.
+- Docs: `PROJECT.md` (profiles in a saved game; connection test marked removed; quiet phone confirmed; "hosting phone is always the host" still to confirm), `CODE.md` (7, 8, 9f, 9i), `TODO.md`. `CLAUDE.md` checked, no changes.
+- **User (14:16): "Yes"** to commit and push v2.2 as the GitHub Pages test build. Committed and pushed to main.
+
+**Next**
+- User tests v2.2 on phones: 2.1's lobby checklist plus the profile rules; answers whether the hosting phone is always the host.
+
+---
+
 ## 2026-11-08 (midday) — Phase 4 slice 1: network lobby (version 2.1)
 
 **Done**

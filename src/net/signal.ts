@@ -36,44 +36,23 @@ export function packSdp(sdp: string, kind: CodeKind): string {
 }
 
 /**
- * The host's QR code is a link, so an iPhone's Camera app can open Pubby
- * already joining: <Pubby address>#join=<code>.
- */
-export function joinLink(base: string, code: string): string {
-  return `${base}#join=${code}`;
-}
-
-/**
- * The network lobby's "Add player" code is a link too, with its own marker:
- * <Pubby address>#lobby=<code>. It opens the lobby's join screen, while
- * #join= opens the connection test, so a code from one isn't used in the other.
+ * The lobby's "Add player" code is a link, so a phone's Camera app (iPhone)
+ * can open Pubby already joining: <Pubby address>#lobby=<code>.
  */
 export function lobbyLink(base: string, code: string): string {
   return `${base}#lobby=${code}`;
 }
 
-/** Which screen a scanned link belongs to: the connection test, the lobby, or a bare code. */
-export function linkKind(text: string): 'join' | 'lobby' | null {
-  const t = text.trim();
-  if (t.includes('#lobby=')) return 'lobby';
-  if (t.includes('#join=')) return 'join';
-  return null;
-}
-
-/** The code inside a join or lobby link (or the text itself if it's a bare code). */
+/** The code inside a lobby link (or the text itself if it's a bare code). */
 export function codeFromText(text: string): string {
   const t = text.trim();
-  const marks = ['#join=', '#lobby='];
-  for (const m of marks) {
-    const i = t.indexOf(m);
-    if (i === -1) continue;
-    const raw = t.slice(i + m.length);
-    try { return decodeURIComponent(raw); } catch { return raw; }
-  }
-  return t;
+  const i = t.indexOf('#lobby=');
+  if (i === -1) return t;
+  const raw = t.slice(i + 7);
+  try { return decodeURIComponent(raw); } catch { return raw; }
 }
 
-/** Read a short code or join link. Throws CodeError if it isn't a Pubby code. */
+/** Read a short code or lobby link. Throws CodeError if it isn't a Pubby code. */
 export function unpackCode(text: string): Packed {
   const parts = codeFromText(text).split('~');
   if (parts.length !== 6 || parts[0] !== PREFIX) throw new CodeError('That isn’t a Pubby connection code.');

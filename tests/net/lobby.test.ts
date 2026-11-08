@@ -4,7 +4,7 @@ import {
   addSeat, cleanName, joinProblem, jokerLine, LOBBY_PROTOCOL, lobbyProblems, moveSeat, newLobby,
   readToHost, readToJoiner, removeSeat, renameSeat, seatName, sessionPlayers, setConnected,
 } from '../../src/net/lobby.ts';
-import { codeFromText, joinLink, linkKind, lobbyLink } from '../../src/net/signal.ts';
+import { codeFromText, lobbyLink } from '../../src/net/signal.ts';
 import { createSession } from '../../src/session/session.ts';
 import { defaultRng } from '../../src/rules/rng.ts';
 
@@ -111,15 +111,12 @@ test('messages: good ones are read, anything else is ignored', () => {
   assert.equal(readToJoiner({ t: 'pong' }), null);
 });
 
-test('lobby links and connection-test links are told apart; both give back the code', () => {
+test('lobby links give back the code; a bare code stays as it is', () => {
   const code = 'PUBBY1~o~u~p~f~1.2.3.4:5';
   const lob = lobbyLink('https://x.io/pubby/', code);
-  const tst = joinLink('https://x.io/pubby/', code);
   assert.equal(lob, 'https://x.io/pubby/#lobby=' + code);
-  assert.equal(linkKind(lob), 'lobby');
-  assert.equal(linkKind(tst), 'join');
-  assert.equal(linkKind(code), null);
   assert.equal(codeFromText(lob), code);
-  assert.equal(codeFromText(tst), code);
   assert.equal(codeFromText(code), code);
+  // The old connection test's links (#join=, removed in 2.2) are not lobby codes.
+  assert.notEqual(codeFromText('https://x.io/pubby/#join=' + code), code);
 });

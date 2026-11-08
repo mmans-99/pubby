@@ -20,7 +20,7 @@ import { getState, update } from './store.ts';
 import { addProfile, findProfile, saveProfiles } from './storage.ts';
 import { makeQr, qrSvg } from '../net/qr.ts';
 import { Peer } from '../net/peer.ts';
-import { linkKind, lobbyLink } from '../net/signal.ts';
+import { lobbyLink } from '../net/signal.ts';
 import { canScan, startScanner, type Scanner } from '../net/scan.ts';
 import {
   addSeat, cleanName, joinProblem, jokerLine, LOBBY_PROTOCOL, lobbyProblems, moveSeat, NAME_MAX, newLobby,
@@ -66,6 +66,7 @@ const PAUSE_LIMITS: readonly { label: string; sec: number | null }[] = [
 const CONNECT_TIMEOUT_MS = 20000;
 const JOIN_WAIT_MS = 120000;
 const HELLO_TIMEOUT_MS = 10000;
+const HELLO_RESEND_MS = 1000;
 const PING_EVERY_MS = 2000;
 const LOST_AFTER_MS = 20000;
 
@@ -100,6 +101,7 @@ let armed: string | null = null;
 let leaveAsk = false;
 let handling = false;
 let pingTimer: number | undefined;
+let helloTimer: number | undefined;
 let connectTimer: number | undefined;
 let wakeLock: { release(): Promise<void> } | null = null;
 /** The name-for-this-game box. Kept, so redraws don't close the keyboard. */
@@ -156,6 +158,7 @@ export function netLobbyBack(): boolean {
 function reset(): void {
   stopScan();
   clearInterval(pingTimer);
+  clearInterval(helloTimer);
   clearTimeout(connectTimer);
   pingTimer = undefined;
   if (adding) adding.peer.close();
@@ -721,10 +724,19 @@ function newJoinPeer(): Peer {
     if (peer !== p) return;
     clearTimeout(connectTimer);
     hostHeard = performance.now();
-    p.send({ t: 'hello', protocol: LOBBY_PROTOCOL, version: VERSION, profileName: myProfile, sessionName: '' });
+    // Send the name, and again every second until the host answers: a
+    // message sent the moment the link opens was sometimes lost in testing
+    // (2 runs in 8). The host ignores repeats once the phone has a seat.
+    const hello = (): void => {
+      if (peer !== p || step !== 'join-wait') { clearInterval(helloTimer); return; }
+      p.send({ t: 'hello', protocol: LOBBY_PROTOCOL, version: VERSION, profileName: myProfile, sessionName: '' });
+    };
+    clearInterval(helloTimer);
+    helloTimer = window.setInterval(hello, HELLO_RESEND_MS);
     startPings();
     void keepAwake();
     go('join-wait');
+    hello();
   };
   p.onMessage = (raw) => { if (peer === p) joinGot(raw); };
   p.onClose = () => {
@@ -834,7 +846,6 @@ async function onScanned(text: string): Promise<void> {
         if (adding === a && a.stage === 'connecting') addFailed('The phones scanned each other but couldn’t link up.');
       }, CONNECT_TIMEOUT_MS);
     } else {
-      if (linkKind(text) === 'join') throw new Error('That’s a connection test code. Scan the code from the host’s Add player.');
       const p = newJoinPeer();
       peer = p;
       try {

@@ -146,7 +146,7 @@ Built in slices; each slice gets a test link and a checklist.
 - [x] Choose transport: B, WebRTC with QR handshake, no server (`CODE.md` section 4)
 - [x] User approves the Phase 4 plan (`CODE.md` section 4a, 20:39)
 - [x] User answers the multiplayer open questions (2026-11-07, `PROJECT.md` section 12)
-- [x] **Slice 0: connection test** (go / no-go): version 1.3; user's test passed on a hotspot (Android + Android, Android + iPhone, mobile data on and off), 2026-11-07 22:18. Home Wi-Fi not tried yet.
+- [x] **Slice 0: connection test** (go / no-go; screen removed in 2.2): version 1.3; user's test passed on a hotspot (Android + Android, Android + iPhone, mobile data on and off), 2026-11-07 22:18. Home Wi-Fi not tried yet.
 - [x] **Version 1.4:** Pubby's own QR reader (iPhones scan in Pubby and can host), join link fixed when Pubby is already open, Exit Pubby button. Pushed 22:44; connection test passed again on a hotspot (23:06)
 - [~] **Version 1.5:** stop pinch zoom slipping through in Samsung Internet. Pushed; user to test on the Samsung phone
 - [~] **Slice 1: network lobby** (version 2.1, built 2026-11-08, `CODE.md` 9i; pushed; waiting for the user's phone test on GitHub Pages)
@@ -161,6 +161,12 @@ Built in slices; each slice gets a test link and a checklist.
   - [x] Checks: `tests/net/lobby.test.ts` (9), `testbed/lobby_check.py` 50 of 50
   - [x] Commit and push v2.1 as the GitHub Pages test build (user approved 13:16)
   - [ ] User tests on phones (Android + iPhone, hotspot and home Wi-Fi)
+  - [x] User confirmed the 20 s quiet-phone rule (13:30)
+- [~] **Version 2.2** (user 13:30, from testing 2.1; pushed 14:16, waiting for the phone test)
+  - [x] A profile in the saved game can't be deleted; a missing one turns Carry on off and says why
+  - [x] Connection test removed (button, screen, `#join=` links, `net_check.py`); its checks moved to `lobby_check.py` (67 of 67)
+  - [x] Commit and push v2.2 as the GitHub Pages test build (user approved 14:16)
+  - [ ] User tests v2.2 on phones
 - [ ] **Slice 2: play over the network**
 - [ ] **Slice 3: votes, swap, Reaction Tap, requests, pause, reactions, results on every phone**
 - [ ] **Slice 4: drops, rejoining, screen kept awake**

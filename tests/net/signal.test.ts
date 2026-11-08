@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CodeError, codeFromText, codeToDescription, joinLink, packSdp, parseCandidate, parseSdp, unpackCode } from '../../src/net/signal.ts';
+import { CodeError, codeFromText, codeToDescription, lobbyLink, packSdp, parseCandidate, parseSdp, unpackCode } from '../../src/net/signal.ts';
 import { makeQr } from '../../src/net/qr.ts';
 
 // A data-channel offer as Chrome writes it (addresses and keys made up).
@@ -91,10 +91,10 @@ test('QR codes: size grows with the text, finder patterns in three corners', () 
   assert.deepEqual(makeQr('hello').modules, makeQr('hello').modules);
 });
 
-test('join links: the host code as a link opens Pubby joining', () => {
+test('lobby links: the host code as a link opens Pubby joining', () => {
   const code = packSdp(CHROME_OFFER, 'offer');
-  const link = joinLink('https://mmans-99.github.io/pubby/', code);
-  assert.equal(link, `https://mmans-99.github.io/pubby/#join=${code}`);
+  const link = lobbyLink('https://mmans-99.github.io/pubby/', code);
+  assert.equal(link, `https://mmans-99.github.io/pubby/#lobby=${code}`);
   assert.equal(codeFromText(link), code);
   assert.deepEqual(unpackCode(link), unpackCode(code));
   // Some browsers escape characters in the address; still reads.

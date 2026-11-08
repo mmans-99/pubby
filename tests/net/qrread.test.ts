@@ -60,7 +60,7 @@ test('reads a flat, clean code', () => {
 });
 
 test('reads Pubby join codes turned, tilted, noisy and shaded', () => {
-  const link = 'https://mmans-99.github.io/pubby/#join=' + PUBBY_CODE;
+  const link = 'https://mmans-99.github.io/pubby/#lobby=' + PUBBY_CODE;
   let ok = 0;
   const cases: Shot[] = [];
   for (let i = 0; i < 40; i++) {
