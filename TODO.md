@@ -141,7 +141,7 @@ Built in slices; each slice gets a test link and a checklist.
 - [x] Push v1.2 (user approved 18:10)
 - [~] Confirmed working with no network (automated check passes; user's own test on the phone still to do)
 
-## Phase 4 — Multiplayer over local network (WebRTC, phones only)
+## Phase 4 — Multiplayer over local network (WebRTC, phones only) (slice 4 waits until Phase 4b is done)
 
 - [x] Choose transport: B, WebRTC with QR handshake, no server (`CODE.md` section 4)
 - [x] User approves the Phase 4 plan (`CODE.md` section 4a, 20:39)
@@ -203,6 +203,23 @@ Built in slices; each slice gets a test link and a checklist.
 - [x] Per-player private views (hidden hands never leave the host's phone; slice 2)
 - [x] Reactions sent to every phone, showing who sent them and floating in from the sender's side of the table (2.4)
 - [ ] Multiplayer playtest with 2 to 8 devices
+
+## Phase 4b — Single player with computer players (current; plan approved 2026-11-12, `PROJECT.md` 12c, build guide `CODE.md` 9m)
+
+Built before network slice 4 (user 2026-11-12). One slice at a time; each needs checks, a test build and the user's "push".
+
+- [x] User answers the single-player questions and approves the plan (2026-11-12 17:15)
+- [ ] **Slice A: AI brain and arena** (`CODE.md` 9m.1 to 9m.4, 9m.9)
+  - [ ] `computer` flag on players; `vsComputer` on game records (9m.2)
+  - [ ] `src/ai/`: persona, names, seen, memory, eval, moves, decide, react
+  - [ ] Tests: imports, seen (public log), fair play, memory, eval, moves, decide
+  - [ ] `testbed/ai_arena.ts` and its pass bars
+- [ ] **Slice B: single player on the phone, Normal only** (9m.5 to 9m.8): bot driver, own-seat screens, setup screen, separate vs-computer stats, `testbed/solo_check.py`
+- [ ] **Slice C: Easy, Mixed levels, personalities, names (many cultures, editable), reactions (on by default), speed**
+- [ ] **Slice D: Hard** (sampling and search; Web Worker if needed)
+- [ ] **Slice E: people and computer players on one phone**
+- [ ] **Slice F: computer players in network games**
+- [ ] **Slice G: tuning from the user's games**
 
 ## Phase 5 — Polish
 

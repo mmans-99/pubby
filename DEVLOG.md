@@ -4,6 +4,22 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-12 (evening) — Plan for single player with computer players
+
+**Done**
+- **User (17:06):** "Push it": v2.5 committed and pushed (57fe769) as the GitHub Pages test build; phone test still to do.
+- **User (17:08):** asked for a detailed plan for a single-player mode with computer players that play like real people and don't cheat.
+- Plan written: `PROJECT.md` 12c (what a computer player may know, levels, how they play, feeling human, how a game runs, 7 open questions), `CODE.md` 9m (no-cheating design built on the network redaction, `src/ai/` modules, the `solo.ts` driver, slices A to E, checks), `TODO.md` Phase 4b. `CLAUDE.md`: no rule changes. Doc-only: no version bump, no test build.
+- Nothing coded.
+
+- **User (17:15) answered:** Mixed levels; fixed random names from many cultures, editable; computer reactions on; separate vs-computer stats; computer players with people on one phone and in network games go in the plan; single player before any more network work; version numbers: any number, just say there's a new one. Asked for the plan written so it can be coded with Haiku.
+- Plan rewritten as a step-by-step build guide: `CODE.md` 9m (no-cheating design with tests, every `src/ai/` module with types and rules of thumb, memory update table, arena and pass bars, bot driver, own-seat screens, setup screen, separate stats, slices A to G with checks and phone checklists). `PROJECT.md` 12c answers and the two mixed modes; `TODO.md` Phase 4b; `CLAUDE.md` rule 8 (version: any new number, tell the user).
+
+**Next**
+- Build Phase 4b slice A from `CODE.md` 9m (a new session can start there). Phone test of v2.5 is still waiting.
+
+---
+
 ## 2026-11-12 — Version 2.5 built: votes, take-cards, pause and ready-up on every phone (slice 3)
 
 **Done**

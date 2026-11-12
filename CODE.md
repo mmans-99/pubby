@@ -185,6 +185,7 @@ The `content/` folder keeps catch-phrases and emojis in one editable place, sinc
 - **Network (Phase 4):** (`testbed/net_check.py` below was removed with the connection test in 2.2; its link-while-open, Exit Pubby and camera-scan checks moved to `lobby_check.py`.) `tests/net/` unit tests for the short codes (pack, unpack, rebuilt SDP, wrong codes) and the QR maker. `testbed/net_check.py` opens two phone-sized pages, reads each on-screen QR code from a screenshot with OpenCV (like a camera), feeds it to the other page, and checks the link, pings, 😂, wrong codes, Disconnect and Back, plus the join link (opened fresh, and set while Pubby is already open), Exit Pubby, and a real camera scan: a second browser's fake camera plays a video of the host's on-screen code, read by Pubby's reader (37 checks). `tests/net/qrread.test.ts`: Pubby's reader on turned, tilted, noisy and shaded codes, versions 1 to 15, mirrored codes, damaged grids and Reed-Solomon. Also checked against 60 OpenCV-made photos (levels L, M, Q, H; numeric, letters, bytes, emoji; perspective, blur, shading, JPEG): 60 of 60 read (OpenCV itself read 49), about 11 ms each.
 - **Network lobby (slice 1):** `tests/net/lobby.test.ts` (seats, names, problems, joining rules, messages, link kinds, session players accepted by `createSession`). `testbed/lobby_check.py` opens four phone-sized pages (a host and three joining phones), reads the QR codes from screenshots and checks the whole lobby (67 checks, section 9i).
 - **Network play (slice 2):** `tests/net/netgame.test.ts`: at every step of games at 2, 3, 5 and 8 players, each phone's copy holds only its own cards (hands, deck, waste pile, hidden decks blank) with the same counts and the same player view as the host's; take-cards requests reach only the two players; moves for another player and the clock are refused; messages read back; the log sent in parts adds up to the whole. `testbed/netgame_check.py` plays whole games over WebRTC on 2, 3 and 5 phone-sized pages at once with `bot.js` on every page (each phone acts only for its own player), plus leaving, closing and a one-phone game kept (section 9j).
+- **Single player (Phase 4b, planned):** `tests/ai/` unit tests, the fair-play and import tests, `testbed/ai_arena.ts` pass bars and `testbed/solo_check.py` (section 9m).
 - **Network votes, take-cards, pause and ready-up (slice 3, 2.5):** `testbed/netvotes_check.py` drives three phones by hand (live ballots, reshuffle and target votes, take-cards held back and answered, pause asked, approved and timed on every phone, ready-up and the Ultimate vote on the results screen), with the bot only to reach the results screen (30 checks, section 9l).
 - **Manual:** Pass-and-play playthroughs at 2, 3, 5, and 8 players before each release.
 
@@ -478,6 +479,225 @@ The test build is GitHub Pages (service workers need it, `CODE.md` 8a), so the p
 - Rejoining after a lost connection, saving and carrying on a network game, keeping the screen awake during a network game (slice 4).
 - Host transfer (decided: none, `PROJECT.md` 12).
 - Any rule change.
+
+## 9m. Single player with computer players: build guide (APPROVED PLAN, 2026-11-12, not built)
+
+Game design and the user's answers: `PROJECT.md` 12c. The user approved this plan and wants it built slice by slice (any model, including Haiku). **Build one slice at a time, in order (A to G).** After each slice: run every check listed for it, give the user the test build and checklist (`CLAUDE.md` rule 5), update the five MD files, and wait for "push" before committing (rule 3). New version number per pushed code change, any number, just tell the user (rule 8).
+
+**Working without network:** if `npm install` fails (no network), link the preinstalled tools: `ln -sfn /opt/npm-tools/node_modules node_modules` (it has tsx, esbuild, typescript, @types). Remove the link before committing (`rm node_modules`); never commit it. Browser checks use Python Playwright (`python3 testbed/<name>.py` after `npm run build`).
+
+**Rules that never change in this work:** no game rule changes (`src/rules/`, `src/session/session.ts` logic) except the small additions listed below. If something seems missing, add it to `PROJECT.md` Open questions and ask (`CLAUDE.md` rule 6). One-phone and network games must keep working exactly as before: every existing check must still pass after every slice.
+
+---
+
+### 9m.1 The no-cheating design (read this first; every slice depends on it)
+
+1. **One door in.** A computer player ("bot") only ever receives an `AiSeen` built by `seenBy()` in `src/ai/seen.ts`:
+   ```ts
+   export interface AiSeen {
+     readonly me: PlayerId;
+     readonly session: Session;     // redactSession(fullSession, me): only my hand is real
+     readonly view: PlayerView;     // playerView(redacted, me)
+     readonly events: readonly SessionEvent[]; // new log events since last call (all public)
+   }
+   export function seenBy(full: Session, me: PlayerId, fromLogIndex: number): AiSeen
+   ```
+   `redactSession` (`src/net/netgame.ts`) is the same function that makes a joining phone's copy in a network game. It is already tested to hold no card but the player's own (other hands, deck, waste pile and hidden decks are blank cards).
+2. **Forbidden imports.** Files in `src/ai/` may import: `src/rules/*` (pure rules and card helpers), `src/session/types.ts`, `src/session/view.ts`, and `src/net/netgame.ts` (only in `seen.ts`). Never `src/session/session.ts`, `src/ui/*`, `src/audio/*`, or other `src/net/*` files. Test `tests/ai/imports.test.ts` reads every `src/ai/*.ts` file and fails on any other import.
+3. **The log is public.** Every log event is already sent to every phone in network games. Test `tests/ai/seen.test.ts` must check, over whole games at 2 to 8 players, that the only events carrying a `Card` are `cardPlayed` (face up on the table). If a future event adds private cards, this test fails.
+4. **Fair-play test** (`tests/ai/fairplay.test.ts`): run games where every seat is a bot. At each decision (at least 500 positions across 2, 3, 5 and 8 players), make a scrambled copy of the full session: collect every card the bot can't see (all other hands, `deal.remaining`, `hiddenDecks`, `deal.hiddenDecks`, the waste pile), shuffle them with a different seed, put them back keeping every pile's size. Call `decide()` on `seenBy(original)` and `seenBy(scrambled)` with the same bot memory and the same rng seed. **The two moves must be identical.** If a bot ever used a hidden card, this fails.
+5. **Hard players only simulate imagined deals** (`sample.ts`), built from the bot's memory, never from the real session.
+
+---
+
+### 9m.2 Small additions outside `src/ai/` (slice A unless said)
+
+- `src/session/types.ts`: `SessionPlayer` and `SessionSetup.players[]` get `readonly computer?: boolean`. `createSession` (`session.ts`) copies it onto `players`. Nothing else in the rules reads it.
+- `src/session/record.ts`: `GameRecord` gets `readonly vsComputer: boolean` (true if any player has `computer`), and each record player keeps `computer`. Old records without the field read as `false`.
+- Bots' `profileName` is `computer:<name>` (so it can never match a real profile), `sessionName` is the shown name.
+
+---
+
+### 9m.3 `src/ai/` modules (slice A builds all but `search.ts`; slice D adds it)
+
+All pure TypeScript, no DOM, seeded randomness only (`Rng` from `src/rules/rng.ts`). Unit tests in `tests/ai/`.
+
+**`persona.ts`**
+```ts
+export type Level = 'easy' | 'normal' | 'hard';
+export type Personality = 'careful' | 'reckless' | 'counter' | 'windup';
+export type Speed = 'relaxed' | 'normal' | 'fast';
+export interface Persona { readonly level: Level; readonly personality: Personality; }
+export const PERSONALITY_WEIGHTS: Record<Personality, { risk: number; jokerSave: number; reactRate: number; reshuffleBar: number }>;
+// careful: risk 0.7, jokerSave 1.3, reactRate 0.1; reckless: risk 1.4, jokerSave 0.7, reactRate 0.25;
+// counter: risk 1.0, jokerSave 1.0, reactRate 0.15; windup: risk 1.0, jokerSave 1.0, reactRate 0.6
+export function randomPersona(level: Level, rng: Rng): Persona;
+export function thinkMs(kind: 'forced' | 'easy' | 'hard', speed: Speed, rng: Rng): number;
+// forced 400–700, easy 900–1800, hard 1300–2500 ms; × relaxed 1.5, normal 1, fast 0.5
+```
+
+**`names.ts`**: a fixed list of at least 60 first names from many cultures, roughly evenly spread, for example: Aisha, Ravi, Mei, Kwame, Sofia, Yusuf, Priya, Hiro, Amara, Mateo, Zainab, Arjun, Leila, Chen, Nia, Omar, Sana, Diego, Fatima, Tariq, Adebayo, Ingrid, Kofi, Noor, Rohan, Yuki, Imran, Lucia, Bilal, Esi, Farah, Jamal, Anika, Tomas, Halima, Kenji, Ayesha, Samir, Thandiwe, Javier, Mariam, Haruto, Chiamaka, Luca, Zara, Dev, Soo-ah, Emeka, Rania, Pablo, Hana, Kamal, Olga, Ines, Musa, Lin, Asha, Malik, Elif, Kai. `pickNames(n, taken: string[], rng)` returns `n` different names, none equal (ignoring case) to `taken`.
+
+**`memory.ts`**: what one bot remembers this round. Updated **only** from events.
+```ts
+export interface Memory {
+  me: PlayerId; level: Level;
+  round: number;
+  trick: { player: PlayerId; cardId: string; card: StandardCard }[]; // current trick so far (from cardPlayed)
+  ledSuit: Suit | null;
+  played: Map<string, Card>;          // cards seen played this round (still remembered)
+  waste: Set<string>;                 // ids of seen cards that went to the waste pile
+  known: Record<PlayerId, Map<string, Card>>; // cards known to be in a player's hand
+  voids: Record<PlayerId, Set<Suit>>; // suits a player is known to have none of
+  jokersPlayed: number;
+  trickCount: number;
+}
+export function newMemory(me: PlayerId, level: Level, order: readonly PlayerId[]): Memory;
+export function remember(m: Memory, events: readonly SessionEvent[], rng: Rng): void;
+export function rebuild(me: PlayerId, level: Level, s: Session, rng: Rng): Memory; // replay this round's log (for Carry on)
+export function unknownPool(m: Memory, seen: AiSeen): Card[];
+// the full deck (52 cards + s.jokerTotal jokers if jokerRuleEnabled) minus my hand, minus played, minus every known card, minus jokers played
+```
+How each event updates memory:
+| Event | Update |
+|---|---|
+| `roundStarted` | reset everything for the new round |
+| `missingSuitDeclared {player, suits}` | add `suits` to `voids[player]` |
+| `swapped {player}` | clear `known[player]` (their hand changed unseen) |
+| `cardPlayed {player, card}` | push to `trick`; set `ledSuit` if first; add to `played`; remove from `known[player]`; if `card.suit !== ledSuit` it's a slap: add `ledSuit` to `voids[player]` |
+| `jokerPlayed` | `jokersPlayed++` (a joker lead: `ledSuit` stays null until the next card) |
+| `slapped {slapper, slapped}` | every card in `trick` goes into `known[slapped]`; remove those cards' suits from `voids[slapped]`; clear `trick` |
+| `trickResolved` | if `trick` not empty (no slap): add its ids to `waste`; clear `trick`, `ledSuit`; `trickCount++`; then forgetting (below) |
+| `wastePilePickedUp {player}` | every remembered `waste` card goes into `known[player]`; clear `waste`; remove those suits from `voids[player]` |
+| `cardsTaken {requester, target}` | move `known[target]` into `known[requester]`; `voids[requester]` = suits in both `voids[requester]` and `voids[target]`; clear target |
+| `jokersDiscarded` | nothing (count only) |
+
+**Forgetting (Easy only):** after each `trickResolved`, each remembered `played` card is forgotten with chance 0.5 (removed from `played` and `waste`, so it counts as unknown again), each `known` card with chance 0.3, and each void with chance 0.15. Normal and Hard forget nothing.
+
+**`eval.ts`**: plain numbers the decisions use.
+```ts
+export function rankValue(c: Card): number;             // 2..14, joker 0
+export function pVoid(m: Memory, seen: AiSeen, p: PlayerId, suit: Suit): number;
+// 1 if suit in voids[p] and no known card of suit; 0 if known[p] has a card of suit;
+// else with u = unknown cards of suit, U = all unknown cards, k = p's card count minus known cards:
+//   ((U - u) / U) ** k   (chance none of their unknown cards is that suit); 0 if U = 0
+export function pSlapAfterMe(m: Memory, seen: AiSeen, suit: Suit): number;
+// players still to play in this trick (clockwise after me, still holding cards):
+//   1 - product of (1 - pVoid(p, suit))
+export function leadRisk(m: Memory, seen: AiSeen, suit: Suit): number; // same, over every other active player
+export function handBadness(hand: readonly Card[]): number;
+// average over standard cards of (rankValue - 8) / 6, + 0.15 per suit longer than 5, - 0.3 per missing suit, - 0.4 per joker
+```
+
+**`moves.ts`**: the rules of thumb (`PROJECT.md` 12c). Each returns a `SessionAction` (or null). `w` = personality weights; `L` = my legal cards (`view.legalCardIds`).
+- `chooseCard(seen, m, persona, rng)` (my turn, `view.turn === me`, no `pendingFinalTwo`):
+  - **Leading** (trick empty and no joker lead pending): for each suit I hold, `risk = leadRisk(suit) * w.risk`. Pick the suit with the lowest risk (ties: the suit with more unknown cards still out, then my longest suit). If `risk < 0.15`, lead my **highest** card of it, else my **lowest**. If every suit's risk > 0.7 and I hold a joker, lead the joker.
+  - **Following** (I hold the led suit): `d = pSlapAfterMe(ledSuit) * w.risk`; `top` = highest led-suit card in the trick. If `d < 0.25` or I'm the last to play: play my highest card of the suit. Else if I have cards under `top`: play my highest card under `top`. Else (all mine beat `top`): if I hold a joker and `d > 0.6 / w.jokerSave`, play the joker; else play my lowest card of the suit.
+  - **Slapping** (I don't hold the led suit): never a joker. Pick the standard card with the highest `rankValue + (it is my only card of its suit ? 6 : 0)`.
+  - **Joker lead before me** (`ledSuit` null, trick has only a joker): treat as leading.
+  - **Final two** (two players hold cards): if I hold 2+ cards, prefer keeping my **lowest** card for last (play the higher legal card when following safely); if the other player has 1 card and I'm leading, lead my lowest card unless a joker lead is safer (only with a joker and when my lowest is higher than the other's likely card: compare to the average of the unknown pool).
+  - **Easy:** with chance 0.2 play a random legal card instead.
+- `chooseFinalTwo(seen, persona, rng)` (`pendingFinalTwo === me`): `pile = view.wastePileCount`. Pick up if `pile < 12`; forfeit if `pile > 25`; between, pick up with chance `(25 - pile) / 13` (careful ×1.2, reckless ×0.8).
+- `chooseSwap(seen, m, persona, rng)` (`phase === 'swap'`, not done): find my shortest suit with 1 to 4 cards; if its highest card is 9 or more, swap all of it (makes a missing suit). Fill the remaining slots (up to 4 in total) with my standard cards of rank Q, K or A, highest first. Never swap jokers. Easy: swap only my 0 to 2 highest cards (random count). Send `{ type: 'swap', by: me, cardIds }` (empty list = keep).
+- `chooseVote(seen, persona, rng)` (vote open, I haven't voted): reshuffle: yes if `handBadness(myHand) > 0.35 * w.reshuffleBar` (reshuffleBar: careful 0.9, reckless 1.1, others 1). Target: yes if my score is in the top half. Ultimate: yes if I'm not alone in the lead, or with chance 0.5 if personality is reckless or windup; draw Ultimate (`vote.draw`): yes if I'm one of the drawn players, else 50/50.
+- `chooseCallVote(seen, persona, rng)`: in phase `reshuffle` with `canCallReshuffle`, call it if `handBadness > 0.5 * w.reshuffleBar` (each bot decides once per round). Bots never propose a target or call an Ultimate Round vote themselves (keeps the human in charge of game length).
+- `chooseTakeAnswer(seen)` (a request asks me): always agree (if several askers, give to the first in seat order).
+- `chooseTakeAsk(seen, m, rng)`: only between tricks, at most once per round per bot, only if my card count ≥ 2 × the average of the others still holding cards and at least 3 players hold cards: ask the player with the fewest cards. Otherwise null.
+- `chooseLeader(seen, rng)` (`view.chooser === me`): the previous round's loser (`session.previous.loser`) with chance 0.6, else a random other player.
+- `chooseDeal(seen, rng)` (I'm the dealer, deal not started): `[{ type: 'setDealMode', by: me, mode: 'auto' }, { type: 'autoDealStart', by: me, firstSeat: <random player> }]`; the app's existing auto deal (host phone, `afterRender`) then deals with the animation.
+- `chooseTap(persona, rng)`: `ms` from a normal curve, mean 310, spread 60, kept between 190 and 650; false start with chance 0.03 (Easy 0.06). Returns `{ type: 'reactionTap', by: me, ms, falseStart }`.
+- `chooseReady(seen)`: on `results`, if not ready: `readyUp`.
+
+**`decide.ts`**
+```ts
+export interface Decision { readonly actions: SessionAction[]; readonly think: 'forced' | 'easy' | 'hard'; }
+export function decide(seen: AiSeen, m: Memory, persona: Persona, rng: Rng): Decision | null;
+```
+Order of checks (first that applies wins): game paused or ended → null; I'm the dealer and the deal hasn't started → deal; open vote I haven't voted in → vote (votes are checked before anything else); `swap` phase → swap; `reactionTap` and I'm in it without a result → tap; `chooseLeader` and I'm the chooser → leader; take-cards request to me waiting → answer; `pendingFinalTwo === me` → pick up or forfeit; my turn → card (if a take-cards request is waiting, null: the trick waits); between tricks → maybe ask to take; `reshuffle` phase → maybe call a reshuffle; `results` → ready. `think` is `forced` when there was only one legal choice. **Every returned move must pass the session rules**; the arena counts refusals and must report 0.
+
+**`react.ts`**: `reactionFor(e: SessionEvent, me, humanIds, persona, rng): number | null` (−1 = 😂, otherwise an index into `CATCH_PHRASES` from `src/content/catch-phrases.md`). After `slapped`: if I'm the slapper, chance `reactRate × 1.5`: "You got slapped" (or "You got slapped by a kiiid" 1 time in 4); if a human was slapped and I'm not involved, chance `reactRate`: 😂; if I was slapped, chance `reactRate × 0.5`: "Revenge time!!". Look phrases up by text, so editing the list doesn't break it (skip if the text isn't there). The driver limits each bot to one reaction per 4 seconds and at most 2 bots per event.
+
+**`sample.ts` and `search.ts` (slice D, Hard only)**
+- `sampleDeals(m, seen, n, rng): Record<PlayerId, Card[]>[]`: deal `unknownPool` into each other player's unknown slots (card count minus known cards), respecting `voids` (a player can't get a suit they're void in), plus their known cards. Leftover cards are "out of play" (hidden decks, swapped out). Retry up to 20 times per sample; if constraints can't be met, ignore voids for that sample.
+- `search(seen, m, persona, rng, budgetMs = 150)`: for each legal card, for each sampled deal (up to 40, stop when the time budget is spent): build a `PlayState` from `seen.session.play` with the sampled hands, play my card with `playCard` (`src/rules/play.ts`), finish the trick and 2 more tricks with every player using `chooseCard` logic on their imagined hand (a quick version that doesn't need memory: lowest-risk play), and score: −1 per card I picked up, +3 if I went out, −0.2 × my hand size at the end. Pick the best average; Hard uses it for card choices only (everything else uses `moves.ts`).
+- If moves on a slow phone take longer than the thinking time, move `search` into a Web Worker (esbuild can bundle a worker as a string; keep one file output). Measure first (slice D).
+
+---
+
+### 9m.4 Arena (`testbed/ai_arena.ts`, slice A; run with `npx tsx testbed/ai_arena.ts`)
+
+Plays whole games with only bots, using `createSession` and `applyAction` from the session layer (the arena is allowed the full session; the bots still only get `seenBy`). The arena itself does the host's jobs: `startRound` when no bot calls a reshuffle, `advance` on results (after every bot is ready), `endSession` after a set number of rounds, and the `tick` clock. Options: `--games N --players 2..8 --levels normal,easy,... --seed S`. It prints JSON: games finished, refused moves (must be 0), moves that crashed (must be 0), average place by level and personality, decision time p50 / p95 per level, and per-seat average place. Also a `random` level used only here (random legal move) as the baseline.
+
+**Pass bars** (written into the DEVLOG each time): 0 refused moves; every game finishes; Easy and Normal p95 under 20 ms per decision on a laptop; over 2000 four-player games with 2 Normal and 2 random seats, Normal's average place is better by at least 0.3; Normal beats Easy by at least 0.15. Slice D: Hard beats Normal by at least 0.15 and p95 under 150 ms.
+
+---
+
+### 9m.5 The bot driver in the app (`src/ui/bots.ts`, slice B)
+
+- `SavedGame` (`src/ui/storage.ts`) gets `readonly bots?: BotsInfo`:
+  ```ts
+  export interface BotInfo { readonly level: Level; readonly personality: Personality; }
+  export interface BotsInfo {
+    readonly seats: Readonly<Record<PlayerId, BotInfo>>;
+    readonly speed: Speed;
+    readonly reactions: boolean;
+    readonly me?: PlayerId;   // set in single player (one person, own-seat screens); unset in one-phone games with several people
+  }
+  ```
+  Saved with the game (unlike `net`), so Carry on works.
+- `botsTick()` is called at the end of `afterRender()` (`game.ts`). It does nothing unless `screen === 'game'`, the game has `bots`, and this phone runs the session (not a joining phone). It also waits (returns) while the game is paused, a pop-up is showing, the end-of-trick animation or shuffle is on (`trickAnimating()`, `shuffling()`), or an auto deal is running.
+- Memory: `Map<PlayerId, Memory>` plus the log index each bot has seen. On every tick each bot's memory takes the new log events (`remember`). When a game is loaded (Carry on) or the map is empty, `rebuild` from the log.
+- One move at a time: go through bots in seat order starting after the last one that moved; the first `decide` that returns a move is scheduled with `setTimeout(thinkMs(...))`. While waiting, that bot's seat shows "thinking…" (a small dots line on its seat in `table.ts`, via a `thinking: PlayerId | null` value the table reads). When the timer fires: if the session log length changed since deciding, throw the move away and tick again; else send it with `runActions(actions)` (the same path as moves from a network phone). If refused (shouldn't happen), `console.error` it, mark that bot as skipped until the next log change, and tick again.
+- Votes: bots vote one by one with their own thinking time (so ballots appear live, one at a time).
+- Reactions: after new events, for each bot `reactionFor(...)`; show with `showReaction(bot, r)` (2.4) after a short random delay (300–1200 ms), respecting the limits in `react.ts`, only if `reactions` is on.
+- The person's own Reaction Tap and moves work exactly as now.
+
+### 9m.6 Own-seat screens for single player (slice B)
+
+Single player uses the network-game screens (your hand always shown, the round table, live ballots, take status, the host's pause) with no network. Add two helpers in `game.ts` and use them instead of `g.net` where the meaning is "this phone shows one player's own seat":
+```ts
+export function ownSeat(g: SavedGame): PlayerId | null { return g.net?.me ?? g.bots?.me ?? null; }
+export function runsSession(g: SavedGame): boolean { return !g.net || g.net.role === 'host'; }
+```
+Places to switch (from the 2.5 code; check each with `grep -n "g.net" src/ui/*.ts`):
+- `game.ts`: `publicView` (use `ownSeat`), `absorb` holder (`ownSeat`), `saveFinishedGame` call (pass nothing in single player; see stats below), `keep` for other players' moves (`ownSeat(g) !== null`), `gameScreen` (use `netGameBody` when `ownSeat(g)`), the game bar (`netPauseButton` when `ownSeat(g)`), the menu (`netMenu` for network; for single player the normal `gameMenu` "Home (game is kept)" / "End this game"), the hand-holder line 538, dealing "You:" texts and `watching` (a bot dealer: "Ben is dealing"), the wait line, take-cards wait and `takeStatus`, the pass-on button (off when `ownSeat(g)`).
+- `netscreens.ts`: replace `g.net!.me` with `ownSeat(g)!` and `g.net!.role === 'host'` with `ownSeat(g) === s.hostId`; `connectionNotice` returns null unless `g.net`; `netMenu` stays network-only.
+- `roundstart.ts`: ballots and "no secret vote" when `ownSeat(g)` (single player votes are open); `swapRevealStage` and `tapStage` button texts ("Done") when `ownSeat(g)`.
+- `between.ts`: `netPauseButton`, `askPausePanel`, `pausePanel`, `pauseRequestsBanner`, `pauseLayer` use `ownSeat(g)`; `pauseTick` checks `runsSession(cur)` instead of the role.
+- `app.ts`: the `stopNetLobby` line is unchanged (only `net`).
+- Take-cards: in single player, requests are shown like network games (`PROJECT.md` 12c). Notes and prompts already work for `me`.
+
+### 9m.7 Single-player setup screen (slice B; levels and names in slice C)
+
+- Home screen: new button **"Play against the computer"** under "New game · one phone" (icon: a new line icon `bot` in `icons.ts`, a simple robot head).
+- New screen `solo` (`Screen` type in `store.ts`; screen code in `src/ui/solosetup.ts`): your profile (pick or new, like "Who's on this phone?"), number of computer players (1 to 7, stepper), level (All Easy / All Normal / All Hard / Mixed chips; slice B only offers Normal), speed (Relaxed / Normal / Fast), reactions on/off, joker rule, pause limit, and the list of computer players (name, level chip, personality hidden; tap the name to edit, tap the level chip to cycle when Mixed or always). Start.
+- Start: players `p1` = you (host, at seat 1), `p2..` = bots with `computer: true`, `profileName: 'computer:<name>'`, `sessionName: <name>`; personas from `randomPersona`; `createSession`; `SavedGame` with `stage: 'hand'`, `holder: 'p1'`, `bots: { seats, speed, reactions, me: 'p1' }`; `startShuffle()`; go to `game`.
+- Seats: you sit at the bottom of the round table (already true for `bottom = ownSeat`).
+- Names: start from `pickNames`; editing uses the same name rules as session names (`NAME_MAX`, no duplicates, not empty).
+
+### 9m.8 Stats kept separate (slice B)
+
+- New storage key `pubby.profiles.vsComputer` (same `Profiles` shape) with `loadVsProfiles()` / `saveVsProfiles()` in `storage.ts`.
+- `saveFinishedGame` (`history.ts`): build the record; if `record.vsComputer`, add the game to the human players' entries in the vs-computer map (never the normal map); computer players are never added anywhere.
+- Profile screen (`profileDetails`): a second section "Vs computer" with the same totals, shown only if that profile has any vs-computer games. Profile CSV: an extra block for vs-computer totals.
+- Past games: a "vs computer" tag on those records; computer players' names show with the bot icon.
+
+### 9m.9 Slices, checks and phone checklists
+
+**Slice A: AI brain and arena (no app changes except 9m.2).** Files: `src/ai/persona.ts`, `names.ts`, `seen.ts`, `memory.ts`, `eval.ts`, `moves.ts`, `decide.ts`, `react.ts`; `testbed/ai_arena.ts`; tests `tests/ai/imports.test.ts`, `seen.test.ts`, `fairplay.test.ts`, `memory.test.ts` (one test per event row in 9m.3, plus Easy forgetting with a fixed seed, plus `rebuild` equals step-by-step `remember`), `eval.test.ts` (`pVoid` cases: known void, known card, the formula), `moves.test.ts` (hand-made positions: follows low when a known void is after me; dumps high when last to play; slaps with a singleton high card; never slaps with a joker; swap makes a void; always agrees to a take; final two pick-up thresholds), `decide.test.ts` (random positions from arena games: every move legal). Checks: `npm run check`, `npm test`, arena pass bars (9m.4). Test build: nothing to play on the phone yet; tell the user so (rule 5) and show the arena numbers.
+
+**Slice B: single player on the phone (Normal level only).** 9m.5 to 9m.8. Browser check `testbed/solo_check.py`: start "Play against the computer" with 2, 3, 5 and 8 players; the person's seat is played by `bot.js` (inject it as `netgame_check.py` does); play to game over; checks: bots move on their own, "thinking…" shows, ballots appear live, the swap and Reaction Tap work, take-cards status shows, pausing stops the bots and resuming restarts them, closing the page mid-game and Carry on continues with bots that still play (memory rebuilt), the record is "vs computer", normal profile totals unchanged and vs-computer totals added, no page errors. All existing checks still pass. **Phone checklist:** start a game against 3 Normal bots; watch a full round (do they wait like people? any strange plays?); call a reshuffle and see the bots vote; pause and resume; close Pubby mid-round and Carry on; finish the game and look at the profile's "Vs computer" section; check a normal one-phone game is unchanged.
+
+**Slice C: levels, Mixed, personalities, names, reactions, speed.** Easy (forgetting, random slips), personality weights, Mixed and level chips, the name list and editing, reactions on/off, speed. Arena: Normal beats Easy by the 9m.4 bar. Browser check additions: Mixed levels saved in the game, edited names show at the table, reactions float from bot seats and stop when switched off. **Phone checklist:** play one game on All Easy and one on All Normal: does Easy feel beatable and Normal like a decent player? Are reactions fun, not spammy? Do Relaxed and Fast speeds feel right?
+
+**Slice D: Hard.** `sample.ts`, `search.ts`, tests (`sample.test.ts`: every sample keeps hand sizes, known cards and voids; `search` returns a legal card within budget; fair-play test also run for Hard). Arena: Hard beats Normal, p95 under 150 ms; if a slow phone stutters, use a Web Worker. **Phone checklist:** play against 3 Hard bots; do moves still come within a couple of seconds; does it feel noticeably stronger but still fair?
+
+**Slice E: people and computer players on one phone.** One-phone setup (`app.ts` `setupScreen`) gets "Add computer player" (name, level); bots get `computer: true`. `SavedGame.bots` without `me`. The phone is only passed between people: in `roundstart.ts` `nextVoter`, `nextSwapper`, `nextTapper`, in `between.ts` `takeHolder`, and in `game.ts` `actorOf` / the holder choice in `absorb`, skip bot players (they act through the driver). When the game waits only on bots, show the table with "Ben is thinking…" (new small screen `botsWaitStage` in `game.ts`). Votes stay secret (bots vote unseen; only the result pop-up shows). Take-cards involving a bot follow one-phone privacy (a bot's request to a person reaches that person's hand screen; requests between two bots are not shown). The host must be a person (setup refuses a bot host). Browser check: a 2-people + 2-bots game to the end with `bot.js` playing the people. **Phone checklist:** play with a friend plus 2 bots: the phone only goes between the two of you, bots play in between.
+
+**Slice F: computer players in network games.** In the lobby (`netlobby.ts`, `lobby.ts`) the host gets "Add computer player" (name, level) for an empty seat: a seat with no link (`link: 'bot'`), not counted for pings, not refused for version. At Start, `hostStart` keeps bot seats out of `linkOf`; `SavedGame.bots` (no `me`) on the host's phone; the driver runs on the host's phone only (`runsSession`). Bots follow network rules (open votes, public take-cards). Other phones see bots like any player (bot icon from `computer`). Check: `netgame_check.py` game with 2 phones + 2 bots to the end, plus the fair-play test still green. **Phone checklist:** two phones plus two bots: bots play on both screens; a bot's vote shows live on both.
+
+**Slice G: tuning.** Change weights and thresholds in `moves.ts` / `persona.ts` from the user's phone games; rerun the arena; record numbers in the DEVLOG.
+
 
 ## 8a. Playable test builds (required before every commit)
 

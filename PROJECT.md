@@ -447,6 +447,77 @@ Chosen from a sample page the user listens to on their phone: **Pubby sound samp
 
 ---
 
+## 12c. Single player: computer players (PLAN, 2026-11-12; answers given, build plan in `CODE.md` 9m)
+
+**Goal:** one person plays Pubby on their own phone against computer players that play like real people: they think for a moment, make human-sized mistakes on easier levels, react to slaps, and **never cheat**. A computer player only ever knows what a person in its seat could know.
+
+### What a computer player may know (the "fair play" rule)
+A computer player knows exactly what a person sitting in its seat could see or remember, and nothing else:
+- **Its own hand.** Never anyone else's, never the deck still to deal, never the hidden decks, never the waste pile order beyond what it saw.
+- **Every card played face up** in a trick (everyone at the table sees these).
+- **Cards a player picked up after a slap.** The trick was face up, so everyone saw which cards went into the slapped player's hand. A sharp person remembers that "Ben is holding the K♥ he picked up".
+- **Missing suits:** declared at the start of the round, and shown by a slap (a player who slaps on hearts had no hearts at that moment, until they pick up hearts).
+- **Card counts, scores, places, votes, take-cards requests and answers** (all public in a game with computer players, see below), and how many cards moved in a take.
+- **The joker count** shown at game start, and every joker seen played.
+- **Not known:** which cards were swapped out or swapped in (hidden swap), which cards moved in a take-cards request (only how many), and anything in the hidden decks.
+
+How much of this it remembers depends on its level (Easy forgets a lot, Hard remembers everything a good card counter would).
+
+### Levels
+| Level | Remembers | Plays like |
+|---|---|---|
+| **Easy** | Its hand, the current trick, declared missing suits. Forgets most played cards after a trick or two. | A casual player. Follows the obvious rules of thumb (play low when a slap could come), sometimes gets it wrong, holds jokers too long or wastes them. |
+| **Normal** | Every card played this round, who picked up what, who is out of which suit. | A decent regular. Plays safe when a slap is likely, dumps high cards when it's safe, saves jokers for dangerous moments, chooses slap cards sensibly. |
+| **Hard** | Everything Normal remembers, plus careful counting of what's still out. | A strong player. Before each move it imagines many possible ways the unknown cards could be spread (only ones that fit what it knows) and picks the move that works best across them. It still can't see cards; it can only guess well. |
+
+**Choosing levels (user 2026-11-12: "Mixed"):** in setup, pick **All Easy**, **All Normal**, **All Hard** or **Mixed**. Mixed gives each computer player a random level; tap a computer player's level chip to change just that one. Each computer player keeps its level for the whole game.
+
+### How they play (rules of thumb used by every level, tuned by level and personality)
+- **Following suit:** if someone still to play might be out of the led suit (known missing suit, or that suit is nearly gone), play your **lowest** card of the suit so you're not the one who picks up the slap. If everyone still to play surely has the suit (or you're last), it's safe to get rid of a **high** card.
+- **Leading:** lead a suit nobody is known to be out of, preferably one with plenty of cards still out; lead high when it's safe to clear big cards, low when it's risky. Avoid leading into a known missing suit.
+- **Slapping (when out of the led suit):** pick the card you most want rid of: usually a high card, or the last card of a short suit (to become out of that suit and slap again later).
+- **Jokers:** played instead of following when following would very likely make you the one who picks up a slap, or to get through a dangerous trick near the end. Kept, not wasted, early in the round. In the final two, used the way a good player would (section 7 cases), including the "missing round" case.
+- **Final two:** aims for its last card to be lower than the other player's. When its last card was higher: **pick up** the waste pile if it's small or it still has a good chance; **forfeit** if the pile is huge and the scores make last place acceptable.
+- **Hidden swap (2 and 3 players):** swaps away high cards and tries to empty a short suit (to slap later and lead first). Keeps a good hand.
+- **Reshuffle vote:** calls or votes yes when its hand is bad (lots of high cards, no short suits); votes no with a good hand.
+- **Target score and Ultimate Round votes:** says yes when it helps it (ahead for a target, behind for an Ultimate Round), with some personality on top.
+- **Take-cards requests:** answering, it almost always agrees (giving your cards takes you out with the next place); asking, it only asks when it's likely to come last anyway and a bigger hand can't make things worse. Taking adds the other player's cards to its own hand (section 4.2).
+- **Choosing who leads** (as last round's winner): usually picks the round loser or whoever has the most points, to keep the pressure on.
+- **Dealing (when it's the dealer):** auto deal from a random first player, so you watch the cards fly round as usual.
+- **Reaction Tap:** a human-like reaction time (about 0.2 to 0.45 seconds, sometimes slower, now and then a false start). It never sees your time first.
+
+### Feeling like real people
+- **Thinking time:** each computer player waits before playing, about 0.6 to 2.5 seconds: quick when there's only one card it can play, longer for hard choices. A speed setting (Relaxed / Normal / Fast) scales it.
+- **Personalities:** each computer player gets one: *Careful* (plays safe, hoards jokers), *Reckless* (dumps high cards early, takes risks), *Counter* (plays the odds closely), *Wind-up* (sends the most reactions). Personality nudges choices; it never lets a player see cards.
+- **Reactions (on by default, user 2026-11-12):** computer players sometimes send 😂 and catch-phrases after a slap (more when they did the slapping, or when you got slapped), from their seat, like a network game. An off switch in setup.
+- **Names (user 2026-11-12):** each computer player gets a random name from a fixed list of names from many cultures (South Asian, Arabic, African, East Asian, European, Latin American and more, not just Western names), never the same as another player in the game. You can edit any computer player's name in setup. A small computer icon sits next to the name so it's never mistaken for a person.
+- **Mistakes (Easy, a little on Normal):** forgetting played cards, misjudging who is out of a suit, now and then a careless card. Never an illegal move.
+
+### How a single-player game runs
+- **Main menu:** "Play against the computer". Pick your profile, how many computer players (1 to 7, so 2 to 8 players in all), level, speed, joker rule and pause limit. You are the host and sit at the bottom of the table.
+- **Screens:** like a network game on your phone: your cards always shown (no pass-the-phone screens), the round table, glowing seat for whose turn it is, "Ben is thinking…" while a computer player decides.
+- **Votes** are open (live ballots, as in network games): you see each computer player's vote appear.
+- **Take-cards requests** between any players are shown to you (who asked whom, never which cards), as in network games.
+- **Pause:** you pause straight away (you're the host); the computer players freeze. Ready-up: they're always ready; you move on.
+- **Saved and carry on:** the game is saved on the phone as you go, like a one-phone game, so you can close Pubby and carry on.
+- **History and stats (user 2026-11-12: separate):** finished games appear in Past games marked "vs computer". They never change your normal profile totals; each profile gets separate "Vs computer" totals, shown in its own section of the profile screen. Computer players never become profiles.
+- **Offline:** works with no signal; nothing is sent anywhere.
+
+### Computer players with other people (user 2026-11-12: "put it in the plan")
+Built after single player works (`CODE.md` 9m slices E and F):
+- **One phone, people and computer players:** the one-phone setup gets "Add computer player". The phone is only passed between the people; computer players act on their own while the table shows "Ben is thinking…". Votes stay secret, as in every one-phone game; computer players vote secretly too. Take-cards requests stay private to the two players, as in one-phone games.
+- **Network games with computer players:** in the lobby the host can add computer players to empty seats. They run on the host's phone, see only what a joining phone would see, and follow the network rules (open votes, public take-cards). If the host's phone leaves, the game ends as now.
+- In both, a game with any computer player counts as a "vs computer" game for stats.
+
+### Decided (single player, user 2026-11-12)
+1. Levels: Mixed is offered (plus All Easy / All Normal / All Hard), and each computer player's level can be changed.
+2. Names: fixed list of names from many cultures, picked at random, editable.
+3. Reactions from computer players: on by default, with an off switch.
+4. Stats: separate "vs computer" totals; normal profile totals are never changed by these games.
+5. Mixed games: computer players with people on one phone, and in network games, are in the plan (built after single player).
+6. Order: single player (this whole section) is built **before** network slice 4 and the multiplayer release.
+7. Version numbers: the user doesn't mind which number; every pushed code change gets a new version and the user is told the new number (`CLAUDE.md` rule 8).
+
 ## 13. Quick rules (in-game help)
 
 - **What it is:** A short, simplified rules guide inside the app.
@@ -473,6 +544,7 @@ Answer these in any order. Each one unblocks part of the build.
 None. (2026-11-07 20:38: the multiplayer questions were answered; see section 12 and Decided.)
 
 ### Decided (for reference)
+- 2026-11-12, single player (section 12c): Mixed levels plus All Easy / Normal / Hard; fixed random names from many cultures, editable; computer reactions on by default; separate vs-computer stats; computer players with people on one phone and in network games are in the plan; single player is built before network slice 4; version numbers: any new number per pushed change, just say it.
 - 2026-11-12, network slice 3: votes in network games show live (each ballot on every phone as it's cast); take-cards requests in network games show who asked whom on every phone (answers too), never which cards.
 - 2026-11-08 (09:27), look: all 25 less-text changes approved (section 12a): line icons, no emoji, explanations in ? rules, self-closing pop-ups, target score row on the before-the-round and results screens, podium results.
 - 2026-11-08 (07:29), sound: Huge SLAP!; fireplace crackle kept; every other effect as on the sample page (Resumed = click up); sound on by default with music and effects both quieter; music and effects on/off and volume can be changed during a game from the sound button (section 12b).
