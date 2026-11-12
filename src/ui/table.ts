@@ -11,6 +11,7 @@
 
 import { h, type Child } from './dom.ts';
 import { cardFaceFromId, ordinal, SUIT_SYMBOL } from './cards.ts';
+import { thinkingSeat } from './thinking.ts';
 import type { PlayerId, Session } from '../session/types.ts';
 import type { PlayerView } from '../session/view.ts';
 import type { Suit } from '../rules/cards.ts';
@@ -76,12 +77,15 @@ export function roundTable(s: Session, v: PlayerView, o: TableOpts): HTMLElement
       const p = v.players.find((x) => x.id === id)!;
       const at = seatSpot(n, k);
       const out = p.place !== null;
-      const cls = ['seat-chip', 'table-seat', id === o.highlight ? 'turn' : '', out ? 'out' : '', o.onTap ? 'tappable' : '', k === 0 ? 'me' : ''].join(' ');
+      const thinking = thinkingSeat() === id;
+      const cls = ['seat-chip', 'table-seat', id === o.highlight ? 'turn' : '', out ? 'out' : '', o.onTap ? 'tappable' : '', k === 0 ? 'me' : '', thinking ? 'thinking' : ''].join(' ');
       const inner: Child[] = [
         h('span', { class: 'seat-name' }, p.sessionName),
         h('span', { class: 'seat-count' }, out ? h('span', { class: 'place-badge' }, ordinal(p.place!)) : [miniBacks(p.cardCount), String(p.cardCount)]),
         o.dealer === id ? h('span', { class: 'seat-tag' }, 'Deals') : null,
         p.isHost ? h('span', { class: 'seat-host', 'aria-label': 'Host' }, '★') : null,
+        // Computer player choosing its move (CODE.md 9m.5): a line of dots under the name.
+        thinking ? h('span', { class: 'think-dots', 'aria-label': 'Thinking' }, 'thinking', h('span', { class: 'dots', 'aria-hidden': 'true' }, '…')) : null,
       ];
       const style = `left:${at.x.toFixed(1)}%;top:${at.y.toFixed(1)}%`;
       return o.onTap

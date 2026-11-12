@@ -447,7 +447,7 @@ Chosen from a sample page the user listens to on their phone: **Pubby sound samp
 
 ---
 
-## 12c. Single player: computer players (PLAN, 2026-11-12; answers given, build plan in `CODE.md` 9m; slice A, the AI brain, pushed as 2.6.0 with no screen changes yet)
+## 12c. Single player: computer players (PLAN, 2026-11-12; answers given, build plan in `CODE.md` 9m; slice A, the AI brain, pushed as 2.6.0; slice B, Normal level on the phone, pushed as 2.7.0)
 
 **Goal:** one person plays Pubby on their own phone against computer players that play like real people: they think for a moment, make human-sized mistakes on easier levels, react to slaps, and **never cheat**. A computer player only ever knows what a person in its seat could know.
 

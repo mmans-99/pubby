@@ -4,6 +4,33 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-12 (evening, latest) — Phase 4b slice B built and pushed as 2.7.0: play against the computer on the phone
+
+**Done**
+- **User (18:32):** "Build slice b". Read `CODE.md` 9m.5 to 9m.9 and `PROJECT.md` 12c; built slice B; test build ready; pushed on the user's request (19:17).
+- Version 2.7.0 (`package.json`, `CLAUDE.md` rule 8).
+- Built:
+  - `src/ui/bots.ts`: the computer players' driver. Only `seenBy()` output reaches `decide()`; moves go through `runActions`; one move at a time; "thinking…" on the seat (`src/ui/thinking.ts`, `table.ts`); reactions with limits; memory rebuilt on Carry on.
+  - Own-seat screens: `ownSeat`, `runsSession` and `isHostSeat` in `game.ts`. The network screens (`netscreens.ts`, `roundstart.ts`, `between.ts`) now use them, so one-phone and network games take the same paths as before.
+  - `src/ui/solosetup.ts`: "Play against the computer" on the home screen. You, 1 to 7 computer players, Normal level only, speed, reactions, jokers, pause limit. Names are picked at random.
+  - Stats: `pubby.profiles.vsComputer`. A vs-computer game goes only there. Profile details, the profile CSV and past games show it. Deleting a profile removes its vs-computer stats too.
+  - Carry on ignores computer players (they have no profile on the phone).
+- Deviations from `CODE.md` 9m, all recorded in 9m.9 "Slice B results": the speed and reactions switches are in B; the vs-computer totals are a block in the profile CSV; the driver runs from `afterRender` (`botsTick`), with no timer loop of its own.
+- Checks:
+  - `npm run check` clean.
+  - `npm test` 203 of 203.
+  - `testbed/solo_check.py` 18 of 18 (4 players, Fast speed): game plays to the end, bots play cards, "thinking…" seen, nothing refused, record saved as vs computer, normal profile untouched, pause stops the bots, Resume restarts them, reload then Carry on keeps them playing.
+  - Existing browser checks, all pass: `playthrough.py` 53 of 53, `netgame_check.py` 94 of 94, `netvotes_check.py` 30 of 30, `lobby_check.py` 67 of 67, `back_check.py` 14 of 14, `offline_check.py` 20 of 20, `sound_check.py` 44 of 44.
+- Docs: `TODO.md` (slice B status), `CODE.md` 9m (status and slice B results), `PROJECT.md` 12c header. `CLAUDE.md`: no rule change.
+- Pushed to `main` as the GitHub Pages test build at the user's request (19:17). `node_modules` symlink removed before the commit (npm has no network here; `/opt/npm-tools` holds the tools).
+
+**Not checked yet**
+- The feel of Normal play on a phone (the user's test). The arena already shows Normal beats random and Easy.
+- Hard and Easy levels, personalities, name editing, mixed levels (slice C and D).
+
+**Next**
+- User tests the link (artifact `9WZrZURQCn2hRiFLKGWy2j`, and the Pages build) with the checklist in `CODE.md` 9m.9 and sends feedback.
+
 ## 2026-11-12 (evening, later) — Phase 4b slice A built and pushed as 2.6.0: AI brain and arena
 
 **Done**

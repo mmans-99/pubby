@@ -22,7 +22,7 @@ import { computeTrivia, type Top } from '../session/trivia.ts';
 import type { PlayerId, RoundRecord, Session, SessionPhase } from '../session/types.ts';
 import { ordinal } from './cards.ts';
 import { h, type Child } from './dom.ts';
-import { nameOf, placeBadge, send } from './game.ts';
+import { nameOf, ownSeat, placeBadge, runsSession, send } from './game.ts';
 import { icon, type IconName } from './icons.ts';
 import { gameOverSaved } from './history.ts';
 import { resetTap } from './roundstart.ts';
@@ -502,7 +502,7 @@ export function pauseButton(s: Session): HTMLElement | null {
 export function netPauseButton(g: SavedGame): HTMLElement | null {
   const s = g.session;
   if (!canPause(s)) return null;
-  const me = g.net!.me;
+  const me = ownSeat(g)!;
   if (me === s.hostId) {
     return h('button', {
       class: 'icon-btn',
@@ -523,8 +523,8 @@ export function netPauseButton(g: SavedGame): HTMLElement | null {
 /** Network game (2.5): a phone other than the host's asks the host to pause. */
 export function askPausePanel(g: SavedGame): HTMLElement | null {
   const s = g.session;
-  if (!g.net || g.net.me === s.hostId || getState().armed !== 'askpause' || !canPause(s)) return null;
-  const me = g.net.me;
+  const me = ownSeat(g);
+  if (!me || me === s.hostId || getState().armed !== 'askpause' || !canPause(s)) return null;
   return h('div', { class: 'panel menu' },
     h('p', { class: 'small center' }, `Ask ${nameOf(s, s.hostId)} (host) to pause?`),
     h('button', {
@@ -542,7 +542,7 @@ function hostDecidingLine(text: string): HTMLElement {
 
 export function pausePanel(g: SavedGame): HTMLElement | null {
   const s = g.session;
-  if (g.net || getState().armed !== 'pause' || !canPause(s)) return null;
+  if (ownSeat(g) || getState().armed !== 'pause' || !canPause(s)) return null;
   const host = nameOf(s, s.hostId);
   const askers = s.order.filter((p) => p !== s.hostId && !s.pauseRequests.includes(p));
   return h('div', { class: 'panel menu' },
@@ -565,7 +565,8 @@ export function pauseRequestsBanner(g: SavedGame): HTMLElement | null {
   const s = g.session;
   if (s.paused || !s.pauseRequests.length) return null;
   const host = nameOf(s, s.hostId);
-  if (g.net && g.net.me !== s.hostId) {
+  const me = ownSeat(g);
+  if (me && me !== s.hostId) {
     return hostDecidingLine(`${host} (host) is deciding: ${names(s, s.pauseRequests)} asked to pause`);
   }
   return h('div', { class: 'stack' }, s.pauseRequests.map((p) =>
@@ -607,7 +608,8 @@ export function pauseLayer(): HTMLElement | null {
     ? Math.max(0, Math.ceil(limit - (hostClock() - s.pausedAt) / 1000))
     : null;
   // Network game: only the host resumes or sets the limit; the other phones see a host line.
-  const hostOnly = !!g.net && g.net.me !== s.hostId;
+  const seat = ownSeat(g);
+  const hostOnly = !!seat && seat !== s.hostId;
   return h('div', { class: 'overlay pause-overlay', role: 'dialog', 'aria-label': 'Paused' },
     h('div', { class: 'pause-box' },
       h('div', { class: 'pause-icon' }, icon('pause')),
@@ -646,7 +648,7 @@ export function pauseTick(): void {
     const cur = getState().game;
     if (!cur?.session.paused) return;
     // Network game: only the host's phone ends a timed pause; other phones just redraw the countdown.
-    if (cur.net && cur.net.role !== 'host') { update({}); return; }
+    if (!runsSession(cur)) { update({}); return; }
     sendKeep(cur, [{ type: 'tick', at: Date.now() }]);
   }, 1000);
 }

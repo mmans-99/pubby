@@ -14,12 +14,12 @@
 
 import { icon } from './icons.ts';
 import {
-  addGameToProfiles, buildGameRecord, profileCsv, profileRivals, sessionCsv,
+  addGameToProfiles, buildGameRecord, isVsComputer, profileCsv, profileRivals, sessionCsv,
   type GameRecord, type ProfileStats,
 } from '../session/record.ts';
 import type { PlayerId, Session } from '../session/types.ts';
 import { h } from './dom.ts';
-import { deleteRecord, loadRecords, saveProfiles, saveRecord } from './storage.ts';
+import { deleteRecord, loadRecords, loadVsProfiles, saveProfiles, saveRecord, saveVsProfiles } from './storage.ts';
 import { getState, say, update } from './store.ts';
 
 // ---------------------------------------------------------------------------
@@ -48,7 +48,17 @@ export function saveFinishedGame(s: Session, only?: PlayerId): SavedResult {
   const rec = buildGameRecord(s, new Date(), newId());
   const current = getState().profiles;
   // Network game (slice 2): each phone adds the game to its own player's profile only.
-  const onPhone = rec.players.filter((p) => !only || p.id === only).map((p) => p.profileName).filter((n) => n in current);
+  // Computer players never have a profile (CODE.md 9m.8).
+  const onPhone = s.players
+    .filter((p) => !p.computer && (!only || p.id === only))
+    .map((p) => p.profileName)
+    .filter((n) => n in current);
+  if (rec.vsComputer) {
+    // Against the computer: the games go to their own stats, not the normal history.
+    const vs = addGameToProfiles(loadVsProfiles(), rec, onPhone);
+    const ok = saveRecord(rec) && saveVsProfiles(vs);
+    return { recordId: rec.id, profiles: onPhone, ok };
+  }
   const profiles = addGameToProfiles(current, rec, onPhone);
   const okRecord = saveRecord(rec);
   const okProfiles = saveProfiles(profiles);
@@ -98,8 +108,8 @@ export function gameCsvSheet(rec: GameRecord): CsvSheet {
   return { title: 'Pubby game stats', filename: `pubby-game-${dateTag(rec.savedAt)}.csv`, csv: sessionCsv(rec) };
 }
 
-export function profileCsvSheet(p: ProfileStats): CsvSheet {
-  return { title: `Pubby profile: ${p.profileName}`, filename: `pubby-profile-${safeName(p.profileName)}.csv`, csv: profileCsv(p) };
+export function profileCsvSheet(p: ProfileStats, vs?: ProfileStats): CsvSheet {
+  return { title: `Pubby profile: ${p.profileName}`, filename: `pubby-profile-${safeName(p.profileName)}.csv`, csv: profileCsv(p, vs) };
 }
 
 /** Fallback when the share sheet can't take a file: show the CSV, Copy and Download. */
@@ -207,7 +217,7 @@ function recordRow(rec: GameRecord, open: boolean): HTMLElement {
     onclick: () => update({ openRecord: open ? null : rec.id, armed: null }),
   },
     h('div', { class: 'grow' },
-      h('div', { class: 'name' }, icon('trophy'), ` ${winners}`),
+      h('div', { class: 'name' }, icon('trophy'), ` ${winners}`, isVsComputer(rec) ? h('span', { class: 'tag' }, icon('bot'), ' vs computer') : null),
       h('div', { class: 'muted small' }, `${when(rec.savedAt)} · ${rec.playerCount} players · ${rounds} ${rounds === 1 ? 'round' : 'rounds'}`),
     ),
     h('span', { class: 'muted', 'aria-hidden': 'true' }, open ? '▲' : '▼'),
@@ -244,11 +254,12 @@ function recordRow(rec: GameRecord, open: boolean): HTMLElement {
 // Profile details (opened from the profiles screen)
 // ---------------------------------------------------------------------------
 
-export function profileDetails(p: ProfileStats): HTMLElement {
+/** The stat rows of one profile block (normal history or games against the computer). */
+function statRows(p: ProfileStats): HTMLElement[] {
   const r = profileRivals(p);
   const row = (label: string, value: string | number): HTMLElement =>
     h('div', { class: 'stat-row' }, h('span', { class: 'grow' }, label), h('b', null, String(value)));
-  return h('div', { class: 'profile-details' },
+  return [
     row('Games played', p.gamesPlayed),
     row('Points', p.points),
     row('Round wins', p.roundWins),
@@ -260,6 +271,19 @@ export function profileDetails(p: ProfileStats): HTMLElement {
     row('Slaps given', p.slapsGiven),
     row('Slapped by most', r.slappedByMost.join(' & ') || '—'),
     row('Slapped most', r.slappedMost.join(' & ') || '—'),
-    h('button', { onclick: () => { void shareCsv(profileCsvSheet(p)); } }, icon('share'), ' Share profile stats (CSV)'),
+  ];
+}
+
+/**
+ * Profile details. `vs` is the profile's games against the computer (CODE.md
+ * 9m.8): shown in its own section, only if there are any.
+ */
+export function profileDetails(p: ProfileStats, vs?: ProfileStats): HTMLElement {
+  const withVs = !!vs && vs.gamesPlayed > 0;
+  return h('div', { class: 'profile-details' },
+    statRows(p),
+    withVs ? h('h3', { class: 'stat-title' }, icon('bot'), ' Vs computer') : null,
+    withVs ? statRows(vs!) : null,
+    h('button', { onclick: () => { void shareCsv(profileCsvSheet(p, withVs ? vs : undefined)); } }, icon('share'), ' Share profile stats (CSV)'),
   );
 }

@@ -24,8 +24,9 @@ import { afterRender, gameScreen, popupLayer, reactionsLayer, startShuffle } fro
 import { csvSheetLayer, pastGamesScreen, profileDetails } from './history.ts';
 import { renderMarkdown } from './markdown.ts';
 import { joinLobbyFromLink, netLobbyScreen, stopNetLobby } from './netlobby.ts';
-import { addProfile, deleteProfile, findProfile, loadGame, loadProfiles, loadRecords, saveProfiles } from './storage.ts';
+import { addProfile, deleteProfile, findProfile, loadGame, loadProfiles, loadRecords, loadVsProfiles, saveProfiles, saveVsProfiles } from './storage.ts';
 import { getState, initState, say, update, type SetupSeat, type SetupState, type State } from './store.ts';
+import { soloScreen, soloSetupFresh } from './solosetup.ts';
 import { setupSound, soundButton, soundOverlay, syncSound } from './sound.ts';
 import { icon } from './icons.ts';
 
@@ -47,6 +48,7 @@ export function startApp(target: HTMLElement): void {
     screen: 'home',
     profiles: loadProfiles(),
     setup: freshSetup(),
+    solo: soloSetupFresh(),
     game: loadGame(),
     rulesOpen: false,
     soundOpen: false,
@@ -104,6 +106,7 @@ function render(): void {
     st.screen === 'profiles' ? profilesScreen()
     : st.screen === 'history' ? pastGamesScreen(() => update({ screen: 'home', armed: null, openRecord: null }))
     : st.screen === 'setup' ? setupScreen()
+    : st.screen === 'solo' ? soloScreen()
     : st.screen === 'game' && st.game ? gameScreen(st.game)
     : st.screen === 'netlobby' ? netLobbyScreen(() => update({ screen: 'home' }))
     : st.screen === 'bye' ? byeScreen()
@@ -207,7 +210,8 @@ function homeScreen(): HTMLElement {
       g ? h('button', { class: 'big', disabled: missingProfiles().length > 0, onclick: carryOn },
         `Carry on game (round ${g.session.round})`) : null,
       g && missingProfiles().length ? h('p', { class: 'note warn' }, missingText(missingProfiles())) : null,
-      h('button', { class: g ? 'big secondary' : 'big', onclick: startSetup }, 'New game · one phone'),
+      h('button', { class: g ? 'big secondary' : 'big', onclick: () => startSetup('setup') }, 'New game · one phone'),
+      h('button', { class: 'big secondary', onclick: () => startSetup('solo') }, icon('bot'), ' Play against the computer'),
       h('button', { class: 'big secondary', onclick: () => update({ screen: 'netlobby' }) }, icon('phone'), ' Play on several phones'),
       h('button', { class: 'big secondary', onclick: () => update({ screen: 'profiles', armed: null, openProfile: null }) },
         `Profiles (${Object.keys(getState().profiles).length})`),
@@ -222,7 +226,8 @@ function homeScreen(): HTMLElement {
 
 /** Profile names used by the saved game. */
 function savedGameProfiles(): string[] {
-  return getState().game?.session.players.map((p) => p.profileName) ?? [];
+  // Computer players have no profile on this phone, so they never block Carry on (CODE.md 9m.8).
+  return getState().game?.session.players.filter((p) => !p.computer).map((p) => p.profileName) ?? [];
 }
 
 function inSavedGame(profile: string): boolean {
@@ -267,7 +272,8 @@ function byeScreen(): HTMLElement {
   );
 }
 
-function startSetup(): void {
+/** New game (one phone, or against the computer). A game in progress is ended on the second tap. */
+function startSetup(to: 'setup' | 'solo'): void {
   if (getState().game) {
     if (getState().armed !== 'newgame') {
       update({ armed: 'newgame' });
@@ -276,7 +282,7 @@ function startSetup(): void {
     }
     update({ game: null }, false);
   }
-  update({ screen: 'setup', setup: freshSetup(), armed: null });
+  update({ screen: to, setup: freshSetup(), solo: soloSetupFresh(), armed: null });
 }
 
 // ---------------------------------------------------------------------------
@@ -340,10 +346,11 @@ function profilesScreen(): HTMLElement {
               if (!armed) { update({ armed: key }); return; }
               const profiles = deleteProfile(getState().profiles, n);
               saveProfiles(profiles);
+              saveVsProfiles(deleteProfile(loadVsProfiles(), n));
               update({ profiles, armed: null, openProfile: null });
             },
           }, armed ? 'Tap to delete' : 'Delete'),
-          open ? profileDetails(p) : null,
+          open ? profileDetails(p, loadVsProfiles()[n]) : null,
         );
       })),
   );

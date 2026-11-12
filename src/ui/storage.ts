@@ -6,9 +6,11 @@
 
 import { emptyProfile, isVsComputer, type GameRecord, type ProfileStats } from '../session/record.ts';
 import type { NetInfo } from '../net/netgame.ts';
-import type { Session } from '../session/types.ts';
+import type { PlayerId, Session } from '../session/types.ts';
+import type { Level, Personality, Speed } from '../ai/persona.ts';
 
 const PROFILES_KEY = 'pubby.profiles';
+const VS_PROFILES_KEY = 'pubby.profiles.vsComputer';
 const GAME_KEY = 'pubby.currentGame';
 const RECORDS_KEY = 'pubby.gameRecords';
 
@@ -41,6 +43,15 @@ export function loadProfiles(): Profiles {
 
 export function saveProfiles(p: Profiles): boolean {
   return write(PROFILES_KEY, p);
+}
+
+/** Games against the computer, kept apart from the normal profile history (CODE.md 9m.8). */
+export function loadVsProfiles(): Profiles {
+  return read<Profiles>(VS_PROFILES_KEY, {});
+}
+
+export function saveVsProfiles(p: Profiles): boolean {
+  return write(VS_PROFILES_KEY, p);
 }
 
 /** Profile names are unique on a phone, ignoring upper and lower case. */
@@ -99,6 +110,22 @@ export interface SavedGame {
   readonly recordId?: string;
   /** Network game (Phase 4): this phone's role and player. Never saved to storage (slice 4 adds that). */
   readonly net?: NetInfo;
+  /** Computer players (CODE.md 9m.5). Saved with the game, so Carry on works. */
+  readonly bots?: BotsInfo;
+}
+
+/** One computer player's personality (the same shape as `Persona` in src/ai/persona.ts). */
+export interface BotInfo {
+  readonly level: Level;
+  readonly personality: Personality;
+}
+
+export interface BotsInfo {
+  readonly seats: Readonly<Record<PlayerId, BotInfo>>;
+  readonly speed: Speed;
+  readonly reactions: boolean;
+  /** Set in single player: the one person on this phone, who sees their own seat. */
+  readonly me?: PlayerId;
 }
 
 // ----- Finished games (game records, newest first) -----
@@ -125,7 +152,10 @@ export function loadGame(): SavedGame | null {
   if (!g || !g.session || g.session.ended) return null;
   // Games saved by an older build: fill in what's missing.
   const stage: GameStage = g.stage === 'hand' || g.stage === 'handoff' ? g.stage : 'table';
-  return { session: g.session, stage, holder: g.holder ?? g.session.hostId, trickLog: g.trickLog ?? [], lastTrick: g.lastTrick ?? null, notes: g.notes ?? {} };
+  return {
+    session: g.session, stage, holder: g.holder ?? g.session.hostId, trickLog: g.trickLog ?? [], lastTrick: g.lastTrick ?? null, notes: g.notes ?? {},
+    ...(g.bots ? { bots: g.bots } : {}),
+  };
 }
 
 export function saveGame(g: SavedGame | null): boolean {

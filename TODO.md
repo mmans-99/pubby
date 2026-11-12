@@ -215,7 +215,13 @@ Built before network slice 4 (user 2026-11-12). One slice at a time; each needs 
   - [x] Tests: imports, seen (public log), fair play, memory, eval, moves, decide (plus names and react)
   - [x] `testbed/ai_arena.ts` and its pass bars (all pass; numbers in `CODE.md` 9m.9)
   - [ ] Phone check: nothing to play yet (rule 5); the arena numbers are the check for this slice
-- [ ] **Slice B: single player on the phone, Normal only** (9m.5 to 9m.8): bot driver, own-seat screens, setup screen, separate vs-computer stats, `testbed/solo_check.py`
+- [~] **Slice B: single player on the phone, Normal only** (9m.5 to 9m.8; built as version 2.7.0 on 2026-11-12, pushed as the GitHub Pages test build on 2026-11-12 at the user's request; phone test still to do)
+  - [x] Bot driver `src/ui/bots.ts` (one move at a time, "thinking…" on the seat, reactions, memory rebuilt on Carry on); `thinking.ts`
+  - [x] Own-seat screens for single player (`ownSeat`, `runsSession`, `isHostSeat` in `game.ts`; network screens reused)
+  - [x] Setup screen "Play against the computer" (`solosetup.ts`): you, 1 to 7 computer players, Normal level, speed, reactions, jokers, pause limit
+  - [x] Vs-computer stats kept apart (`pubby.profiles.vsComputer`); profile details and CSV show a "Vs computer" block; past games tag
+  - [x] Checks: `npm test` 203 of 203, `testbed/solo_check.py` 18 of 18, and every existing browser check passes (see DEVLOG)
+  - [ ] User's phone test (checklist in `CODE.md` 9m.9)
 - [ ] **Slice C: Easy, Mixed levels, personalities, names (many cultures, editable), reactions (on by default), speed**
 - [ ] **Slice D: Hard** (sampling and search; Web Worker if needed)
 - [ ] **Slice E: people and computer players on one phone**

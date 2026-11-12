@@ -13,7 +13,7 @@ import { MAX_SWAP } from '../rules/round.ts';
 import type { PlayerId, Session, VoteKind } from '../session/types.ts';
 import { playerView } from '../session/view.ts';
 import { h, type Child } from './dom.ts';
-import { handBlock, handoffBlock, nameOf, nextClockwise, publicView, seatStrip, send } from './game.ts';
+import { handBlock, handoffBlock, nameOf, nextClockwise, ownSeat, publicView, seatStrip, send } from './game.ts';
 import { hostLine } from './netscreens.ts';
 import { icon, type IconName } from './icons.ts';
 import type { SavedGame } from './storage.ts';
@@ -239,8 +239,9 @@ function voteStage(g: SavedGame, me: PlayerId): Child {
   const s = g.session;
   const v = s.vote!;
   const view = playerView(s, me);
-  // Network votes are open (PROJECT.md 12), so no "secret vote" there.
-  const secret = g.net ? '' : ' · secret vote';
+  // Network votes and single-player votes are open (PROJECT.md 12), so no "secret vote" there.
+  const open = !!ownSeat(g);
+  const secret = open ? '' : ' · secret vote';
   const who =
     v.draw ? 'Top score is a draw'
     : v.calledBy && s.order.length === 2 ? `${nameOf(s, v.calledBy)} asked · you decide`
@@ -251,13 +252,13 @@ function voteStage(g: SavedGame, me: PlayerId): Child {
     h('section', { class: 'panel vote-panel' },
       h('h2', { class: 'vote-q' }, icon(voteIcon(v.kind)), ` ${voteShort(s, v.kind, v.value)}`),
       h('p', { class: 'muted small center' }, who),
-      g.net ? ballotChips(s) : null,
+      open ? ballotChips(s) : null,
       h('div', { class: 'vote-buttons' },
         h('button', { class: 'big vote-yes', onclick: () => cast(true) }, 'YES'),
         h('button', { class: 'big vote-no', onclick: () => cast(false) }, 'NO'),
       ),
     ),
-    g.net && me === s.hostId && Object.keys(v.ballots).length > 0 ? countNowButton(s) : null,
+    open && me === s.hostId && Object.keys(v.ballots).length > 0 ? countNowButton(s) : null,
     v.kind === 'reshuffle' ? handBlock(s, view, null) : null,
   );
 }
@@ -271,7 +272,7 @@ function hostDecidesStage(g: SavedGame): Child {
     h('section', { class: 'panel vote-panel' },
       h('h2', { class: 'vote-q' }, icon(voteIcon(v.kind)), ` ${voteShort(s, v.kind, v.value)}`),
       h('p', { class: 'muted small center' }, `No majority · ${host} decides`),
-      g.net ? ballotChips(s) : null,
+      ownSeat(g) ? ballotChips(s) : null,
       h('div', { class: 'vote-buttons' },
         h('button', { class: 'big vote-yes', onclick: () => decide(true) }, 'YES'),
         h('button', { class: 'big vote-no', onclick: () => decide(false) }, 'NO'),
@@ -359,7 +360,7 @@ function swapRevealStage(g: SavedGame): Child {
   const fresh = new Set(view.myHand.filter((c) => !swapReveal!.before.has(c.id)).map((c) => c.id));
   const done = (): void => {
     swapReveal = null;
-    if (g.net) { update({}); return; }
+    if (ownSeat(g)) { update({}); return; }
     const next = roundStartHolder(s) ?? (s.phase === 'playing' ? (s.play?.pendingFinalTwo ?? s.play?.turn ?? null) : null);
     update({ game: { ...g, stage: next ? 'handoff' : 'table', holder: next ?? g.holder } });
   };
@@ -367,7 +368,7 @@ function swapRevealStage(g: SavedGame): Child {
   return h('div', { class: 'stack' },
     h('h2', { class: 'center' }, fresh.size ? `${fresh.size} new ${fresh.size === 1 ? 'card' : 'cards'} ★` : 'Hand kept'),
     handBlock(s, view, null, { picked: fresh, all: false, mark: true, head: false }),
-    h('button', { class: 'big', onclick: done }, g.net ? 'Done' : next ? `Hide · pass to ${nameOf(s, next)}` : 'Hide · carry on'),
+    h('button', { class: 'big', onclick: done }, ownSeat(g) ? 'Done' : next ? `Hide · pass to ${nameOf(s, next)}` : 'Hide · carry on'),
   );
 }
 
@@ -445,7 +446,7 @@ function tapStage(g: SavedGame, me: PlayerId): Child {
     st.step === 'done'
       ? h('div', { class: 'stack center' },
         h('div', { class: 'tap-result' }, st.falseStart ? 'Too early!' : `${st.ms} ms`),
-        h('button', { class: 'big', onclick: finish }, g.net ? 'Done' : 'Done · pass on'),
+        h('button', { class: 'big', onclick: finish }, ownSeat(g) ? 'Done' : 'Done · pass on'),
       )
       : null,
   );

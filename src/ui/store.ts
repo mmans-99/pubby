@@ -8,6 +8,19 @@ import type { CsvSheet } from './history.ts';
 import type { PlayerId } from '../session/types.ts';
 import { loadGame, saveGame, type SavedGame } from './storage.ts';
 import type { IconName } from './icons.ts';
+import type { Speed } from '../ai/persona.ts';
+
+/** "Play against the computer" setup (CODE.md 9m.7). */
+export interface SoloSetup {
+  /** The person's profile name on this phone. */
+  me: string | null;
+  /** Number of computer players (1 to 7). */
+  bots: number;
+  speed: Speed;
+  reactions: boolean;
+  jokers: boolean;
+  pauseLimit: number | null;
+}
 
 export interface SetupSeat {
   profileName: string;
@@ -37,12 +50,13 @@ export type Popup =
   | { kind: 'vote'; decidedBy: 'majority' | 'host' | 'both'; result: boolean; text: string }
   | { kind: 'info'; icon: IconName; title: string; text: string };
 
-export type Screen = 'home' | 'profiles' | 'history' | 'setup' | 'game' | 'netlobby' | 'bye';
+export type Screen = 'home' | 'profiles' | 'history' | 'setup' | 'solo' | 'game' | 'netlobby' | 'bye';
 
 export interface State {
   screen: Screen;
   profiles: Record<string, ProfileStats>;
   setup: SetupState;
+  solo: SoloSetup;
   game: SavedGame | null;
   rulesOpen: boolean;
   /** Quick rules card to open at ("Dealing", "Hidden decks"…); null = the top. */

@@ -914,3 +914,23 @@ button.table-seat { background: var(--cream); }
 .host-line .ic { color: var(--gold); flex: none; animation: host-wait 2.4s ease-in-out infinite; }
 @keyframes host-wait { 0%, 40% { rotate: 0deg; } 50%, 90% { rotate: 180deg; } 100% { rotate: 180deg; } }
 @media (prefers-reduced-motion: reduce) { .host-line .ic { animation: none; } }
+
+/* Computer players (CODE.md 9m.5, 9m.7; version 2.7): "thinking…" on a seat, and the setup screen. */
+.seat-chip.thinking { box-shadow: 0 0 0 2px var(--gold); }
+.think-dots {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--gold);
+  animation: think-pulse 1.2s ease-in-out infinite;
+}
+.think-dots .dots { display: inline-block; min-width: 1ch; }
+@keyframes think-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .think-dots { animation: none; }
+}
+.center-row { justify-content: center; align-items: center; }
+.center-row .grow { text-align: center; }
+.stat-title { display: flex; align-items: center; gap: 6px; margin: 14px 0 4px; font-size: 1rem; }

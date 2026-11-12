@@ -15,7 +15,7 @@ import { icon } from './icons.ts';
 import type { SavedGame } from './storage.ts';
 import type { PlayerId, Session } from '../session/types.ts';
 import { getState, update } from './store.ts';
-import { chooseLeaderStage, dealingStage, handBlock, nameOf, playHandStage, publicView, send } from './game.ts';
+import { chooseLeaderStage, dealingStage, handBlock, isHostSeat, nameOf, ownSeat, playHandStage, publicView, send } from './game.ts';
 import { netRoundStart } from './roundstart.ts';
 import { awardsRow, gameOverStage, podium, targetRow } from './between.ts';
 import { playerView } from '../session/view.ts';
@@ -23,9 +23,13 @@ import { netSeats } from './netlobby.ts';
 import { roundTable, wasteMiddle } from './table.ts';
 import { seatName } from '../net/lobby.ts';
 
+/**
+ * The screens of a network game, and of single player against the computer
+ * (CODE.md 9m.6): this phone shows its own player only.
+ */
 export function netGameBody(g: SavedGame): Child {
   const s = g.session;
-  const me = g.net!.me;
+  const me = ownSeat(g)!;
   const rs = netRoundStart(g, me);
   let body: Child;
   if (rs) body = rs;
@@ -45,13 +49,13 @@ export function netGameBody(g: SavedGame): Child {
 
 /** A phone lost its link: the game can't go on until rejoining exists (slice 4). */
 function connectionNotice(g: SavedGame): HTMLElement | null {
-  if (g.session.ended) return null;
+  if (!g.net || g.session.ended) return null;
   const gone = (netSeats() ?? []).filter((x) => !x.connected);
   if (!gone.length) return null;
   const who = gone.map(seatName).join(', ');
   return h('p', { class: 'note warn net-lost', role: 'status' },
     `${who} lost connection. Rejoining comes in a later update: `,
-    g.net!.role === 'host' ? 'close the game from the menu and start again.' : 'the host can close the game.');
+    g.net.role === 'host' ? 'close the game from the menu and start again.' : 'the host can close the game.');
 }
 
 /**
@@ -68,10 +72,11 @@ function hostDeciding(s: Session, what: string): HTMLElement {
 
 function waitingFor(g: SavedGame, text: string): Child {
   const s = g.session;
+  const me = ownSeat(g)!;
   return h('div', { class: 'stack' },
-    roundTable(s, publicView(s), { bottom: g.net!.me, middle: wasteMiddle(0) }),
+    roundTable(s, publicView(s), { bottom: me, middle: wasteMiddle(0) }),
     h('p', { class: 'hint center wait-line' }, text),
-    handBlock(s, playerView(s, g.net!.me), null, { head: false }),
+    handBlock(s, playerView(s, me), null, { head: false }),
   );
 }
 
@@ -81,8 +86,8 @@ function waitingFor(g: SavedGame, text: string): Child {
  */
 function beforeRound(g: SavedGame): Child {
   const s = g.session;
-  const me = g.net!.me;
-  const host = g.net!.role === 'host';
+  const me = ownSeat(g)!;
+  const host = isHostSeat(g);
   const v = publicView(s);
   return h('div', { class: 'stack' },
     roundTable(s, v, { bottom: me, middle: wasteMiddle(0) }),
@@ -124,10 +129,10 @@ function readyRow(s: Session, me: PlayerId): HTMLElement {
 
 function results(g: SavedGame): Child {
   const s = g.session;
-  const me = g.net!.me;
+  const me = ownSeat(g)!;
   const rec = s.rounds[s.rounds.length - 1];
   if (!rec) return h('p', null, 'No results yet.');
-  const host = g.net!.role === 'host';
+  const host = isHostSeat(g);
   const armed = getState().armed === 'endsession';
   return h('div', { class: 'stack' },
     h('h2', { class: 'center results-head' }, icon('trophy'), ` ${nameOf(s, rec.finishingOrder[0])} wins ${rec.ultimate ? 'the Ultimate Round' : `round ${rec.round}`}`),

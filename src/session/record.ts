@@ -249,22 +249,32 @@ export function sessionCsv(r: GameRecord): string {
 }
 
 /** One profile's overall stats as CSV. */
-export function profileCsv(p: ProfileStats): string {
+/** The stat lines of one profile block (the name line is added by the caller). */
+function profileLines(p: ProfileStats): (string | number)[][] {
   const r = profileRivals(p);
-  return (
-    rows([
-      ['Pubby profile', p.profileName],
-      ['Games played', p.gamesPlayed],
-      ['Points', p.points],
-      ['Round wins', p.roundWins],
-      ['Round losses', p.roundLosses],
-      ['Bottom two', p.bottomTwo],
-      ['Ultimate Winner', p.ultimateWinner],
-      ['Ultimate Loser', p.ultimateLoser],
-      ['Times slapped', p.timesSlapped],
-      ['Slaps given', p.slapsGiven],
-      ['Slapped by most', r.slappedByMost.join(' & ') || '—'],
-      ['Slapped most', r.slappedMost.join(' & ') || '—'],
-    ]) + '\r\n'
-  );
+  return [
+    ['Games played', p.gamesPlayed],
+    ['Points', p.points],
+    ['Round wins', p.roundWins],
+    ['Round losses', p.roundLosses],
+    ['Bottom two', p.bottomTwo],
+    ['Ultimate Winner', p.ultimateWinner],
+    ['Ultimate Loser', p.ultimateLoser],
+    ['Times slapped', p.timesSlapped],
+    ['Slaps given', p.slapsGiven],
+    ['Slapped by most', r.slappedByMost.join(' & ') || '—'],
+    ['Slapped most', r.slappedMost.join(' & ') || '—'],
+  ];
+}
+
+/**
+ * Profile stats as CSV. With `vs` (games against the computer, CODE.md 9m.8)
+ * and any such games, a second block follows the normal one.
+ */
+export function profileCsv(p: ProfileStats, vs?: ProfileStats): string {
+  let out = rows([['Pubby profile', p.profileName], ...profileLines(p)]) + '\r\n';
+  if (vs && vs.gamesPlayed > 0) {
+    out += rows([[], ['Vs computer', vs.profileName], ...profileLines(vs)]) + '\r\n';
+  }
+  return out;
 }
