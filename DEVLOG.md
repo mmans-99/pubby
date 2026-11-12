@@ -7,6 +7,7 @@ Newest entries at the top. One entry per session, added before each commit.
 ## 2026-11-12 (evening, latest) — Phase 4b slice B built and pushed as 2.7.0: play against the computer on the phone
 
 **Done**
+- **User (19:32):** a slap that ends the game shows "Game over." under the SLAP! icon instead of "X picks up N cards and leads." (`src/ui/game.ts` popupsFor / popupLayer; `Popup` slap `over` flag in `store.ts`). Checks: `npm run check`, `npm test` 203 of 203, `solo_check.py` 18 of 18. Pushed as 2.8.0 on the user's request (19:40).
 - **User (18:32):** "Build slice b". Read `CODE.md` 9m.5 to 9m.9 and `PROJECT.md` 12c; built slice B; test build ready; pushed on the user's request (19:17).
 - Version 2.7.0 (`package.json`, `CLAUDE.md` rule 8).
 - Built:
