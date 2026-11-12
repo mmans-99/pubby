@@ -278,7 +278,7 @@ export function resultsStage(g: SavedGame): Child {
       h('button', { class: 'big grow', onclick: () => send([{ type: 'advance', by: s.hostId }]) },
         icon('play'), s.ultimateRound ? ` Start the Ultimate Round · ${host}` : ` Next round · ${host}`),
       !s.ultimateRound
-        ? h('button', { class: getState().armed === 'ultimatecaller' ? 'secondary on' : 'secondary', 'aria-label': 'Ultimate Round', onclick: () => update({ armed: getState().armed === 'ultimatecaller' ? null : 'ultimatecaller' }) }, icon('bolt'), ' Ultimate')
+        ? h('button', { class: getState().armed === 'ultimatecaller' ? 'secondary ultimate-btn on' : 'secondary ultimate-btn', 'aria-label': 'Ultimate Round', onclick: () => update({ armed: getState().armed === 'ultimatecaller' ? null : 'ultimatecaller' }) }, icon('bolt'), ' Ultimate')
         : null,
     ),
     h('button', {

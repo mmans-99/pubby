@@ -506,7 +506,7 @@ export function gameScreen(g: SavedGame): HTMLElement {
     body = tableStage(g);
   }
   const label: Child = s.phase === 'gameOver' ? 'End'
-    : s.ultimateRound && s.phase !== 'results' ? [icon('bolt'), ' Ultimate']
+    : s.ultimateRound && s.phase !== 'results' ? icon('bolt')  // the word would widen the chip and squeeze the bar (2.10)
     : `R${s.round}`;
   return h('main', { class: 'screen game' },
     h('div', { class: 'game-bar' },

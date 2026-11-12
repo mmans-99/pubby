@@ -4,7 +4,25 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
-## 2026-11-12 (evening, latest) — Phase 4b slice C built and pushed as 2.9.0: computer players' levels, names and icon
+## 2026-11-12 (late, latest) — Version 2.10: drawer scroll, one-phone menu hidden, phrases, Ultimate layout
+
+**Done**
+- **User (22:04–22:38):** reactions drawer jumped back to 😂 after each move: now keeps its scroll position across redraws (`render()` in `app.ts`). `testbed/drawer_check.py` 6 of 6; fails without the fix.
+- **User:** "move the play on same phone, keep the code": "New game · one phone" hidden from the home menu (`ONE_PHONE_MENU` in `app.ts`). Checks that still play it open the page with `?onephone=1` (`back_check`, `lobby_check`, `netgame_check`, `offline_check`, `playthrough`, `sound_check`). Carry on for a saved one-phone game still shows.
+- **User:** "oof!! into oofaa!!!!" and more phrases: `src/content/catch-phrases.md` (Oofaa!!!!, plus eight new). Computer players' phrases unchanged.
+- **User (Ultimate on results):** the Ultimate button beside Next round is one line, the same height as the big button (`button.ultimate-btn` in `between.ts` / `styles.css`).
+- **User (in game, top bar):** the round chip is a fixed 42px circle like the menu button; in the Ultimate round it shows the bolt icon only (`game.ts`, `.round-chip`). The menu button and chip no longer shrink in the top bar.
+- **Version 2.10.0** (`package.json`, `CLAUDE.md` rule 8).
+
+**Checks**
+- `npm test` 207 of 207. Browser (after the one-phone change): back 14/14, offline 20/20, drawer 6/6, sound 44/44, lobby 67/67, netgame 94/94, playthrough 53/53, solo slice C 14/14 (the first run hit a 600 s timeout on the Mixed game; the rerun finished).
+- The Ultimate button and top-bar chip were checked on test pages using the real stylesheet at 390 px, not in the full game. Worth a look on the phone.
+
+**Open**
+- The user's "vote" spacing complaint is not yet located: the vote strings in `game.ts` / `roundstart.ts` look correct. Waiting for the exact sentence or screen.
+- Reactions drawer alternatives (bottom sheet grid, wrapping rows, tabs, search, top-five plus More) suggested, none chosen.
+
+## 2026-11-12 (evening) — Phase 4b slice C built and pushed as 2.9.0: computer players' levels, names and icon
 
 **Done**
 - **User (19:42):** "Build slice c and then push it to the site once done." Read `CODE.md` 9m.1 to 9m.9, `PROJECT.md` 12c, and the code of slices A and B. Built slice C; checks pass; pushed to `main` as 2.9.0 on the user's instruction. The phone check of slice C is still to do (`CODE.md` 9m.9 checklist).

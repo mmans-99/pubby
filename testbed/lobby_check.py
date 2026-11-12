@@ -334,6 +334,8 @@ def main():
         check('Open Pubby again goes to the main menu', ali.inner_text('main h1') == 'Pubby')
 
         # --- Profiles in a saved game (user 2026-11-08) ---
+        host.goto(url + '?onephone=1')  # the one-phone button is hidden unless asked for
+        host.wait_for_selector('h1')
         host.get_by_role('button', name='New game · one phone').click()
         check('one-phone New game still opens', host.inner_text('main h1') == 'New game')
         for n in ('Amy', 'Ben'):
@@ -357,6 +359,8 @@ def main():
         host.wait_for_selector('h1')
         check('missing profile: Carry on is off and says why', host.get_by_role('button', name='Carry on game').is_disabled()
               and 'Amy is missing from Profiles' in host.inner_text('main'))
+        host.goto(url + '?onephone=1')
+        host.wait_for_selector('h1')
         host.get_by_role('button', name='New game · one phone').click()
         host.get_by_role('button', name='New game · one phone').click()
         check('New game twice ends it', host.inner_text('main h1') == 'New game')

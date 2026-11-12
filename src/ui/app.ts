@@ -31,6 +31,13 @@ import { setupSound, soundButton, soundOverlay, syncSound } from './sound.ts';
 import { icon } from './icons.ts';
 
 const NAME_MAX = 16;
+/**
+ * Pass-and-play on one phone (`startSetup('setup')`) is hidden from the menu (user, 2.10). Its code stays.
+ * The checks in testbed/ still play it: they open the page with `?onephone=1`, which shows the button again.
+ */
+const ONE_PHONE_MENU = false;
+const showOnePhoneButton = (): boolean => ONE_PHONE_MENU || new URLSearchParams(location.search).has('onephone');
+
 const PAUSE_LIMITS: readonly { label: string; sec: number | null }[] = [
   { label: 'No limit', sec: null },
   { label: '30 seconds', sec: 30 },
@@ -126,7 +133,11 @@ function render(): void {
     st.exitAsk ? exitOverlay() : null,
     st.message ? h('div', { class: 'toast', role: 'status' }, st.message) : null,
   ];
+  // The reactions drawer is rebuilt on every redraw; keep how far it was scrolled (it should not jump back to the 😂 after a move).
+  const drawerScroll = root.querySelector<HTMLElement>('.reactions-drawer')?.scrollLeft ?? 0;
   root.replaceChildren(...parts.filter((p): p is HTMLElement => p !== null));
+  const drawerNow = root.querySelector<HTMLElement>('.reactions-drawer');
+  if (drawerNow) drawerNow.scrollLeft = drawerScroll;
   afterRender();
   syncSound();
 }
@@ -210,7 +221,8 @@ function homeScreen(): HTMLElement {
       g ? h('button', { class: 'big', disabled: missingProfiles().length > 0, onclick: carryOn },
         `Carry on game (round ${g.session.round})`) : null,
       g && missingProfiles().length ? h('p', { class: 'note warn' }, missingText(missingProfiles())) : null,
-      h('button', { class: g ? 'big secondary' : 'big', onclick: () => startSetup('setup') }, 'New game · one phone'),
+      // Pass-and-play on one phone is kept in the code but hidden from the menu (user, 2.10).
+      showOnePhoneButton() ? h('button', { class: g ? 'big secondary' : 'big', onclick: () => startSetup('setup') }, 'New game · one phone') : null,
       h('button', { class: 'big secondary', onclick: () => startSetup('solo') }, icon('bot'), ' Play against the computer'),
       h('button', { class: 'big secondary', onclick: () => update({ screen: 'netlobby' }) }, icon('phone'), ' Play on several phones'),
       h('button', { class: 'big secondary', onclick: () => update({ screen: 'profiles', armed: null, openProfile: null }) },

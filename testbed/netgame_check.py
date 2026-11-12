@@ -329,6 +329,7 @@ def one_phone_game_kept(browser, base):
     errors = []
     host = new_page(browser, base, errors, 'host')
     host.evaluate("""() => localStorage.setItem('pubby.profiles', JSON.stringify({}))""")
+    host.goto(base + '?onephone=1')  # the one-phone button is hidden unless asked for
     host.get_by_role('button', name='New game').click()
     for name in ['Amy', 'Zed']:
         host.get_by_label('New player name').fill(name)

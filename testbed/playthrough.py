@@ -13,7 +13,7 @@ import time
 from playwright.sync_api import sync_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-APP = (ROOT / 'dist' / 'index.html').as_uri()
+APP = (ROOT / 'dist' / 'index.html').as_uri() + '?onephone=1'  # one-phone button (hidden from the menu)
 BOT = (ROOT / 'testbed' / 'bot.js').read_text()
 NAMES = ['Amy', 'Ben', 'Cat', 'Dan', 'Eve', 'Fay', 'Gus', 'Hal']
 

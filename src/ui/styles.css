@@ -727,9 +727,11 @@ table.trivia-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; 
 }
 .icon-btn .ic { font-size: 1.25rem; }
 .icon-btn.on { background: var(--cream); color: var(--ink); }
+/* Round chip: a fixed circle the same size as the menu button, so it never stretches the top bar (2.10). */
 .round-chip {
-  display: inline-flex; align-items: center; gap: 4px;
-  min-height: 32px; padding: 0 12px; border-radius: 999px;
+  flex: none; box-sizing: border-box;
+  width: 42px; min-width: 42px; height: 42px; min-height: 42px; padding: 0; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
   background: rgba(0, 0, 0, 0.25); font-weight: 800; white-space: nowrap;
 }
 
@@ -941,3 +943,9 @@ button.table-seat { background: var(--cream); }
 .bot-row input { flex: 1; min-width: 0; }
 .bot-row .ic { flex: none; }
 .seat-bot { width: 0.85em; height: 0.85em; vertical-align: -0.1em; opacity: 0.85; }
+
+/* Ultimate Round button beside Next round (2.10): one line, same height as the big button, not stretched by it. */
+button.ultimate-btn { align-self: center; white-space: nowrap; flex: none; min-height: 56px; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+
+/* Top bar (2.10): the menu button and the round chip keep their round shape; they never shrink in the row. */
+.game-bar > .icon-btn, .game-bar > .round-chip { flex: none; }

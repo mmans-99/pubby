@@ -98,7 +98,9 @@ def main():
 
         # Play the first screens offline: tap through to new game.
         buttons = page.locator('button').all_inner_texts()
-        check('home buttons render offline', any('New game' in b for b in buttons), ', '.join(buttons[:6]))
+        check('home buttons render offline', any('Play against the computer' in b for b in buttons), ', '.join(buttons[:6]))
+        page.goto(url + '?onephone=1')  # the one-phone button is hidden unless asked for
+        page.wait_for_selector('h1')
         page.get_by_role('button', name='New game').first.click()
         page.wait_for_timeout(500)
         check('new game screen works offline', not errors, '; '.join(errors))

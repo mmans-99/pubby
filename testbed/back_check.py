@@ -30,7 +30,7 @@ with sync_playwright() as p:
     errors = []
     pg.on('pageerror', lambda e: errors.append(str(e)))
     pg.goto('about:blank')            # the page before Pubby
-    pg.goto(base)
+    pg.goto(base + '?onephone=1')  # the one-phone button is hidden unless asked for
     pg.wait_for_selector('h1')
     hist = ctx.new_cdp_session(pg)
 
@@ -94,7 +94,7 @@ with sync_playwright() as p:
     check('second back gesture exits Pubby', pg.url == 'about:blank', pg.url)
 
     # Back during a game does nothing: start a 2-player game from setup.
-    pg.goto(base)
+    pg.goto(base + '?onephone=1')  # the one-phone button is hidden unless asked for
     pg.wait_for_selector('h1')
     tap('New game')
     for n in ['Amy', 'Ben']:

@@ -13,5 +13,13 @@ Add a new line starting with "- " to add a catch-phrase. Lines without "- " are 
 - Come on!!
 - Too slow!!
 - Get them!!
-- Oof!!
+- Oofaa!!!!
 - Revenge time!!
+- Nooo, not again!!
+- Who dealt this?!
+- Wow, what a hand!!
+- Did you see that?!
+- Dirty move!!
+- Sit down, sweetheart!!
+- Ha! Caught you!!
+- Oh no, oh no, oh no!!
