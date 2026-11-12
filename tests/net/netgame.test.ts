@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { blankCards, eventFor, isBlank, logFor, phoneActions, readGameUpdate, redactSession } from '../../src/net/netgame.ts';
+import { blankCards, eventFor, isBlank, logFor, phoneActions, readGameUpdate, redactSession, stampHostTime } from '../../src/net/netgame.ts';
 import { readToHost, readToJoiner } from '../../src/net/lobby.ts';
 import { seededRng } from '../../src/rules/rng.ts';
 import { handOf } from '../../src/session/session.ts';
@@ -64,22 +64,36 @@ test('a phone copy holds only its own cards, at every point of a game (2, 3, 5 a
   }
 });
 
-test('take-cards requests and their events reach only the two players in them', () => {
+test('take-cards requests and their events are public: every phone sees who asked whom, but no cards', () => {
   const rng = seededRng(7);
   let s = dealAll(start(4, rng), rng);
   s = act(s, { type: 'startRound', by: s.hostId }, rng);
   while (s.phase !== 'playing') s = step(s, rng);
   s = act(s, { type: 'requestTake', by: 'p2', target: 'p3' }, rng);
-  assert.equal(redactSession(s, 'p2').takeRequests.length, 1);
-  assert.equal(redactSession(s, 'p3').takeRequests.length, 1);
-  assert.equal(redactSession(s, 'p1').takeRequests.length, 0);
-  assert.equal(redactSession(s, 'p4').takeRequests.length, 0);
-  const asked = s.log.filter((x) => x.event.type === 'takeRequested');
-  assert.equal(asked.length, 1);
-  assert.equal(logFor(s.log, 'p2').filter((x) => x.event.type === 'takeRequested').length, 1);
-  assert.equal(logFor(s.log, 'p1').filter((x) => x.event.type === 'takeRequested').length, 0);
-  assert.equal(eventFor({ type: 'takeRequested', requester: 'p2', target: 'p3' }, 'p4'), false);
+  for (const p of ['p1', 'p2', 'p3', 'p4']) {
+    assert.equal(redactSession(s, p).takeRequests.length, 1, `${p} sees the request`);
+    assert.equal(logFor(s.log, p).filter((x) => x.event.type === 'takeRequested').length, 1, `${p} sees the event`);
+  }
+  // Only the taker's own hand is real on the taker's copy; nobody else's cards travel.
+  const copy = redactSession(s, 'p1');
+  for (const cards of Object.values(copy.hands)) {
+    assert.ok(cards.every(isBlank) || cards === copy.hands['p1']);
+  }
+  assert.equal(eventFor({ type: 'takeRequested', requester: 'p2', target: 'p3' }, 'p4'), true);
   assert.equal(eventFor({ type: 'slapped', slapper: 'p1', slapped: 'p2', cardsPickedUp: 3 }, 'p4'), true);
+});
+
+test('pause times are stamped with the host clock, whatever the phone sent', () => {
+  const sent = [
+    { type: 'pause' as const, by: 'p1', at: 5 },
+    { type: 'respondPause' as const, by: 'p1', requester: 'p2', approve: true, at: 9 },
+    { type: 'readyUp' as const, by: 'p2' },
+  ];
+  const out = stampHostTime(sent, 123456);
+  assert.equal((out[0] as { at: number }).at, 123456);
+  assert.equal((out[1] as { at: number }).at, 123456);
+  assert.deepEqual(out[2], sent[2]);
+  assert.equal((sent[0] as { at: number }).at, 5, 'the input is not changed');
 });
 
 test('a phone can only send moves for its own player, and never the clock', () => {
@@ -96,13 +110,16 @@ test('a phone can only send moves for its own player, and never the clock', () =
 test('game messages are read on both sides; anything else is ignored', () => {
   const rng = seededRng(3);
   const s = start(3, rng);
-  const msg = { t: 'game', me: 'p2', full: true, session: redactSession(s, 'p2'), log: logFor(s.log, 'p2'), events: [] };
+  const msg = { t: 'game', me: 'p2', full: true, session: redactSession(s, 'p2'), log: logFor(s.log, 'p2'), events: [], hostNow: 1000 };
   const back = readToJoiner(JSON.parse(JSON.stringify(msg)));
   assert.ok(back && back.t === 'game');
   assert.equal(back.me, 'p2');
   assert.equal(back.full, true);
+  assert.equal(back.hostNow, 1000);
   assert.equal(back.log.length, s.log.length);
   assert.equal(readGameUpdate({ t: 'game', me: 'p2' }), null);
+  // A message without the host's clock is not read (protocol 4).
+  assert.equal(readGameUpdate({ ...msg, hostNow: undefined }), null);
   assert.deepEqual(readToJoiner({ t: 'nope', why: 'Not your turn' }), { t: 'nope', why: 'Not your turn' });
   assert.deepEqual(readToHost({ t: 'act', actions: [1] }), { t: 'act', actions: [1] });
   assert.deepEqual(readToHost({ t: 'sync' }), { t: 'sync' });

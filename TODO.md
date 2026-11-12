@@ -186,16 +186,16 @@ Built in slices; each slice gets a test link and a checklist.
   - [x] Players around an oval table, you at the bottom (one-phone games too: whoever holds the phone), others clockwise; played cards in front of each player, waste pile in the middle, glowing seat for whose turn; deal and end-of-trick animations to the seats
   - [x] Reactions (emoji and catch-phrases) sent to every phone, floating from the sender's seat with their name; shown from the start of the game to the end only
   - [x] "Host is deciding / setting up" line on other phones wherever the host makes a decision (lobby: adding a player, settings, seat order, starting; game: starting the round, next round or end, no-majority votes, removing a player)
-- [ ] **Slice 3: votes, take-cards, pause, ready-up on every phone** (plan written 2026-11-12, `CODE.md` 9l; proposed version 2.5; **waiting for the user's approval to build**)
-  - [ ] Host clock for pauses: host stamps `at`, `hostNow` in game messages, countdown with the clock offset, only the host ticks; `LOBBY_PROTOCOL` 4
-  - [ ] Open live votes: ballot chips on every phone; host "Count now" (2 players: "Stop waiting")
-  - [ ] Call votes from your own phone: Deal again? before the round, Propose target (round 1 and results), Ultimate on results
-  - [ ] Ready-up: "I'm ready" on each phone, ready row on every phone, "N of M ready" on the host's
-  - [ ] Take-cards: public in network games (redaction and events), ask / answer / withdraw on own phone, status line on other phones, leader's Play off with the reason, notes
-  - [ ] Pause: host pauses directly, others ask; banner on the host only; pause screen on every phone, Resume and limits host only; Reaction Tap reset on pause
-  - [ ] Quick rules, back gesture, comments and `PROJECT.md` 12 "not yet" lines
-  - [ ] Checks: unit tests, `netgame_check.py` additions, all other checks still pass
-  - [ ] User approves pushing v2.5 as the GitHub Pages test build, then tests it with the `CODE.md` 9l checklist
+- [~] **Slice 3: votes, take-cards, pause, ready-up on every phone** (plan approved and built 2026-11-12, `CODE.md` 9l; version 2.5; **built, not pushed: waiting for the user's approval to push and their phone test**)
+  - [x] Host clock for pauses: host stamps `at`, `hostNow` in game messages, countdown with the clock offset, only the host ticks; `LOBBY_PROTOCOL` 4
+  - [x] Open live votes: ballot chips on every phone; host "Count now" (2 players: "Stop waiting")
+  - [x] Call votes from your own phone: Deal again? before the round, Propose target (round 1 and results), Ultimate on results
+  - [x] Ready-up: "I'm ready" on each phone, ready row on every phone, "N of M ready" on the host's
+  - [x] Take-cards: public in network games (redaction and events), ask / answer / withdraw on own phone, status line on other phones, leader's Play off with the reason, notes
+  - [x] Pause: host pauses directly, others ask; banner on the host only; pause screen on every phone, Resume and limits host only; Reaction Tap reset on pause
+  - [x] Quick rules, back gesture, comments and `PROJECT.md` 12 "not yet" lines
+  - [x] Checks: unit tests, `netgame_check.py` additions, all other checks still pass
+  - [ ] User approves pushing v2.5 as the GitHub Pages test build, then tests it with the `CODE.md` 9l checklist (checks pass: `testbed/netvotes_check.py` 30 of 30, `netgame_check.py` 94 of 94, `lobby_check.py` 67 of 67)
 - [ ] **Slice 4: drops, rejoining, screen kept awake**
 - [x] QR code: host display and camera scanner (bundled maker; Android built-in reader; Camera app join link)
 - [x] Bundled QR reader so an iPhone can scan in Pubby and host (v1.4, user asked 22:23)

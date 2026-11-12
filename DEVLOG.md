@@ -4,6 +4,30 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-12 — Version 2.5 built: votes, take-cards, pause and ready-up on every phone (slice 3)
+
+**Done**
+- **User (14:44): "start building it"** (approved the slice 3 plan in `CODE.md` 9l).
+- Built slice 3 (version 2.5.0, minor bump: a new network slice). Details and file list in `CODE.md` 9l.
+  - Host's clock for pauses: the host stamps pause times and sends `hostNow`; phones count down on the host's clock. `LOBBY_PROTOCOL` 4.
+  - Live ballots on every phone during network votes; "count now" for the host (two players: counts as no).
+  - Every phone calls the reshuffle, proposes a target and asks for the Ultimate Round; each phone readies its own player, and every phone shows who is ready.
+  - Take-cards requests are public in network games (who asked whom, never the cards); the leader's Play waits for the answer.
+  - Pause: the host pauses straight away; others ask; only the host resumes or sets a limit; the Reaction Tap drops on any pause.
+  - Back gesture closes the take-cards and ask-to-pause panels first; quick rules updated.
+- Checks: `npm run check` clean; unit tests 148 of 148; `testbed/netgame_check.py` 94 of 94; new `testbed/netvotes_check.py` 30 of 30; `testbed/lobby_check.py` 67 of 67.
+- Environment note: this session has no network, so `npm install` can't run. For checks, `node_modules` was a local symlink to the preinstalled `/opt/npm-tools/node_modules` (tsx, esbuild, typescript). It's not part of the repo and was removed before finishing; recreate it the same way in a session without network.
+- Docs: `PROJECT.md` 12, `CODE.md` 8 and 9l, `TODO.md`, `src/content/quick-rules.md`, this entry. `CLAUDE.md`: no rule changes.
+
+**Not yet**
+- Not committed or pushed. The GitHub Pages build (the test build) needs the user's approval to push, then their phone test with the `CODE.md` 9l checklist.
+- Slice 4: rejoining after a drop, saving to carry on later, screen kept awake.
+
+**Next**
+- Ask the user to approve pushing v2.5 as the test build, then run the `CODE.md` 9l phone checklist.
+
+---
+
 ## 2026-11-12 — v2.4 tested; plan for slice 3 (votes, take-cards, pause, ready-up on every phone)
 
 **Done**

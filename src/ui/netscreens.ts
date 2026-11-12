@@ -4,21 +4,20 @@
  * playing reuse the pass-and-play screens (game.ts); the round-start steps
  * each phone answers for itself (roundstart.ts `netRoundStart`).
  *
- * Slice 2 keeps the between-rounds parts simple: the host starts each round
- * (no reshuffle vote yet), the results screen shows the podium with the
- * host's Next round / End the game, and there is no pause, take-cards
- * request, target vote, Ultimate call or reactions across phones yet
- * (slice 3). A phone that drops can't rejoin yet (slice 4).
+ * Slice 3 (2.5): between rounds, every phone can call a reshuffle vote, propose
+ * a target and ask for the Ultimate Round, and each phone readies its own
+ * player. The host still starts each round and moves on. A phone that drops
+ * can't rejoin yet (slice 4).
  */
 
 import { h, type Child } from './dom.ts';
 import { icon } from './icons.ts';
 import type { SavedGame } from './storage.ts';
-import type { Session } from '../session/types.ts';
+import type { PlayerId, Session } from '../session/types.ts';
 import { getState, update } from './store.ts';
 import { chooseLeaderStage, dealingStage, handBlock, nameOf, playHandStage, publicView, send } from './game.ts';
 import { netRoundStart } from './roundstart.ts';
-import { awardsRow, gameOverStage, podium } from './between.ts';
+import { awardsRow, gameOverStage, podium, targetRow } from './between.ts';
 import { playerView } from '../session/view.ts';
 import { netSeats } from './netlobby.ts';
 import { roundTable, wasteMiddle } from './table.ts';
@@ -76,21 +75,56 @@ function waitingFor(g: SavedGame, text: string): Child {
   );
 }
 
-/** After the deal: everyone looks at their own cards; the host starts the round. */
+/**
+ * After the deal: everyone looks at their own cards. Every phone can call a
+ * reshuffle vote (2.5); the host starts the round.
+ */
 function beforeRound(g: SavedGame): Child {
   const s = g.session;
+  const me = g.net!.me;
   const host = g.net!.role === 'host';
+  const v = publicView(s);
   return h('div', { class: 'stack' },
-    roundTable(s, publicView(s), { bottom: g.net!.me, middle: wasteMiddle(0) }),
-    handBlock(s, playerView(s, g.net!.me), null, { head: false }),
-    host
-      ? h('button', { class: 'big', onclick: () => send([{ type: 'startRound', by: s.hostId }]) }, icon('play'), ' Start the round')
-      : hostDeciding(s, 'when to start the round'),
+    roundTable(s, v, { bottom: me, middle: wasteMiddle(0) }),
+    handBlock(s, playerView(s, me), null, { head: false }),
+    targetRow(s, { me }),
+    h('div', { class: 'row' },
+      v.canCallReshuffle
+        ? h('button', {
+          class: 'secondary grow',
+          'aria-label': 'Deal again? Call a reshuffle vote',
+          onclick: () => send([{ type: 'callVote', by: me, kind: 'reshuffle' }]),
+        }, icon('shuffle'), ' Deal again?')
+        : h('button', { class: 'secondary grow', disabled: true, 'aria-label': 'Deal again: already used this round' }, icon('shuffle'), ' Used'),
+      host
+        ? h('button', { class: 'big grow', onclick: () => send([{ type: 'startRound', by: s.hostId }]) }, icon('play'), ' Start the round')
+        : null,
+    ),
+    host ? null : hostDeciding(s, 'when to start the round'),
+  );
+}
+
+/** Ready-up (2.5): who is ready, on every phone; each phone readies only its own player. */
+function readyRow(s: Session, me: PlayerId): HTMLElement {
+  const iReady = s.ready.includes(me);
+  return h('section', { class: 'ready-row', 'aria-label': 'Ready' },
+    h('div', { class: 'name-chips' }, s.order.map((p) => {
+      const on = s.ready.includes(p);
+      return h('span', {
+        class: on ? 'name-chip on' : 'name-chip',
+        'aria-label': `${nameOf(s, p)} ${on ? 'ready' : 'not ready'}`,
+      }, on ? [icon('check'), ` ${nameOf(s, p)}`] : nameOf(s, p));
+    })),
+    h('p', { class: 'muted small center' }, `${s.ready.length} of ${s.order.length} ready`),
+    iReady
+      ? h('button', { class: 'secondary', disabled: true }, icon('check'), ' Ready')
+      : h('button', { class: 'big', onclick: () => send([{ type: 'readyUp', by: me }]) }, "I'm ready"),
   );
 }
 
 function results(g: SavedGame): Child {
   const s = g.session;
+  const me = g.net!.me;
   const rec = s.rounds[s.rounds.length - 1];
   if (!rec) return h('p', null, 'No results yet.');
   const host = g.net!.role === 'host';
@@ -100,10 +134,19 @@ function results(g: SavedGame): Child {
     s.ultimateRound ? h('p', { class: 'center' }, h('span', { class: 'chip-info gold' }, icon('bolt'), ' Next: Ultimate Round')) : null,
     podium(s, rec),
     awardsRow(s),
+    targetRow(s, { me }),
+    readyRow(s, me),
+    // Every phone can ask for the Ultimate Round (2.5); the host moves on.
+    s.ultimateRound
+      ? null
+      : h('button', {
+        class: 'secondary',
+        onclick: () => send([{ type: 'callVote', by: me, kind: 'ultimate' }]),
+      }, icon('bolt'), s.order.length === 2 ? ' Ask for the Ultimate Round' : ' Ultimate Round vote'),
     host
       ? [
         h('button', { class: 'big', onclick: () => send([{ type: 'advance', by: s.hostId }]) },
-          icon('play'), s.ultimateRound ? ' Start the Ultimate Round' : ' Next round'),
+          icon('play'), s.ultimateRound ? ' Start the Ultimate Round' : ` Next round · ${nameOf(s, s.hostId)}`),
         h('button', {
           class: armed ? 'danger' : 'ghost',
           onclick: () => {

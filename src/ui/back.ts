@@ -101,6 +101,11 @@ export function backStep(): boolean {
   if (st.soundOpen) { update({ soundOpen: false }); return true; }
   if (st.csvSheet) { update({ csvSheet: null }); return true; }
   if (st.menuOpen) { update({ menuOpen: false }); return true; }
+  // Take-cards and "ask the host to pause" panels close first (2.5).
+  if (st.screen === 'game' && (st.armed === 'take' || st.armed === 'asker' || st.armed === 'askpause')) {
+    update({ armed: null });
+    return true;
+  }
   if (st.screen === 'game') return true;
   // Several phones: closes "Add player" or asks before leaving a lobby with others in it.
   if (st.screen === 'netlobby' && netLobbyBack()) return true;

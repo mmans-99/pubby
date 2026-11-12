@@ -33,17 +33,21 @@ Both go out in the same trick? Lower card or slapper wins.
 Jokers are always allowed. If one of you leads a joker, it's still the same trick: the other plays any card. Both play a joker? Missed round: the first player leads again. A last card that only meets a joker wins.
 
 ## Taking cards
-Tap the take button at the top (it shows only before a trick starts). Before a trick starts, you can ask to take all of another player's cards (unseen). One request at a time. They agree or refuse; if several players ask the same person, they choose who gets them. The giver goes out and takes the next place. Not when only two players are left.
+Tap the take button at the top (it shows only before a trick starts). Before a trick starts, you can ask to take all of another player's cards (unseen). One request at a time. They agree or refuse; if several players ask the same person, they choose who gets them. The giver goes out and takes the next place. Not when only two players are left. On several phones, everyone sees who asked whom and the answer, but never which cards moved.
 
 ## Hidden decks and the swap (2 and 3 players)
 With 2 or 3 players, some cards are dealt face down into hidden decks before the deal, so nobody can work out what everyone holds: 2 hidden decks with 2 players, 1 with 3. Each hidden deck gets about one player's share. Nobody sees them, ever, and they can hold jokers.
 At the start of every round, each player can swap up to 4 of their cards for random unseen cards from the hidden decks, or keep their hand. Swapped-out cards leave the round.
 
 ## Votes
-Your vote is secret. More than half wins. A tie goes to the host. Votes happen before a round (reshuffle, once per round) or on the results screen (target score, Ultimate Round).
+Your vote is secret. More than half wins. A tie goes to the host. Votes happen before a round (reshuffle, once per round) or on the results screen (target score, Ultimate Round). On several phones, votes are open: every phone shows each ballot as it's cast.
 With 2 players there are no votes: one of you asks, and it only happens if the other agrees.
+
 **Target score** (optional): anyone can propose one before round 1 starts or on a results screen, with **Propose** on the target row. Once agreed it's fixed. When someone reaches it, the Ultimate Round vote starts.
 A target can't be lower than the highest score. Picking the highest score means that player has reached it, so the Ultimate Round vote starts.
+
+## Several phones
+Any player can call a vote from their own phone. The host pauses straight away; anyone else asks the host, who says yes or no. Only the host can resume the game or set a pause time limit. On the results screen, tap **I'm ready** on your own phone; the host moves on when they're ready.
 
 ## Ultimate Round
 One final round for glory, worth no points. The winner beats every score; the loser ranks below every score. The game ends after it.

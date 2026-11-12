@@ -27,7 +27,7 @@ import { h, type Child } from './dom.ts';
 import type { GameStage, LastTrick, SavedGame, TrickPlay } from './storage.ts';
 import { getState, say, update, type Popup } from './store.ts';
 import { saveFinishedGame } from './history.ts';
-import { reshuffleStage, roundStartHolder, roundStartScreen, voteOutcome } from './roundstart.ts';
+import { reshuffleStage, resetTap, roundStartHolder, roundStartScreen, voteOutcome } from './roundstart.ts';
 import { lockedSeats } from '../rules/deal.ts';
 import { cardSound, eventSounds, sfx } from '../audio/sfx.ts';
 import { icon, type IconName } from './icons.ts';
@@ -35,8 +35,8 @@ import { hostBroadcast, joinSend, sendReaction } from './netplay.ts';
 import { roundTable, wasteMiddle } from './table.ts';
 import { netGameBody, netMenu } from './netscreens.ts';
 import {
-  askToTake, gameOverStage, notesPanel, passOnButton, pauseButton, pausePanel, pauseRequestsBanner, pauseTick, resultsStage,
-  takeButton, takeControls, takeHolder, takePrompts,
+  askPausePanel, askToTake, gameOverStage, netPauseButton, notesPanel, passOnButton, pauseButton, pausePanel, pauseRequestsBanner,
+  pauseTick, resultsStage, takeButton, takeControls, takeHolder, takePrompts, takeStatus,
 } from './between.ts';
 
 const rng = defaultRng();
@@ -323,8 +323,15 @@ function absorb(g: SavedGame, session: Session, events: readonly SessionEvent[],
 
   // Network game: a move by another phone keeps this phone's raised card (drawn
   // only if still playable) and any "tap again" it is in the middle of.
+  // A pause (any phone) drops a Reaction Tap under way and closes open panels (2.5).
+  const pausedNow = events.some((e) => e.type === 'paused');
+  if (pausedNow) resetTap();
   const keep = !!g.net && !opts.mine;
-  update({ game: { session, stage, holder, trickLog, lastTrick, notes, recordId, ...(g.net ? { net: g.net } : {}) }, popups, ...(keep ? {} : { selected: null, armed: null }) });
+  update({
+    game: { session, stage, holder, trickLog, lastTrick, notes, recordId, ...(g.net ? { net: g.net } : {}) },
+    popups,
+    ...(keep ? (pausedNow ? { armed: null } : {}) : { selected: null, armed: null }),
+  });
 }
 
 function popupsFor(s: Session, events: readonly SessionEvent[]): Popup[] {
@@ -480,11 +487,12 @@ export function gameScreen(g: SavedGame): HTMLElement {
     h('div', { class: 'game-bar' },
       h('button', { class: 'icon-btn', 'aria-label': 'Menu', 'aria-expanded': st.menuOpen ? 'true' : 'false', onclick: () => update({ menuOpen: !st.menuOpen, armed: null }) }, icon('menu')),
       h('span', { class: 'round-chip', 'aria-label': s.phase === 'gameOver' ? 'Game over' : s.ultimateRound && s.phase !== 'results' ? 'Ultimate Round' : `Round ${s.round}` }, label),
-      g.net ? null : pauseButton(s),
-      g.net ? null : takeButton(g),
+      g.net ? netPauseButton(g) : pauseButton(s),
+      takeButton(g),
     ),
     st.menuOpen ? (g.net ? netMenu(g) : gameMenu()) : null,
     pausePanel(g),
+    askPausePanel(g),
     pauseRequestsBanner(g),
     body,
   );
@@ -844,11 +852,15 @@ export function playHandStage(g: SavedGame): Child {
   const waitLine = g.net && actor && actor !== v.me
     ? h('p', { class: 'hint center wait-line' }, v.pendingFinalTwo === actor ? `${nameOf(s, actor)}: pick up or forfeit` : `${nameOf(s, actor)}’s turn`)
     : null;
+  // Network game (2.5): the leader can't play while a take-cards request waits; the trick waits for the answer.
+  const takeWaiting = g.net ? s.takeRequests.find((r) => !r.agreed) : undefined;
+  const playBlocked = !!takeWaiting;
   return h('div', { class: 'stack' },
     trickArea(s, g, v, v.me, actor ?? v.me),
     waitLine,
-    g.net ? null : notesPanel(g, v.me),
-    g.net ? null : takePrompts(s, v.me),
+    g.net ? takeStatus(s, v.me) : null,
+    notesPanel(g, v.me),
+    takePrompts(s, v.me),
     choosing
       ? h('section', { class: 'panel choice' },
         h('h2', null, 'Pick up or forfeit'),
@@ -860,8 +872,11 @@ export function playHandStage(g: SavedGame): Child {
     myTurn && jokerLed(s) && s.play
       ? h('p', { class: 'note center' }, icon('joker'), ` Joker lead by ${nameOf(s, s.play.trick.acted[0] as string)}: same trick, play any card`)
       : null,
-    handBlock(s, v, onTap, { head: false }),
-    myTurn
+    handBlock(s, v, playBlocked ? null : onTap, { head: false }),
+    myTurn && playBlocked && takeWaiting
+      ? h('p', { class: 'note center' }, `Waiting for ${nameOf(s, takeWaiting.target)} to answer ${nameOf(s, takeWaiting.requester)}`)
+      : null,
+    myTurn && !playBlocked
       ? h('div', { class: 'play-bar' },
         h('button', { class: 'big grow', disabled: !selCard, onclick: () => selected && play(selected) },
           selCard ? ['Play ', h('span', { class: selCard.kind === 'standard' && (selCard.suit === 'hearts' || selCard.suit === 'diamonds') ? 'play-red' : '' }, shortLabel(selCard))]
@@ -873,7 +888,7 @@ export function playHandStage(g: SavedGame): Child {
         (s.play?.hands[jokerGivesWin(s, v.me)!]?.length ?? 0) === 0 ? 'goes out with their last card unopposed and wins' : 'can play their last card unopposed and win'} the round.`)
       : null,
     !choosing ? forfeitBtn : null,
-    g.net ? null : takeControls(s, v.me),
+    takeControls(s, v.me),
     !g.net && !myTurn && !choosing && !s.takeRequests.some((r) => r.target === v.me && !r.agreed)
       ? passOnButton(g)
       : null,

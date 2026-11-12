@@ -40,11 +40,13 @@ function blankHands(hands: Readonly<Record<PlayerId, readonly Card[]>>, me: Play
   return out;
 }
 
-/** Events only some phones may see (take-cards requests: the two players in them). */
-export function eventFor(e: SessionEvent, me: PlayerId): boolean {
-  if (e.type === 'takeRequested' || e.type === 'takeAnswered' || e.type === 'takeCancelled') {
-    return e.requester === me || e.target === me;
-  }
+/**
+ * Events a phone is sent. Every event goes to every phone (2.5): take-cards
+ * requests and answers are public in network games, so everyone sees who asked
+ * whom. The cards themselves never travel (hands are blank on every copy but
+ * the owner's), and one-phone games never use this path.
+ */
+export function eventFor(_e: SessionEvent, _me: PlayerId): boolean {
   return true;
 }
 
@@ -69,9 +71,18 @@ export function redactSession(s: Session, me: PlayerId): Session {
         wastePile: blankCards(s.play.wastePile.length, 'waste'),
       }
       : null,
-    takeRequests: s.takeRequests.filter((r) => r.requester === me || r.target === me),
+    takeRequests: s.takeRequests,
     log: [],
   };
+}
+
+/**
+ * Pause times come from the host's clock, whatever phone sent them: the host
+ * replaces `at` on pause moves with its own time, so a phone whose clock is
+ * off can't shorten or lengthen a timed pause.
+ */
+export function stampHostTime(actions: readonly SessionAction[], now: number): SessionAction[] {
+  return actions.map((a) => (a.type === 'pause' || a.type === 'respondPause' ? { ...a, at: now } : a));
 }
 
 export function logFor(entries: readonly LogEntry[], me: PlayerId): LogEntry[] {
@@ -93,6 +104,8 @@ export interface GameUpdate {
   log: LogEntry[];
   /** What just happened (for pop-ups, sounds and animations). Empty on a full resend. */
   events: SessionEvent[];
+  /** The host's clock (ms) when sent: joining phones use it for the pause countdown. */
+  hostNow: number;
 }
 
 /** Host → joining phone: a move from this phone wasn't allowed. */
@@ -141,6 +154,7 @@ export function readGameUpdate(raw: unknown): GameUpdate | null {
   if (!isObj(raw) || raw['t'] !== 'game') return null;
   const s = raw['session'];
   if (typeof raw['me'] !== 'string' || !isObj(s) || !Array.isArray(s['order']) || !Array.isArray(raw['log']) || !Array.isArray(raw['events'])) return null;
+  if (typeof raw['hostNow'] !== 'number' || !Number.isFinite(raw['hostNow'])) return null;
   return {
     t: 'game',
     me: raw['me'],
@@ -148,5 +162,6 @@ export function readGameUpdate(raw: unknown): GameUpdate | null {
     session: s as unknown as Session,
     log: raw['log'] as LogEntry[],
     events: raw['events'] as SessionEvent[],
+    hostNow: raw['hostNow'],
   };
 }

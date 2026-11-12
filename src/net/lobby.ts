@@ -11,7 +11,7 @@ import { jokerCount, MAX_PLAYERS, MIN_PLAYERS } from '../rules/cards.ts';
 import { readGameUpdate, type GameRefused, type GameUpdate } from './netgame.ts';
 
 /** Bumped when the messages change, so mixed phones refuse each other. 2: game messages (slice 2). 3: reactions, host adding (2.4). */
-export const LOBBY_PROTOCOL = 3;
+export const LOBBY_PROTOCOL = 4;
 export const NAME_MAX = 16;
 
 export interface LobbySeat {

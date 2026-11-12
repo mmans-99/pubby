@@ -125,7 +125,9 @@ function waitStage(g: SavedGame, me: PlayerId, what: 'vote' | 'swap' | 'tap', wa
     h('div', { class: 'step-head' }, h('div', { class: 'step-title' }, icon(ic), ` ${title}`),
       v?.awaitingHost ? h('div', { class: 'muted small' }, 'No majority') : h('div', { class: 'muted small' }, `Waiting for ${who}`)),
     v?.awaitingHost ? hostLine(`${nameOf(s, s.hostId)} (host) is deciding the vote`) : null,
+    what === 'vote' && v ? ballotChips(s) : null,
     seatStrip(s, publicView(s), {}),
+    what === 'vote' && me === s.hostId && v && !v.awaitingHost && Object.keys(v.ballots).length > 0 ? countNowButton(s) : null,
     s.phase === 'results' ? resultsSummary(s) : handBlock(s, playerView(s, me), null, { head: false }),
   );
 }
@@ -147,19 +149,43 @@ function passStage(g: SavedGame, who: PlayerId, what: 'vote' | 'swap' | 'tap'): 
     h('div', { class: 'step-head' }, h('div', { class: 'step-title' }, icon(ic), ` ${title}`), h('div', { class: 'muted small' }, progress)),
     seatStrip(s, publicView(s), { highlight: who }),
     handoffBlock(name, () => update({ game: { ...g, stage: 'hand', holder: who } }), { compact: true }),
-    what === 'vote' && Object.keys(v!.ballots).length > 0
-      ? h('button', {
-        class: armed ? 'danger' : 'ghost',
-        onclick: () => {
-          if (!armed) { update({ armed: 'closevote' }); return; }
-          send([{ type: 'closeVote', by: s.hostId }]);
-        },
-      }, s.order.length === 2
-        ? (armed ? 'Tap again: not agreed' : 'Host: stop waiting (counts as no)')
-        : armed ? `Tap again: ${nameOf(s, s.hostId)} counts the votes now` : `Host: count the votes now`)
-      : null,
+    what === 'vote' && Object.keys(v!.ballots).length > 0 ? countNowButton(s) : null,
     resultsSummary(s),
   );
+}
+
+/** The host counts the votes now (2 players: a vote not agreed counts as no). Tap twice. */
+function countNowButton(s: Session): HTMLElement {
+  const armed = getState().armed === 'closevote';
+  return h('button', {
+    class: armed ? 'danger' : 'ghost',
+    onclick: () => {
+      if (!armed) { update({ armed: 'closevote' }); return; }
+      send([{ type: 'closeVote', by: s.hostId }]);
+    },
+  }, s.order.length === 2
+    ? (armed ? 'Tap again: not agreed' : 'Host: stop waiting (counts as no)')
+    : armed ? `Tap again: ${nameOf(s, s.hostId)} counts the votes now` : 'Host: count the votes now');
+}
+
+/**
+ * Network game (2.5): every ballot as it is cast, on every phone. One chip per
+ * player in seat order: YES, NO, or waiting; the player who called the vote says "asked".
+ */
+function ballotChips(s: Session): HTMLElement {
+  const v = s.vote!;
+  return h('div', { class: 'ballots', role: 'group', 'aria-label': 'Votes' }, s.order.map((p) => {
+    const b = v.ballots[p];
+    const asked = v.calledBy === p;
+    const word = b === 'yes' ? 'YES' : b === 'no' ? 'NO' : 'waiting';
+    return h('span', {
+      class: `ballot ${b ?? 'wait'}`,
+      'aria-label': `${nameOf(s, p)} ${word}${asked ? ', asked' : ''}`,
+    },
+      b === 'yes' ? icon('check') : null,
+      h('b', null, nameOf(s, p)),
+      h('small', null, asked ? ' asked' : b === 'no' ? ' NO' : b === 'yes' ? '' : ' waiting'));
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -225,11 +251,13 @@ function voteStage(g: SavedGame, me: PlayerId): Child {
     h('section', { class: 'panel vote-panel' },
       h('h2', { class: 'vote-q' }, icon(voteIcon(v.kind)), ` ${voteShort(s, v.kind, v.value)}`),
       h('p', { class: 'muted small center' }, who),
+      g.net ? ballotChips(s) : null,
       h('div', { class: 'vote-buttons' },
         h('button', { class: 'big vote-yes', onclick: () => cast(true) }, 'YES'),
         h('button', { class: 'big vote-no', onclick: () => cast(false) }, 'NO'),
       ),
     ),
+    g.net && me === s.hostId && Object.keys(v.ballots).length > 0 ? countNowButton(s) : null,
     v.kind === 'reshuffle' ? handBlock(s, view, null) : null,
   );
 }
@@ -243,6 +271,7 @@ function hostDecidesStage(g: SavedGame): Child {
     h('section', { class: 'panel vote-panel' },
       h('h2', { class: 'vote-q' }, icon(voteIcon(v.kind)), ` ${voteShort(s, v.kind, v.value)}`),
       h('p', { class: 'muted small center' }, `No majority · ${host} decides`),
+      g.net ? ballotChips(s) : null,
       h('div', { class: 'vote-buttons' },
         h('button', { class: 'big vote-yes', onclick: () => decide(true) }, 'YES'),
         h('button', { class: 'big vote-no', onclick: () => decide(false) }, 'NO'),

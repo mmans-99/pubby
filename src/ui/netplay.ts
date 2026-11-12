@@ -14,7 +14,7 @@
  */
 
 import type { PlayerId, Session, SessionAction, SessionEvent } from '../session/types.ts';
-import { eventFor, logFor, phoneActions, redactSession, type GameUpdate, type NetInfo } from '../net/netgame.ts';
+import { eventFor, logFor, phoneActions, redactSession, stampHostTime, type GameUpdate, type NetInfo } from '../net/netgame.ts';
 import type { ToJoiner } from '../net/lobby.ts';
 import { getState, say, update } from './store.ts';
 import { receive, runActions, showReaction, startShuffle } from './game.ts';
@@ -35,9 +35,16 @@ let transport: Transport | null = null;
 let linkOf: Record<PlayerId, string> = {};
 /** Host: how many entries of the full log each link has been sent. */
 const sentLog = new Map<string, number>();
+/** Joining phone: host clock minus this phone's clock (ms), from the last game message. */
+let clockOffset = 0;
 
 export function setTransport(t: Transport): void {
   transport = t;
+}
+
+/** The host's clock as this phone knows it (pause countdowns use it, so phone clocks don't matter). */
+export function hostClock(): number {
+  return Date.now() + clockOffset;
 }
 
 export function netInfo(): NetInfo | null {
@@ -79,6 +86,7 @@ function sendUpdate(p: PlayerId, s: Session, events: readonly SessionEvent[], fu
     session: redactSession(s, p),
     log: logFor(s.log.slice(from), p),
     events: full ? [] : events.filter((e) => eventFor(e, p)),
+    hostNow: Date.now(),
   };
   if (transport.sendTo(link, msg)) sentLog.set(link, s.log.length);
 }
@@ -95,7 +103,7 @@ export function hostGotAct(linkId: string, raw: unknown): void {
   if (!g?.net || g.net.role !== 'host' || !p) return;
   const checked = phoneActions(raw, p);
   if ('why' in checked) { transport?.sendTo(linkId, { t: 'nope', why: checked.why }); return; }
-  const why = runActions(checked.actions);
+  const why = runActions(stampHostTime(checked.actions, Date.now()));
   if (why) transport?.sendTo(linkId, { t: 'nope', why });
 }
 
@@ -123,6 +131,7 @@ export function joinSend(actions: readonly SessionAction[]): boolean {
 }
 
 export function joinGotGame(m: GameUpdate): void {
+  clockOffset = m.hostNow - Date.now();
   const g = getState().game;
   const have = g?.net?.role === 'join' ? g : null;
   if (!m.full && !have) { transport?.sendHost({ t: 'sync' }); return; }

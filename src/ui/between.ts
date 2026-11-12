@@ -26,6 +26,7 @@ import { nameOf, placeBadge, send } from './game.ts';
 import { icon, type IconName } from './icons.ts';
 import { gameOverSaved } from './history.ts';
 import { resetTap } from './roundstart.ts';
+import { hostClock } from './netplay.ts';
 import type { SavedGame } from './storage.ts';
 import { getState, update } from './store.ts';
 
@@ -167,12 +168,14 @@ const TARGET_MAX = 99;
  * on the before-the-round screen in round 1 and on the results screen.
  * Propose opens the points picker, then "who is proposing?".
  */
-export function targetRow(s: Session): HTMLElement | null {
+export function targetRow(s: Session, opts: { me?: PlayerId } = {}): HTMLElement | null {
   const allowed = targetVoteAllowed(s);
   if (!allowed && s.target === null) return null;
   const st = getState();
   const open = allowed && (st.armed === 'target' || st.armed === 'targetcaller');
-  const choosing = st.armed === 'targetcaller';
+  // Network game (2.5): every phone proposes for its own player, so there's no "who is proposing?" step.
+  const me = opts.me;
+  const choosing = me === undefined && st.armed === 'targetcaller';
   const min = minimumTarget(s);
   if (targetDraft < min) targetDraft = Math.min(TARGET_MAX, min);
   const set = (n: number): void => { targetDraft = Math.max(min, Math.min(TARGET_MAX, n)); update({}); };
@@ -192,10 +195,15 @@ export function targetRow(s: Session): HTMLElement | null {
         ),
         h('div', { class: 'chips center-chips' }, [5, 10, 15, 20].filter((n) => n >= min).map((n) =>
           h('button', { class: n === targetDraft ? 'quick on' : 'quick', onclick: () => set(n) }, String(n)))),
-        choosing
-          ? [h('p', { class: 'small center' }, 'Who is proposing?'),
-            nameChips(s, (id) => send([{ type: 'callVote', by: id, kind: 'target', value: targetDraft }]), { label: 'Proposed by' })]
-          : h('button', { class: 'secondary', onclick: () => update({ armed: 'targetcaller' }) }, `Propose ${targetDraft} points`),
+        me !== undefined
+          ? h('button', {
+            class: 'secondary',
+            onclick: () => { send([{ type: 'callVote', by: me, kind: 'target', value: targetDraft }]); update({ armed: null }); },
+          }, `Propose ${targetDraft} points`)
+          : choosing
+            ? [h('p', { class: 'small center' }, 'Who is proposing?'),
+              nameChips(s, (id) => send([{ type: 'callVote', by: id, kind: 'target', value: targetDraft }]), { label: 'Proposed by' })]
+            : h('button', { class: 'secondary', onclick: () => update({ armed: 'targetcaller' }) }, `Propose ${targetDraft} points`),
       ]
       : null,
   );
@@ -374,6 +382,18 @@ export function takePrompts(s: Session, me: PlayerId): HTMLElement | null {
   );
 }
 
+/**
+ * Network game (2.5): on every phone not involved, a line for each take-cards
+ * request still waiting ("Amy asked Ben for their cards…"). The cards never show.
+ */
+export function takeStatus(s: Session, me: PlayerId): HTMLElement | null {
+  const waiting = s.takeRequests.filter((r) => !r.agreed && r.requester !== me && r.target !== me);
+  if (!waiting.length) return null;
+  return h('div', { class: 'stack' }, waiting.map((r) =>
+    h('div', { class: 'host-line', role: 'status' }, icon('take'),
+      h('span', null, `${nameOf(s, r.requester)} asked ${nameOf(s, r.target)} for their cards…`))));
+}
+
 /** Players `p` may ask right now (before a trick, nothing open). */
 function takeTargets(s: Session, p: PlayerId): PlayerId[] {
   const play = s.play;
@@ -475,9 +495,54 @@ export function pauseButton(s: Session): HTMLElement | null {
   return h('button', { class: open ? 'icon-btn on' : 'icon-btn', 'aria-label': 'Pause', 'aria-expanded': open ? 'true' : 'false', onclick: () => update({ armed: open ? null : 'pause', menuOpen: false }) }, icon('pause'));
 }
 
+/**
+ * Network game (2.5): the host's pause button pauses straight away; any other
+ * phone asks the host (its button shows "Asked" while the request waits).
+ */
+export function netPauseButton(g: SavedGame): HTMLElement | null {
+  const s = g.session;
+  if (!canPause(s)) return null;
+  const me = g.net!.me;
+  if (me === s.hostId) {
+    return h('button', {
+      class: 'icon-btn',
+      'aria-label': 'Pause',
+      onclick: () => { resetTap(); sendKeep(g, [{ type: 'pause', by: me, at: Date.now() }]); },
+    }, icon('pause'));
+  }
+  const asked = s.pauseRequests.includes(me);
+  const open = getState().armed === 'askpause';
+  return h('button', {
+    class: asked || open ? 'icon-btn on' : 'icon-btn',
+    'aria-label': asked ? 'Pause asked: waiting for the host' : 'Ask the host to pause',
+    'aria-expanded': open ? 'true' : 'false',
+    onclick: () => { if (!asked) update({ armed: open ? null : 'askpause', menuOpen: false }); },
+  }, icon('pause'));
+}
+
+/** Network game (2.5): a phone other than the host's asks the host to pause. */
+export function askPausePanel(g: SavedGame): HTMLElement | null {
+  const s = g.session;
+  if (!g.net || g.net.me === s.hostId || getState().armed !== 'askpause' || !canPause(s)) return null;
+  const me = g.net.me;
+  return h('div', { class: 'panel menu' },
+    h('p', { class: 'small center' }, `Ask ${nameOf(s, s.hostId)} (host) to pause?`),
+    h('button', {
+      class: 'big',
+      onclick: () => { sendKeep(g, [{ type: 'requestPause', by: me }]); update({ armed: null }); },
+    }, icon('pause'), ' Ask to pause'),
+    h('button', { class: 'ghost', onclick: () => update({ armed: null }) }, 'Cancel'),
+  );
+}
+
+/** Network game (2.5): what every other phone says while the host is deciding about a pause. */
+function hostDecidingLine(text: string): HTMLElement {
+  return h('div', { class: 'host-line', role: 'status' }, icon('wait'), h('span', null, text));
+}
+
 export function pausePanel(g: SavedGame): HTMLElement | null {
   const s = g.session;
-  if (getState().armed !== 'pause' || !canPause(s)) return null;
+  if (g.net || getState().armed !== 'pause' || !canPause(s)) return null;
   const host = nameOf(s, s.hostId);
   const askers = s.order.filter((p) => p !== s.hostId && !s.pauseRequests.includes(p));
   return h('div', { class: 'panel menu' },
@@ -500,6 +565,9 @@ export function pauseRequestsBanner(g: SavedGame): HTMLElement | null {
   const s = g.session;
   if (s.paused || !s.pauseRequests.length) return null;
   const host = nameOf(s, s.hostId);
+  if (g.net && g.net.me !== s.hostId) {
+    return hostDecidingLine(`${host} (host) is deciding: ${names(s, s.pauseRequests)} asked to pause`);
+  }
   return h('div', { class: 'stack' }, s.pauseRequests.map((p) =>
     h('section', { class: 'note pause-req' },
       h('div', null, icon('pause'), ` ${nameOf(s, p)} asks to pause. ${host}:`),
@@ -534,22 +602,29 @@ export function pauseLayer(): HTMLElement | null {
     if (e.type === 'paused') { by = e.requestedBy; break; }
   }
   const limit = s.pauseTimeLimitSec;
+  // The countdown runs on the host's clock, so every phone shows the same time (2.5).
   const left = limit !== null && s.pausedAt !== null
-    ? Math.max(0, Math.ceil(limit - (Date.now() - s.pausedAt) / 1000))
+    ? Math.max(0, Math.ceil(limit - (hostClock() - s.pausedAt) / 1000))
     : null;
+  // Network game: only the host resumes or sets the limit; the other phones see a host line.
+  const hostOnly = !!g.net && g.net.me !== s.hostId;
   return h('div', { class: 'overlay pause-overlay', role: 'dialog', 'aria-label': 'Paused' },
     h('div', { class: 'pause-box' },
       h('div', { class: 'pause-icon' }, icon('pause')),
       h('h1', null, 'Paused'),
       h('p', { class: 'muted' }, by ? `${nameOf(s, by)} asked, ${host} (host) said yes.` : `${host} (host) paused the game.`),
       left !== null ? h('div', { class: 'pause-clock', 'aria-live': 'polite' }, `Back in ${clock(left)}`) : null,
-      h('button', { class: 'big', onclick: () => sendKeep(g, [{ type: 'resume', by: s.hostId }]) }, icon('play'), ` Resume · ${host}`),
-      h('p', { class: 'small' }, 'Host: pause time limit'),
-      h('div', { class: 'chips center-chips' }, PAUSE_LIMITS.map((o) =>
-        h('button', {
-          class: o.sec === limit ? 'quick on' : 'quick',
-          onclick: () => sendKeep(g, [{ type: 'setPauseTimeLimit', by: s.hostId, seconds: o.sec }]),
-        }, o.label))),
+      hostOnly
+        ? hostDecidingLine(`${host} (host) is deciding when to carry on`)
+        : [
+          h('button', { class: 'big', onclick: () => sendKeep(g, [{ type: 'resume', by: s.hostId }]) }, icon('play'), ` Resume · ${host}`),
+          h('p', { class: 'small' }, 'Host: pause time limit'),
+          h('div', { class: 'chips center-chips' }, PAUSE_LIMITS.map((o) =>
+            h('button', {
+              class: o.sec === limit ? 'quick on' : 'quick',
+              onclick: () => sendKeep(g, [{ type: 'setPauseTimeLimit', by: s.hostId, seconds: o.sec }]),
+            }, o.label))),
+        ],
     ),
   );
 }
@@ -569,6 +644,9 @@ export function pauseTick(): void {
   pauseTimer = window.setTimeout(() => {
     pauseTimer = null;
     const cur = getState().game;
-    if (cur?.session.paused) sendKeep(cur, [{ type: 'tick', at: Date.now() }]);
+    if (!cur?.session.paused) return;
+    // Network game: only the host's phone ends a timed pause; other phones just redraw the countdown.
+    if (cur.net && cur.net.role !== 'host') { update({}); return; }
+    sendKeep(cur, [{ type: 'tick', at: Date.now() }]);
   }, 1000);
 }
