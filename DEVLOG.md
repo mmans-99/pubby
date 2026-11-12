@@ -4,6 +4,20 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-12 — v2.4 tested; plan for slice 3 (votes, take-cards, pause, ready-up on every phone)
+
+**Done**
+- **User (14:00):** v2.4 phone test "was fine". Asked for the next slice written up so another model can code it.
+- **User's answers (2026-11-12):** network votes show live (every ballot on every phone as it's cast); take-cards requests in network games show who asked whom on every phone (not just the two players).
+- Plan written as `CODE.md` 9l: what already exists, decisions, seven build steps naming the files and functions, checks to add, the phone test checklist, and what's left for slice 4. Proposed version 2.5.
+- Docs: `PROJECT.md` 4.2, 12 and Decided (the two answers); `TODO.md` (2.3 and 2.4 tested, slice 3 broken into tasks); `CODE.md` 4a slice 3 line and new 9l; this entry. `CLAUDE.md` checked: no rule changes. Doc-only, so no version bump and no test build.
+- Nothing coded.
+
+**Next**
+- User approves the slice 3 plan, then it's built (a new session can start from `CODE.md` 9l).
+
+---
+
 ## 2026-11-08 (evening, later) — Version 2.4 built: round table, reactions on every phone, host line, shuffle fix
 
 **Done**

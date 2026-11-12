@@ -146,7 +146,7 @@ The Ace of Spades has no special rule. It is an ordinary card.
 - **One at a time, no cost:** A player can ask only one player at a time. Once that request is answered or withdrawn, they can ask again before a later trick. Asking costs nothing.
 - **Agreement:** The asked player agrees or refuses. The host does not approve (the user may add host approval back later). The requester can withdraw a request that hasn't happened yet.
 - **Asked by more than one player:** If two or more players ask the same player before a trick, that player chooses who gets their cards (or refuses everyone). The others are told no.
-- **Private:** Only the players involved see the request. The cards moving is shown to everyone (who took from whom, and how many), never which cards.
+- **Private (one-phone games):** Only the players involved see the request. In network games everyone sees who asked whom (section 12, user 2026-11-12). The cards moving is shown to everyone (who took from whom, and how many), never which cards.
 - **On one phone (pass-and-play):** Before a trick, the "Pass the phone to (leader)" screen has a "Someone wants to take cards" button. Pick who is asking; the phone goes to them in private to choose a player. The leader can also ask from their own hand screen. The phone then goes to the asked player to answer.
 - **The player whose cards are taken** has no cards left, so they are **out**, by the normal rules, and take the next finishing place at that moment.
 - **Who it helps (confirmed 2026-11-07):** the asked player gets the advantage: they go out straight away with the next place. The asker gets a new hand (and more cards). This is intended.
@@ -372,7 +372,8 @@ The trivia shows on the results screen after every round. It has no effect on sc
 - **Own phones only:** in a network game every player uses their own phone (no shared seats). New players can only join in the lobby; after the start, only a dropped player can rejoin their own seat.
 - **Dropped phone:** the game pauses for everyone until the player rejoins with the two scans. If they don't come back, the host can remove them: their cards leave play (not into the waste pile), they take last place in that round, and later rounds carry on with fewer players (scoring table for the new count; one player left ends the game).
 - **Host's phone drops:** no host transfer. The game is saved on the host's phone; the host opens Pubby, taps "Carry on", and everyone rejoins with the two scans.
-- **Votes in network games are open:** everyone sees who voted what.
+- **Votes in network games are open:** everyone sees who voted what. **Live (user 2026-11-12):** each player's YES or NO shows on every phone the moment it's cast. One-phone votes stay secret.
+- **Take-cards in network games are public (user 2026-11-12):** every phone sees who asked whom and the answer (agreed, refused, withdrawn), so the leader knows why the trick can't start yet. Which cards moved is still never shown. One-phone games keep the request private (section 4.2).
 - **What's shown on screen:** Each phone shows only its own hand and public information, including the host's phone. The host's screen never displays other players' hands.
 - **What's held in memory:** The host's phone holds every hand in memory, because it runs the game. This is accepted for v1 (see `CODE.md`, section 5).
 - **Reactions in multiplayer:** 😂 and catch-phrases sent from one phone appear on every phone, showing who sent them and floating in from that player's side of the table (section 4.1).
@@ -472,6 +473,7 @@ Answer these in any order. Each one unblocks part of the build.
 None. (2026-11-07 20:38: the multiplayer questions were answered; see section 12 and Decided.)
 
 ### Decided (for reference)
+- 2026-11-12, network slice 3: votes in network games show live (each ballot on every phone as it's cast); take-cards requests in network games show who asked whom on every phone (answers too), never which cards.
 - 2026-11-08 (09:27), look: all 25 less-text changes approved (section 12a): line icons, no emoji, explanations in ? rules, self-closing pop-ups, target score row on the before-the-round and results screens, podium results.
 - 2026-11-08 (07:29), sound: Huge SLAP!; fireplace crackle kept; every other effect as on the sample page (Resumed = click up); sound on by default with music and effects both quieter; music and effects on/off and volume can be changed during a game from the sound button (section 12b).
 - 2026-11-07 (20:36), multiplayer: every player uses their own phone (no shared seats); a dropped phone pauses the game for everyone and can rejoin its seat; the host can remove a player who doesn't come back, and their cards leave play (not into the waste pile); no new players once the game has started, only rejoining; votes are open (everyone sees who voted what).

@@ -180,19 +180,28 @@ Built in slices; each slice gets a test link and a checklist.
   - [x] Menu: host Close the game (every phone), others Leave the game; a lost or leaving phone shown on every phone
   - [x] Checks: `tests/net/netgame.test.ts` (6), unit tests 147; `testbed/netgame_check.py` (2, 3, 5 players, leaving, closing, one-phone game kept); `lobby_check.py` updated for the new Start
   - [x] Commit and push v2.3 as the GitHub Pages test build (user approved 16:14)
-  - [ ] User tests v2.3 on phones (2 and 3 or more phones)
-- [~] **Version 2.4: table and fixes from the v2.3 test** (user 16:38 and 17:55; mockup https://claude.ai/artifact/RBHyfJN8dkByCmMG9aCe6B approved 18:43 "Looks good"; built, `CODE.md` 9k; pushed 19:22 as the GitHub Pages test build; waiting for the user's phone test)
+  - [x] User tests v2.3 on phones (feedback built into 2.4)
+- [x] **Version 2.4: table and fixes from the v2.3 test** (user 16:38 and 17:55; mockup https://claude.ai/artifact/RBHyfJN8dkByCmMG9aCe6B approved 18:43 "Looks good"; built, `CODE.md` 9k; pushed 19:22 as the GitHub Pages test build; tested by the user on phones 2026-11-12: "it was fine")
   - [x] Fix: no shuffle animation at the start of a network game (first screen drawn before the shuffle starts)
   - [x] Players around an oval table, you at the bottom (one-phone games too: whoever holds the phone), others clockwise; played cards in front of each player, waste pile in the middle, glowing seat for whose turn; deal and end-of-trick animations to the seats
   - [x] Reactions (emoji and catch-phrases) sent to every phone, floating from the sender's seat with their name; shown from the start of the game to the end only
   - [x] "Host is deciding / setting up" line on other phones wherever the host makes a decision (lobby: adding a player, settings, seat order, starting; game: starting the round, next round or end, no-majority votes, removing a player)
-- [ ] **Slice 3: votes, swap, Reaction Tap, requests, pause, reactions, results on every phone** (2.3 already has the swap, Reaction Tap and answering votes on each phone; still to do: calling the reshuffle, target and Ultimate votes, open votes showing who voted what, take-cards, pause, ready-up; reactions across phones came in 2.4)
+- [ ] **Slice 3: votes, take-cards, pause, ready-up on every phone** (plan written 2026-11-12, `CODE.md` 9l; proposed version 2.5; **waiting for the user's approval to build**)
+  - [ ] Host clock for pauses: host stamps `at`, `hostNow` in game messages, countdown with the clock offset, only the host ticks; `LOBBY_PROTOCOL` 4
+  - [ ] Open live votes: ballot chips on every phone; host "Count now" (2 players: "Stop waiting")
+  - [ ] Call votes from your own phone: Deal again? before the round, Propose target (round 1 and results), Ultimate on results
+  - [ ] Ready-up: "I'm ready" on each phone, ready row on every phone, "N of M ready" on the host's
+  - [ ] Take-cards: public in network games (redaction and events), ask / answer / withdraw on own phone, status line on other phones, leader's Play off with the reason, notes
+  - [ ] Pause: host pauses directly, others ask; banner on the host only; pause screen on every phone, Resume and limits host only; Reaction Tap reset on pause
+  - [ ] Quick rules, back gesture, comments and `PROJECT.md` 12 "not yet" lines
+  - [ ] Checks: unit tests, `netgame_check.py` additions, all other checks still pass
+  - [ ] User approves pushing v2.5 as the GitHub Pages test build, then tests it with the `CODE.md` 9l checklist
 - [ ] **Slice 4: drops, rejoining, screen kept awake**
 - [x] QR code: host display and camera scanner (bundled maker; Android built-in reader; Camera app join link)
 - [x] Bundled QR reader so an iPhone can scan in Pubby and host (v1.4, user asked 22:23)
 - [~] Host session (slice 2), join flow (lobby done in slice 1), and reconnection (slice 4)
 - [x] Per-player private views (hidden hands never leave the host's phone; slice 2)
-- [ ] Reactions sent to every phone, showing who sent them and floating in from the sender's side of the table
+- [x] Reactions sent to every phone, showing who sent them and floating in from the sender's side of the table (2.4)
 - [ ] Multiplayer playtest with 2 to 8 devices
 
 ## Phase 5 — Polish

@@ -80,7 +80,7 @@ Joining must work with no internet. The options that were considered:
 - **Slice 0: connection test (go / no-go).** Built 2026-11-07 (version 1.3, section 9f). **Go:** the user's test passed on a phone hotspot (Android + Android, Android + iPhone, mobile data on and off). Version 1.4 adds in-app scanning on iPhones. A "Connection test" screen: two phones do the two scans, then send pings and show the round-trip time. Test on home Wi-Fi, on a phone hotspot, and with mobile data off. If phones can't connect, stop and talk before building more.
 - **Slice 1: network lobby.** Host or join from the home screen, scan to add players, names and profiles from each phone, seat order, host settings, start the game. **Built 2026-11-08 (version 2.1, section 9i).** Start shows every phone the same "All set" list for now; the deal comes in slice 2.
 - **Slice 2: play over the network.** Every phone shows its own hand and the table; turns, slaps, final two, pop-ups on every phone. No pass-the-phone screens in network games. **Built 2026-11-08 (version 2.3, section 9j).** Also built because the screens could be reused as they are: each phone answers votes, the hidden swap and Reaction Tap for itself. Still slice 3: calling votes, take-cards, pause, reactions across phones, ready-up and the target and Ultimate buttons; still slice 4: rejoining and saving.
-- **Slice 3: everything between tricks and rounds.** Votes on each player's own phone (secret by default), reshuffle, hidden swap, Reaction Tap on every phone at once, take-cards requests, pause requests, reactions on every phone from the sender's side, results and Ultimate Round.
+- **Slice 3: everything between tricks and rounds.** (Planned 2026-11-12, section 9l: votes open and live, take-cards public in network games.) Votes on each player's own phone, reshuffle, hidden swap, Reaction Tap on every phone at once, take-cards requests, pause requests, reactions on every phone from the sender's side, results and Ultimate Round.
 - **Slice 4: drops and rejoining.** Lost connection, rejoining a seat, the host's phone dropping, screen kept awake, game saved on the host's phone.
 - **Slice 5: playtest with 2 to 8 phones.** Release as version 3.0 (a new phase: major bump; 2.0 went to sound and the less-text redesign).
 
@@ -350,6 +350,118 @@ Every function is pure: it returns a new state and never changes the one passed 
 - **Reactions across phones:** the drawer's buttons call `react(r)`: shown where tapped (as before) and `sendReaction(r)` (`netplay.ts`): a joining phone sends `{ t: 'react', r }` to the host; the host shows it (`showReaction`) and passes `{ t: 'react', from, r }` to every other phone; the host's own go to every phone. `r` = -1 for the laugh, else the catch-phrase number (same list on every phone; unknown numbers are dropped). Shown from the sender's seat (`[data-seat]`, the table's first) with their name (`.float-react`), else near the top. The host drops more than 6 reactions in 3 s from one phone. The drawer and button are hidden on game over. `LOBBY_PROTOCOL` 3.
 - **Host line (`netscreens.ts` `hostLine`):** a gold-bordered status line with a turning hourglass on the other phones. Lobby: the host's `broadcast` adds `adding: true` while its Add player screen is open (`Lobby.adding`), shown as "X is adding a player…", otherwise "X is setting up the game". Game: before the round ("…is deciding: when to start the round"), results ("…: next round or end the game" / "…: when to start the Ultimate Round"), no-majority votes ("X (host) is deciding the vote").
 - **Checks:** `netgame_check.py` adds: the adding / setting-up line, the shuffle on every phone at the start, the table with the phone's own seat at the bottom, reactions both ways with the sender's name and no echo, the host line before the round and after results, no reactions button on game over. `lobby.test.ts`: `adding`, `react` messages. `bot.js` reads seat counts from the table.
+
+## 9l. Phase 4 slice 3: votes, take-cards, pause and ready-up on every phone (PLAN, not built)
+
+**Status:** planned 2026-11-12 after the user's v2.4 phone test ("it was fine"). Written so another session (or model) can build it straight from this section. **Nothing here is approved for coding yet:** the user approves the plan first (`CLAUDE.md` rules 1 and 2), then tests the build on phones before any commit (rule 5).
+
+**Proposed version:** 2.5 (minor bump, same as slices 1 and 2: 2.1 and 2.3). The user has the final say (`CLAUDE.md` rule 8).
+
+### Goal
+
+After this slice, a network game can do everything a one-phone game does between tricks and rounds, each player on their own phone. Only slice 4 (rejoining after a drop, saving to carry on later, screen kept awake in the game) is left.
+
+### What's already there (don't rebuild)
+
+- **The session layer handles every rule.** `callVote`, `castVote`, `closeVote`, `hostDecides`, `requestTake`, `answerTake`, `withdrawTake`, `requestPause`, `respondPause`, `pause`, `resume`, `setPauseTimeLimit`, `readyUp` all exist (`src/session/types.ts`) and are tested. **No rule changes in this slice.** If a rule seems missing, add it to `PROJECT.md` Open questions and ask the user (`CLAUDE.md` rule 6).
+- **Joining phones may already send them.** `PHONE_ACTIONS` in `src/net/netgame.ts` already lists every move above (`tick` stays host-only). `phoneActions` checks `by === me`.
+- **Answering votes on each phone** works (2.3): `roundstart.ts` `netRoundStart` → `voteStage` / `hostDecidesStage` / `waitStage`. The vote result pop-ups already show on every phone from the events.
+- **One-phone UI to reuse** (`src/ui/between.ts`, `src/ui/roundstart.ts`): `targetRow`, `ultimateCall`, `resultsStage` ready row, `takeControls`, `takePrompts`, `notesPanel`, `pauseButton`, `pausePanel`, `pauseRequestsBanner`, `pauseLayer`, `pauseTick`, `reshuffleStage`. Most of them pick "who is doing this" from name chips because one phone is shared. In a network game the answer is always **this phone's player** (`g.net.me`), so add a `me` option (or a small network version next to each) instead of the name chips. Keep the one-phone screens exactly as they are.
+- **Places that switch these off in network games today** (turn them on): `game.ts` around line 483 (`g.net ? null : pauseButton(s)`, `g.net ? null : takeButton(g)`), line 850 (`notesPanel`), 851 (`takePrompts`), 876 (`takeControls`), 877 (pass-on button: stays off, there's no phone to pass); `netscreens.ts` `beforeRound` (no reshuffle call or target row) and `results` (no target row, Ultimate call or ready-up).
+
+### Decisions this slice follows
+
+From `PROJECT.md` (sections 1.1, 2a, 4.2, 8, 9, 12) plus two answers from the user (2026-11-12):
+
+1. **Votes are open and live (user 2026-11-12).** During a vote every phone shows each player's ballot as soon as it's cast: a name chip per player, green YES, red NO, grey for waiting. This is network games only. One-phone votes stay secret.
+2. **Take-cards requests are public in network games (user 2026-11-12: "show who asked whom").** Every phone sees "Amy asked Ben for his cards" while the request waits, and sees the answer (agreed, refused, withdrawn). The cards themselves stay hidden: nobody but the taker sees which cards moved. In one-phone games the request stays private as now.
+3. Any player calls a vote from their own phone: a reshuffle (before the round), a target score (before round 1 and on results), or an Ultimate Round (on results). The session layer already refuses calls in the wrong place or time.
+4. Two-player games ask and agree (`PROJECT.md` 1.1): the asker counts as a yes, the other phone sees "Amy asked · you decide". The host's "Count now" counts as a no there. All of this already happens in the session layer; just show it.
+5. Pause: the host pauses or resumes from their phone; other phones ask the host. A pause freezes every phone. Only the host sees Resume and the time-limit chips.
+6. Ready-up: each phone readies only its own player; everyone sees who's ready; the host still decides when to move on.
+
+### Build steps
+
+**Step 1. Host clock for pauses (`src/net/netgame.ts`, `src/ui/netplay.ts`, `src/ui/between.ts`)**
+- `pause.at` and `respondPause.at` come from the phone's clock, and the timed-pause countdown compares `pausedAt` with `Date.now()`, so phones whose clocks differ by a few seconds would disagree. Fix:
+  - In `hostGotAct`, before `runActions`, replace `at` on `pause` and `respondPause` moves with the host's `Date.now()`. Put this in a pure helper in `netgame.ts` (`stampHostTime(actions, now)`) so it can be unit-tested.
+  - Add `hostNow: number` to the `game` message (`GameUpdate`; `readGameUpdate` accepts it). On every update the joining phone keeps `clockOffset = hostNow - Date.now()`.
+  - `pauseLayer` works out the countdown with `Date.now() + clockOffset` (export a `hostClock()` from `netplay.ts`; it returns `Date.now()` on the host and in one-phone games).
+  - Only the host runs `pauseTick` (it sends `tick`, which joining phones may not send). On a joining phone `pauseTick` just redraws the countdown once a second.
+- Bump `LOBBY_PROTOCOL` to 4 (the `game` message changed).
+
+**Step 2. Open live votes (`src/ui/roundstart.ts`)**
+- New `ballotChips(s)`: one chip per player in seat order with their name and a YES / NO / waiting mark (icons, not emoji: `PROJECT.md` 12a). The caller's chip is marked "asked". Label for screen readers: "Amy yes, Ben no, Cat waiting".
+- In a network game, show `ballotChips` in `voteStage` (above the YES / NO buttons), `waitStage` (instead of "Waiting for X, Y") and `hostDecidesStage`.
+- Host's "Count now" in a network game: on the host's `waitStage`, a button that sends `closeVote` (same as the one-phone pass screen, `roundstart.ts` around line 155). With 2 players its label is "Stop waiting (counts as no)".
+- Results-screen votes (target, Ultimate) use the same screens: `netRoundStart` already returns a vote screen whenever `s.vote` is set, whatever the phase. Check that the podium (`resultsSummary`) still shows under it on results.
+
+**Step 3. Calling votes from your own phone (`src/ui/netscreens.ts`, `src/ui/between.ts`)**
+- **Reshuffle:** in `beforeRound`, a "Deal again?" button for every phone that sends `callVote { by: me, kind: 'reshuffle' }`. It's off, with the label "Used", when `publicView(s).canCallReshuffle` is false. Use the same tile look as `reshuffleStage`: Look at cards isn't needed (your cards are already showing), so it's just two tiles on the host's phone (Deal again?, Start) and one on the others (Deal again?, with the host line underneath).
+- **Target score:** `targetRow(s, { me })`. With `me` set, the Propose button sends `callVote { by: me, kind: 'target', value }` straight away, with no "Who is proposing?" chips. Show it in `beforeRound` (round 1 only, where `targetVoteAllowed` already decides) and in `results`. Every phone can propose.
+- **Ultimate Round:** in `results`, an "Ultimate" button on every phone (not after the Ultimate Round is agreed) that sends `callVote { by: me, kind: 'ultimate' }`. Two players: label "Ask for the Ultimate Round".
+- The automatic votes (target reached, a drawn top score, "Coward!" second chance) already start in the session layer; check they show on every phone.
+
+**Step 4. Ready-up (`src/ui/netscreens.ts`)**
+- In `results`: every phone sees the ready row (name chips lit for ready players, from `s.ready`). A joining phone has one big "I'm ready" button for its own player (it sends `readyUp { by: me }` and turns into "Ready" when it's done). The host's phone shows the row with "N of M ready" next to Next round. The host doesn't need to ready up.
+
+**Step 5. Take-cards requests (`src/net/netgame.ts`, `src/ui/between.ts`, `src/ui/game.ts`)**
+- **Make them public in network games (decision 2):** in `redactSession`, stop filtering `takeRequests`; in `eventFor`, stop dropping `takeRequested` / `takeAnswered` / `takeCancelled`. Update `tests/net/netgame.test.ts` to match. Hands stay blank as before, so the taken cards are still only seen by the taker. (The redaction is only used by network games, so one-phone privacy is unchanged.)
+- **Asking:** turn on `takeButton` in the network game bar with `onHand` true and the holder being `me` (no "Someone wants to take cards" asker chips). `takeControls(s, me)` lists who you may ask and your own request with Withdraw.
+- **Answering:** turn on `takePrompts(s, me)` on the asked player's phone (Agree / Refuse, or "Give them to X" for each asker plus Refuse everyone). Add the knock sound when a request for you arrives (the `takeRequested` event already plays it, so check it plays on the asked phone).
+- **Everyone else:** a status line on every other phone while a request waits, for example "Amy asked Ben for his cards…" (new `takeStatus(s, me)` in `between.ts`, shown above the table). It goes away on answer or withdraw. The "Cards taken!" pop-up already shows on every phone.
+- **The leader:** while any request waits, the leader's Play button is off with the reason "Waiting for Ben to answer Amy". The session layer already refuses the first card of a trick then, but a clear screen beats a refused move.
+- **Notes:** turn on `notesPanel(g, me)` so the asker sees "Ben agreed: you took 6 cards" or "Ben said no". Notes are made in `absorb` (`game.ts` around line 262), which joining phones also run (`receive` → `absorb`), so they should arrive. Check it.
+
+**Step 6. Pause (`src/ui/between.ts`, `src/ui/game.ts`)**
+- Game bar in a network game: pause button for every phone (`pauseButton(s)`).
+  - **Host:** tap → pauses straight away (`pause { by: host, at }`), with no panel.
+  - **Others:** tap → "Ask Cat (host) to pause?" (Ask / Cancel) → `requestPause { by: me }`. While your request waits, the button shows as on and the label says "Asked".
+- `pauseRequestsBanner` on the host's phone only (Pause / Say no for each request). Other phones see a host line instead: "Cat (host) is deciding: Amy asked to pause".
+- `pauseLayer` on every phone. Only the host gets Resume and the time-limit chips; the others get the host line "Cat (host) is deciding: when to carry on" and the countdown if there's a time limit (step 1).
+- **When a pause arrives:** call `resetTap()` on every phone (a Reaction Tap in progress is dropped, as in one-phone games), close any open panel (`armed: null`), and keep the raised card.
+- Auto deal already stops while paused (`game.ts` around line 1106 checks `!s.paused`); check it carries on after resume. The end-of-trick animation should finish before the pause screen shows.
+- Sounds: the click down / click up effects come from the `paused` / `resumed` events on every phone already.
+
+**Step 7. Tidy-ups**
+- Remove the slice 3 notes from `netscreens.ts`'s top comment and the "not yet" lines in `PROJECT.md` 12.
+- `phoneActions`: nothing to add. Do keep the 8-move limit; a refuse-everyone answer for 7 askers fits.
+- Quick rules (`src/content/quick-rules.md`): in network games, votes are open and you can see who voted what live; take-cards requests show who asked whom; pause: the host pauses, others ask.
+- Back gesture (`back.ts`): closes the take-cards panel and the "Ask the host to pause?" panel first.
+
+### Checks to add or update
+
+- **Unit tests** (`tests/net/netgame.test.ts`): `stampHostTime` replaces `at` on `pause` / `respondPause` only; `readGameUpdate` takes `hostNow`; take requests and events now reach every phone, but hands stay blank (the taker's new hand real only on the taker's copy). Every existing test still passes (147 at 2.4).
+- **`testbed/netgame_check.py`** (2, 3 and 5 phones), new checks:
+  - a joining phone calls a reshuffle; ballots show live on every phone; the result pop-up shows on every phone; "Used" afterwards; the new deal shows on every phone;
+  - 2 players: ask → "you decide" on the other phone; host "Stop waiting" counts as no;
+  - a joining phone proposes a target before round 1 and on results; it shows on every phone once agreed; no Propose afterwards;
+  - a joining phone calls the Ultimate Round; no majority → host line on other phones, the host decides;
+  - ready-up from each joining phone shows on the host;
+  - take-cards: ask, the status line on the other phones, the leader's Play off with the reason, agree (counts change on every phone, the taker's hand real only on the taker's phone, no other copy ever holds a real card of someone else: the existing check), refuse, withdraw, two askers → the asked phone chooses;
+  - pause: host pause covers every phone; joining phone asks → host banner → yes / no; timed pause counts down the same on every phone (fake a 5 s clock difference on one page) and the host's phone resumes at zero; a Reaction Tap in progress is dropped by a pause;
+  - forged moves still refused (a phone readying or voting for another player).
+- **Still pass:** `lobby_check.py` (expects `LOBBY_PROTOCOL` 4 now), `playthrough.py` (one-phone games unchanged, votes still secret there), `back_check.py`, `offline_check.py`, `sound_check.py`, `npm test`, `npm run check`.
+
+### Test build and phone checklist (for `CLAUDE.md` rule 5)
+
+The test build is GitHub Pages (service workers need it, `CODE.md` 8a), so the pushed build is the test build, as with 2.1 to 2.4. Ask the user to approve that push first, then give them this checklist (3 phones is best; 2 for the ask-and-agree case):
+
+1. After the deal, a non-host phone taps Deal again?: every phone votes, and every phone sees each vote appear live.
+2. Before round 1, a non-host phone proposes a target: every phone votes; once it's agreed, the target row shows it and there's no Propose.
+3. On results, everyone taps I'm ready: the host sees who's ready.
+4. On results, someone calls the Ultimate Round; try a split vote so the host decides (the other phones show "Cat (host) is deciding the vote").
+5. Before a trick, ask someone for their cards: every phone shows who asked whom; the leader can't play until it's answered; try agree, refuse and withdraw.
+6. Host pauses: every phone shows Paused; only the host can resume. A non-host phone asks to pause: the host gets Pause / Say no.
+7. Set a 1-minute pause limit: the countdown matches on every phone and the game resumes by itself.
+8. With 2 phones: Deal again? asks the other phone, and the host's Stop waiting counts as no.
+9. A one-phone game still works as before (votes still secret).
+
+### Not in this slice
+
+- Rejoining after a lost connection, saving and carrying on a network game, keeping the screen awake during a network game (slice 4).
+- Host transfer (decided: none, `PROJECT.md` 12).
+- Any rule change.
 
 ## 8a. Playable test builds (required before every commit)
 
