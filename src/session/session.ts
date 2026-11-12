@@ -111,6 +111,7 @@ export function createSession(setup: SessionSetup, rng: Rng): ActionResult {
       id: p.id,
       profileName: p.profileName.trim(),
       sessionName: p.sessionName?.trim() || p.profileName.trim(),
+      ...(p.computer ? { computer: true } : {}),
     })),
     order: ids,
     jokerRuleEnabled,

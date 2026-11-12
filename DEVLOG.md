@@ -4,6 +4,33 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-12 (evening, later) — Phase 4b slice A built and pushed as 2.6.0: AI brain and arena
+
+**Done**
+- **User (17:20):** build Phase 4b slice A from `CODE.md` 9m, run its checks, do not push until told.
+- Built slice A (no screen changes yet; nothing playable on the phone, `CLAUDE.md` rule 5):
+  - `CODE.md` 9m.2: `computer?` on session players and setup, copied by `createSession`; `GameRecord.vsComputer` (`isVsComputer` helper); `loadRecords` reads old records as false.
+  - `src/ai/`: `persona.ts`, `names.ts` (66 names), `seen.ts` (the one door, `seenBy`), `memory.ts`, `eval.ts`, `moves.ts`, `decide.ts`, `react.ts`.
+  - `tests/ai/`: `botgame.ts` (whole all-computer games, shared by tests and arena), `position.ts` (hand-made positions), and tests `imports`, `seen`, `fairplay`, `memory`, `eval`, `moves`, `decide`, `names`, `react` (55 tests).
+  - `testbed/ai_arena.ts` (`--bars` runs the pass bars).
+- Deviations from the plan, and why: `CODE.md` 9m.3 "As built in slice A". Main ones: `reactionFor` takes the phrase list as a parameter; memory has a `leader` and an `asks` field.
+- Checks: `npm run check` passes; `npm test` 203 of 203 (148 existing, 55 new); `npm run build` passes; mutation check: with redaction turned off, `seen.test` fails (then restored).
+- Arena, 2000 four-player games per bar, 3 rounds per game: 0 refused moves, 0 crashes, 4200 of 4200 games finished. Normal beats random by 1.424 places (bar 0.3). Normal beats Easy by 0.536 places (bar 0.15). Decision p95: Easy 0.04 ms, Normal 0.05 ms (bar 20 ms). All bars pass. Hard search (slice D) is not built.
+- Existing browser check `testbed/playthrough.py`: 2 players 11 of 11 pass. The full four-game run is slow (over 15 min); see the result line below.
+- Found, not changed: the engine refuses `endSession` once an Ultimate Round has been agreed ("The Ultimate Round has already been agreed"), e.g. after a draw at the top score. The arena advances into the Ultimate Round instead. The app's results screen should be checked for an "End session" button in that state. Changing it is a rule change, so it needs approval.
+
+**Not done**
+- **User (18:30):** "Push it." Version bumped to 2.6.0 (`package.json`, `CLAUDE.md` rule 8), committed to main and pushed as the GitHub Pages test build.
+- `node_modules` symlink to `/opt/npm-tools/node_modules` (npm had no network) removed before the commit.
+- PROJECT.md and CLAUDE.md unchanged: no rule or design decision changed.
+
+**Checks:** full bot playthrough 53 of 53; network game 94 of 94; existing browser checks all pass: netvotes 30 of 30, lobby 67 of 67, back 14 of 14, offline 20 of 20, sound 44 of 44.
+
+**Next**
+- Nothing to test on the phone for slice A (the arena numbers are the check). Slice B (`CODE.md` 9m.5 to 9m.8) starts when the user asks for it.
+
+---
+
 ## 2026-11-12 (evening) — Plan for single player with computer players
 
 **Done**

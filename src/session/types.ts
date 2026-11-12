@@ -21,11 +21,13 @@ export interface SessionPlayer {
   readonly profileName: string;
   /** Name for this session only. Defaults to the profile name. */
   readonly sessionName: string;
+  /** True for a computer player (CODE.md 9m). Nothing in the rules reads it. */
+  readonly computer?: boolean;
 }
 
 export interface SessionSetup {
   /** Players in clockwise order. 2 to 8. */
-  readonly players: readonly { id: PlayerId; profileName: string; sessionName?: string }[];
+  readonly players: readonly { id: PlayerId; profileName: string; sessionName?: string; computer?: boolean }[];
   readonly hostId: PlayerId;
   /** Host setup option. On by default. */
   readonly jokerRuleEnabled?: boolean;

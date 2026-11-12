@@ -4,7 +4,7 @@
  * storage can be full, blocked (private browsing) or cleared by the phone.
  */
 
-import { emptyProfile, type GameRecord, type ProfileStats } from '../session/record.ts';
+import { emptyProfile, isVsComputer, type GameRecord, type ProfileStats } from '../session/record.ts';
 import type { NetInfo } from '../net/netgame.ts';
 import type { Session } from '../session/types.ts';
 
@@ -105,7 +105,8 @@ export interface SavedGame {
 
 export function loadRecords(): GameRecord[] {
   const r = read<GameRecord[]>(RECORDS_KEY, []);
-  return Array.isArray(r) ? r : [];
+  // Records saved before computer players have no vsComputer field: they read as false (CODE.md 9m.2).
+  return Array.isArray(r) ? r.map((rec) => ({ ...rec, vsComputer: isVsComputer(rec) })) : [];
 }
 
 /** Adds a record (once: a record already saved is not added again). */

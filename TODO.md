@@ -209,11 +209,12 @@ Built in slices; each slice gets a test link and a checklist.
 Built before network slice 4 (user 2026-11-12). One slice at a time; each needs checks, a test build and the user's "push".
 
 - [x] User answers the single-player questions and approves the plan (2026-11-12 17:15)
-- [ ] **Slice A: AI brain and arena** (`CODE.md` 9m.1 to 9m.4, 9m.9)
-  - [ ] `computer` flag on players; `vsComputer` on game records (9m.2)
-  - [ ] `src/ai/`: persona, names, seen, memory, eval, moves, decide, react
-  - [ ] Tests: imports, seen (public log), fair play, memory, eval, moves, decide
-  - [ ] `testbed/ai_arena.ts` and its pass bars
+- [x] **Slice A: AI brain and arena** (`CODE.md` 9m.1 to 9m.4, 9m.9). Built and pushed 2026-11-12 as version 2.6.0; checks pass
+  - [x] `computer` flag on players; `vsComputer` on game records (9m.2)
+  - [x] `src/ai/`: persona, names, seen, memory, eval, moves, decide, react
+  - [x] Tests: imports, seen (public log), fair play, memory, eval, moves, decide (plus names and react)
+  - [x] `testbed/ai_arena.ts` and its pass bars (all pass; numbers in `CODE.md` 9m.9)
+  - [ ] Phone check: nothing to play yet (rule 5); the arena numbers are the check for this slice
 - [ ] **Slice B: single player on the phone, Normal only** (9m.5 to 9m.8): bot driver, own-seat screens, setup screen, separate vs-computer stats, `testbed/solo_check.py`
 - [ ] **Slice C: Easy, Mixed levels, personalities, names (many cultures, editable), reactions (on by default), speed**
 - [ ] **Slice D: Hard** (sampling and search; Web Worker if needed)

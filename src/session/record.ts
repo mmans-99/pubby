@@ -30,6 +30,13 @@ export interface GameRecord {
   };
   readonly final: SessionEnd & { readonly scores: Readonly<Record<PlayerId, number>> };
   readonly trivia: Trivia;
+  /** True if any player was a computer player (CODE.md 9m.2). */
+  readonly vsComputer: boolean;
+}
+
+/** Records saved before computer players existed have no `vsComputer` field: they read as false. */
+export function isVsComputer(rec: { readonly vsComputer?: boolean }): boolean {
+  return rec.vsComputer === true;
 }
 
 /** Build the record when the session has ended. `id` should be unique (e.g. a random id). */
@@ -41,6 +48,7 @@ export function buildGameRecord(s: Session, savedAt: Date, id: string): GameReco
     savedAt: savedAt.toISOString(),
     playerCount: s.order.length,
     players: s.players,
+    vsComputer: s.players.some((p) => p.computer === true),
     hostId: s.hostId,
     jokerRuleEnabled: s.jokerRuleEnabled,
     jokerTotal: s.jokerTotal,
