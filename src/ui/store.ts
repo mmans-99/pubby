@@ -8,14 +8,20 @@ import type { CsvSheet } from './history.ts';
 import type { PlayerId } from '../session/types.ts';
 import { loadGame, saveGame, type SavedGame } from './storage.ts';
 import type { IconName } from './icons.ts';
-import type { Speed } from '../ai/persona.ts';
+import type { SetupLevel, Speed } from '../ai/persona.ts';
+
+/** One computer player on the setup screen: its name (editable) and level. */
+export interface SetupBot {
+  name: string;
+  level: SetupLevel;
+}
 
 /** "Play against the computer" setup (CODE.md 9m.7). */
 export interface SoloSetup {
   /** The person's profile name on this phone. */
   me: string | null;
-  /** Number of computer players (1 to 7). */
-  bots: number;
+  /** The computer players, one per seat (1 to 7). */
+  seats: SetupBot[];
   speed: Speed;
   reactions: boolean;
   jokers: boolean;

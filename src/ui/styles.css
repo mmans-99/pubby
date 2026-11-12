@@ -934,3 +934,10 @@ button.table-seat { background: var(--cream); }
 .center-row { justify-content: center; align-items: center; }
 .center-row .grow { text-align: center; }
 .stat-title { display: flex; align-items: center; gap: 6px; margin: 14px 0 4px; font-size: 1rem; }
+
+/* Single player setup (slice C): one row per computer player, name field and level chip. */
+.bot-list { display: grid; gap: 8px; margin: 8px 0; }
+.bot-row { display: flex; align-items: center; gap: 8px; }
+.bot-row input { flex: 1; min-width: 0; }
+.bot-row .ic { flex: none; }
+.seat-bot { width: 0.85em; height: 0.85em; vertical-align: -0.1em; opacity: 0.85; }

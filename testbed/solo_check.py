@@ -1,4 +1,4 @@
-"""Slice B check (CODE.md 9m.9): play against the computer on a phone-sized page.
+"""Slice B check (CODE.md 9m.9): play against the computer on a phone-sized page. Slice C adds the setup checks.
 
 A person (profile "Sam", the host) plays against 3 Normal computer players, at
 Fast speed, in the built app (dist/index.html). testbed/bot.js taps the
@@ -69,8 +69,8 @@ def start_solo(page):
     page.wait_for_selector('.round-table')
 
 
-def play_until_over(page, limit_s=600):
-    """Taps the person's seat (bot.js) and watches the computer players. Returns (over, saw_thinking, moves)."""
+def play_until_over(page, limit_s=600, watch='.think-dots'):
+    """Taps the person's seat (bot.js) and watches the computer players. Returns (over, saw, moves); saw is true if `watch` appeared."""
     page.evaluate(BOT)
     cfg = {'players': 4, 'rounds': 2, 'manualDeal': False, 'swap': True, 'reshuffle': True,
            'ultimate': False, 'voteYes': True, 'forfeitChance': 0.1, 'jokers': True, 'stayAtEnd': True}
@@ -78,7 +78,7 @@ def play_until_over(page, limit_s=600):
     start_log = log_len(page)
     t0 = time.time()
     while time.time() - t0 < limit_s:
-        if page.locator('.think-dots').count():
+        if page.locator(watch).count():
             saw_thinking = True
         action = page.evaluate('cfg => window.pubbyBot.step(cfg)', cfg)
         if action == 'GAME OVER':
@@ -90,8 +90,86 @@ def play_until_over(page, limit_s=600):
     return False, saw_thinking, log_len(page) - start_log
 
 
+def setup_c(page, level_chip, rename=None, reactions=True):
+    """Setup screen for slice C: profile Sam, Fast speed, a level chip, optional names and reactions off."""
+    page.get_by_role('button', name='Play against the computer').click()
+    page.get_by_role('heading', name='Computer players').wait_for()
+    if page.get_by_role('button', name='Sam', exact=True).count() == 0:
+        page.get_by_label('New profile name').fill('Sam')
+        page.get_by_role('button', name='Add', exact=True).click()
+    page.get_by_role('button', name='Sam', exact=True).wait_for()
+    page.get_by_role('button', name='Sam', exact=True).click()
+    page.get_by_role('button', name='Fast', exact=True).click()
+    page.get_by_role('button', name=level_chip, exact=True).click()
+    for seat, name in (rename or {}).items():
+        field = page.get_by_label(f'Name of computer player {seat}')
+        field.fill(name)
+        field.press('Tab')  # the name is kept when the field loses focus
+    if not reactions:
+        page.get_by_text('Reactions from the computer players').click()  # the label switches the box off
+
+
+def slice_c_checks(browser):
+    """Slice C (CODE.md 9m.9): levels, names and reactions on the setup screen and at the table."""
+    # Validation first: a computer player named like the person can't start a game.
+    ctx, page = new_page(browser)
+    setup_c(page, 'All Normal', rename={1: 'Sam'})
+    check(page.get_by_text("Two players can't both be called Sam").count() > 0, 'setup says a clashing name is not allowed')
+    check(page.get_by_role('button', name='Fix the names first').is_disabled(), 'Start is off while a name clashes')
+    page.get_by_label('Name of computer player 1').fill('Wren')
+    page.get_by_label('Name of computer player 1').press('Tab')
+    check(page.get_by_role('button', name=re.compile('Start game')).is_enabled(), 'Start is back once the names are fixed')
+    ctx.close()
+
+    # Game 1: All Easy, one computer player renamed, reactions on. Names and levels reach the table.
+    ctx, page = new_page(browser)
+    setup_c(page, 'All Easy', rename={1: 'Wren'}, reactions=True)
+    page.get_by_role('button', name=re.compile('Start game')).click()
+    page.wait_for_selector('.round-table')
+    game = stored(page, 'pubby.currentGame') or {}
+    levels = [b['level'] for b in (game.get('bots') or {}).get('seats', {}).values()]
+    check(levels and all(lv == 'easy' for lv in levels), 'All Easy saves Easy for every computer player')
+    check(any(pl.get('sessionName') == 'Wren' for pl in game.get('session', {}).get('players', [])), 'the renamed computer player is saved with its new name')
+    check(page.locator('.seat-name', has_text='Wren').count() > 0, 'the new name shows at the table')
+    check(page.locator('.seat-bot').count() >= 3, 'computer players have a computer icon at the table')
+    over, saw_reaction, moves = play_until_over(page, watch='.float-react')
+    check(over, f'All Easy game played to the end ({moves} log events)')
+    check(saw_reaction, 'reactions float from computer seats with reactions on')
+    check(not [e for e in page.errors if 'refused' in e or 'could not decide' in e], 'no refused moves in the All Easy game')
+    ctx.close()
+
+    # Game 2: Mixed levels, reactions off. Levels are saved; no reaction appears; the game still finishes.
+    ctx, page = new_page(browser)
+    setup_c(page, 'Mixed', reactions=False)
+    page.get_by_role('button', name=re.compile('Start game')).click()
+    page.wait_for_selector('.round-table')
+    game = stored(page, 'pubby.currentGame') or {}
+    levels = [b['level'] for b in (game.get('bots') or {}).get('seats', {}).values()]
+    check(len(levels) == 3 and all(lv in ('easy', 'normal') for lv in levels), f'Mixed saves Easy or Normal for each computer player ({levels})')
+    check((game.get('bots') or {}).get('reactions') is False, 'the reactions switch is saved as off')
+    over, saw_reaction, moves = play_until_over(page, watch='.float-react')
+    check(over, f'Mixed game with reactions off played to the end ({moves} log events)')
+    check(not saw_reaction, 'no reactions appear when the reactions switch is off')
+    ctx.close()
+
+
+def report():
+    failed = [w for ok, w in checks if not ok]
+    print(f'\n{len(checks) - len(failed)} of {len(checks)} checks pass')
+    if failed:
+        print('FAILED:', '; '.join(failed))
+        sys.exit(1)
+
+
 def main():
     failures = 0
+    if '--slice-c' in sys.argv:  # only the slice C checks (the slice B ones take several minutes)
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            slice_c_checks(browser)
+            browser.close()
+        report()
+        return
     with sync_playwright() as p:
         browser = p.chromium.launch()
         ctx, page = new_page(browser)
@@ -171,13 +249,10 @@ def main():
         check(moved and before_close >= resumed_from, 'after Carry on the computer players keep playing')
         check(not [e for e in page.errors if 'refused' in e or 'could not decide' in e], 'no refused moves after Carry on')
         ctx.close()
+        slice_c_checks(browser)
         browser.close()
 
-    failed = [w for ok, w in checks if not ok]
-    print(f'\n{len(checks) - len(failed)} of {len(checks)} checks pass')
-    if failed:
-        print('FAILED:', '; '.join(failed))
-        sys.exit(1)
+    report()
 
 
 if __name__ == '__main__':

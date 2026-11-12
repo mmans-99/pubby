@@ -3,7 +3,8 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BOT_NAMES, pickNames } from '../../src/ai/names.ts';
+import { BOT_NAMES, botNamesProblem, pickNames } from '../../src/ai/names.ts';
+import { mixedLevel, MIXED_LEVELS } from '../../src/ai/persona.ts';
 import { seededRng } from '../../src/rules/rng.ts';
 
 test('the name list has at least 60 different names', () => {
@@ -23,4 +24,29 @@ test('pickNames gives different names, none already taken (ignoring case)', () =
 
 test('pickNames refuses when there are not enough names left', () => {
   assert.throws(() => pickNames(BOT_NAMES.length, ['Aisha'], seededRng(1)));
+});
+
+// Slice C (CODE.md 9m.7): the setup screen checks names before a game starts.
+
+test('botNamesProblem accepts different names that are not the person\'s name', () => {
+  assert.equal(botNamesProblem(['Aisha', 'Ravi'], 'Sam'), null);
+  assert.equal(botNamesProblem([], 'Sam'), null);
+});
+
+test('botNamesProblem refuses an empty name, a long name, and duplicates (ignoring case)', () => {
+  assert.match(botNamesProblem(['Aisha', '  '], 'Sam') ?? '', /needs a name/);
+  assert.match(botNamesProblem(['Aisha'.repeat(5)], 'Sam') ?? '', /up to 16 letters/);
+  assert.match(botNamesProblem(['Mei', 'MEI'], 'Sam') ?? '', /both be called MEI/);
+});
+
+test('botNamesProblem refuses a computer player with the person\'s name', () => {
+  assert.match(botNamesProblem(['sam'], 'Sam') ?? '', /both be called sam/);
+  assert.equal(botNamesProblem(['Sam'], null), null, 'no person chosen yet: nothing to clash with');
+});
+
+test('Mixed draws only Easy or Normal until Hard arrives (slice D)', () => {
+  assert.deepEqual([...MIXED_LEVELS], ['easy', 'normal']);
+  const seen = new Set<string>();
+  for (let seed = 1; seed <= 200; seed++) seen.add(mixedLevel(seededRng(seed)));
+  assert.deepEqual([...seen].sort(), ['easy', 'normal']);
 });

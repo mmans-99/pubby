@@ -12,6 +12,7 @@
 import { h, type Child } from './dom.ts';
 import { cardFaceFromId, ordinal, SUIT_SYMBOL } from './cards.ts';
 import { thinkingSeat } from './thinking.ts';
+import { icon } from './icons.ts';
 import type { PlayerId, Session } from '../session/types.ts';
 import type { PlayerView } from '../session/view.ts';
 import type { Suit } from '../rules/cards.ts';
@@ -80,7 +81,8 @@ export function roundTable(s: Session, v: PlayerView, o: TableOpts): HTMLElement
       const thinking = thinkingSeat() === id;
       const cls = ['seat-chip', 'table-seat', id === o.highlight ? 'turn' : '', out ? 'out' : '', o.onTap ? 'tappable' : '', k === 0 ? 'me' : '', thinking ? 'thinking' : ''].join(' ');
       const inner: Child[] = [
-        h('span', { class: 'seat-name' }, p.sessionName),
+        // A computer player gets a small computer icon, so it is never taken for a person (PROJECT.md 12c).
+        h('span', { class: 'seat-name' }, s.players.find((x) => x.id === id)?.computer ? [icon('bot', 'seat-bot'), ' '] : null, p.sessionName),
         h('span', { class: 'seat-count' }, out ? h('span', { class: 'place-badge' }, ordinal(p.place!)) : [miniBacks(p.cardCount), String(p.cardCount)]),
         o.dealer === id ? h('span', { class: 'seat-tag' }, 'Deals') : null,
         p.isHost ? h('span', { class: 'seat-host', 'aria-label': 'Host' }, '★') : null,

@@ -222,7 +222,14 @@ Built before network slice 4 (user 2026-11-12). One slice at a time; each needs 
   - [x] Vs-computer stats kept apart (`pubby.profiles.vsComputer`); profile details and CSV show a "Vs computer" block; past games tag
   - [x] Checks: `npm test` 203 of 203, `testbed/solo_check.py` 18 of 18, and every existing browser check passes (see DEVLOG)
   - [ ] User's phone test (checklist in `CODE.md` 9m.9)
-- [ ] **Slice C: Easy, Mixed levels, personalities, names (many cultures, editable), reactions (on by default), speed**
+- [~] **Slice C: Easy, Mixed levels, personalities, names (many cultures, editable), reactions (on by default), speed** (built as 2.9.0 and pushed as the test build; phone check still to do, `CODE.md` 9m.9)
+  - [x] Setup screen: All Easy, All Normal, Mixed; each computer player's own level chip (Easy or Normal); Hard not offered until slice D
+  - [x] Names: each computer player's name editable on setup, checked for clashes (`botNamesProblem`), "New names", names re-rolled when a clashing profile is chosen
+  - [x] Computer icon before the name at the table
+  - [x] Reactions switch and speed checked in the browser (they were added in slice B)
+  - [x] Personalities, Easy forgetting and slips (built in slice A); arena: Normal beats Easy (bar 0.15, measured 0.536)
+  - [x] Checks: `npm test` 207 of 207; `solo_check.py --slice-c` 14 of 14; `solo_check.py` 18 of 18; `back_check.py` 14 of 14; `offline_check.py` 20 of 20
+  - [ ] User's phone check (`CODE.md` 9m.9, slice C checklist: All Easy and All Normal games, reactions not spammy, speeds)
 - [ ] **Slice D: Hard** (sampling and search; Web Worker if needed)
 - [ ] **Slice E: people and computer players on one phone**
 - [ ] **Slice F: computer players in network games**

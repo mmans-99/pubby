@@ -4,7 +4,32 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
-## 2026-11-12 (evening, latest) — Phase 4b slice B built and pushed as 2.7.0: play against the computer on the phone
+## 2026-11-12 (evening, latest) — Phase 4b slice C built and pushed as 2.9.0: computer players' levels, names and icon
+
+**Done**
+- **User (19:42):** "Build slice c and then push it to the site once done." Read `CODE.md` 9m.1 to 9m.9, `PROJECT.md` 12c, and the code of slices A and B. Built slice C; checks pass; pushed to `main` as 2.9.0 on the user's instruction. The phone check of slice C is still to do (`CODE.md` 9m.9 checklist).
+- **Setup screen (`src/ui/solosetup.ts`):** level chips All Easy, All Normal, Mixed (lit when the seats share a level, Mixed when they differ). Each computer player has a row: name field and a level chip (Easy or Normal) that changes just that player. "New names" re-rolls names and keeps levels. Adding a computer player gives a new name at Normal. Choosing or adding a profile re-rolls any computer player who has that name.
+- **Name check (`botNamesProblem`, `src/ai/names.ts`):** refuses an empty name, more than 16 letters, or two players with the same name (ignoring case; the person's name included). Shown live under the list, and Start stays off until it is fixed.
+- **Hard is not offered (deviation from the plan's chip list):** Hard is still the same as Normal (slice D adds search). So Mixed draws from Easy and Normal only (`MIXED_LEVELS`, `mixedLevel()` in `src/ai/persona.ts`). Slice D adds Hard to both.
+- **Table:** a computer seat's name has a small computer icon in front (`table.ts`, `.seat-bot`).
+- **Store:** `SoloSetup.bots` replaced by `SoloSetup.seats: SetupBot[]` (name and level for each computer player). Nothing else in the saved game format changed; the game still stores `bots.seats` with level and personality.
+- **Reactions and speed:** already in the slice B setup; checked in the browser (reactions float from computer seats when on, none appear when off).
+- **Version 2.9.0** (`package.json`, `CLAUDE.md` rule 8). Shown as 2.9 on the home screen and quick rules.
+- **Docs:** `CODE.md` (9m header, 9m.7, slice C results, 9e version history), `PROJECT.md` 12c (status for levels and names), `TODO.md` (slice C tasks), this entry.
+
+**Checks**
+- `npm run check` clean; `npm test` 207 of 207 (4 new in `tests/ai/names.test.ts`).
+- `testbed/solo_check.py --slice-c` 14 of 14: a clashing name blocks Start and Start comes back once fixed; an All Easy game with one player renamed (name and computer icon at the table, levels saved as Easy, reactions seen, game finished); a Mixed game with reactions off (levels saved as Easy or Normal, switch saved off, no reaction seen, game finished).
+- `testbed/solo_check.py` slice B 18 of 18 (run after the setup change, all pass).
+- `back_check.py` 14 of 14; `offline_check.py` 20 of 20; `testbed/ai_arena.ts --bars` all pass (Normal beats Easy by 0.536 against a bar of 0.15).
+- Not rerun: `playthrough.py`, `sound_check.py`, `lobby_check.py`, `netgame_check.py`, `netvotes_check.py`. The only change they could touch is the computer icon at the table, which shows only for computer players.
+
+**Environment notes (for later sessions)**
+- The repo is cloned shallow to `/home/claude/pubby`. `npm install` is blocked here (no network), so `node_modules` is a symlink to `/opt/npm-tools/node_modules`, which has esbuild, tsx, typescript and `@types/node`. It is gitignored. `npm run build` and `npm run check` work through it.
+- A first run of `solo_check.py` hit a race in the test's setup helper (it clicked a profile before the setup screen had drawn). Fixed in the helper; the app was fine.
+- Test builds: `CLAUDE.md` rule 5 asks for the phone test before a commit. The user asked to push after building, so it was pushed on that instruction; the phone checklist is still open.
+
+## 2026-11-12 (evening) — Phase 4b slice B built and pushed as 2.7.0: play against the computer on the phone
 
 **Done**
 - **User (19:32):** a slap that ends the game shows "Game over." under the SLAP! icon instead of "X picks up N cards and leads." (`src/ui/game.ts` popupsFor / popupLayer; `Popup` slap `over` flag in `store.ts`). Checks: `npm run check`, `npm test` 203 of 203, `solo_check.py` 18 of 18. Pushed as 2.8.0 on the user's request (19:40).

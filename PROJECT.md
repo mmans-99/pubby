@@ -447,7 +447,7 @@ Chosen from a sample page the user listens to on their phone: **Pubby sound samp
 
 ---
 
-## 12c. Single player: computer players (PLAN, 2026-11-12; answers given, build plan in `CODE.md` 9m; slice A, the AI brain, pushed as 2.6.0; slice B, Normal level on the phone, pushed as 2.7.0)
+## 12c. Single player: computer players (PLAN, 2026-11-12; answers given, build plan in `CODE.md` 9m; slice A, the AI brain, pushed as 2.6.0; slice B, Normal level on the phone, pushed as 2.7.0; slice C, Easy, Mixed and names, built as 2.9.0)
 
 **Goal:** one person plays Pubby on their own phone against computer players that play like real people: they think for a moment, make human-sized mistakes on easier levels, react to slaps, and **never cheat**. A computer player only ever knows what a person in its seat could know.
 
@@ -470,7 +470,7 @@ How much of this it remembers depends on its level (Easy forgets a lot, Hard rem
 | **Normal** | Every card played this round, who picked up what, who is out of which suit. | A decent regular. Plays safe when a slap is likely, dumps high cards when it's safe, saves jokers for dangerous moments, chooses slap cards sensibly. |
 | **Hard** | Everything Normal remembers, plus careful counting of what's still out. | A strong player. Before each move it imagines many possible ways the unknown cards could be spread (only ones that fit what it knows) and picks the move that works best across them. It still can't see cards; it can only guess well. |
 
-**Choosing levels (user 2026-11-12: "Mixed"):** in setup, pick **All Easy**, **All Normal**, **All Hard** or **Mixed**. Mixed gives each computer player a random level; tap a computer player's level chip to change just that one. Each computer player keeps its level for the whole game.
+**Choosing levels (user 2026-11-12: "Mixed"):** in setup, pick **All Easy**, **All Normal**, **All Hard** or **Mixed**. Mixed gives each computer player a random level; tap a computer player's level chip to change just that one. Each computer player keeps its level for the whole game. *Status (slice C, 2.9.0):* All Easy, All Normal and Mixed are on the setup screen. All Hard is not there yet (it comes with slice D), so Mixed draws from Easy and Normal only until then.
 
 ### How they play (rules of thumb used by every level, tuned by level and personality)
 - **Following suit:** if someone still to play might be out of the led suit (known missing suit, or that suit is nearly gone), play your **lowest** card of the suit so you're not the one who picks up the slap. If everyone still to play surely has the suit (or you're last), it's safe to get rid of a **high** card.
@@ -511,7 +511,7 @@ Built after single player works (`CODE.md` 9m slices E and F):
 
 ### Decided (single player, user 2026-11-12)
 1. Levels: Mixed is offered (plus All Easy / All Normal / All Hard), and each computer player's level can be changed.
-2. Names: fixed list of names from many cultures, picked at random, editable.
+2. Names: fixed list of names from many cultures, picked at random, editable. *Status (slice C, 2.9.0):* each computer player's name is editable on the setup screen, and Start is blocked while two players share a name (the person's name included).
 3. Reactions from computer players: on by default, with an off switch.
 4. Stats: separate "vs computer" totals; normal profile totals are never changed by these games.
 5. Mixed games: computer players with people on one phone, and in network games, are in the plan (built after single player).
