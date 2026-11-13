@@ -551,9 +551,9 @@ How it works: a small relay server on Cloudflare's free plan passes the messages
 
 ---
 
-### 12e. Everyone at the table before a game starts (BUILT as 2.19.0 on 2026-11-13, Option A, not pushed; user: "Maybe have all players at table before a game begins. Have something to say waiting for x player."; build guide `CODE.md` 9s)
+### 12e. Everyone at the table before a game starts (BUILT and PUSHED as 2.19.0 on 2026-11-13, Option A, f487bd8; user: "Maybe have all players at table before a game begins. Have something to say waiting for x player."; build guide `CODE.md` 9s)
 
-- **Status:** built locally. Known gap: under Option A the cards screen is still inside the game, so a slow player's cards screen does not hold others back (the user chose Option A knowing this).
+- **Status:** pushed as 2.19.0. User's phone test (2026-11-13 17:10): after both players swapped, the host was in the game while the other phone was still on the Done screen. This is the known gap below; fixed by 12f (plan). Known gap: under Option A the cards screen is still inside the game, so a slow player's cards screen does not hold others back (the user chose Option A knowing this).
 
 - Before any game starts (Nearby, Online, or a game with computer players and people on one phone where it applies), every player must be at the table before the game begins. No phone moves into the game while another player is still on the cards screen.
 - While someone is missing, every phone says who it is waiting for, e.g. "Waiting for Fay", or "Waiting for Ben and Fay" for two.
@@ -569,6 +569,33 @@ How it works: a small relay server on Cloudflare's free plan passes the messages
   2. Can the host start without a player who has left? Recommended: no.
   3. Show "Waiting for" in the lobby before the host taps Start, or only after? Recommended: both, from the same list.
   4. Should the quick rules (section 13) mention the wait?
+
+### 12f. Lobby scroll place, and everyone has seen their cards before play (PLAN, user 2026-11-13; build guide `CODE.md` 9t; version 2.20; not built, not approved)
+
+User, 2026-11-13: "When setting up a game, when I change host options, the screen goes back to the top why" and "I swapped cards both players and as host I was in game but other player was on the done screen, still not at table. I thought that was corrected. Can you check properly and make a detailed plan as well as the above about scrolling so I can code this with haiku."
+
+**A. Lobby scroll place.** Changing a host option (or any lobby change) keeps the Multiplayer lobby where it was. It does not jump up.
+
+**B. Cards seen before play.**
+- In a round with the hidden swap (2 and 3 players), after everyone has swapped or kept, each player sees their new hand and presses Done.
+- Play does not start (no leader, no Reaction Tap, no "who leads" choice) until **every** player has pressed Done.
+- A player who has pressed Done sees "Waiting for Fay" (or "Waiting for Ben and Fay"), with the same wording as the lobby.
+- Applies to Multiplayer (Nearby and Online) and to games against the computer (computer players press Done straight away). One-phone pass-and-play is unchanged (the phone is passed, so nobody is ahead).
+- Every round with a swap, not only the first.
+- With 4 to 8 players there is no swap and no new-hand screen, so nothing changes.
+
+**Open (asked 2026-11-13; defaults in brackets, used if the user doesn't say):**
+1. Should the host be able to stop waiting for a slow player? [No, same as the lobby rule in 12e.]
+2. Should the quick rules mention this wait? [No, same as 12e.]
+
+**Test checklist (phones):**
+1. Multiplayer, 2 players (Nearby). Both swap. Host presses Done first: host sees "Waiting for <other>", nobody can play. Other presses Done: both phones go to play together.
+2. Same with 3 players, one of them pressing Keep.
+3. Same on Online.
+4. Next round (results → next round with a swap): the wait happens again.
+5. Play against the computer, 2 players: after your swap, the computer does not lead before you press Done.
+6. Multiplayer lobby: scroll down, change the joker rule and the pause limit: the screen stays where it was.
+7. One-phone pass-and-play with 2 players: swap works as before.
 
 ## 13. Quick rules (in-game help)
 
@@ -594,7 +621,8 @@ How it works: a small relay server on Cloudflare's free plan passes the messages
 Answer these in any order. Each one unblocks part of the build.
 
 - **Online play defaults (section 12d, asked 2026-11-13):** answered 2026-11-13: keep Nearby, room list, 4-digit passcode, Cloudflare. Slice O2 can start.
-- **Everyone at the table before a game starts (section 12e, asked 2026-11-13):** decided 2026-11-13 (arrival at the table; no start while someone is missing; "Waiting for" in the lobby and after Start; quick rules unchanged). Built as 2.19.0 with Option A (`CODE.md` 9s), not pushed.
+- **Everyone at the table before a game starts (section 12e, asked 2026-11-13):** decided 2026-11-13 (arrival at the table; no start while someone is missing; "Waiting for" in the lobby and after Start; quick rules unchanged). Built and pushed as 2.19.0 with Option A (`CODE.md` 9s).
+- **Lobby scroll and cards seen before play (section 12f, asked 2026-11-13):** two open questions (can the host stop waiting for a slow player, default no; quick rules mention, default no). Plan in `CODE.md` 9t (version 2.20). Nothing built.
 
 (2026-11-07 20:38: the multiplayer questions were answered; see section 12 and Decided.)
 

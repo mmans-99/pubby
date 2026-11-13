@@ -4,7 +4,25 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
-## 2026-11-13 (evening) — Version 2.19.0 built: everyone at the table before a game starts (Option A); not committed or pushed
+## 2026-11-13 (evening, later) — 2.19 phone test; plan for 2.20 (lobby scroll, cards seen before play); docs only
+
+**User:** "When setting up a game, when I change host options, the screen goes back to the top why". Then: "I swapped cards both players and as host I was in game but other player was on the done screen, still not at table. I thought that was corrected. Can you check properly and make a detailed plan as well as the above about scrolling so I can code this with haiku. Update the docs and push them".
+
+**Found (read only, plus throwaway browser runs)**
+- Scroll: `draw()` in `netlobby.ts` rebuilds the lobby; the browser loses the scroll place when the tapped element is replaced. Measured 250 → 192 px on a 390 × 500 page. A 2-line fix (keep `scrollY` across the rebuild) was tried on a copy: 250 → 250. Then undone. "Play against the computer" setup does not jump.
+- Swap: 2.19 only gates the lobby. In each 2- or 3-player round, the last swap moves the session straight to choosing the leader and play; each phone's Done on its new hand is local and tells nobody. So the host can be playing while another phone is still on Done, every round. Also true for games against the computer.
+
+**Done (docs only, no code, version unchanged at 2.19.0)**
+- `CODE.md` 9t: step-by-step build guide for Haiku (Part A scroll; Part B new session step `cardCheck` with action `seenHand`, screens, computer players, tests). 9s heading marked pushed.
+- `PROJECT.md` 12f: the rules, two open questions with defaults, phone checklist. 12e status updated with the user's test result.
+- `TODO.md`: Phase 4d marked pushed and tested; new Phase 4e.
+- Project doc `claude/pubby-pregame-sync-plan.md` updated to point at 9t.
+
+**Not done:** no code. Waiting for the user to build 9t (with Haiku) or approve the build here.
+
+---
+
+## 2026-11-13 (evening) — Version 2.19.0 built: everyone at the table before a game starts (Option A); pushed as f487bd8
 
 **User:** answered the four questions: (1) "at the table" = arriving at the table screen; (2) no start while a player is missing (recommended); (3) "Waiting for" in the lobby and after Start (recommended); (4) quick rules unchanged. Then "Go for it". Asked about the cards-screen gap: chose Option A as planned.
 

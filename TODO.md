@@ -283,7 +283,7 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [ ] **Slice O3: rejoin online** (version 2.19; with Nearby slice 4)
 - [ ] Slice O4 (game on the server): only if the user asks
 
-## Phase 4d — Everyone at the table before a game starts (plan 2026-11-13, `PROJECT.md` 12e, build guide `CODE.md` 9s; built as 2.19.0, not pushed)
+## Phase 4d — Everyone at the table before a game starts (plan 2026-11-13, `PROJECT.md` 12e, build guide `CODE.md` 9s; pushed as 2.19.0, f487bd8)
 
 - [x] Plan written (docs only, 2026-11-13)
 - [x] User answers the four questions (2026-11-13: arrival at the table; no start without a player who left; "Waiting for" in lobby and after Start; quick rules unchanged)
@@ -293,8 +293,19 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [x] Browser checks: `lobby_check.py` 67/67, `netgame_check.py` 94/94, `online_check.py` 37/37
 - [ ] `testbed/pregame_check.py`: not written (the "Waiting for" text lasts only until the joiner's ready message, so it can't be seen in a browser run without a delay hook)
 - [ ] Known gap vs `PROJECT.md` 12e: under Option A the cards screen is inside the game, so a slow player's cards screen still does not hold others back (user chose Option A, 2026-11-13)
-- [ ] Playable test build and checklist (`PROJECT.md` 12e); user tests on phones (Nearby and Online). Needs a push to GitHub Pages, not yet approved
-- [ ] MD files and DEVLOG updated (done locally); user approves commit and push; version 2.19.0 told to the user
+- [x] Pushed as 2.19.0 (f487bd8), GitHub Pages test build; version told to the user
+- [x] User's phone test (2026-11-13 17:10): lobby fine, but after the swap one phone was still on Done while the host played (the known gap). Fixed by Phase 4e
+
+## Phase 4e — Version 2.20: lobby scroll place, cards seen before play (plan 2026-11-13, `PROJECT.md` 12f, build guide `CODE.md` 9t; not built)
+
+- [x] Cause found and plan written (docs only, 2026-11-13)
+- [ ] User approves the build (and answers or accepts the defaults for the two open questions in 12f)
+- [ ] Part A: `draw()` in `netlobby.ts` keeps the scroll place; `lobby_check.py` scroll checks
+- [ ] Part B1-B5: session `cardCheck` flag, `handSeen`, phase `cardCheck`, action `seenHand`, view, `PHONE_ACTIONS`, `LOBBY_PROTOCOL` 6, on for Multiplayer and games against the computer
+- [ ] Part B6: screens (Done sends `seenHand`; "Waiting for X"; screen without marks after a reopen)
+- [ ] Part B7: computer players press Done
+- [ ] Part B9: `tests/session/card-check.test.ts`, netgame test, `netgame_check.py` hold check, `solo_check.py`, arena; all existing checks pass
+- [ ] Version 2.20.0, MD files, DEVLOG; push as the test build when the user says; phone test with the 12f checklist
 
 ## Phase 5 — Polish
 
