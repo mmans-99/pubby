@@ -311,12 +311,19 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [x] Pushed as 2.20.0 (GitHub Pages test build); version told to the user. Tests: 312 unit, all browser checks pass (lobby 70, netgame 97, solo incl. 2-player, arena 2/3/8 players)
 - [ ] Phone test by the user (checklist in `PROJECT.md` 12f)
 
-## Phase 4g — Fast forward and skip to end of round when only computer players are left (plan 2026-11-13, `PROJECT.md` 12h, build guide `CODE.md` 9v; built as 2.27.0, not pushed)
+## Phase 4g — Fast forward and skip to end of round when only computer players are left (plan 2026-11-13, `PROJECT.md` 12h, build guide `CODE.md` 9v; 2.27.0 pushed as 469d086)
 
 - [x] Plan written (docs only)
 - [x] User answers the five open questions in `PROJECT.md` 12h (recorded 2026-11-13 19:59)
 - [x] **2.27.0 (built, not pushed):** `botsOnlyNow` (9v.2) with tests; fast forward (9v.3); skip to end (9v.4); host-only network part and the joiner line (9v.5); unit tests 349 pass; build OK
-- [ ] Phone test of 2.27.0 (one-phone game with 3 computer players, you out; then a network game), then push
+- [x] Pushed (469d086, user "Push it and commit" 2026-11-13)
+- [ ] Phone test of 2.27.0 (one-phone game with 3 computer players, you out; then a network game)
+
+## Phase 4h — Quiet seats (Option C) and a table that fits any screen (plan 2026-11-13 20:16, `PROJECT.md` 12i, build guide `CODE.md` 9w; not built)
+
+- [x] Mockup with four options; user chose C
+- [x] Plan written for Haiku (docs only)
+- [ ] **2.28.0:** `tableBox` (9w.2) and `seatLayout` (9w.3) with tests; Option C seat markup and CSS (9w.1); any screen and landscape (9w.4); hand sizing (9w.5); checks; user's phone test; push
 
 ## Phase 5 — Polish
 

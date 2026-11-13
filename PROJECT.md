@@ -611,7 +611,7 @@ From the user's Multiplayer test of 2.23:
 - **Table (user 19:18 to 19:26, table mockup https://claude.ai/artifact/1EPeaQaijP1bwD1oPQjoyC, approved):** other players hold a fan of card backs at the edge of the felt (top and sides), sized by their card count, with the number on their name. The trick is thrown into the middle as a messy pile, each card at a random tilt, newest on top with a gold edge; every card underneath still shows its top-left corner. No names on trick cards (the order tells who played what). The waste pile sits in the bottom-right corner.
 - Open questions (defaults used in the plan unless the user says otherwise): 10 minutes away limit; host + only computer players allowed in Multiplayer; computer players added only before Start.
 
-### 12h. Fast forward and skip to end of round when only computer players are left (PLAN, user 2026-11-13 19:58; answers 19:59; build guide `CODE.md` 9v; BUILT as 2.27.0 on 2026-11-13, not yet pushed)
+### 12h. Fast forward and skip to end of round when only computer players are left (PLAN, user 2026-11-13 19:58; answers 19:59; build guide `CODE.md` 9v; BUILT as 2.27.0, pushed as 469d086 on 2026-11-13)
 
 **Request (user 2026-11-13 19:58):** "When there's only computer bots playing, there should be an option to fast forward or skip to end."
 
@@ -634,6 +634,25 @@ From the user's Multiplayer test of 2.23:
 5. **Pop-ups while skipping:** (a) none, with one Game over screen at the end (recommended), or (b) round-end pop-ups still shown and waited on?
 
 **Version:** 2.27.0 (after 2.26.0). Build guide `CODE.md` 9v has the steps, files and tests.
+
+### 12i. Quiet seats ("the fan is the seat") and a table that fits any screen (PLAN, user 2026-11-13 20:16; build guide `CODE.md` 9w; mockup https://claude.ai/artifact/GkFLKsbdpWnqocf1zf61Jp; NOT BUILT)
+
+**Request (user 2026-11-13 20:06 to 20:16):** names on the table are in the way: make them more minimal and away from the centre. From the mockup the user chose **Option C, "the fan is the seat"**, and asked that it fits **any size screen, portrait or landscape**.
+
+**What changes:**
+- Each other player is shown as their fan of card backs, with a small cream **count bubble** on it and their **name in small text** under it: no box. Computer icon, host ★, dealer "D", "Away" and the place badge ("1st") stay, made small.
+- **Whose turn:** the fan glows gold and the name turns gold.
+- **Computer thinking:** three fading dots after the name (no word).
+- Nothing covers the middle of the table, where the trick lands.
+- Your own seat stays a small "You · 6" pill at the bottom of the felt.
+- Tapping a seat (choose who leads, take-cards) still works: the whole fan is the button.
+- **Any screen:** the table and your hand size themselves from the screen, on phones and tablets, in portrait and landscape. Turning the phone re-fits the table. The installed app may turn (iPhone follows its own rotation lock). In landscape more players sit along the top.
+
+**Rules that do not change:** no game rule changes; nothing new is sent between phones; hidden cards stay hidden.
+
+**Assumptions written into the plan (say if any is wrong):** landscape keeps one column (top bar, table, hand), with no side panel; the "D" dealer marker replaces the "Deals" tag; "thinking" becomes dots only.
+
+**Version:** 2.28.0. Phone checklist in `CODE.md` 9w.8.
 
 ## 13. Quick rules (in-game help)
 

@@ -2105,7 +2105,7 @@ export function pileSpots(cardIds: readonly string[], salt: string): { x: number
 - 2.24.0 (B + D + E), 2.25.0 (A, app and server), 2.26.0 (C). Each: update all five MD files, DEVLOG entry, checks in that part, then ask the user to push (CLAUDE.md rule 5; the user says "Push it"). Tell the user the version number each time.
 - Don't start the next version until the user has pushed the last one (or says to go on).
 
-## 9v. Version 2.27: fast forward and skip to end of round when only computer players are left to act (PLAN, user 2026-11-13 19:58; answers recorded 19:59; BUILT as 2.27.0 on 2026-11-13, not yet pushed; spec `PROJECT.md` 12h)
+## 9v. Version 2.27: fast forward and skip to end of round when only computer players are left to act (PLAN, user 2026-11-13 19:58; answers recorded 19:59; BUILT as 2.27.0 on 2026-11-13, pushed as 469d086; spec `PROJECT.md` 12h)
 
 Nothing here may be built until the user approves this plan and answers the open questions in `PROJECT.md` 12h (CLAUDE.md rules 1 and 2). It is written so that any model can build it.
 
@@ -2196,6 +2196,152 @@ It also takes `personOut`: true when every person's seat on this phone is out of
 - **Built notes (2.27.0):** shared on/off state lives in `src/ai/fastforward.ts` (not `bots.ts`, to avoid a new import cycle). `personOut` is the rules engine's `play.finished` (every person out). Fast forward is cleared when a person must act; a pop-up alone does not clear it. A skip shows only the round-over pop-up (`lastTwo`, or a slap that ends the round). Joining phones get a new host frame `{ t: 'skipping', on }` (`src/net/lobby.ts`; relay unchanged, `LOBBY_PROTOCOL` not bumped). Not done: `tests/ui/skip.test.ts` and `testbed/skip_check.py` (the skip result is not checked against a same-seed normal game, because reactions and fast-forward timing use the shared random draws; the phone test is the check). Browser checks not run (no long tests requested).
 - Then: `npm run build` (playable build), update all five MD files (CLAUDE.md rule 4) and `DEVLOG.md`, then ask the user to test on a phone and approve the push (CLAUDE.md rules 3 and 5).
 - Phone checklist (2.27): one-phone game with 3 computer players, you out of the round: Fast forward speeds the moves up; Skip to end of round stops at the round-over pop-up; Stop works during both; the menu items are hidden while you are still in the round. Network game: only the host sees the items.
+
+## 9w. Version 2.28: quiet seats ("the fan is the seat", Option C) and a table that fits any screen, portrait or landscape (PLAN, user 2026-11-13 20:16; written for any model, Haiku included; NOT BUILT; spec `PROJECT.md` 12i; mockup https://claude.ai/artifact/GkFLKsbdpWnqocf1zf61Jp artboard "C: the fan is the seat")
+
+Build only this plan (CLAUDE.md rules 1 and 2: the user approved it at 20:16 by asking for it to be written and pushed for Haiku). It changes how the table looks and how the game screen sizes itself. It changes no game rule and nothing sent between phones.
+
+### 9w.0 Read first
+
+- `src/ui/table.ts`: `roundTable()` (the felt, the trick pile, the seats), `edgeSpot()` / `EDGE_SPOTS` (which edge each other player sits on), `edgeFan()` (the card backs), `seatSpot()` (your own seat at the bottom), `wastePile()`.
+- `src/ui/styles.css`: `.round-table`, `.edge-fan`, `.edge-back`, `.table-seat`, `.seat-chip`, `.seat-name`, `.seat-count`, `.seat-tag`, `.seat-host`, `.think-dots`, `.screen` (max-width 520px).
+- `src/ui/game.ts`: the five `roundTable(...)` calls, and the hand: `fanLayout(hand.length, Math.min(window.innerWidth, 520) - 12)` (about line 856).
+- `src/ui/cards.ts`: `fanLayout()`.
+- `src/pwa/manifest.webmanifest`: `"orientation": "portrait"`.
+- `tests/ui/table.test.ts`, `tests/ui/fan.test.ts`: existing tests to keep passing.
+
+Terms:
+- **Seat**: one other player's place at the table: their fan of card backs, their count bubble and their name. Your own seat is the small pill at the bottom of the felt.
+- **Table box**: the felt's size in CSS pixels, `w` × `h`.
+- **Unit `u`**: one size number for the table, so everything grows and shrinks together (9w.2).
+- **Portrait / landscape**: portrait when the screen is taller than wide (`innerHeight >= innerWidth`), landscape otherwise.
+
+### 9w.1 What the user sees (Option C)
+
+Every other player's seat is just their fan, with two small things on it:
+- **Count bubble**: a cream circle with the card count, on the fan, on the side nearest the middle of the table (top edge: below the fan's centre; left edge: right of it; right edge: left of it). Ink text, bold.
+- **Name**: small text (about 11 px on a phone, scales with `u`), weight 600, cream at 70% with a soft dark text shadow, no box and no background. Top edge: centred under the bubble. Side edges: under the fan, lined up with the screen edge (left edge: left-aligned; right edge: right-aligned). Long names end in "…" (max width 9 × `u`).
+- **Computer player**: the small computer icon before the name, as now.
+- **Host**: a small gold ★ after the name.
+- **Whose turn**: the fan's card backs get a gold border and a soft gold glow (the mockup's `.fan.glow`), and the name turns gold. No other marker.
+- **Thinking** (computer player choosing): three dots after the name that fade in and out (no word "thinking"). With reduced motion: the dots stay still.
+- **Dealer**: a small gold circle with "D" after the name (`aria-label="Deals"`).
+- **Away** (CODE.md 9u A5): the name is shown in the danger colour with the word "Away" after it.
+- **Out of the round**: no fan and no bubble. The name stays, at 50% opacity, with the gold place badge after it ("1st").
+- **Your own seat** (bottom centre of the felt): one small pill "You · 6" (one-phone pass-and-play: the holder's name). Gold border when it is your turn. Out: the place badge in place of the count.
+- **Tappable seats** (choose who leads, take-cards target, and any other `onTap` use): the whole seat (fan, bubble and name) is one `<button>` at least 44 × 44 px, with the same `aria-label` as now. When tappable the name shows at full cream (not 70%) and the fan gets a thin cream outline, so it reads as a button. Disabled seats: 40% opacity.
+- The middle of the table (where the trick lands) has nothing over it: no name or bubble may enter the middle zone (9w.3).
+
+Nothing else on the table changes: trick pile, led-suit mark, waste pile in the corner, deck in the middle during the deal, flying dealt card.
+
+### 9w.2 Sizes from one function (pure, tested)
+
+Add to `src/ui/table.ts` (no DOM inside these functions):
+
+```ts
+export interface TableBox { w: number; h: number; u: number; landscape: boolean }
+export function tableBox(viewW: number, viewH: number): TableBox
+```
+
+- `landscape = viewW > viewH`.
+- **Portrait:** `w = min(viewW - 12, 760)`; `h = clamp(0.52 * viewH, 300, 0.9 * w + 80)` (so a tall phone gets a taller table, a tablet does not get a very tall one).
+- **Landscape:** the game screen is the full window height. `w = min(viewW - 12, 1100)`; the hand area below the table is `handH(viewW, viewH)` (9w.5); `h = max(200, viewH - TOP_BAR - handH - 12)`, where `TOP_BAR` is the top bar's height (48 px in landscape, see 9w.4).
+- `u = clamp(min(w, h * 1.3) / 34, 8, 16)`. On a 390 × 844 phone `u` is about 11.3; on a 568 × 320 landscape phone about 8; on an iPad about 16.
+- Card back size on the edges: `bw = round(3.9 * u)`, `bh = round(bw * 1.4)` (44 × 62 at `u` ≈ 11.3, as now).
+- Count bubble: `2 * u` high, min width `2 * u`, font `1.05 * u`.
+- Name font: `max(10, u)` px.
+- Trick cards (`.trick-pile .card.small-card`): width `round(5 * u)`.
+
+`roundTable()` takes the box as a new option `box?: TableBox` (default `tableBox(innerWidth, innerHeight)`), sets the felt's `width` and `height` in px from it, and sets CSS variables on the felt: `--u`, `--bw`, `--bh`. CSS uses only these variables for seat sizes (no fixed `44px`, `60px`, `62px`, `70px` left in the seat rules).
+
+### 9w.3 Where each seat goes (pure, tested)
+
+Add `export function seatLayout(n: number, box: TableBox): SeatSpot[]` in `src/ui/table.ts`, one entry for each other player (k = 1 … n−1, same order as now):
+
+```ts
+interface SeatSpot {
+  edge: 'top' | 'left' | 'right';
+  fan: { x: number; y: number };      // centre of the fan, px from the felt's top-left
+  bubble: { x: number; y: number };   // centre of the count bubble
+  name: { x: number; y: number; align: 'center' | 'left' | 'right' }; // anchor of the name line
+  hit: { x: number; y: number; w: number; h: number };  // the seat's tap area (fan + bubble + name), ≥ 44 × 44
+}
+```
+
+Rules:
+1. **Edges:** portrait uses `EDGE_SPOTS` exactly as now. Landscape uses a new table `EDGE_SPOTS_WIDE`, because there is more room on top and less on the sides: 2: top .5 · 3: top .3, .7 · 4: left .45, top .5, right .45 · 5: left .5, top .3, top .7, right .5 · 6: left .5, top .2, .5, .8, right .5 · 7: left .55, top .15, .38, .62, .85, right .55 · 8: left .6, left .15, top .25, .5, .75, right .15, right .6. (Keep clockwise order from your left, as now.)
+2. **Fan position:** top edge: `x = t * w`, `y = 0` (the fan hangs half off the top of the felt, as now). Left: `x = 0`; right: `x = w`; sides: `y = topBand + (h - topBand - bottomBand) * t`, with `topBand = 6.2 * u` and `bottomBand = 4.5 * u` (keeps side fans clear of the top fans and of your pill and the waste pile). Replaces the fixed `70px`.
+3. **Bubble:** top: `(x, 0.95 * bh)`; left: `(0.95 * bh, y)`; right: `(w - 0.95 * bh, y)`.
+4. **Name:** top: `(x, bubble.y + 1.4 * u)`, centred. Left: `(0.5 * u, y + 0.75 * bh)`, left-aligned. Right: `(w - 0.5 * u, y + 0.75 * bh)`, right-aligned.
+5. **Middle zone** (kept clear for the trick): the centred box `0.36 * w` × `0.36 * h` around `(w/2, 0.45 * h)`. No bubble or name box may overlap it.
+6. **No overlaps:** treat each name as a box `9u` wide and `1.4u` high at its anchor (with its alignment), and each bubble as `2u` square. No two of these boxes (across all seats, plus your own pill box `9u × 2.2u` at bottom centre, plus the waste pile box `5u × 6.5u` in the bottom-right corner) may overlap, and all must be inside the felt.
+7. If rule 5 or 6 fails for a size, shrink `u` by 5% and try again (at most 6 times) before giving up. This is the only fallback; it should never be needed at the sizes in 9w.7.
+
+`roundTable()` uses `seatLayout()` for all positions (absolute `left`/`top` in px with `translate` for alignment). `seatSpot()` stays for your own seat only.
+
+### 9w.4 Any screen: portrait, landscape, phone, tablet
+
+1. `src/pwa/manifest.webmanifest`: `"orientation": "any"` (installed app can turn). Note: iPhone Safari ignores this; it follows the phone's own rotation lock.
+2. `.screen` max-width 520 px stays for menus and setup screens. The game screen only (`.screen.game`) gets `max-width: min(100vw, 1100px)`; the table and hand are sized by `tableBox` and `handH`, not by the 520 cap.
+3. Use `100dvh` (with `100vh` before it as a fallback) where the game screen needs the full height, so phone browser bars don't cut the bottom off.
+4. **Landscape game screen layout:** top bar 48 px high (smaller buttons: 40 px, still ≥ 44 px tap area with padding), then the table, then the hand, in one column, no page scroll. Panels that open (menu, pause, reactions drawer, pop-ups) keep their current `max-height` in `vh` and scroll inside themselves.
+5. **Redraw on resize:** in `src/ui/app.ts`, one `resize` listener (also fired by orientation change) that calls `update({})` after 150 ms of no further resize (debounce). The table and hand read `innerWidth` / `innerHeight` on each draw, so they re-fit. Don't redraw while a trick is flying (`trickAnimating()`): wait and redraw when it ends (it already calls `update`).
+6. **Safe areas** (notches in landscape): pad the game screen with `env(safe-area-inset-left)` / `right` / `bottom`. Check that `index.html` has `viewport-fit=cover` in the viewport meta; add it if missing.
+7. Pinch-zoom stays blocked and pull-to-refresh stays off (`nozoom.ts`): check after the change.
+
+### 9w.5 Your hand in any size
+
+- `handH(viewW, viewH)`: portrait: as now (the height `fanLayout` returns for the hand's width). Landscape: `clamp(0.30 * viewH, 96, 200)`.
+- `fanLayout(n, width)` gains an optional third argument `maxCardW`. The call in `game.ts` passes the hand's width (`min(innerWidth, 1100) - 12`, not the 520 cap) and, in landscape, `maxCardW = (handH - 30) / 1.4` so the cards fit the shorter height. With 13 cards in landscape the hand stays in one row if it fits (`width ≥ cardW + 12 × 0.45 × cardW`), else two rows as now.
+- Card size limits stay 64–96 px wide in portrait; in landscape the lower limit drops to 48 px.
+
+### 9w.6 Files likely to change
+
+| File | Change |
+|---|---|
+| `src/ui/table.ts` | `tableBox`, `seatLayout`, `EDGE_SPOTS_WIDE`, Option C seat markup in `roundTable`, `edgeFan` sizes from `--bw`/`--bh` |
+| `src/ui/styles.css` | new seat styles (`.seat-quiet`, `.seat-bubble`, `.seat-label`, `.fan.turn`, `.think-dots` as dots), remove fixed px from seat rules, `.screen.game` width, landscape layout, safe areas |
+| `src/ui/cards.ts` | `fanLayout` optional `maxCardW` |
+| `src/ui/game.ts` | hand width and `maxCardW`; pass `box` where `roundTable` is called if helpful |
+| `src/ui/netscreens.ts` | check only (its two `roundTable` calls get the same look) |
+| `src/ui/app.ts` | debounced resize redraw |
+| `src/pwa/manifest.webmanifest` | `"orientation": "any"` |
+| `src/index.html` | `viewport-fit=cover` if missing |
+| `tests/ui/table.test.ts` | new tests (9w.7) |
+| `testbed/table_check.py` (new) | screenshots at every size (do not run unless the user asks) |
+
+Keep `data-seat` on each seat (the flying dealt card aims at it), keep `aria-label`s, and keep the seat a `<button>` only when `onTap` is set.
+
+### 9w.7 Tests
+
+`tests/ui/table.test.ts` (unit, no browser), for every screen size below and every player count 2 to 8, for both the portrait and landscape tables where the size is that shape:
+
+Sizes (CSS px): 320 × 568, 360 × 640, 375 × 667, 390 × 844, 430 × 932, 412 × 915, 768 × 1024, 820 × 1180, 1024 × 768, 1180 × 820, 568 × 320, 667 × 375, 844 × 390, 932 × 430, 1280 × 800, 1920 × 1080.
+
+1. `tableBox`: `w ≤ viewW`, `h > 0`, `8 ≤ u ≤ 16`, and in landscape `TOP_BAR + h + handH ≤ viewH`.
+2. `seatLayout`: returns n−1 seats; every bubble and name box is inside the felt; none overlaps another, your own pill or the waste pile; none overlaps the middle zone (9w.3 rules 5 and 6).
+3. Every `hit` box is at least 44 × 44.
+4. Portrait seats use `EDGE_SPOTS` (same edges as 2.27, so nothing moves to another edge in portrait); landscape seats use `EDGE_SPOTS_WIDE`.
+5. `fanLayout` with `maxCardW`: no card wider than `maxCardW`; all cards inside the width.
+6. Existing `table.test.ts` and `fan.test.ts` tests still pass (update any that check the old fixed positions, and say which in DEVLOG).
+
+Browser check `testbed/table_check.py` (new; written, not run unless the user asks): opens a one-phone game with 7 computer players at each size above, takes a screenshot of the table, and fails if any `.seat-label` or `.seat-bubble` box overlaps another or leaves the felt.
+
+### 9w.8 Version and process
+
+- This is **2.28.0** (CLAUDE.md rule 8).
+- Build order: 9w.2 (`tableBox`) with tests → 9w.3 (`seatLayout`) with tests → markup and CSS (9w.1) → 9w.4 → 9w.5. `npm run check` and `npm test` after each step (unit tests only).
+- Then `npm run build`, update all five MD files and `DEVLOG.md`, then ask the user to test on a phone and approve the push (CLAUDE.md rules 3 and 5). Tell the user the version number.
+- **Phone checklist (2.28):**
+  1. One-phone game vs 7 computer players, portrait: each other player is a fan with a count bubble and a small name; nothing covers the trick; whose turn shows as a gold fan and gold name; thinking dots show.
+  2. Same game, turn the phone to landscape (rotation lock off): the table fills the width, the hand fits below, no scrolling, names still clear of each other and of the middle. Turn back: the same.
+  3. 2, 3 and 5 players: seats look balanced on both orientations.
+  4. Choose who leads (round 2 onwards): tap a fan: it works; the seat looks tappable.
+  5. Take-cards request: pick a target by tapping their fan.
+  6. A player goes out: their fan and bubble go, the name fades with "1st".
+  7. Multiplayer (two phones): host shows ★, a phone that leaves shows "Away" in red.
+  8. Tablet or a desktop browser window, if one is handy: resize the window: the table re-fits.
+  9. Pinch zoom and pull-to-refresh are still blocked.
 
 ## 8a. Playable test builds (required before every commit)
 

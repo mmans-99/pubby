@@ -4,6 +4,16 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (evening, 20:16) — 2.27.0 pushed; plan 9w (2.28): quiet seats and any-screen table (docs only)
+
+**Pushed:** 2.27.0 as 469d086 (user "Push it and commit", 20:09). Phone test still to do.
+
+**Table names:** the user doesn't like where names sit on the table. A design canvas with four phone screens (https://claude.ai/artifact/GkFLKsbdpWnqocf1zf61Jp): today's chips, A (tag on the fan), B (names in the margin), C (the fan is the seat). The user chose **C** and asked for it to fit any screen size, portrait or landscape.
+
+**Written:** `CODE.md` 9w (build guide for Haiku: `tableBox` and `seatLayout` as pure tested functions, Option C seats, landscape layout, `"orientation": "any"`, resize redraw, hand sizing, 16 screen sizes in the tests), `PROJECT.md` 12i, `TODO.md` Phase 4h. Target version 2.28.0. Found on the way: the installed app is locked to portrait, the game screen is capped at 520 px, and the seats use fixed pixel offsets; the plan fixes all three.
+
+**Not built.** Docs only, no version change.
+
 ## 2026-11-13 (evening, 20:10) — Version 2.27.0: Fast forward and Skip to end of round (built, not pushed)
 
 **Built:** `CODE.md` 9v.2 to 9v.5, spec `PROJECT.md` 12h.
