@@ -2,6 +2,25 @@
 
 Short versions of the rules, shown in the in-game help. Must match `PROJECT.md`.
 
+## Symbols
+The same icons you see in the game.
+
+| Icon | Name | What it does |
+|---|---|---|
+| {take} | Take | Ask to take all of another player's cards. Only before a trick starts. |
+| {pause} | Pause | Pause the game, or ask the host to pause it. |
+| {bolt} | Ultimate Round | The final round, worth no points. |
+| {swap} | Swap | The hidden swap at the start of a round (2 and 3 players). |
+| {hand} | Reaction Tap | Players missing a suit tap; the slowest leads. |
+| {joker} | Joker | Wild. Playing one skips your turn. |
+| {trophy} | Trophy | Round winner, or game winner. |
+| {vote} | Vote | A vote (reshuffle, target, Ultimate Round). |
+| {target} | Target | The target score. |
+| {check} | Ready | On the results screen: you're ready for the next round. |
+| {bot} | Computer player | Plays like a person and never sees anyone's cards. |
+
+On the table: **bright** cards are the ones you can play. The **faint** big suit is the suit that was led. The **glowing** name is whose turn it is. The small cards at the bottom are the last trick.
+
 ## How to win a round
 Get rid of all your cards. First out is 1st. The last player still holding cards loses the round.
 Next round: the loser deals, and the winner picks who leads (they can pick themselves).
@@ -22,7 +41,7 @@ No card of the led suit? Play any other card. That's a SLAP! The trick stops, an
 ## Jokers
 Wild. Play one on your turn, even if you could follow suit. It skips your turn and then leaves the game. If you lead with a joker, it's still your trick but nothing in it affects you: the next player plays any card, and that sets the suit. You can't hold only jokers: when you play your last normal card, any jokers left are thrown away and that was your last card. 2 jokers with 2 to 5 players, 3 with 6 to 8. The host can turn jokers off. In 2 and 3 player games some jokers may be sitting in the hidden decks, so fewer may be in play.
 
-## Missing a suit
+## {hand} Missing a suit
 No cards of a suit after the deal? Say so. You lead first. If more than one player is missing a suit, play Reaction Tap: the slowest tapper leads. Tapping early counts as slowest.
 
 ## The last two players
@@ -32,10 +51,10 @@ When only two players hold cards and you play your last card:
 Both go out in the same trick? Lower card or slapper wins.
 Jokers are always allowed. If one of you leads a joker, it's still the same trick: the other plays any card. Both play a joker? Missed round: the first player leads again. A last card that only meets a joker wins.
 
-## Taking cards
-Tap the take button at the top (it shows only before a trick starts). Before a trick starts, you can ask to take all of another player's cards (unseen). One request at a time. They agree or refuse; if several players ask the same person, they choose who gets them. The giver goes out and takes the next place. Not when only two players are left. On several phones, everyone sees who asked whom and the answer, but never which cards moved.
+## {take} Taking cards
+Tap the {take} Take button at the top (it shows only before a trick starts). Before a trick starts, you can ask to take all of another player's cards (unseen). One request at a time. They agree or refuse; if several players ask the same person, they choose who gets them. The giver goes out and takes the next place. Not when only two players are left. On several phones, everyone sees who asked whom and the answer, but never which cards moved.
 
-## Hidden decks and the swap (2 and 3 players)
+## {swap} Hidden decks and the swap (2 and 3 players)
 With 2 or 3 players, some cards are dealt face down into hidden decks before the deal, so nobody can work out what everyone holds: 2 hidden decks with 2 players, 1 with 3. Each hidden deck gets about one player's share. Nobody sees them, ever, and they can hold jokers.
 At the start of every round, each player can swap up to 4 of their cards for random unseen cards from the hidden decks, or keep their hand. Swapped-out cards leave the round.
 
@@ -51,7 +70,7 @@ A target can't be lower than the highest score. Picking the highest score means 
 
 Any player can call a vote from their own phone. The host pauses straight away; anyone else asks the host, who says yes or no. Only the host can resume the game or set a pause time limit. On the results screen, tap **I'm ready** on your own phone; the host moves on when they're ready.
 
-## Ultimate Round
+## {bolt} Ultimate Round
 One final round for glory, worth no points. The winner beats every score; the loser ranks below every score. The game ends after it.
 Draw for the top score when the game ends? Everyone votes on an Ultimate Round to settle it. Say no and you're called cowards and get one more chance. Say no again and you share the top score.
 

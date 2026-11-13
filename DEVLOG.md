@@ -4,6 +4,21 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (evening) — Version 2.22.0: visual quick rules; situational reactions
+
+**User:** "Make it more visual" for the quick rules; symbols at the top; minimal text on the take button; the two new phrases; reactions that fit the situation through the game. Answers: computer players say the take phrases when they slap a person or when a person picks up the pile; the button label is "Take". "Push it", no long tests.
+
+**Built**
+- Quick rules: new "Symbols" table at the top (take, pause, bolt, swap, hand, joker, trophy, vote, target, check, bot), with a note on bright, faint, glowing and last-trick cards. Section headings and the take text carry the icons.
+- Markdown: `{name}` tokens render the matching line icon inline (`src/ui/markdown.ts`, `isIconName` in `src/ui/icons.ts`).
+- Top bar: the take button reads "Take" beside its icon.
+- Phrases added: "Take my cards!", "I have the best cards, take mine!", "Let's go!!", "Ooh, a joker!!", "Not so easy, sweetheart!!", "Ultimate time!!".
+- Reactions (`src/ai/react.ts`): round start, a person's joker, a take request to me, and a person reaching the target. "Take my cards!" when I slap a person. "I have the best cards, take mine!" when a person picks up the pile. All are chances from the personality rate, not certainties.
+
+**Checks:** `npx tsc --noEmit` clean; `tests/ai/react.test.ts` 15/15; `npm run build` ok. Browser checks not run, per the user. The take label and `{name}` icons are not yet checked on a phone.
+
+---
+
 ## 2026-11-13 (evening, 18:11) — Version 2.21.0: slap pop-up after a round-ending slap; more reactions
 
 **User (single-player test):** reactions not frequent enough; after the last player was slapped the card still said they pick up cards though the game was over. Chose option 1 (raise the chances) and asked for the slap fix; "push it", no long tests.

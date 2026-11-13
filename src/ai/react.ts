@@ -24,7 +24,8 @@ function phraseIndex(phrases: readonly string[], text: string): number | null {
  * What a computer player sends after an event, if anything: LAUGH, an index
  * into `phrases`, or null. Each event has a chance from the personality's
  * reactRate, scaled by who is involved:
- *  - slapped: I slapped (x1.5, "You got slapped" or the kiiid version); I was
+ *  - slapped: I slapped (x1.5, "You got slapped" or the kiiid version, and
+ *    "Take my cards!" when the one slapped is a person); I was
  *    slapped (x0.5, "Revenge time!!"); a person was slapped (always, 😂).
  *  - wastePilePickedUp: a person picked up (x1); I did (x0.5).
  *  - playerOut: a person went out (x1, "Too slow!!"); I went out (always, "Bye bye, losers!!").
@@ -33,6 +34,10 @@ function phraseIndex(phrases: readonly string[], text: string): number | null {
  *  - cardsTaken: I took a person's cards (x1.5); a person took mine (x0.5).
  *  - roundEnded: a person lost the round (x1).
  *  - forfeited: a person forfeited (x1, "Coward!!").
+ *  - roundStarted: any computer player (x0.5, "Let's go!!").
+ *  - jokerPlayed: a person played a joker (x1, "Ooh, a joker!!").
+ *  - takeRequested: a person asks me for cards (x1, "Not so easy, sweetheart!!").
+ *  - targetReached: a person reached the target (x1, "Ultimate time!!").
  */
 export function reactionFor(
   e: SessionEvent,
@@ -52,14 +57,19 @@ export function reactionFor(
 
   switch (e.type) {
     case 'slapped':
-      if (e.slapper === me) return roll(rate * 1.5, ['You got slapped', 'You got slapped', 'You got slapped', 'You got slapped by a kiiid']);
+      // 2.22: slapping a person can also offer my cards ("Take my cards!").
+      if (e.slapper === me) {
+        const texts = ['You got slapped', 'You got slapped', 'You got slapped', 'You got slapped by a kiiid'];
+        return roll(rate * 1.5, human(e.slapped) ? [...texts, 'Take my cards!'] : texts);
+      }
       if (e.slapped === me) return roll(rate * 0.5, ['Revenge time!!']);
       // 2.21: a person slapped always gets 😂 (was a chance).
       if (human(e.slapped)) return LAUGH;
       return null;
     case 'wastePilePickedUp':
       if (e.player === me) return roll(rate * 0.5, ['Oofaa!!!!', 'Nooo, not again!!']);
-      return human(e.player) ? roll(rate, ['Pick them up!!', 'Enjoy the pile!!']) : null;
+      // 2.22: when a person picks up, I may offer my cards instead of taunting.
+      return human(e.player) ? roll(rate, ['Pick them up!!', 'Enjoy the pile!!', 'I have the best cards, take mine!']) : null;
     case 'playerOut':
       if (e.player === me) return roll(1, ['Bye bye, losers!!']);
       return human(e.player) ? roll(rate, ['Too slow!!', 'Hurry up!!']) : null;
@@ -73,6 +83,14 @@ export function reactionFor(
       return human(e.finishingOrder[0]) ? roll(rate, ["Beginner's luck!!", 'Enjoy it while it lasts!!']) : null;
     case 'forfeited':
       return human(e.player) ? roll(rate, ['Coward!!']) : null;
+    case 'roundStarted':
+      return roll(rate * 0.5, ["Let's go!!"]);
+    case 'jokerPlayed':
+      return human(e.player) ? roll(rate, ['Ooh, a joker!!']) : null;
+    case 'takeRequested':
+      return e.target === me && human(e.requester) ? roll(rate, ['Not so easy, sweetheart!!']) : null;
+    case 'targetReached':
+      return e.players.some((p) => human(p)) ? roll(rate, ['Ultimate time!!']) : null;
     default:
       return null;
   }

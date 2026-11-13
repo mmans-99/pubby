@@ -39,6 +39,11 @@ const PATHS = {
 
 export type IconName = keyof typeof PATHS;
 
+/** True if `name` is an icon in PATHS (used by the markdown renderer for {name} tokens). */
+export function isIconName(name: string): name is IconName {
+  return Object.prototype.hasOwnProperty.call(PATHS, name);
+}
+
 /** A line icon in a span (decorative: the button or text next to it carries the meaning). */
 export function icon(name: IconName, cls = ''): HTMLElement {
   const s = document.createElement('span');

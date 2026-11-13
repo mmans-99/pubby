@@ -33,3 +33,9 @@ Add a new line starting with "- " to add a catch-phrase. Lines without "- " are 
 - Just a bad round!!
 - Beginner's luck!!
 - Enjoy it while it lasts!!
+- Take my cards!
+- I have the best cards, take mine!
+- Let's go!!
+- Ooh, a joker!!
+- Not so easy, sweetheart!!
+- Ultimate time!!

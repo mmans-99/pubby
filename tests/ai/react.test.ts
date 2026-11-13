@@ -22,6 +22,26 @@ test('a slap by me gets "You got slapped" (or the kiiid version) most of the tim
   for (const text of seen) assert.ok(['You got slapped', 'You got slapped by a kiiid'].includes(text), text);
 });
 
+test('a slap by me of a person may also offer my cards ("Take my cards!")', () => {
+  const texts = ['You got slapped', 'You got slapped by a kiiid', 'Take my cards!'];
+  let offered = 0;
+  for (let s = 1; s <= 300; s++) {
+    const r = reactionFor(slap('p1', 'p2'), 'p1', ['p2'], windup, seededRng(s), texts);
+    if (r !== null && texts[r] === 'Take my cards!') offered++;
+  }
+  assert.ok(offered > 0);
+});
+
+test('a person picking up the pile may get "I have the best cards, take mine!"', () => {
+  const texts = ['Pick them up!!', 'I have the best cards, take mine!'];
+  let offered = 0;
+  for (let s = 1; s <= 300; s++) {
+    const r = reactionFor({ type: 'wastePilePickedUp', player: 'p2', cards: 4 }, 'p1', ['p2'], windup, seededRng(s), texts);
+    if (r !== null && texts[r] === 'I have the best cards, take mine!') offered++;
+  }
+  assert.ok(offered > 0);
+});
+
 test('a slap of me gets "Revenge time!!" or nothing', () => {
   for (let s = 1; s <= 100; s++) {
     const r = reactionFor(slap('p2', 'p1'), 'p1', ['p1', 'p2'], windup, seededRng(s), PHRASES);
@@ -102,4 +122,23 @@ test('a careful player taunts much less often than a wind-up player', () => {
   const careful: Persona = { level: 'normal', personality: 'careful' };
   const ev: SessionEvent = { type: 'wastePilePickedUp', player: 'p2', cards: 4 };
   assert.ok(count(ev, 'p1', ['p2'], TAUNTS, careful) < count(ev, 'p1', ['p2'], TAUNTS, windup));
+});
+
+test('situations through the game: round start, a person\'s joker, a take request, the target (phrases only, never 😂)', () => {
+  const allowed = new Set(["Let's go!!", 'Ooh, a joker!!', 'Not so easy, sweetheart!!', 'Ultimate time!!']);
+  const events: SessionEvent[] = [
+    { type: 'roundStarted', round: 2, dealer: 'p2', ultimate: false },
+    { type: 'jokerPlayed', player: 'p2', asLeader: false },
+    { type: 'takeRequested', requester: 'p2', target: 'p1' },
+    { type: 'targetReached', players: ['p2'], target: 10 },
+  ];
+  let sent = 0;
+  for (const e of events) {
+    for (let s = 1; s <= 100; s++) {
+      const r = reactionFor(e, 'p1', ['p2'], windup, seededRng(s), PHRASES.concat([...allowed]));
+      assert.ok(r === null || (r !== LAUGH && allowed.has(PHRASES.concat([...allowed])[r] ?? '')));
+      if (r !== null) sent++;
+    }
+  }
+  assert.ok(sent > 0);
 });

@@ -5,13 +5,20 @@
  */
 
 import { h, type Child } from './dom.ts';
+import { icon, isIconName } from './icons.ts';
 
 function inline(text: string): Child[] {
   const out: Child[] = [];
-  const re = /\*\*(.+?)\*\*|`(.+?)`/g;
+  // 2.22: {name} is the game's own icon (see the Symbols table in quick-rules.md).
+  const re = /\*\*(.+?)\*\*|`(.+?)`|\{([a-z]+)\}/g;
   let last = 0;
   for (let m = re.exec(text); m; m = re.exec(text)) {
     if (m.index > last) out.push(text.slice(last, m.index));
+    if (m[3] !== undefined) {
+      out.push(isIconName(m[3]) ? icon(m[3], 'md-icon') : m[0]);
+      last = re.lastIndex;
+      continue;
+    }
     out.push(m[1] !== undefined ? h('strong', null, m[1]) : h('code', null, m[2] ?? ''));
     last = re.lastIndex;
   }
