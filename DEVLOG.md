@@ -4,6 +4,19 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (evening, 17:20-17:24) — Answers for 12f; full screen check; Part C added to plan 9t (docs only)
+
+**User:** "1 no 2 no. Is that all the screens where it could happen? Or are there any other scenarios?" Then "Yes" to Next round waiting for everyone.
+
+**Checked every screen in Multiplayer and against the computer (read only):**
+- Swap Done: the gap (Part B).
+- Results: "I'm ready" was only a signal; the host's Next round worked regardless, pulling phones into the next deal. Now Part C.
+- Fine: Reaction Tap (a time is sent only on Done, so play waits for all); votes, host deciding, "who leads" (shared, with "Waiting" or "host is deciding"); after the deal (everyone on the same hand screen); shuffle and end-of-trick animations and pop-ups (short, nothing to press); quick rules and menu (private on purpose); lost connection (already stops the game).
+
+**Done (docs only):** `PROJECT.md` 12f decided (no host skip, no quick-rules line, Next round waits) and a note on section 6 Ready up; `CODE.md` 9t Part C, and the setup flag renamed `waitForAll` (covers both waits; the phase is still `cardCheck`); `TODO.md` Phase 4e.
+
+---
+
 ## 2026-11-13 (evening, later) — 2.19 phone test; plan for 2.20 (lobby scroll, cards seen before play); docs only
 
 **User:** "When setting up a game, when I change host options, the screen goes back to the top why". Then: "I swapped cards both players and as host I was in game but other player was on the done screen, still not at table. I thought that was corrected. Can you check properly and make a detailed plan as well as the above about scrolling so I can code this with haiku. Update the docs and push them".

@@ -296,15 +296,17 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [x] Pushed as 2.19.0 (f487bd8), GitHub Pages test build; version told to the user
 - [x] User's phone test (2026-11-13 17:10): lobby fine, but after the swap one phone was still on Done while the host played (the known gap). Fixed by Phase 4e
 
-## Phase 4e — Version 2.20: lobby scroll place, cards seen before play (plan 2026-11-13, `PROJECT.md` 12f, build guide `CODE.md` 9t; not built)
+## Phase 4e — Version 2.20: lobby scroll place, cards seen before play, Next round waits for ready (plan 2026-11-13, `PROJECT.md` 12f, build guide `CODE.md` 9t; not built)
 
 - [x] Cause found and plan written (docs only, 2026-11-13)
-- [ ] User approves the build (and answers or accepts the defaults for the two open questions in 12f)
+- [x] User answered 12f (2026-11-13): host can't skip a slow player; no quick-rules line; Next round waits for everyone ready
+- [ ] User approves the build
 - [ ] Part A: `draw()` in `netlobby.ts` keeps the scroll place; `lobby_check.py` scroll checks
-- [ ] Part B1-B5: session `cardCheck` flag, `handSeen`, phase `cardCheck`, action `seenHand`, view, `PHONE_ACTIONS`, `LOBBY_PROTOCOL` 6, on for Multiplayer and games against the computer
+- [ ] Part B1-B5: session `waitForAll` flag, `handSeen`, phase `cardCheck`, action `seenHand`, view, `PHONE_ACTIONS`, `LOBBY_PROTOCOL` 6, on for Multiplayer and games against the computer
 - [ ] Part B6: screens (Done sends `seenHand`; "Waiting for X"; screen without marks after a reopen)
 - [ ] Part B7: computer players press Done
-- [ ] Part B9: `tests/session/card-check.test.ts`, netgame test, `netgame_check.py` hold check, `solo_check.py`, arena; all existing checks pass
+- [ ] Part C: `advance` held until all ready (`waitForAll` games); host button "Waiting for X"; End the game not held
+- [ ] Part B9 and C5: `tests/session/card-check.test.ts`, netgame test, `netgame_check.py` hold check, `solo_check.py`, arena; all existing checks pass
 - [ ] Version 2.20.0, MD files, DEVLOG; push as the test build when the user says; phone test with the 12f checklist
 
 ## Phase 5 — Polish

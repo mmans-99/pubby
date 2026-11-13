@@ -1480,9 +1480,9 @@ Under Option A the cards screen still runs inside the game after the start signa
 - Version: the next free number when built. Slice O3 (9r.8) is also planned as 2.19, so whichever ships first takes 2.19 and the other goes to the next number. Tell the user the number when asking to push.
 - Before any commit: update all five MD files, add a DEVLOG entry, give the user a playable test build and checklist (`PROJECT.md` 12e and the draft in `claude/pubby-pregame-sync-plan.md` in the Pubby project), and wait for the user's test.
 
-## 9t. Version 2.20: lobby keeps its scroll place, and everyone has seen their cards before play (PLAN, 2026-11-13; spec `PROJECT.md` 12f; not built, not approved)
+## 9t. Version 2.20: lobby keeps its scroll place, everyone has seen their cards before play, and Next round waits for everyone ready (PLAN, 2026-11-13; spec `PROJECT.md` 12f; not built, not approved)
 
-Two fixes from the user's phone test of 2.19 (2026-11-13, 17:06 and 17:10). Written so Haiku can build them step by step. Build part A first (tiny, safe), then part B. One version for both: **2.20.0**. Nothing here may be built until the user approves (CLAUDE.md rules 1 and 2).
+Three fixes from the user's phone test of 2.19 and the follow-up check (2026-11-13, 17:06, 17:10 and 17:24). Written so Haiku can build them step by step. Build Part A first (tiny, safe), then Part B, then Part C (it uses the flag from Part B). One version for all three: **2.20.0**. Nothing here may be built until the user approves (CLAUDE.md rules 1 and 2).
 
 ### 9t.0 Read first
 
@@ -1539,22 +1539,22 @@ The same gap exists in "Play against the computer" (one person, computer players
 
 #### B1. Session types (`src/session/types.ts`)
 
-- `SessionSetup`: add `readonly cardCheck?: boolean;` with the comment: "2.20: after the hidden swap, wait until every player has pressed Done on their new hand (network games and games against the computer). Off for one-phone pass-and-play, where the phone is passed anyway."
-- `Session`: add `readonly cardCheck: boolean;` and `readonly handSeen: readonly PlayerId[];`.
+- `SessionSetup`: add `readonly waitForAll?: boolean;` with the comment: "2.20: wait for every player (after the hidden swap until all have pressed Done on their new hand, Part B; and on the results screen until all are ready, Part C). On for network games and games against the computer. Off for one-phone pass-and-play, where the phone is passed anyway."
+- `Session`: add `readonly waitForAll: boolean;` and `readonly handSeen: readonly PlayerId[];`.
 - `SessionPhase`: add `| 'cardCheck' // 2.20: after the swap, until every player has seen their new hand`.
 - `SessionAction`: add `| { type: 'seenHand'; by: PlayerId }`.
 - `SessionEvent`: add `| { type: 'handSeen'; player: PlayerId }` (copy the shape of `playerReady`).
 
 #### B2. Session rules (`src/session/session.ts`)
 
-- `createSession`: `cardCheck: setup.cardCheck ?? false`, `handSeen: []` in `base`.
+- `createSession`: `waitForAll: setup.waitForAll ?? false`, `handSeen: []` in `base`.
 - Every place that starts a new round and resets `swapDone: []` (search `swapDone: []`, lines ~129, ~166, ~566) also resets `handSeen: []`.
 - `case 'swap'`: replace
   `if (s2.order.every((p) => s2.swapDone.includes(p))) return decideLeaderStep(s2, out);`
   with
   ```ts
   if (s2.order.every((p) => s2.swapDone.includes(p))) {
-    if (s2.cardCheck) return { ...s2, phase: 'cardCheck', handSeen: [] };
+    if (s2.waitForAll) return { ...s2, phase: 'cardCheck', handSeen: [] };
     return decideLeaderStep(s2, out);
   }
   ```
@@ -1571,7 +1571,7 @@ The same gap exists in "Play against the computer" (one person, computer players
   ```
   Call `assertPlayer(s, a.by)` first if the other per-player cases do (see `assertPlayer`, ~line 68).
 - Add `'cardCheck'` to `ROUND_PHASES` (line ~49) after `'swap'`. Do the same in `src/ui/between.ts` (`ROUND_PHASES`, line ~481).
-- Old saved games (made before 2.20) have no `cardCheck`/`handSeen`. Wherever a saved session is loaded (search `storage.ts` and `saved-games` tests for how other new fields were defaulted), treat missing `cardCheck` as `false` and missing `handSeen` as `[]`. With `cardCheck` false the phase `cardCheck` is never entered, so old games behave as before.
+- Old saved games (made before 2.20) have no `waitForAll`/`handSeen`. Wherever a saved session is loaded (search `storage.ts` and `saved-games` tests for how other new fields were defaulted), treat missing `waitForAll` as `false` and missing `handSeen` as `[]`. With `waitForAll` false the phase `cardCheck` is never entered and Next round is not held, so old games behave as before.
 - The log/event text: wherever events are turned into words (search `playerReady` in `src/ui` and `src/session`), add `handSeen` → nothing shown (return null / skip), so the log is not filled with "X has seen their cards". Follow what `playerReady` does.
 
 #### B3. Player view (`src/session/view.ts`)
@@ -1585,10 +1585,10 @@ The same gap exists in "Play against the computer" (one person, computer players
 - Add `'seenHand'` to `PHONE_ACTIONS`.
 - Bump `LOBBY_PROTOCOL` in `src/net/lobby.ts` from 5 to 6 (a 2.19 phone must not join a 2.20 host). Update the comment: "6: cards seen after the swap (2.20)."
 
-#### B5. Turn it on (`cardCheck: true`)
+#### B5. Turn it on (`waitForAll: true`)
 
-- `src/ui/netlobby.ts` `startGame`: `createSession({ ..., cardCheck: true }, ...)`.
-- `src/ui/solosetup.ts` (~line 258, games against the computer): `cardCheck: true`.
+- `src/ui/netlobby.ts` `startGame`: `createSession({ ..., waitForAll: true }, ...)`.
+- `src/ui/solosetup.ts` (~line 258, games against the computer): `waitForAll: true`.
 - `src/ui/app.ts` (~line 535, one-phone pass-and-play): leave it off (no change). The phone is passed between players there, so nobody is ahead.
 
 #### B6. Screens (`src/ui/roundstart.ts`, `netRoundStart` — used by network games and games against the computer)
@@ -1605,13 +1605,13 @@ New behaviour, in this order:
    - If `me` is **not** in `s.handSeen`: show the new-hand screen. If `swapReveal` is set for `me`, use `swapRevealStage(g)` as now (new cards marked). If it is not set (the app was reopened or the phone rejoined and the local memory is gone), show the same screen without marks: title "Your hand", the hand, and Done. Add a small helper for that rather than copying the whole stage.
    - If `me` **is** in `s.handSeen`: `waitStage(g, me, 'cards', notSeen)` where `notSeen = s.order.filter((p) => !s.handSeen.includes(p))`.
 2. `swapReveal` set for `me` and the phase is still `swap` and `me` has not been applied yet: `waitStage(g, me, 'swap', [me])` as now.
-3. `swapReveal` set for `me` and the phase is past `cardCheck` (`reactionTap`, `chooseLeader`, `playing`): this only happens in games with `cardCheck` off. Keep today's behaviour (`swapRevealStage`).
+3. `swapReveal` set for `me` and the phase is past `cardCheck` (`reactionTap`, `chooseLeader`, `playing`): this only happens in games with `waitForAll` off. Keep today's behaviour (`swapRevealStage`).
 
-Done on the new-hand screen when `cardCheck` is on (`swapRevealStage`'s `done`, the `ownSeat(g)` branch): clear `swapReveal`, then `send([{ type: 'seenHand', by: me }])`. A joining phone's `send` goes to the host as today. If `send` fails, keep the screen (do not clear `swapReveal`).
+Done on the new-hand screen when `waitForAll` is on (`swapRevealStage`'s `done`, the `ownSeat(g)` branch): clear `swapReveal`, then `send([{ type: 'seenHand', by: me }])`. A joining phone's `send` goes to the host as today. If `send` fails, keep the screen (do not clear `swapReveal`).
 
 `waitStage`: add `'cards'` to the `what` type. Icon `'hand'`, title `'New hands'`, and the line `Waiting for X` (it already prints `Waiting for ${who}`). Join two names with " and " and three or more with ", … and …", the same as `waitingText` in `src/net/lobby.ts` (export a small `joinNames(names)` helper from `lobby.ts` or a UI util and use it in both, so the wording matches the lobby).
 
-The pass-and-play `roundStartScreen` (one phone, phone passed) is unchanged: `cardCheck` is off there.
+The pass-and-play `roundStartScreen` (one phone, phone passed) is unchanged: `waitForAll` is off there.
 
 The phase label in `src/ui/app.ts` (~line 174, `case 'swap': return 'Hidden decks';`): add `case 'cardCheck': return 'Hidden decks';` so the top bar does not go blank. In `src/ui/game.ts` (~line 675, the `switch` on `s.phase`), add `case 'cardCheck':` next to `case 'swap':`.
 
@@ -1628,8 +1628,8 @@ The user said no quick-rules line for the lobby wait (12e). Ask the user before 
 #### B9. Tests
 
 Unit (`tests/session/`, new file `card-check.test.ts`; use `tests/session/helpers.ts` to make a 2- and 3-player session and get to the swap):
-1. `cardCheck` off: after the last swap the phase is not `cardCheck` (same as 2.19).
-2. `cardCheck` on: after the last swap the phase is `cardCheck`; `handSeen` empty; nobody can `playCard`.
+1. `waitForAll` off: after the last swap the phase is not `cardCheck` (same as 2.19).
+2. `waitForAll` on: after the last swap the phase is `cardCheck`; `handSeen` empty; nobody can `playCard`.
 3. `seenHand` from one player: still `cardCheck`, `handSeen` has that player, event `handSeen` emitted.
 4. A repeat `seenHand` changes nothing.
 5. The last `seenHand` moves on exactly as `decideLeaderStep` would (leader chosen, or `reactionTap`, or `chooseLeader` in round 2+).
@@ -1637,7 +1637,7 @@ Unit (`tests/session/`, new file `card-check.test.ts`; use `tests/session/helper
 7. Next round: `handSeen` is `[]` again.
 8. View: `cardCheck` is `{seen: [...]}` in the phase and null otherwise.
 9. `phoneActions([{type:'seenHand', by:'p2'}], 'p2')` is accepted; with `by:'p1'` from p2 it is refused (`tests/net/netgame.test.ts`).
-10. An old saved session without `cardCheck`/`handSeen` loads and plays a round with a swap as before.
+10. An old saved session without `waitForAll`/`handSeen` loads and plays a round with a swap as before.
 11. AI: in `cardCheck`, `decide` returns `seenHand` for a player who has not seen; null after.
 
 Existing unit tests that list every phase or every action type may need the new entries; fix them, do not weaken them.
@@ -1646,7 +1646,7 @@ Browser:
 - `testbed/bot.js`: the bot already presses the reveal `Done` (line ~49). Check it still does in the new phase and that it also copes with the wait screen (it should simply do nothing there).
 - `testbed/netgame_check.py`: in the 2- and 3-player runs with `'swap': True`, add a check: give one joining phone a delay before its bot presses Done (for example a `window.pubbyBotHold = true` flag the bot respects for the reveal Done, cleared after 3 s), and check that while it is held **no phone's session is in `playing`** (`window.pubbyNet.session().phase`), that the host shows "Waiting for <name>", and that play starts on every phone after it is released.
 - `testbed/solo_check.py`: a 2-player game against the computer reaches play after the person presses Done, and the computer player does not lead before that.
-- Arena (`testbed/ai_arena.ts`): run a short arena (e.g. 50 games at 2 and 3 players) to check computer-only games still finish. Turn `cardCheck` on there to match games against the computer.
+- Arena (`testbed/ai_arena.ts`): run a short arena (e.g. 50 games at 2 and 3 players) to check computer-only games still finish. Turn `waitForAll` on there to match games against the computer.
 - Must still pass: unit tests (293 + new), `tsc`, `lobby_check.py` (67 + Part A checks), `netgame_check.py` (94 + new), `netvotes_check.py`, `online_check.py` (37), `solo_check.py`, `playthrough.py`.
 
 Running here: `node_modules` must exist for the relay tests and the build. In the Claude cloud workspace, link the shared packages: `ln -s /opt/npm-tools/node_modules node_modules` (it is gitignored; also add `node_modules` to `.git/info/exclude` because a symlink is not matched by `node_modules/`).
@@ -1658,10 +1658,63 @@ Running here: `node_modules` must exist for the relay tests and the build. In th
 - A vote called during `cardCheck`: the reshuffle vote is refused outside `reshuffle` (`callVote` ~line 448). Check the target and Ultimate vote checks (~line 511 and nearby) also refuse `cardCheck`, and add a unit test.
 - Take-cards requests: only in `playing`; not affected.
 
+---
+
+### Part C — Next round waits until everyone is ready (user 2026-11-13 17:24: "Yes")
+
+**What happens today:** on the results screen each phone can tap "I'm ready" (`readyUp`, shown as name chips with a tick). The host's **Next round** (and **Start the Ultimate Round**, the same `advance` action) works whether anyone is ready or not, so a phone still looking at the podium is pulled into the next deal. The old rule was "the host still decides when to move on" (`PROJECT.md` section 6, Ready up). The user changed it on 2026-11-13: in Multiplayer and against the computer, the host waits.
+
+**Scope:** games with `waitForAll` on (Multiplayer, against the computer). One-phone pass-and-play is unchanged: ready stays a signal there.
+
+#### C1. Session (`src/session/session.ts`, `case 'advance'` ~line 397)
+
+After the existing checks add:
+```ts
+if (s.waitForAll && !s.order.every((p) => s.ready.includes(p))) {
+  fail(`Waiting for ${joinNames(s.order.filter((p) => !s.ready.includes(p)).map((p) => nameOf(s, p)))}`);
+}
+```
+Use the same `joinNames` helper as B6. If `src/net/lobby.ts` should not be imported from the session layer, put `joinNames` in a small shared file such as `src/session/names.ts` and import it from `lobby.ts`, the session and the UI.
+
+`endSession` (End the game) is **not** held: the host can still end the game at any time.
+
+`ready` is already reset to `[]` when a round ends (`session.ts` ~line 681), so nothing else is needed for the next round.
+
+#### C2. View
+
+The view already has each player's `ready` (`chooseReady` in `moves.ts` reads `me.ready`). Nothing to add.
+
+#### C3. Screens (`src/ui/netscreens.ts`, `results()` ~line 130)
+
+- The host's **Next round** / **Start the Ultimate Round** button: `disabled` while anyone **other than the host** is not ready, and its text becomes `Waiting for Ben and Fay` (same `joinNames`). When everyone else is ready it shows the normal text.
+- The host is a player too and must be ready. When the host taps Next round and has not readied, send both in one batch: `send([{ type: 'readyUp', by: hostId }, { type: 'advance', by: hostId }])`. One tap for the host, as today.
+- Every other phone: under the ready chips, show `Waiting for X` while anyone is not ready (next to the `n of m ready` line).
+- One-phone `resultsStage` in `between.ts`: unchanged.
+
+#### C4. Computer players
+
+`chooseReady` already readies a computer player on the results screen (`decide.ts`). Check in the arena and `solo_check.py` that a game against the computer still moves on. If a computer player has not readied yet when the person looks, the button is briefly off with "Waiting for <computer name>"; that is fine.
+
+#### C5. Tests
+
+Unit (new `tests/session/ready-gate.test.ts`):
+1. `waitForAll` off: `advance` works with nobody ready (as today).
+2. `waitForAll` on: `advance` fails with "Waiting for Ben" when Ben is not ready; works when all are ready.
+3. Only the host missing: `readyUp` by the host then `advance` in one batch works.
+4. `endSession` works with nobody ready.
+5. After the next round's results, `ready` is empty again.
+6. AI: on results, `decide` returns `readyUp`.
+
+Browser: in `netgame_check.py`, on the results screen, hold one joining phone's bot from tapping "I'm ready" (same hold flag as B9), check the host's Next round is disabled and says "Waiting for <name>", release, check the next round starts. `testbed/bot.js` must tap "I'm ready" on results; check it does and add it if missing. `solo_check.py`: results → Next round still moves on.
+
+#### C6. Quick rules
+
+The user said no quick-rules lines for these waits (12f). Search `src/content/quick-rules.md` for "ready": if a sentence says the host moves on without waiting, ask the user before changing it.
+
 ### 9t.1 Version and process
 
 - Version **2.20.0** (`package.json`). Tell the user the number when asking to push.
-- Before any commit: update all five MD files, add a DEVLOG entry, run every check in B9 and Part A, then ask the user to push to GitHub Pages as the test build (CLAUDE.md rule 5, and the user's habit: "Push it"). Test checklist: `PROJECT.md` 12f.
+- Before any commit: update all five MD files, add a DEVLOG entry, run every check in Part A, B9 and C5, then ask the user to push to GitHub Pages as the test build (CLAUDE.md rule 5, and the user's habit: "Push it"). Test checklist: `PROJECT.md` 12f.
 
 ## 8a. Playable test builds (required before every commit)
 

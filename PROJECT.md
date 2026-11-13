@@ -240,7 +240,7 @@ After each round, points are awarded by finishing position. The first player out
 ### Results screen
 - Appears after every round.
 - **No timer.** The host decides when to move on to the next round.
-- **Ready up:** Players can tap "ready" to show the host they are ready. Ready status is visible to the host. The host still decides when to move on.
+- **Ready up:** Players can tap "ready" to show the host they are ready. Ready status is visible to the host. The host still decides when to move on. **Changed 2026-11-13 (section 12f, version 2.20):** in Multiplayer and against the computer, the host's Next round waits until everyone is ready. One-phone pass-and-play is unchanged.
 - Votes (target score, Ultimate Round) happen here, and only here, after a round.
 
 ### Target score (the points goal)
@@ -570,7 +570,7 @@ How it works: a small relay server on Cloudflare's free plan passes the messages
   3. Show "Waiting for" in the lobby before the host taps Start, or only after? Recommended: both, from the same list.
   4. Should the quick rules (section 13) mention the wait?
 
-### 12f. Lobby scroll place, and everyone has seen their cards before play (PLAN, user 2026-11-13; build guide `CODE.md` 9t; version 2.20; not built, not approved)
+### 12f. Lobby scroll place, everyone has seen their cards before play, and Next round waits for everyone ready (PLAN, user 2026-11-13; build guide `CODE.md` 9t; version 2.20; not built, not approved)
 
 User, 2026-11-13: "When setting up a game, when I change host options, the screen goes back to the top why" and "I swapped cards both players and as host I was in game but other player was on the done screen, still not at table. I thought that was corrected. Can you check properly and make a detailed plan as well as the above about scrolling so I can code this with haiku."
 
@@ -584,9 +584,11 @@ User, 2026-11-13: "When setting up a game, when I change host options, the scree
 - Every round with a swap, not only the first.
 - With 4 to 8 players there is no swap and no new-hand screen, so nothing changes.
 
-**Open (asked 2026-11-13; defaults in brackets, used if the user doesn't say):**
-1. Should the host be able to stop waiting for a slow player? [No, same as the lobby rule in 12e.]
-2. Should the quick rules mention this wait? [No, same as 12e.]
+**Decided (user 2026-11-13, 17:20):**
+1. The host cannot stop waiting for a slow player.
+2. The quick rules do not mention this wait.
+
+**C. Next round waits for everyone (user 2026-11-13, 17:24: "Yes").** In Multiplayer and against the computer, the host's Next round and Start the Ultimate Round stay off until every player has tapped "I'm ready", and show "Waiting for X". The host can still End the game at any time. One-phone pass-and-play is unchanged (ready stays a signal). This changes section 6 "Ready up" for those modes.
 
 **Test checklist (phones):**
 1. Multiplayer, 2 players (Nearby). Both swap. Host presses Done first: host sees "Waiting for <other>", nobody can play. Other presses Done: both phones go to play together.
@@ -596,6 +598,8 @@ User, 2026-11-13: "When setting up a game, when I change host options, the scree
 5. Play against the computer, 2 players: after your swap, the computer does not lead before you press Done.
 6. Multiplayer lobby: scroll down, change the joker rule and the pause limit: the screen stays where it was.
 7. One-phone pass-and-play with 2 players: swap works as before.
+8. Multiplayer results screen: one player doesn't tap "I'm ready". Host's Next round is off and says "Waiting for <name>". They tap ready: Next round turns on. End the game still works at any time.
+9. Against the computer: Next round works after the computer players have readied (a moment).
 
 ## 13. Quick rules (in-game help)
 
@@ -622,7 +626,7 @@ Answer these in any order. Each one unblocks part of the build.
 
 - **Online play defaults (section 12d, asked 2026-11-13):** answered 2026-11-13: keep Nearby, room list, 4-digit passcode, Cloudflare. Slice O2 can start.
 - **Everyone at the table before a game starts (section 12e, asked 2026-11-13):** decided 2026-11-13 (arrival at the table; no start while someone is missing; "Waiting for" in the lobby and after Start; quick rules unchanged). Built and pushed as 2.19.0 with Option A (`CODE.md` 9s).
-- **Lobby scroll and cards seen before play (section 12f, asked 2026-11-13):** two open questions (can the host stop waiting for a slow player, default no; quick rules mention, default no). Plan in `CODE.md` 9t (version 2.20). Nothing built.
+- **Lobby scroll and cards seen before play (section 12f, asked 2026-11-13):** decided: host can't skip a slow player; no quick-rules line. Decided: the results screen's Next round waits for everyone to be ready (Multiplayer and against the computer). Plan in `CODE.md` 9t (version 2.20). Nothing built.
 
 (2026-11-07 20:38: the multiplayer questions were answered; see section 12 and Decided.)
 
