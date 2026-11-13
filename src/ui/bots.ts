@@ -26,6 +26,7 @@ import { defaultRng } from '../rules/rng.ts';
 import type { PlayerId, Session, SessionAction, SessionEvent } from '../session/types.ts';
 import { CATCH_PHRASES, runActions, runsSession, shuffling, showReaction, trickAnimating } from './game.ts';
 import { setThinking } from './thinking.ts';
+import { hostSendReaction } from './netplay.ts';
 import type { BotsInfo, SavedGame } from './storage.ts';
 import { getState } from './store.ts';
 
@@ -119,7 +120,11 @@ function reactTo(d: Driver, s: Session, events: readonly SessionEvent[], bots: r
       if (r === null) continue;
       d.lastReact.set(id, now);
       shown += 1;
-      window.setTimeout(() => { showReaction(id, r); }, 300 + Math.random() * 900);
+      window.setTimeout(() => {
+        showReaction(id, r);
+        // CODE.md 9u C4: in a network game the host's phone sends it to the other phones.
+        if (getState().game?.net?.role === 'host') hostSendReaction(id, r);
+      }, 300 + Math.random() * 900);
     }
   }
 }

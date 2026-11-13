@@ -12,6 +12,7 @@
 import { h, type Child } from './dom.ts';
 import { cardFaceFromId, ordinal, SUIT_SYMBOL } from './cards.ts';
 import { thinkingSeat } from './thinking.ts';
+import { isAwayPlayer } from '../net/away.ts';
 import { icon } from './icons.ts';
 import type { PlayerId, Session } from '../session/types.ts';
 import type { PlayerView } from '../session/view.ts';
@@ -30,8 +31,10 @@ export interface TableOpts {
   plays?: readonly { player: PlayerId; card: string }[];
   /** Plays from this index drop in (the newest). */
   newFrom?: number;
-  /** The middle of the table: waste pile, deck… */
+  /** The middle of the table: the deck while dealing. */
   middle?: Child;
+  /** The waste pile, in the bottom-right corner of the felt (CODE.md 9u Part E5). */
+  waste?: HTMLElement | null;
   /** Led suit, drawn faintly on the felt. */
   ledSuit?: Suit | null;
   /** Dealer tag on the dealer's seat. */
@@ -50,10 +53,71 @@ export function tableOrder(s: Session, bottom: PlayerId): PlayerId[] {
   return [...s.order.slice(i), ...s.order.slice(0, i)];
 }
 
-function miniBacks(count: number): HTMLElement {
-  const k = Math.min(count, 4);
-  return h('span', { class: 'mini-fan', 'aria-hidden': 'true' },
-    Array.from({ length: k }, (_, i) => h('span', { class: 'mini-back', style: `--r:${((i - (k - 1) / 2) * 10).toFixed(0)}deg` })));
+export type Edge = 'top' | 'left' | 'right';
+
+/*
+ * Where the other players sit (CODE.md 9u Part E2): clockwise from your left
+ * (k = 1 … n-1). t is 0..1 along that edge (top: left→right; sides: top→bottom).
+ */
+const EDGE_SPOTS: Record<number, [Edge, number][]> = {
+  2: [['top', 0.5]],
+  3: [['top', 0.28], ['top', 0.72]],
+  4: [['left', 0.4], ['top', 0.5], ['right', 0.4]],
+  5: [['left', 0.4], ['top', 0.28], ['top', 0.72], ['right', 0.4]],
+  6: [['left', 0.45], ['top', 0.2], ['top', 0.5], ['top', 0.8], ['right', 0.45]],
+  7: [['left', 0.7], ['left', 0.22], ['top', 0.3], ['top', 0.7], ['right', 0.22], ['right', 0.7]],
+  8: [['left', 0.75], ['left', 0.2], ['top', 0.18], ['top', 0.5], ['top', 0.82], ['right', 0.2], ['right', 0.75]],
+};
+
+export function edgeSpot(n: number, k: number): { edge: Edge; t: number } {
+  const s = EDGE_SPOTS[n]?.[k - 1];
+  return s ? { edge: s[0], t: s[1] } : { edge: 'top', t: 0.5 };
+}
+
+/** A number 0..1 from a text, always the same for the same text (so a card never jumps on a redraw). */
+export function seeded(text: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return ((h >>> 0) % 10000) / 10000;
+}
+
+/**
+ * Where each card of the trick lands (CODE.md 9u Part E4): down-right of the one
+ * before, with a random tilt, so every earlier card keeps its top-left corner showing.
+ */
+export function pileSpots(cardIds: readonly string[], salt: string): { x: number; y: number; rot: number }[] {
+  let x = 0, y = 0;
+  const out = cardIds.map((id, k) => {
+    if (k > 0) { x += 20 + seeded(`${salt}:${id}:x`) * 7; y += 8 + seeded(`${salt}:${id}:y`) * 14; }
+    return { x, y, rot: (seeded(`${salt}:${id}:r`) - 0.5) * 28 };
+  });
+  // Centre the whole pile on (0, 0).
+  const cx = x / 2, cy = y / 2;
+  return out.map((p) => ({ x: p.x - cx, y: p.y - cy, rot: p.rot }));
+}
+
+/**
+ * A fan of card backs for another player (CODE.md 9u Part E3): their count
+ * shown as up to 13 backs at the edge of the felt. The number on the chip is the truth.
+ */
+function edgeFan(count: number, edge: Edge, t: number): HTMLElement {
+  const k = Math.min(count, 13);
+  const mid = (k - 1) / 2;
+  const backs = Array.from({ length: k }, (_, i) => {
+    const d = i - mid;
+    const ad = Math.abs(d);
+    let x: number, y: number, rot: number;
+    if (edge === 'top') {
+      x = d * Math.min(8, 70 / k); y = 9 + ad * 0.8; rot = 180 + d * 2.5;
+    } else {
+      x = edge === 'left' ? -8 + ad * 0.6 : 8 - ad * 0.6; y = d * Math.min(6, 55 / k); rot = (edge === 'left' ? 90 : -90) + d * 2.5;
+    }
+    return h('span', { class: 'edge-back', style: `translate:calc(-50% + ${x.toFixed(1)}px) calc(-50% + ${y.toFixed(1)}px);rotate:${rot.toFixed(1)}deg` });
+  });
+  const place = edge === 'top'
+    ? `left:${(t * 100).toFixed(1)}%;top:0`
+    : `${edge === 'left' ? 'left:0' : 'right:0'};top:calc(70px + (100% - 70px) * ${t.toFixed(2)})`;
+  return h('span', { class: `edge-fan edge-${edge}`, 'aria-hidden': 'true', style: place }, backs);
 }
 
 export function roundTable(s: Session, v: PlayerView, o: TableOpts): HTMLElement {
@@ -61,45 +125,63 @@ export function roundTable(s: Session, v: PlayerView, o: TableOpts): HTMLElement
   const n = seats.length;
   const red = o.ledSuit === 'hearts' || o.ledSuit === 'diamonds';
   const plays = o.plays ?? [];
+  // The pile's look is fixed by the round and the trick's first card, so it never reshuffles mid-trick.
+  const spots = pileSpots(plays.map((p) => p.card), `${s.round}:${plays[0]?.card ?? ''}`);
   return h('section', { class: `round-table n${n}`, 'aria-label': 'Table' },
     h('div', { class: 'table-oval', 'aria-hidden': 'true' },
       o.ledSuit ? h('span', { class: red ? 'led-mark red' : 'led-mark' }, SUIT_SYMBOL[o.ledSuit]) : null),
     h('div', { class: 'table-middle' }, o.middle ?? null),
-    plays.map((p, i) => {
-      const k = seats.indexOf(p.player);
-      const at = seatSpot(n, Math.max(0, k), 0.5);
-      return h('div', {
-        class: i >= (o.newFrom ?? plays.length) ? 'table-play trick-play new' : 'table-play trick-play',
-        style: `left:${at.x.toFixed(1)}%;top:${at.y.toFixed(1)}%;--i:${i}`,
-        'aria-label': `${s.players.find((x) => x.id === p.player)?.sessionName ?? ''} played`,
-      }, cardFaceFromId(p.card, 'small-card'));
-    }),
+    o.waste ?? null,
+    plays.length ? h('div', { class: 'trick-pile' },
+      plays.map((p, i) => {
+        const at = spots[i]!;
+        const cls = ['table-play', 'trick-play', i >= (o.newFrom ?? plays.length) ? 'new' : '', i === plays.length - 1 ? 'newest' : ''].filter(Boolean).join(' ');
+        return h('div', {
+          class: cls,
+          style: `translate:calc(-50% + ${at.x.toFixed(1)}px) calc(-50% + ${at.y.toFixed(1)}px);rotate:${at.rot.toFixed(1)}deg;z-index:${2 + i};--i:${i}`,
+          'aria-label': `${s.players.find((x) => x.id === p.player)?.sessionName ?? ''} played`,
+        }, cardFaceFromId(p.card, 'small-card'));
+      })) : null,
     seats.map((id, k) => {
       const p = v.players.find((x) => x.id === id)!;
-      const at = seatSpot(n, k);
       const out = p.place !== null;
       const thinking = thinkingSeat() === id;
       const cls = ['seat-chip', 'table-seat', id === o.highlight ? 'turn' : '', out ? 'out' : '', o.onTap ? 'tappable' : '', k === 0 ? 'me' : '', thinking ? 'thinking' : ''].join(' ');
       const inner: Child[] = [
         // A computer player gets a small computer icon, so it is never taken for a person (PROJECT.md 12c).
         h('span', { class: 'seat-name' }, s.players.find((x) => x.id === id)?.computer ? [icon('bot', 'seat-bot'), ' '] : null, p.sessionName),
-        h('span', { class: 'seat-count' }, out ? h('span', { class: 'place-badge' }, ordinal(p.place!)) : [miniBacks(p.cardCount), String(p.cardCount)]),
+        h('span', { class: 'seat-count' }, out ? h('span', { class: 'place-badge' }, ordinal(p.place!)) : String(p.cardCount)),
         o.dealer === id ? h('span', { class: 'seat-tag' }, 'Deals') : null,
+        // CODE.md 9u A5: a phone that left the screen; its seat is kept for 10 minutes.
+        isAwayPlayer(id) ? h('span', { class: 'seat-tag away-tag' }, 'Away') : null,
         p.isHost ? h('span', { class: 'seat-host', 'aria-label': 'Host' }, '★') : null,
         // Computer player choosing its move (CODE.md 9m.5): a line of dots under the name.
         thinking ? h('span', { class: 'think-dots', 'aria-label': 'Thinking' }, 'thinking', h('span', { class: 'dots', 'aria-hidden': 'true' }, '…')) : null,
       ];
-      const style = `left:${at.x.toFixed(1)}%;top:${at.y.toFixed(1)}%`;
-      return o.onTap
+      // Seat 0 (you, or whoever holds the phone) sits at the bottom centre; the others on the edges.
+      let style: string;
+      let fan: HTMLElement | null = null;
+      if (k === 0) {
+        const at = seatSpot(n, k);
+        style = `left:${at.x.toFixed(1)}%;top:${at.y.toFixed(1)}%`;
+      } else {
+        const e = edgeSpot(n, k);
+        if (!out && p.cardCount > 0) fan = edgeFan(p.cardCount, e.edge, e.t);
+        style = e.edge === 'top'
+          ? `left:${(e.t * 100).toFixed(1)}%;top:60px;translate:-50% 0`
+          : `${e.edge === 'left' ? 'left:62px' : 'right:62px'};top:calc(70px + (100% - 70px) * ${e.t.toFixed(2)});translate:0 -50%`;
+      }
+      const chip = o.onTap
         ? h('button', { class: cls, style, 'data-seat': id, disabled: o.disabled?.includes(id) ?? false, 'aria-label': `${o.tapLabel ?? ''} ${p.sessionName}`.trim(), onclick: () => o.onTap!(id) }, inner)
         : h('div', { class: cls, style, 'data-seat': id }, inner);
+      return [fan, chip];
     }),
   );
 }
 
-/** The waste pile for the middle of the table. */
-export function wasteMiddle(count: number): HTMLElement {
-  return h('div', { class: 'table-waste', 'aria-label': `Waste pile: ${count} cards` },
+/** The waste pile, in the bottom-right corner of the felt (CODE.md 9u Part E5). */
+export function wastePile(count: number): HTMLElement {
+  return h('div', { class: 'table-waste corner', 'aria-label': `Waste pile: ${count} cards` },
     h('span', { class: 'waste-pile', 'aria-hidden': 'true' }),
-    h('span', { class: 'waste-count' }, String(count)));
+    h('span', { class: 'waste-count' }, `Waste ${count}`));
 }

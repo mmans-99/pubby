@@ -13,7 +13,7 @@ import { VERSION } from '../ui/version.ts';
 import { encodeParts, Rejoin } from './chunk.ts';
 import type { Link } from './link.ts';
 import {
-  FRAME_MAX, LOST_AFTER_MS, ONLINE_CHUNK_CHARS, PASSCODE_RE, PING_EVERY_MS, PING_TEXT, PONG_TEXT,
+  AWAY_MS, FRAME_MAX, LOST_AFTER_MS, ONLINE_CHUNK_CHARS, PASSCODE_RE, PING_EVERY_MS, PING_TEXT, PONG_TEXT,
   RELAY_PROTOCOL, ROOM_ID_RE, frame, readFrame, type RoomInfo,
 } from './relayproto.ts';
 import { roomServer, wsUrl } from './server.ts';
@@ -107,9 +107,16 @@ function parseRooms(payload: string): RoomInfo[] {
 interface SocketHandlers {
   onOpen(): void;
   onText(text: string): void;
-  /** The socket is gone, and not on purpose. */
-  onLost(why: string): void;
+  /** The socket is gone, and not on purpose. `code` is the close code the server sent, if any. */
+  onLost(why: string, code?: number): void;
 }
+
+/** Waits before each new try to reconnect after a drop (CODE.md 9u A2, A3). Then every REDIAL_EVERY_MS. */
+const REDIAL_DELAYS_MS = [0, 2_000, 5_000, 10_000];
+const REDIAL_EVERY_MS = 15_000;
+
+/** The close code the room sends when it is gone for good (CODE.md 9r). */
+const ROOM_GONE = 4003;
 
 /**
  * One WebSocket with the keep-alive of CODE.md 9r.1 and 9r.5.3: a ping text
@@ -135,8 +142,8 @@ class RoomSocket {
       this.heard = Date.now();
       if (typeof e.data === 'string' && e.data !== PONG_TEXT) this.h.onText(e.data);
     });
-    ws.addEventListener('close', () => this.lost('lost'));
-    ws.addEventListener('error', () => this.lost('lost'));
+    // A WebSocket that fails always closes after the error, and the close carries the code.
+    ws.addEventListener('close', (e: CloseEvent) => this.lost('lost', e.code));
     this.timer = window.setInterval(() => this.beat(), PING_EVERY_MS);
     document.addEventListener('visibilitychange', this.onVisible);
   }
@@ -158,20 +165,25 @@ class RoomSocket {
     try { ws?.close(); } catch { /* already closed */ }
   }
 
-  private lost(why: string): void {
+  private lost(why: string, code?: number): void {
     if (this.stopped) return;
     this.stop();
-    this.h.onLost(why);
+    this.h.onLost(why, code);
   }
 
   private beat(): void {
-    if (this.stopped || !this.ws) return;
+    // While the phone is in the background its timers may be frozen: judge nothing then.
+    if (this.stopped || !this.ws || document.visibilityState === 'hidden') return;
     if (Date.now() - this.heard > LOST_AFTER_MS) { this.lost('lost'); return; }
     this.send(PING_TEXT);
   }
 
   private onVisible = (): void => {
-    if (document.visibilityState !== 'visible' || this.stopped) return;
+    if (this.stopped || document.visibilityState !== 'visible') return;
+    // The gap was sleep, not silence: start the silence count from now.
+    this.heard = Date.now();
+    const ws = this.ws;
+    if (!ws || ws.readyState === WebSocket.CLOSING || ws.readyState === WebSocket.CLOSED) { this.lost('lost'); return; }
     this.send(PING_TEXT);
     // Give the pong a few seconds, then check the silence as usual.
     window.setTimeout(() => this.beat(), 5_000);
@@ -232,6 +244,10 @@ export class OnlineLink implements Link {
   onOpen: () => void = () => undefined;
   onMessage: (msg: unknown) => void = () => undefined;
   onClose: (why: string) => void = () => undefined;
+  /** The link dropped but may come back: this phone's socket ('self') or the host's ('host'). CODE.md 9u A3. */
+  onAway: (kind: 'self' | 'host') => void = () => undefined;
+  /** The link is back after an away. */
+  onBack: () => void = () => undefined;
   private rejoin = new Rejoin();
   private sendId = 0;
 
@@ -280,47 +296,94 @@ export class OnlineLink implements Link {
   }
 }
 
-/** The host's phone: one socket to the room; each joining phone appears as an OnlineLink. */
+/**
+ * The host's phone: one socket to the room; each joining phone appears as an OnlineLink.
+ * A drop of the host's socket does not end the room (CODE.md 9u A2): the links are kept,
+ * the lobby shows "Reconnecting…", and the host redials with the same host token until the
+ * room answers again. The room is given up only when the server says it is gone, or after
+ * the 10 minutes of AWAY_MS.
+ */
 export class HostRoom {
   onReady: () => void = () => undefined;
   /** A new phone, or the same link id coming back. */
   onJoined: (link: OnlineLink) => void = () => undefined;
-  /** The host's own socket is gone. */
+  /** The host's socket dropped; the room is kept and the host is redialling. */
+  onAway: () => void = () => undefined;
+  /** The host's socket is back. */
+  onBack: () => void = () => undefined;
+  /** The room is gone for good (the server said so, or the host was away for 10 minutes). */
   onLost: (why: string) => void = () => undefined;
-  private readonly sock: RoomSocket;
+  private sock: RoomSocket | null = null;
+  private readonly url: string;
   private readonly links = new Map<string, OnlineLink>();
   /** The last list size sent to the server, so repeats aren't sent. */
   private sent = '';
+  private away = false;
+  private firstLossAt = 0;
+  private redials = 0;
+  private redialTimer: number | undefined;
+  private ended = false;
 
   constructor(roomId: string, hostToken: string) {
-    this.sock = new RoomSocket(wsUrl(`/rooms/${roomId}/socket?token=${encodeURIComponent(hostToken)}`), {
+    this.url = wsUrl(`/rooms/${roomId}/socket?token=${encodeURIComponent(hostToken)}`);
+    this.connect();
+  }
+
+  private connect(): void {
+    const sock = new RoomSocket(this.url, {
       onOpen: () => undefined,
       onText: (text) => this.got(text),
-      onLost: (why) => {
-        for (const l of this.links.values()) { l.isOpen = false; l.onClose('lost'); }
-        this.links.clear();
-        this.onLost(why);
-      },
+      onLost: (why, code) => this.lostSocket(why, code),
     });
-    this.sock.open();
+    this.sock = sock;
+    sock.open();
+  }
+
+  private lostSocket(why: string, code?: number): void {
+    if (this.ended) return;
+    const overdue = this.firstLossAt !== 0 && Date.now() - this.firstLossAt >= AWAY_MS;
+    if (code === ROOM_GONE || overdue) { this.giveUp(why); return; }
+    if (this.firstLossAt === 0) this.firstLossAt = Date.now();
+    this.away = true;
+    // Keep the phones (their seats and game); they are not linked until the host is back.
+    for (const l of this.links.values()) l.isOpen = false;
+    this.onAway();
+    this.scheduleRedial();
+  }
+
+  private scheduleRedial(): void {
+    const delay = this.redials < REDIAL_DELAYS_MS.length ? REDIAL_DELAYS_MS[this.redials]! : REDIAL_EVERY_MS;
+    this.redials += 1;
+    window.clearTimeout(this.redialTimer);
+    this.redialTimer = window.setTimeout(() => this.connect(), delay);
+  }
+
+  private giveUp(why: string): void {
+    this.ended = true;
+    window.clearTimeout(this.redialTimer);
+    for (const l of this.links.values()) l.isOpen = false;
+    this.links.clear();
+    this.onLost(why);
   }
 
   /** Seats (people in the room, the host included) and whether the game has started: the room list uses them. */
   update(seats: number, started: boolean): void {
     const key = `${seats}:${started}`;
     if (key === this.sent) return;
-    if (this.sock.send(frame({ c: 'update', seats, started }))) this.sent = key;
+    if (this.sock?.send(frame({ c: 'update', seats, started }))) this.sent = key;
   }
 
   /** Removes one phone from the room. */
   kick(linkId: string): void {
-    this.sock.send(frame({ c: 'kick', link: linkId }));
+    this.sock?.send(frame({ c: 'kick', link: linkId }));
   }
 
   /** Closes the room for everyone. */
   close(): void {
-    this.sock.send(frame({ c: 'close' }));
-    this.sock.stop();
+    this.ended = true;
+    window.clearTimeout(this.redialTimer);
+    this.sock?.send(frame({ c: 'close' }));
+    this.sock?.stop();
   }
 
   private got(text: string): void {
@@ -329,12 +392,20 @@ export class HostRoom {
     const h = f.header;
     if (h['c'] === 'ready') {
       this.sent = '';
-      this.onReady();
+      this.firstLossAt = 0;
+      this.redials = 0;
+      if (this.away) {
+        // Back after a drop: the server re-links every phone with "joined" next.
+        this.away = false;
+        this.onBack();
+      } else {
+        this.onReady();
+      }
     } else if (h['c'] === 'joined' && typeof h['link'] === 'string') {
       const id = h['link'];
       let link = this.links.get(id);
       if (!link) {
-        link = new OnlineLink(id, (p) => this.sock.send(frame({ c: 'to', to: id }, p)), () => undefined);
+        link = new OnlineLink(id, (p) => this.sock?.send(frame({ c: 'to', to: id }, p)) ?? false, () => undefined);
         this.links.set(id, link);
       }
       link.isOpen = true;
@@ -349,37 +420,94 @@ export class HostRoom {
   }
 }
 
-/** The joining phone's link to the host. */
+/**
+ * The joining phone's link to the host. A drop of this phone's socket keeps the
+ * seat: it redials with the same join token (CODE.md 9u A3). When the host's
+ * socket is away, the room says so ("host-gone") and this phone waits for "host-back"
+ * for up to 10 minutes.
+ */
 export function joinSocket(roomId: string, joinToken: string): OnlineLink {
+  const url = wsUrl(`/rooms/${roomId}/socket?token=${encodeURIComponent(joinToken)}`);
   let sock: RoomSocket | null = null;
-  const link = new OnlineLink('host', (p) => sock?.send(frame({ c: 'up' }, p)) ?? false, () => sock?.stop());
-  sock = new RoomSocket(wsUrl(`/rooms/${roomId}/socket?token=${encodeURIComponent(joinToken)}`), {
-    onOpen: () => undefined,
-    onText: (text) => {
-      const f = readFrame(text);
-      if (!f) return;
-      const c = f.header['c'];
-      if (c === 'ready') {
-        link.isOpen = true;
-        link.onOpen();
-      } else if (c === 'down') {
-        link.receive(f.payload);
-      } else if (c === 'host-gone') {
+  let ended = false;
+  let away = false;          // this phone's own socket is down
+  let firstLossAt = 0;
+  let redials = 0;
+  let redialTimer: number | undefined;
+  let hostAway = false;      // the host's socket is away (the room said so)
+  let hostTimer: number | undefined;
+
+  const end = (): void => {
+    ended = true;
+    window.clearTimeout(redialTimer);
+    window.clearTimeout(hostTimer);
+    sock?.stop();
+  };
+  const link = new OnlineLink('host', (p) => sock?.send(frame({ c: 'up' }, p)) ?? false, end);
+  const giveUp = (why: string): void => {
+    end();
+    link.isOpen = false;
+    link.onClose(why);
+  };
+  const scheduleRedial = (): void => {
+    const delay = redials < REDIAL_DELAYS_MS.length ? REDIAL_DELAYS_MS[redials]! : REDIAL_EVERY_MS;
+    redials += 1;
+    window.clearTimeout(redialTimer);
+    redialTimer = window.setTimeout(() => make(), delay);
+  };
+  const make = (): void => {
+    if (ended) return;
+    const s = new RoomSocket(url, {
+      onOpen: () => undefined,
+      onText: (text) => {
+        const f = readFrame(text);
+        if (!f) return;
+        const c = f.header['c'];
+        if (c === 'ready') {
+          const back = away;
+          away = false;
+          firstLossAt = 0;
+          redials = 0;
+          link.isOpen = true;
+          if (back) link.onBack(); else link.onOpen();
+        } else if (c === 'down') {
+          link.receive(f.payload);
+        } else if (c === 'host-gone') {
+          if (hostAway) return;
+          hostAway = true;
+          link.isOpen = false;
+          link.onAway('host');
+          // The room is kept for 10 minutes; after that, this phone gives up.
+          window.clearTimeout(hostTimer);
+          hostTimer = window.setTimeout(() => giveUp('host-gone'), AWAY_MS);
+        } else if (c === 'host-back') {
+          if (!hostAway) return;
+          hostAway = false;
+          window.clearTimeout(hostTimer);
+          link.isOpen = true;
+          link.onBack();
+        } else if (c === 'closed') {
+          link.onMessage({ t: 'closed' });
+          link.close();
+        } else if (c === 'kicked') {
+          link.onMessage({ t: 'removed' });
+          link.close();
+        }
+      },
+      onLost: (why, code) => {
+        if (ended) return;
+        const overdue = firstLossAt !== 0 && Date.now() - firstLossAt >= AWAY_MS;
+        if (code === ROOM_GONE || overdue) { giveUp(why); return; }
+        if (firstLossAt === 0) firstLossAt = Date.now();
+        away = true;
         link.isOpen = false;
-        link.onClose('host-gone');
-      } else if (c === 'closed') {
-        link.onMessage({ t: 'closed' });
-        link.close();
-      } else if (c === 'kicked') {
-        link.onMessage({ t: 'removed' });
-        link.close();
-      }
-    },
-    onLost: (why) => {
-      link.isOpen = false;
-      link.onClose(why);
-    },
-  });
-  sock.open();
+        link.onAway('self');
+        scheduleRedial();
+      },
+    });
+    sock = s;
+    s.open();
+  };
+  make();
   return link;
 }

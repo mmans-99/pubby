@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { blankCards, eventFor, isBlank, logFor, phoneActions, readGameUpdate, redactSession, stampHostTime } from '../../src/net/netgame.ts';
 import { readToHost, readToJoiner } from '../../src/net/lobby.ts';
 import { seededRng } from '../../src/rules/rng.ts';
-import { handOf } from '../../src/session/session.ts';
+import { createSession, handOf } from '../../src/session/session.ts';
 import { playerView } from '../../src/session/view.ts';
 import type { Card } from '../../src/rules/cards.ts';
 import type { Session } from '../../src/session/types.ts';
@@ -138,4 +138,22 @@ test('the incremental log adds up to the full log for each phone', () => {
     }
   }
   for (const p of Object.keys(got)) assert.deepEqual(got[p], logFor(s.log, p));
+});
+
+// ---- CODE.md 9u C5 (2.26): computer players run on the host's phone; their cards never reach a phone.
+
+test('a computer player: no other phone holds its cards, at any point of a game', () => {
+  const rng = seededRng(77);
+  let s = createSession({
+    players: [{ id: 'p1', profileName: 'Ann' }, { id: 'p2', profileName: 'Ben' }, { id: 'p3', profileName: 'Bot', computer: true }],
+    hostId: 'p1', jokerRuleEnabled: true, waitForAll: true,
+  }, rng).session;
+  for (let i = 0; i < 400 && s.phase !== 'results'; i++) {
+    const botCards = handOf(s, 'p3').map((c) => c.id);
+    for (const me of ['p1', 'p2']) {
+      const real = realCards(redactSession(s, me));
+      for (const id of botCards) assert.equal(real.has(id), false, `${me} got the computer player's card ${id}`);
+    }
+    s = step(s, rng);
+  }
 });

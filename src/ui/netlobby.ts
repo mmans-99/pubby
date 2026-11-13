@@ -22,13 +22,18 @@ import { makeQr, qrSvg } from '../net/qr.ts';
 import { Peer } from '../net/peer.ts';
 import type { Link } from '../net/link.ts';
 import { HostRoom, createRoom, joinRoom, joinSocket, watchRooms, type OnlineLink, type RoomInfo } from '../net/online.ts';
-import { PASSCODE_RE, ROOM_ID_RE, ROOM_NAME_MAX } from '../net/relayproto.ts';
+import { AWAY_MS, PASSCODE_RE, ROOM_ID_RE, ROOM_NAME_MAX } from '../net/relayproto.ts';
+import { setAwayPlayers } from '../net/away.ts';
+import { BOT_NAME_MAX, botNamesProblem, pickNames } from '../ai/names.ts';
+import { randomPersona, type Level, type Personality, type Speed } from '../ai/persona.ts';
+import type { BotsInfo } from './storage.ts';
 import { roomFormView, roomListView, roomPassView } from './online.ts';
 import { lobbyLink } from '../net/signal.ts';
 import { canScan, startScanner, type Scanner } from '../net/scan.ts';
 import {
   addSeat, cleanName, joinProblem, jokerLine, LOBBY_PROTOCOL, lobbyProblems, moveSeat, NAME_MAX, newLobby,
   readToHost, readToJoiner, removeSeat, renameSeat, seatName, sessionPlayers, setConnected, setReady, waitingText,
+  setAway, setBack, isAway, addBot, setBotLevel, nextBotId,
   type Lobby, type LobbySeat, type ToHost, type ToJoiner,
 } from '../net/lobby.ts';
 import { MAX_PLAYERS } from '../rules/cards.ts';
@@ -113,6 +118,11 @@ let joiningRoom = false;
 // Joiner
 let peer: Link | null = null;
 let hostHeard = 0;
+/** CODE.md 9u A2/A3/A5: the host's phone is redialling (host side); this phone's link is away (joining side). */
+let hostAway = false;
+let joinAway: 'self' | 'host' | null = null;
+let hostAwayAt = 0;
+let visibilityWatched = false;
 let myCode = '';
 let you = '';
 let seen: Lobby | null = null;
@@ -148,6 +158,7 @@ let drawLater = false;
 /** The screen element. Always the same element, so the camera keeps running. */
 export function netLobbyScreen(back: () => void): HTMLElement {
   onBack = back;
+  watchVisibility();
   if (!root) {
     root = h('main', { class: 'screen netlobby' });
     exposeTestHook();
@@ -202,6 +213,8 @@ export function netLobbyBack(): boolean {
 // ---------------------------------------------------------------------------
 
 function reset(): void {
+  hostAway = false;
+  joinAway = null;
   stopScan();
   stopList();
   clearInterval(pingTimer);
@@ -301,6 +314,7 @@ export function netSeats(): LobbySeat[] | null {
 
 function draw(): void {
   if (!root) return;
+  syncAway();
   if (nameBox && document.activeElement === nameBox) { drawLater = true; return; }
   drawLater = false;
   // 2.20: keep the scroll place; a rebuild under the finger sent the page up.
@@ -310,6 +324,33 @@ function draw(): void {
 }
 
 type View = (HTMLElement | null)[];
+
+/** The table's "Away" tags (CODE.md 9u A5). Player ids follow seat order (sessionPlayers: p1, p2…). */
+function syncAway(): void {
+  const l = role === 'host' ? lobby : seen;
+  setAwayPlayers((l?.seats ?? []).flatMap((s, i) => (s.awaySince !== undefined && !s.isHost ? [`p${i + 1}`] : [])));
+}
+
+/** A phone tells the host it left the screen (and is back), and the host's phone tells its phones (CODE.md 9u A5). Best effort. */
+function watchVisibility(): void {
+  if (visibilityWatched) return;
+  visibilityWatched = true;
+  document.addEventListener('visibilitychange', () => {
+    const hidden = document.visibilityState === 'hidden';
+    if (role === 'join') {
+      if (peer?.isOpen) peer.send(({ t: hidden ? 'away' : 'back' }) satisfies ToHost);
+    } else if (role === 'host') {
+      for (const l of links.values()) if (l.seated) l.peer.send(({ t: hidden ? 'hostAway' : 'hostBack' }) satisfies ToJoiner);
+    }
+  });
+}
+
+/** The banner while a link is away (CODE.md 9u A3). */
+function awayNote(): HTMLElement | null {
+  if (joinAway === 'self') return h('p', { class: 'note warn', role: 'status' }, 'Reconnecting… your place is kept.');
+  if (joinAway === 'host') return h('p', { class: 'note warn', role: 'status' }, 'The host stepped away. Waiting for them to come back.');
+  return null;
+}
 
 function topBar(title: string): HTMLElement {
   return h('div', { class: 'top-bar' },
@@ -495,8 +536,26 @@ function seatTags(seat: LobbySeat, mine: boolean): (HTMLElement | null)[] {
   return [
     seat.isHost ? h('span', { class: 'chip-info gold' }, icon('crown'), ' Host') : null,
     mine ? h('span', { class: 'chip-info' }, 'You') : null,
-    seat.connected ? null : h('span', { class: 'chip-info lost' }, 'Lost link'),
+    // CODE.md 9u A5: an away seat is kept for 10 minutes, with the time left.
+    seat.awaySince !== undefined ? h('span', { class: 'chip-info' }, `Away ${awayLeft(seat.awaySince)}`)
+      : seat.connected ? null : h('span', { class: 'chip-info lost' }, 'Lost link'),
+    // CODE.md 9u C2: a computer player shows its level (no controls on other phones).
+    seat.bot ? h('span', { class: 'chip-info' }, icon('bot'), ` ${BOT_LEVEL_LABEL[seat.bot.level]}`) : null,
   ];
+}
+
+const BOT_LEVEL_LABEL: Record<Level, string> = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+const BOT_LEVELS: readonly { value: Level; label: string }[] = [
+  { value: 'easy', label: 'Easy' }, { value: 'normal', label: 'Normal' }, { value: 'hard', label: 'Hard' },
+];
+const BOT_SPEEDS: readonly { value: Speed; label: string }[] = [
+  { value: 'relaxed', label: 'Relaxed' }, { value: 'normal', label: 'Normal' }, { value: 'fast', label: 'Fast' },
+];
+
+/** "4:12": the time left before an away seat is removed (the host's clock time, shown on this phone). */
+function awayLeft(since: number): string {
+  const s = Math.max(0, Math.ceil((AWAY_MS - (Date.now() - since)) / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
 function seatSub(seat: LobbySeat): HTMLElement | null {
@@ -507,7 +566,10 @@ function seatSub(seat: LobbySeat): HTMLElement | null {
 
 function settingsSummary(l: Lobby): HTMLElement {
   const pause = PAUSE_LIMITS.find((p) => p.sec === l.pauseLimit)?.label ?? `${l.pauseLimit} s`;
-  return h('p', { class: 'muted small' }, `${jokerLine(l)} · Pause limit: ${pause}`);
+  const bots = l.seats.some((s) => s.bot)
+    ? ` · Computer speed: ${BOT_SPEEDS.find((o) => o.value === (l.botSpeed ?? 'normal'))?.label ?? 'Normal'} · Computer reactions ${l.botReactions === false ? 'off' : 'on'}`
+    : '';
+  return h('p', { class: 'muted small' }, `${jokerLine(l)} · Pause limit: ${pause}${bots}`);
 }
 
 // ----- Host -----
@@ -524,9 +586,10 @@ function hostLobbyView(): View {
   return [
     topBar(online ? 'Host a room' : 'Host a game'),
     online ? roomCard() : null,
+    hostAway ? h('p', { class: 'note warn', role: 'status' }, 'Reconnecting… your room is kept.') : null,
     h('section', { class: 'panel' },
       h('h2', null, 'Players ', h('span', { class: 'count' }, `${l.seats.length} / ${MAX_PLAYERS}`)),
-      h('ol', { class: 'seats' }, l.seats.map((seat, i) => hostSeatRow(seat, i, l.seats.length))),
+      h('ol', { class: 'seats' }, l.seats.map((seat, i) => (seat.bot ? botSeatRow(seat, i, l.seats.length) : hostSeatRow(seat, i, l.seats.length)))),
       waiting ? h('p', { class: 'muted small' }, 'A phone is connecting…') : null,
       missing ? h('p', { class: 'warn' }, missing) : null,
       online && !full ? h('p', { class: 'muted small' }, `Waiting for players… ${l.seats.length} of ${MAX_PLAYERS}`) : null,
@@ -536,10 +599,13 @@ function hostLobbyView(): View {
       ? h('button', { class: 'big secondary', onclick: shareInvite }, icon('share'), ' Share invite')
       : h('button', { class: 'big secondary', disabled: full, onclick: () => { void startAdding(); } },
           icon('phone'), full ? ` Full (${MAX_PLAYERS} players)` : ' Add player'),
+    // CODE.md 9u C2: a computer player can be added before Start (up to 8 seats), on any host screen.
+    !l.started ? h('button', { class: 'big secondary', disabled: full, onclick: addComputer }, icon('bot'), full ? ' Table is full' : ' Add computer player') : null,
     h('section', { class: 'panel' },
       h('h2', null, 'Your name for this game'),
       myNameBox(me.sessionName),
     ),
+    l.seats.some((s) => s.bot) ? botOptionsPanel(l) : null,
     h('section', { class: 'panel' },
       h('h2', null, 'Host options'),
       h('label', { class: 'toggle' },
@@ -555,7 +621,7 @@ function hostLobbyView(): View {
       ),
     ),
     problems.length && l.seats.length > 1 ? h('p', { class: 'warn' }, problems.join(' ')) : null,
-    h('button', { class: 'big sticky', disabled: problems.length > 0 || waiting > 0 || missing !== null, onclick: startGame },
+    h('button', { class: 'big sticky', disabled: problems.length > 0 || waiting > 0 || missing !== null || hostAway, onclick: startGame },
       problems.length ? 'Start game' : missing ? missing : `Start game · ${l.seats.length} players`),
   ];
 }
@@ -594,6 +660,95 @@ function hostSeatRow(seat: LobbySeat, i: number, n: number): HTMLElement {
   );
 }
 
+/** CODE.md 9u C2: the host adds a Normal computer player at the end, with a new name. No dialog. */
+function addComputer(): void {
+  const l = lobby;
+  if (!l || l.started || l.seats.length >= MAX_PLAYERS) return;
+  const [name] = pickNames(1, l.seats.map(seatName), defaultRng());
+  lobby = addBot(l, nextBotId(l), name ?? 'Computer', 'normal');
+  broadcast();
+  draw();
+}
+
+/** Removing a computer player doesn't ask first (CODE.md 9u C2). */
+function removeComputer(id: string): void {
+  lobby = removeSeat(lobby!, id);
+  broadcast();
+  draw();
+}
+
+/** A computer player's new name: different from every other seat, up to BOT_NAME_MAX letters. */
+function renameComputer(id: string, value: string): void {
+  const l = lobby!;
+  const name = cleanName(value);
+  const problem = botNamesProblem([...l.seats.filter((s) => s.id !== id).map(seatName), name], null);
+  if (problem) { flash(problem); draw(); return; }
+  lobby = renameSeat(l, id, name);
+  broadcast();
+  draw();
+}
+
+/** A computer player's row: its name, the three levels, move and remove. */
+function botSeatRow(seat: LobbySeat, i: number, n: number): HTMLElement {
+  const name = seatName(seat);
+  const level = seat.bot?.level ?? 'normal';
+  return h('li', { class: 'seat bot-seat' },
+    h('div', { class: 'seat-top' },
+      h('span', { class: 'seat-no' }, String(i + 1)),
+      icon('bot'),
+      h('input', {
+        type: 'text', class: 'bot-name', maxlength: BOT_NAME_MAX, value: name, autocomplete: 'off',
+        'aria-label': `Name of computer player ${name}`,
+        onchange: (e: Event) => renameComputer(seat.id, (e.target as HTMLInputElement).value),
+      }),
+      h('button', { class: 'icon', 'aria-label': `Move ${name} up`, disabled: i === 0, onclick: () => { lobby = moveSeat(lobby!, seat.id, -1); broadcast(); draw(); } }, '▲'),
+      h('button', { class: 'icon', 'aria-label': `Move ${name} down`, disabled: i === n - 1, onclick: () => { lobby = moveSeat(lobby!, seat.id, 1); broadcast(); draw(); } }, '▼'),
+      h('button', { class: 'icon', 'aria-label': `Remove ${name}`, onclick: () => removeComputer(seat.id) }, '✕'),
+    ),
+    h('div', { class: 'seg', role: 'group', 'aria-label': `Level of ${name}` }, BOT_LEVELS.map((o) =>
+      h('button', {
+        class: level === o.value ? 'seg-btn on' : 'seg-btn',
+        'aria-pressed': level === o.value ? 'true' : 'false',
+        onclick: () => { lobby = setBotLevel(lobby!, seat.id, o.value); broadcast(); draw(); },
+      }, o.label))),
+  );
+}
+
+/** Speed and reactions for the computer players (shown only when one is seated). */
+function botOptionsPanel(l: Lobby): HTMLElement {
+  const speed = l.botSpeed ?? 'normal';
+  return h('section', { class: 'panel' },
+    h('h2', null, 'Computer players'),
+    h('p', { class: 'muted small' }, 'Computer speed'),
+    h('div', { class: 'seg', role: 'group', 'aria-label': 'Computer speed' }, BOT_SPEEDS.map((o) =>
+      h('button', {
+        class: speed === o.value ? 'seg-btn on' : 'seg-btn',
+        'aria-pressed': speed === o.value ? 'true' : 'false',
+        onclick: () => setBotOption({ botSpeed: o.value }),
+      }, o.label))),
+    h('label', { class: 'toggle' },
+      h('input', { type: 'checkbox', checked: l.botReactions !== false, onchange: (e) => setBotOption({ botReactions: (e.target as HTMLInputElement).checked }) }),
+      h('span', { class: 'toggle-ui', 'aria-hidden': 'true' }),
+      h('span', { class: 'grow' }, 'Reactions from the computer players')),
+  );
+}
+
+function setBotOption(change: Partial<Pick<Lobby, 'botSpeed' | 'botReactions'>>): void {
+  lobby = { ...lobby!, ...change };
+  broadcast();
+  draw();
+}
+
+/** CODE.md 9u C3: the computer players of a game, with a personality each. They live on this phone only. */
+function botsForGame(l: Lobby): BotsInfo | undefined {
+  const seats: Record<string, { level: Level; personality: Personality }> = {};
+  l.seats.forEach((s, i) => {
+    if (s.bot) seats[`p${i + 1}`] = { level: s.bot.level, personality: randomPersona(s.bot.level, defaultRng()).personality };
+  });
+  if (Object.keys(seats).length === 0) return undefined;
+  return { seats, speed: l.botSpeed ?? 'normal', reactions: l.botReactions !== false };
+}
+
 function setOption(change: Partial<Pick<Lobby, 'jokers' | 'pauseLimit'>>): void {
   lobby = { ...lobby!, ...change };
   broadcast();
@@ -623,7 +778,7 @@ function broadcast(): void {
 
 function startGame(): void {
   const l = lobby!;
-  if (lobbyProblems(l).length) return;
+  if (lobbyProblems(l).length || hostAway) return;
   // Phase 4d: nobody starts while a player is still missing from the table.
   if (waitingText(l) !== null) return;
   const { players, hostId, linkIds } = sessionPlayers(l);
@@ -642,7 +797,7 @@ function startGame(): void {
   broadcast();
   draw();
   // Every phone goes into the game (netplay.ts); the links stay open here.
-  hostStart(session, linkIds, hostId);
+  hostStart(session, linkIds, hostId, botsForGame(l));
 }
 
 // ----- Host: adding a player -----
@@ -710,6 +865,19 @@ function dropLink(id: string, link: HostLink): void {
 /** Online: the room says a phone has come in. From here it is handled like a Nearby phone. */
 function addOnlineLink(p: OnlineLink): void {
   if (!lobby) return;
+  const seat = lobby.seats.find((s) => s.id === p.id);
+  if (seat && !seat.isHost) {
+    // CODE.md 9u A2/A5: a seated phone's socket is back. It keeps its seat and does not say hello again.
+    links.set(p.id, { peer: p, lastHeard: performance.now(), seated: true });
+    p.onClose = () => linkLost(p.id);
+    p.onMessage = (m) => hostGot(p.id, m);
+    lobby = setBack(lobby, p.id);
+    broadcast();
+    draw();
+    netChanged();
+    if (lobby.started) hostSync(p.id);
+    return;
+  }
   if (lobby.started) { hostRoom?.kick(p.id); return; }
   links.delete(p.id);
   addLink(p.id, p);
@@ -722,10 +890,14 @@ function startHostRoom(id: string, token: string): void {
   hostRoom = hr;
   hr.onReady = () => { if (hostRoom === hr && lobby) hr.update(lobby.seats.length, lobby.started); };
   hr.onJoined = (link) => { if (hostRoom === hr) addOnlineLink(link); };
+  // CODE.md 9u A2: the room's socket dropped; the lobby waits, and the room redials.
+  hr.onAway = () => { if (hostRoom === hr) { hostAway = true; draw(); } };
+  hr.onBack = () => { if (hostRoom === hr) { hostAway = false; broadcast(); draw(); netChanged(); } };
   hr.onLost = () => {
     if (hostRoom !== hr) return;
     hostRoom = null;
-    for (const linkId of [...links.keys()]) linkLost(linkId);
+    hostAway = false;
+    for (const linkId of [...links.keys()]) forgetLink(linkId);
     if (lobby && !lobby.started) go('room-lost');
     else { draw(); netChanged(); }
   };
@@ -810,6 +982,15 @@ async function joinRoomNow(): Promise<void> {
     const p = joinSocket(pick.roomId, joinToken);
     peer = p;
     wireJoin(p);
+    // CODE.md 9u A3: a drop keeps this seat; the banner says what is happening.
+    p.onAway = (kind) => { if (peer === p) { joinAway = kind; draw(); } };
+    p.onBack = () => {
+      if (peer !== p) return;
+      joinAway = null;
+      // In a game, ask for the whole game again, so this screen catches up.
+      if (inNetGame()) peer.send({ t: 'sync' } satisfies ToHost);
+      draw();
+    };
     go('room-wait');
     clearTimeout(connectTimer);
     connectTimer = window.setTimeout(() => {
@@ -899,6 +1080,15 @@ function hostGot(id: string, raw: unknown): void {
   const m = readToHost(raw);
   if (!m) return;
   if (m.t === 'ping') return;
+  // CODE.md 9u A5: a seated phone left the screen, or is back. Its seat is kept either way.
+  if (m.t === 'away' || m.t === 'back') {
+    if (!link.seated) return;
+    lobby = m.t === 'away' ? setAway(lobby, id, Date.now()) : setBack(lobby, id);
+    broadcast();
+    draw();
+    netChanged();
+    return;
+  }
   if (m.t === 'act' || m.t === 'sync' || m.t === 'react') {
     if (!link.seated || !lobby.started) return;
     if (m.t === 'act') hostGotAct(id, m.actions);
@@ -928,6 +1118,13 @@ function hostGot(id: string, raw: unknown): void {
       return;
     }
     link.seated = true;
+    // CODE.md 9u C1: a person's name is theirs; a computer player with the same name gets a new one.
+    const personName = cleanName(m.sessionName) || cleanName(m.profileName);
+    const clash = lobby.seats.find((s) => s.bot && seatName(s).toLowerCase() === personName.toLowerCase());
+    if (clash) {
+      const [fresh] = pickNames(1, [...lobby.seats.map(seatName), personName], defaultRng());
+      if (fresh) lobby = renameSeat(lobby, clash.id, fresh);
+    }
     lobby = addSeat(lobby, id, m.profileName, m.sessionName);
     const seat = lobby.seats.find((s) => s.id === id)!;
     flash(`${seatName(seat)} joined`);
@@ -951,11 +1148,26 @@ function hostGot(id: string, raw: unknown): void {
   }
 }
 
+/** A phone's link dropped. CODE.md 9u A5: the phone is away, not gone; its seat is kept for AWAY_MS. */
 function linkLost(id: string): void {
   const link = links.get(id);
   if (!link || !lobby) return;
+  const seat = lobby.seats.find((s) => s.id === id);
+  if (!seat || seat.isHost) { forgetLink(id); return; }  // never got a seat: nothing to keep
+  if (isAway(lobby, id)) return;
+  lobby = setAway(lobby, id, Date.now());
+  flash(`${seatName(seat)} is away`);
+  broadcast();
+  draw();
+  netChanged();
+}
+
+/** The phone is gone for good: after its away time, or when the room ends. Removed in the lobby; set to not connected in a game. */
+function forgetLink(id: string): void {
+  const link = links.get(id);
   links.delete(id);
-  link.peer.close();
+  link?.peer.close();
+  if (!lobby) return;
   const seat = lobby.seats.find((s) => s.id === id);
   if (lobby.started) lobby = setConnected(lobby, id, false);
   else lobby = removeSeat(lobby, id);
@@ -1007,6 +1219,7 @@ function joinLobbyView(): View {
       h('p', { class: 'net-big ok' }, icon('check'), ' You’re in'),
     ),
     hostLine(hostDoing(l)),
+    awayNote(),
     h('section', { class: 'panel' },
       h('h2', null, 'Players ', h('span', { class: 'count' }, `${l.seats.length} / ${MAX_PLAYERS}`)),
       h('ol', { class: 'seats' }, l.seats.map((seat, i) =>
@@ -1109,6 +1322,14 @@ function joinGot(raw: unknown): void {
       peer?.send({ t: 'ready' } satisfies ToHost);
     }
     netChanged();
+  } else if (m.t === 'hostAway') {
+    // CODE.md 9u A5 (Nearby): the host's phone left the screen; this phone waits up to 10 minutes.
+    joinAway = 'host';
+    hostAwayAt = performance.now();
+    draw();
+  } else if (m.t === 'hostBack') {
+    if (joinAway === 'host') joinAway = null;
+    draw();
   } else if (m.t === 'refused') {
     endText = m.why;
     endJoin('refused');
@@ -1122,6 +1343,7 @@ function joinGot(raw: unknown): void {
 function endJoin(next: Step): void {
   clearInterval(pingTimer);
   pingTimer = undefined;
+  joinAway = null;
   const p = peer;
   peer = null;
   p?.close();
@@ -1252,13 +1474,20 @@ function startPings(): void {
   pingTimer = window.setInterval(() => {
     const now = performance.now();
     if (role === 'host') {
+      // CODE.md 9u A5: an away seat is kept for AWAY_MS, then it goes for good.
+      for (const seat of lobby?.seats ?? []) {
+        if (seat.awaySince !== undefined && Date.now() - seat.awaySince >= AWAY_MS) forgetLink(seat.id);
+      }
       for (const [id, l] of links) {
         if (l.peer.keepsAlive) continue; // online: the room tells us when a phone is lost
+        if (lobby && isAway(lobby, id)) continue; // an away phone is judged only by AWAY_MS
         if (now - l.lastHeard > LOST_AFTER_MS) linkLost(id);
         else l.peer.send({ t: 'ping' } satisfies ToJoiner);
       }
+      if (lobby?.seats.some((s) => s.awaySince !== undefined)) draw(); // keeps the countdown on the seat
     } else if (peer?.isOpen && !peer.keepsAlive) {
-      if (now - hostHeard > LOST_AFTER_MS) lost();
+      if (joinAway === 'host') { if (now - hostAwayAt > AWAY_MS) lost(); }  // the host is away: no pings judged for 10 minutes
+      else if (now - hostHeard > LOST_AFTER_MS) lost();
       else peer.send({ t: 'ping' });
     }
   }, PING_EVERY_MS);

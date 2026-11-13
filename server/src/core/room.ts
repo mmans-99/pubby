@@ -7,7 +7,7 @@
  * Payloads are never read here: a frame's header says where it goes, and the
  * payload is passed on unchanged.
  */
-import { FRAME_MAX, frame, readFrame } from '../../../src/net/relayproto.ts';
+import { AWAY_MS, FRAME_MAX, frame, readFrame } from '../../../src/net/relayproto.ts';
 import { makeToken } from './ids.ts';
 import type { ListEntry } from './directory.ts';
 
@@ -30,7 +30,7 @@ export interface Limits {
 export const LIMITS: Limits = {
   idleMs: 30 * 60_000,
   maxAgeMs: 12 * 60 * 60_000,
-  hostGraceMs: 120_000,
+  hostGraceMs: AWAY_MS,  // CODE.md 9u A4: the host may be away for 10 minutes
   tokenMs: 120_000,
   ipTries: 5,
   ipWindowMs: 5 * 60_000,
@@ -206,9 +206,13 @@ export class RoomCore {
       effects.push(
         { send: socketId, text: frame({ c: 'ready', roomId: this.settings.roomId }) },
         { list: this.listEntry() },
-        { save: true },
-        { alarm: this.nextAlarm() },
       );
+      // A host that comes back (CODE.md 9u A4.3): its phones are linked again, and they are told.
+      for (const [linkId, sock] of this.linkSockets) {
+        effects.push({ send: socketId, text: frame({ c: 'joined', link: linkId }) });
+        effects.push({ send: sock, text: frame({ c: 'host-back' }) });
+      }
+      effects.push({ save: true }, { alarm: this.nextAlarm() });
       return { ok: true, effects };
     }
 
@@ -232,6 +236,7 @@ export class RoomCore {
     this.socketRole.set(socketId, linkId);
     effects.push({ send: socketId, text: frame({ c: 'ready', link: linkId }) });
     if (this.hostSocket !== null) effects.push({ send: this.hostSocket, text: frame({ c: 'joined', link: linkId }) });
+    else effects.push({ send: socketId, text: frame({ c: 'host-gone' }) });  // the phone waits for the host (CODE.md 9u A4.4)
     effects.push({ save: true });
     return { ok: true, effects };
   }
@@ -276,7 +281,8 @@ export class RoomCore {
       this.hostGoneAt = now;
       const effects: Effect[] = [];
       for (const sock of this.linkSockets.values()) effects.push({ send: sock, text: frame({ c: 'host-gone' }) });
-      effects.push({ list: null }, { save: true }, { alarm: this.nextAlarm() });
+      // The room stays on the list as "Host away" (CODE.md 9u A4.2); joining still works.
+      effects.push({ list: this.listEntry() }, { save: true }, { alarm: this.nextAlarm() });
       return effects;
     }
 
@@ -369,6 +375,8 @@ export class RoomCore {
       maxSeats: SEATS_MAX,
       version: this.settings.version,
       createdAt: this.settings.createdAt,
+      // Away only once the host has dropped (a new room waits for its host to connect, not away).
+      ...(this.hostSocket === null && this.hostGoneAt !== null ? { away: true } : {}),
     };
   }
 

@@ -171,7 +171,8 @@ test('the host drops and comes back inside the grace time: joiners see host-gone
   core.connect(joinOk(core, 'a', T0), 'j1', T0);
   const gone = core.closed('h1', T0 + 5000);
   assert.deepEqual(sent(gone, 'j1'), [frame({ c: 'host-gone' })]);
-  assert.ok(gone.some((x) => 'list' in x && x.list === null));
+  // CODE.md 9u A4.2: the room stays on the list, marked away.
+  assert.ok(gone.some((x) => 'list' in x && x.list?.away === true));
   const back = core.connect(HOST, 'h2', T0 + 10_000);
   assert.equal(back.ok, true);
   if (back.ok) assert.ok(back.effects.some((x) => 'list' in x && x.list !== null));
@@ -263,4 +264,36 @@ test('lastActive is saved at most once a minute while messages flow', () => {
   assert.equal(has(core.frame('h1', msg, T0 + 1000), 'save'), false);
   assert.equal(has(core.frame('h1', msg, T0 + MIN), 'save'), true);
   assert.equal(has(core.frame('h1', msg, T0 + MIN + 1000), 'save'), false);
+});
+
+// ---- CODE.md 9u Part A4 (2.25): a host who steps away keeps the room; joiners wait for it.
+
+test('the host drops: the room stays listed, marked away, and joining still works', () => {
+  const core = roomWithHost();
+  const gone = core.closed('h1', T0 + 5000);
+  assert.ok(gone.some((x) => 'list' in x && x.list?.away === true));
+  const t = core.tryPasscode('a', PASS, '2.17', T0 + 6000);
+  assert.equal(t.ok, true);
+});
+
+test('the host comes back: every phone gets joined for its link, and host-back', () => {
+  const core = roomWithHost();
+  core.connect(joinOk(core, 'a', T0), 'j1', T0);
+  core.closed('h1', T0 + 5000);
+  const back = core.connect(HOST, 'h2', T0 + 10_000);
+  assert.equal(back.ok, true);
+  if (!back.ok) return;
+  assert.deepEqual(sent(back.effects, 'h2').filter((s) => s.includes('"joined"')), [frame({ c: 'joined', link: 'o1' })]);
+  assert.deepEqual(sent(back.effects, 'j1'), [frame({ c: 'host-back' })]);
+  assert.ok(back.effects.some((x) => 'list' in x && x.list?.away !== true));
+});
+
+test('a phone that joins while the host is away is told host-gone and waits', () => {
+  const core = roomWithHost();
+  core.closed('h1', T0 + 5000);
+  const token = joinOk(core, 'a', T0 + 6000);
+  const r = core.connect(token, 'j1', T0 + 6000);
+  assert.equal(r.ok, true);
+  if (!r.ok) return;
+  assert.deepEqual(sent(r.effects, 'j1'), [frame({ c: 'ready', link: 'o1' }), frame({ c: 'host-gone' })]);
 });

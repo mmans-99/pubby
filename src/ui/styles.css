@@ -243,23 +243,49 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 
 .hand-head { display: flex; align-items: center; gap: 10px; }
 .hand { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 8px; }
+/* ===== 2.24 card faces (CODE.md 9u Part D) ===== */
 .card {
+  position: relative; overflow: hidden;
   aspect-ratio: 5 / 7;
-  border-radius: 8px;
-  background: var(--cream);
+  border-radius: 7%/5%;
+  background: #fbf8f1;
   color: var(--ink);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  box-shadow: -2px 2px 6px rgba(0, 0, 0, 0.35);
+  container-type: inline-size;
+  font-family: Georgia, 'Times New Roman', serif;
 }
 .hand.fresh .card { animation: deal-in 0.35s ease-out both; }
-.card .rank { font-size: 1.3rem; font-weight: 800; line-height: 1; }
-.card .suit { font-size: 1.3rem; line-height: 1.1; }
-.card .suit.small { font-size: 0.7rem; font-weight: 700; }
-.card.red { color: var(--red); }
-.card.joker { background: linear-gradient(160deg, #fff7d6, #f2c14e); }
-.hand.fresh .card { animation-delay: calc(var(--i, 0) * 20ms); }
+.card.red { color: #d0312d; }
+.card .idx { position: absolute; left: 3%; top: 3%; width: 30%; display: flex; flex-direction: column; align-items: center; line-height: 1; z-index: 2; }
+.card .idx .r { font-size: 34cqw; font-weight: 700; letter-spacing: -0.04em; }
+.card .idx .r.ten { font-size: 29cqw; letter-spacing: -0.09em; }
+.card .idx svg { width: 22cqw; height: 22cqw; margin-top: 2cqw; }
+.card .pip-big { position: absolute; width: 74%; right: -14%; bottom: -10%; opacity: 1; }
+.card .court {
+  position: absolute; left: 34%; top: 6%; right: 6%; bottom: 6%;
+  border: 2px solid currentColor; border-radius: 4cqw;
+  background: linear-gradient(170deg, #fff5d8, #f4dfa6);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2cqw;
+}
+.card .court .crown { width: 46cqw; height: 26cqw; }
+.card .court .big-letter { font-size: 44cqw; font-weight: 700; line-height: 0.9; }
+.card .court .crest { width: 20cqw; height: 20cqw; }
+.card.joker { background: linear-gradient(160deg, #fffaf0, #f6e3ad); color: #6a3fa0; }
+.card.joker .idx .r { font-size: 15cqw; writing-mode: vertical-rl; text-orientation: upright; letter-spacing: -0.1em; }
+.card.joker .jstar { position: absolute; width: 62%; right: 6%; bottom: 8%; }
+/* A tiny card (seat badges, last trick row) keeps only its index. */
+.card.tiny-card .pip-big, .card.tiny-card .court, .card.tiny-card .jstar { display: none; }
+.card.tiny-card .idx { width: 40%; }
+.card.tiny-card .idx .r { font-size: 9px; }
+.card.tiny-card .idx svg { width: 7px; height: 7px; margin-top: 1px; }
+/* Fanned hand: the cards overlap in an arc, placed by fanLayout (cards.ts). */
+.hand.fan { display: block; position: relative; height: var(--fan-h, 150px); }
+.hand.fan .card { position: absolute; left: var(--x, 0); top: var(--y, 0); width: var(--card-w, 72px); rotate: var(--rot, 0deg); }
+/* A card you can't play is darker, not see-through (overlapped cards would show through). */
+.hand.fan .card.dim { opacity: 1; filter: brightness(0.55) saturate(0.6); }
 /* No end frame: the card settles on its own opacity and position, so .dim and .selected show (G4 fix). */
-@keyframes deal-in { from { opacity: 0; transform: translateY(14px) scale(0.92); } }
+@keyframes deal-in { from { opacity: 0; translate: 0 14px; } }
 .counts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .counts li { display: flex; gap: 8px; }
 
@@ -385,8 +411,6 @@ button.seat-chip .seat-host { color: #b8860b; }
 .trick-play.new { animation: drop-in 0.3s ease-out both; }
 .trick-name { font-size: 0.75rem; max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card.small-card { width: 46px; aspect-ratio: 5 / 7; animation: none; }
-.card.small-card .rank { font-size: 1rem; }
-.card.small-card .suit { font-size: 1rem; }
 @keyframes drop-in { from { opacity: 0; transform: translateY(-24px) rotate(-8deg) scale(1.1); } }
 .last-trick { font-size: 0.85rem; border-top: 1px dashed var(--line); padding-top: 6px; line-height: 1.6; }
 .lt-card { margin-right: 8px; white-space: nowrap; }
@@ -494,19 +518,20 @@ table.results { width: 100%; border-collapse: collapse; }
   position: fixed;
   left: 10px; right: 10px;
   bottom: calc(74px + env(safe-area-inset-bottom));
-  max-height: 55vh;
+  max-height: 42vh;
   overflow-y: auto; overflow-x: hidden;
   display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px;
   padding: 12px;
-  background: rgba(20, 30, 20, 0.96);
-  border: 2px solid var(--gold);
+  /* See-through (CODE.md 9u Part B): the game shows behind the sheet. No backdrop-filter (slow on older Android). */
+  background: rgba(20, 30, 20, 0.28);
+  border: 1px solid rgba(242, 193, 78, 0.55);
   border-radius: 18px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  box-shadow: none;
   z-index: 37;
 }
 .reactions-sheet.opening { animation: sheet-up 0.22s ease-out; }
 @keyframes sheet-up { from { transform: translateY(12px); opacity: 0; } }
-.phrase-chip { min-height: 44px; padding: 6px 10px; border-radius: 14px; background: var(--ink); color: var(--gold); border: 1px solid rgba(242, 193, 78, 0.4); font-size: 0.9rem; font-style: italic; text-align: left; line-height: 1.25; }
+.phrase-chip { min-height: 44px; padding: 6px 10px; border-radius: 14px; background: rgba(29, 29, 27, 0.55); color: var(--gold); text-shadow: 0 1px 2px #000; border: 1px solid rgba(242, 193, 78, 0.4); font-size: 0.9rem; font-style: italic; text-align: left; line-height: 1.25; }
 .phrase-chip.laugh-chip { font-style: normal; font-size: 1.1rem; font-weight: 800; text-align: center; }
 /* Top bar (2.11): nothing in the bar shrinks, so the buttons keep their shape when the bar is full. */
 .game-bar > * { flex: none; }
@@ -788,8 +813,6 @@ button.chip-info { min-height: 34px; }
 .last-trick { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; border-top: 1px dashed var(--line); padding-top: 6px; }
 .lt-label { color: var(--muted); font-size: 0.8rem; margin-right: 2px; }
 .card.tiny-card { width: 26px; aspect-ratio: 5 / 7; border-radius: 4px; padding: 0; gap: 0; animation: none; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
-.card.tiny-card .rank, .card.tiny-card .suit { font-size: 0.7rem; line-height: 1; }
-.card.tiny-card .suit.tiny { display: none; }
 .card.tiny-card.slapped { box-shadow: 0 0 0 2px var(--danger); }
 .lt-slap { color: var(--danger); margin-left: 2px; }
 .play-red { color: var(--red); }
@@ -856,17 +879,28 @@ button.secondary.on { box-shadow: 0 0 0 3px var(--gold); }
 .netlobby .net-big .ic { vertical-align: -2px; }
 
 /* ---- 2.4: the round table (table.ts) ---- */
-.round-table { position: relative; width: 100%; height: 330px; margin: 2px 0; }
-.round-table.n6, .round-table.n7, .round-table.n8 { height: 370px; }
-.table-oval {
-  position: absolute; left: 10%; right: 10%; top: 9%; bottom: 9%;
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 42%, #2f8038, #1d5a24 72%);
-  border: 7px solid #5a3a1e;
-  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.45), 0 6px 18px rgba(0, 0, 0, 0.4);
-  overflow: hidden;
+.round-table {
+  position: relative; width: 100%; height: clamp(330px, 52vh, 460px); margin: 2px 0;
+  /* The felt fills the table area (CODE.md 9u Part E1). */
+  background: radial-gradient(120% 70% at 50% 40%, #2e7d32, #14421a 80%);
+  border-radius: 18px; overflow: hidden;
 }
-.table-oval .led-mark { position: absolute; left: 50%; top: 50%; right: auto; bottom: auto; translate: -50% -50%; font-size: 9rem; }
+/* The led-suit mark is faint, behind the pile. No wooden oval any more. */
+.table-oval { position: absolute; inset: 0; pointer-events: none; }
+.table-oval .led-mark { position: absolute; left: 50%; top: 50%; right: auto; bottom: auto; translate: -50% -50%; font-size: 9rem; opacity: 0.18; }
+/* The trick: a messy pile in the middle, newest on top (CODE.md 9u Part E4). */
+.trick-pile { position: absolute; left: 50%; top: 45%; width: 0; height: 0; z-index: 2; }
+.trick-pile .table-play { left: 0; top: 0; }
+.trick-pile .card.small-card { width: 56px; }
+.trick-play.newest .card { box-shadow: 0 0 0 2px var(--gold), 0 3px 8px rgba(0, 0, 0, 0.4); }
+/* Another player's hand: a fan of card backs at the edge (CODE.md 9u Part E3). */
+.edge-fan { position: absolute; width: 0; height: 0; z-index: 1; }
+.edge-back {
+  position: absolute; left: 0; top: 0; width: 44px; height: 62px;
+  border-radius: 6px; border: 2px solid var(--cream);
+  background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.12) 0 6px, transparent 6px 12px), linear-gradient(160deg, #b71c1c, #7f0000);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+}
 .table-middle { position: absolute; left: 50%; top: 50%; translate: -50% -50%; z-index: 1; }
 .table-middle .deck { width: 54px; height: 75px; }
 .table-middle .deck .card-back { width: 54px; height: 75px; border-width: 2px; }
@@ -875,13 +909,11 @@ button.secondary.on { box-shadow: 0 0 0 3px var(--gold); }
 button.table-seat { background: var(--cream); }
 .table-seat.me { min-width: 64px; }
 .table-play { position: absolute; translate: -50% -50%; z-index: 2; }
-.table-play .card.small-card { width: 40px; box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4); }
 .table-waste { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+/* The waste pile sits in the bottom-right corner of the felt (CODE.md 9u Part E5). */
+.table-waste.corner { position: absolute; right: 16px; bottom: 16px; z-index: 3; }
 .table-waste .waste-pile { width: 34px; height: 48px; border-radius: 5px; box-shadow: 2px 2px 0 #8e1d1d, 4px 4px 0 #6d1616; }
 .waste-count { font-weight: 800; font-size: 0.85rem; background: rgba(0, 0, 0, 0.35); border-radius: 999px; padding: 0 8px; }
-.mini-fan { display: inline-flex; margin-right: 3px; }
-.mini-fan .mini-back { rotate: var(--r, 0deg); }
-.mini-fan .mini-back + .mini-back { margin-left: -6px; }
 .place-badge { background: var(--gold); color: var(--ink); border-radius: 999px; padding: 0 7px; font-weight: 800; font-size: 0.72rem; }
 .seat-chip.out .place-badge { opacity: 1; }
 
@@ -967,3 +999,9 @@ button.ultimate-btn { align-self: center; white-space: nowrap; flex: none; min-h
 }
 .room-item:disabled { opacity: 0.55; }
 .room-name { font-size: 1.05rem; font-weight: 700; overflow-wrap: anywhere; }
+
+/* ---- 2.25 and 2.26 (CODE.md 9u): away seats and computer players in the lobby ---- */
+.seat-tag.away-tag { background: var(--danger); color: var(--cream); }
+.bot-seat .seat-top { align-items: center; }
+.bot-seat .bot-name { flex: 1; min-width: 0; font: inherit; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--cream); color: var(--ink); }
+.bot-seat .seg { margin-top: 6px; }

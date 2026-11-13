@@ -1716,7 +1716,7 @@ The user said no quick-rules lines for these waits (12f). Search `src/content/qu
 - Version **2.20.0** (`package.json`). Tell the user the number when asking to push.
 - Before any commit: update all five MD files, add a DEVLOG entry, run every check in Part A, B9 and C5, then ask the user to push to GitHub Pages as the test build (CLAUDE.md rule 5, and the user's habit: "Push it"). Test checklist: `PROJECT.md` 12f.
 
-## 9u. Versions 2.24 to 2.26: classic cards, see-through reactions, staying connected when you leave the screen, computer players in Multiplayer (PLAN, user 2026-11-13 19:07; written for any model, Haiku included; NOT BUILT; spec `PROJECT.md` 12g; mockups https://claude.ai/artifact/Vi55KTC1TtVWwiktGXVqnM and https://claude.ai/artifact/1EPeaQaijP1bwD1oPQjoyC (table))
+## 9u. Versions 2.24 to 2.26: classic cards, see-through reactions, staying connected when you leave the screen, computer players in Multiplayer (PLAN, user 2026-11-13 19:07; written for any model, Haiku included; BUILT as 2.24.0, 2.25.0, 2.26.0 on 2026-11-13, not yet pushed; spec `PROJECT.md` 12g; mockups https://claude.ai/artifact/Vi55KTC1TtVWwiktGXVqnM and https://claude.ai/artifact/1EPeaQaijP1bwD1oPQjoyC (table))
 
 Four changes from the user's Multiplayer test of 2.23. Nothing here may be built until the user approves (CLAUDE.md rules 1 and 2). Build and push them as **three versions**, each with its own phone test, in this order:
 

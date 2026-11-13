@@ -19,6 +19,7 @@ export interface ListEntry {
   maxSeats: number;   // always 8
   version: string;
   createdAt: number;
+  away?: boolean;     // the host's phone is away: "Host away" in the list (CODE.md 9u A4)
 }
 
 export class DirectoryCore {

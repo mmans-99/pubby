@@ -55,7 +55,7 @@ export function roomListView(head: HTMLElement, o: {
     const other = r.version !== o.version;
     return h('button', { class: other ? 'room-item off' : 'room-item', disabled: other, onclick: () => o.onPick(r) },
       h('span', { class: 'room-name' }, r.name),
-      h('span', { class: 'muted small block' }, `Host: ${r.hostName} · ${r.seats} / ${r.maxSeats}`),
+      h('span', { class: 'muted small block' }, `Host: ${r.hostName} · ${r.seats} / ${r.maxSeats}${r.away ? ' · Host away' : ''}`),
       other ? h('span', { class: 'muted small block' }, `Made on Pubby ${r.version}. You have ${o.version}, so update Pubby to join.`) : null,
     );
   });

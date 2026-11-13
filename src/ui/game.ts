@@ -22,7 +22,7 @@ import { defaultRng } from '../rules/rng.ts';
 import { applyAction, handOf } from '../session/session.ts';
 import type { PlayerId, Session, SessionAction, SessionEvent } from '../session/types.ts';
 import { playerView, type PlayerView } from '../session/view.ts';
-import { cardFace, cardFaceFromId, ordinal, shortLabel, sortHand, SUIT_NAME, SUIT_SYMBOL } from './cards.ts';
+import { cardFace, cardFaceFromId, fanLayout, ordinal, shortLabel, sortHand, SUIT_NAME, SUIT_SYMBOL } from './cards.ts';
 import { h, type Child } from './dom.ts';
 import type { GameStage, LastTrick, SavedGame, TrickPlay } from './storage.ts';
 import { getState, say, update, type Popup } from './store.ts';
@@ -33,7 +33,7 @@ import { cardSound, eventSounds, sfx } from '../audio/sfx.ts';
 import { icon, type IconName } from './icons.ts';
 import { botsTick } from './bots.ts';
 import { hostBroadcast, joinSend, sendReaction } from './netplay.ts';
-import { roundTable, wasteMiddle } from './table.ts';
+import { roundTable, wastePile } from './table.ts';
 import { netGameBody, netMenu } from './netscreens.ts';
 import {
   askPausePanel, askToTake, gameOverStage, netPauseButton, notesPanel, passOnButton, pauseButton, pausePanel, pauseRequestsBanner,
@@ -573,7 +573,7 @@ function trickArea(s: Session, g: SavedGame, v: PlayerView, bottom: PlayerId, hi
     highlight,
     plays,
     newFrom: shownTrickCount,
-    middle: wasteMiddle(v.wastePileCount),
+    waste: wastePile(v.wastePileCount),
     ledSuit: v.ledSuit,
   });
   shownTrickCount = plays.length;
@@ -594,7 +594,7 @@ function trickFinishStage(g: SavedGame, a: TrickAnim): Child {
       highlight: a.slapped,
       plays: a.plays,
       newFrom: firstDraw ? last : a.plays.length,
-      middle: wasteMiddle(waste),
+      waste: wastePile(waste),
     }),
     h('div', { class: 'anim-block', 'aria-hidden': 'true' }),
   );
@@ -823,6 +823,8 @@ export function handBlock(
   opts: { picked?: ReadonlySet<string>; all?: boolean; mark?: boolean; head?: boolean } = {},
 ): HTMLElement {
   const hand = sortHand(v.myHand);
+  // The fanned hand (CODE.md 9u Part D): card size and place from the phone's width (portrait only).
+  const fan = fanLayout(hand.length, Math.min(window.innerWidth, 520) - 12);
   const legal = new Set(opts.all ? v.myHand.map((c) => c.id) : v.legalCardIds);
   const selected = getState().selected;
   const raised = (id: string): boolean => (opts.picked ? opts.picked.has(id) && !opts.mark : selected === id);
@@ -835,10 +837,15 @@ export function handBlock(
       h('span', { class: 'count' }, String(hand.length)),
     ),
     hand.length
-      ? h('div', { class: fresh ? 'hand fresh' : 'hand' }, hand.map((c, i) => {
+      ? h('div', { class: fresh ? 'hand fan fresh' : 'hand fan', style: `--card-w:${fan.cardW.toFixed(1)}px;--fan-h:${fan.height.toFixed(1)}px` }, hand.map((c, i) => {
         const playable = onTap !== null && legal.has(c.id);
         const el = cardFace(c, [onTap && !playable ? 'dim' : '', raised(c.id) ? 'selected' : '', playable ? 'playable' : '', opts.mark && opts.picked?.has(c.id) ? 'new-card' : ''].join(' '));
         el.style.setProperty('--i', String(i));
+        const spot = fan.spots[i]!;
+        el.style.setProperty('--x', `${spot.x.toFixed(1)}px`);
+        el.style.setProperty('--y', `${spot.y.toFixed(1)}px`);
+        el.style.setProperty('--rot', `${spot.rot.toFixed(1)}deg`);
+        el.style.zIndex = String(spot.z);
         if (onTap && !playable) el.addEventListener('click', () => sfx('notAllowed'));
         if (playable) {
           el.setAttribute('role', 'button');

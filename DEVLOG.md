@@ -4,6 +4,26 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (night) — Versions 2.24.0, 2.25.0, 2.26.0: classic cards, see-through reactions, table, staying connected, computer players in Multiplayer (committed and pushed to branch `v2.26-classic-away-bots`)
+
+**Built per `CODE.md` 9u, all three in one session at the user's direction ("build it all"). Committed as one commit and pushed to a branch on the user's "push it and commit it" (phone tests not yet done; merge after the user tests).**
+
+- **2.24.0:** see-through reactions sheet (Part B); classic card faces with corner index, pips and court crowns, and a fanned hand (Part D); table with other players' fans at the edges, a thrown trick pile, and a waste pile in the bottom-right corner (Part E). `src/ui/cards.ts` (`cardFace`, `fanLayout`), `src/ui/table.ts` (`roundTable`, `edgeSpot`, `pileSpots`, `wastePile`), `src/ui/styles.css`, `src/ui/netscreens.ts`. Fan layout splits into two rows above 12 cards (plan said 16); margin 16 px so 26 cards on 320 px keep a step of at least 20 px.
+- **2.25.0:** a seat whose phone leaves the screen is marked "away" for 10 minutes (`AWAY_MS`, was 2 minutes host grace). Host and joiner reconnect on their own (`RoomSocket` ping/pong, visibility handling, redial at 0, 2, 5, 10 s then every 15 s; close code 4003 means the room is gone). Rooms stay listed while the host is away ("Host away"). Server: `host-back` and `host-gone` frames (`src/net/relayproto.ts`, `server/src/core/room.ts`, `directory.ts`). `src/net/online.ts`, `src/net/away.ts`, `src/ui/netlobby.ts`.
+- **2.26.0:** computer players in Multiplayer. Host only adds, renames, levels (Easy/Normal/Hard), moves and removes them; they run on the host's phone only. Other phones get a redacted copy (no computer hands). Speed and reactions set on the host. `LOBBY_PROTOCOL` is now 8. `src/net/lobby.ts`, `src/net/netplay.ts` (`hostStart` takes `bots`, `hostSendReaction`), `src/ui/bots.ts`, `src/ui/netlobby.ts`.
+
+**Deviations from the plan:** fan two-row split at more than 12 cards (not 16); the away expiry check runs in the 2-second ping timer, not its own 1-second timer; the away countdown uses each phone's own clock against the host's `awaySince`, so it is only as accurate as the phones' clocks.
+
+**Known gaps (not fixed):** a joining phone that is away sees its banner only in lobby views, not on game screens; the host's away banner shows only in the host lobby.
+
+**Checks run:** `tsc` clean for the app and the rules; unit tests 337 run, 332 pass. Five `relay_server.test.ts` failures were environmental (the spawned child could not resolve `tsx` without `node_modules`); with `node_modules` linked from the shared tools, all 5 pass. New tests: `tests/ui/fan.test.ts` (5), `tests/ui/table.test.ts` (4), `tests/server/room.test.ts` (away cases, 3 new, host-drop test updated), `tests/net/netgame.test.ts` (computer player cards never in another phone's copy), `tests/net/lobby.test.ts` (away, protocol 8, computer players). Browser and phone checks not run (the user asked for no long tests). `testbed/drawer_check.py` has a see-through check added; not run. `npm run build` ran clean (version banner v2.26).
+
+**Phone checklists:** in `CODE.md` 9u under each Part (2.24, 2.25 on two networks, 2.26).
+
+**Next:** user's phone test of each version; merge the branch to `main` once it passes.
+
+---
+
 ## 2026-11-13 (evening, 19:07) — Plan 9u: classic cards, see-through reactions, staying connected, computer players in Multiplayer (docs only)
 
 **User (after a Multiplayer test of 2.23):** leaving the screen times out, so the invite can't be shared through Messages; make the reactions tab transparent; computer players in Multiplayer as an option (add/remove, same no-cheating rules, 3 levels); cards like the screenshot (classic Hearts style). Asked for a plan Haiku can code.

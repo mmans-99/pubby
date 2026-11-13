@@ -31,6 +31,11 @@ def main():
         check(page.locator('.phrase-chip').count() == phrases + 1, f'the sheet lists every phrase and the laugh ({phrases} + 1)')
         check(sheet.evaluate('d => d.scrollHeight > d.clientHeight'), 'the sheet scrolls up and down (more phrases than fit)')
         check(sheet.evaluate('d => d.scrollWidth <= d.clientWidth'), 'the sheet does not scroll sideways')
+        # CODE.md 9u Part B4 (2.24): the sheet is see-through, so the game shows behind it.
+        import re
+        rgba = sheet.evaluate("d => getComputedStyle(d).backgroundColor")
+        alpha = float(re.findall(r'[\d.]+', rgba)[-1]) if rgba.startswith('rgba') else 1.0
+        check(alpha <= 0.35, f'the reactions sheet is see-through (background alpha {alpha})')
         sheet.evaluate('d => { d.scrollTop = 150; }')
         # bot.js taps the person's own seat (as solo_check does); the computer players play on their own.
         page.evaluate(BOT)

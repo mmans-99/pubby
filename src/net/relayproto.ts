@@ -18,6 +18,11 @@ export const PONG_TEXT = 'pong';
 export const PING_EVERY_MS = 25_000;
 /** Nothing heard for this long (not even a pong) means the connection is lost. */
 export const LOST_AFTER_MS = 60_000;
+/**
+ * A phone that leaves the screen (or loses its link) is "away", not gone: its
+ * seat is kept this long (CODE.md 9u Part A, PROJECT.md 12g). Shared by the app and the server.
+ */
+export const AWAY_MS = 10 * 60_000;
 
 /** Host's phone -> relay. */
 export type HostOut =
@@ -40,7 +45,8 @@ export type JoinOut = { c: 'up' };                   // payload goes to the host
 export type JoinIn =
   | { c: 'ready'; link: string }
   | { c: 'down' }                                    // payload came from the host
-  | { c: 'host-gone' }                               // the host's socket closed
+  | { c: 'host-gone' }                               // the host's socket closed (the phone waits for it)
+  | { c: 'host-back' }                               // the host's socket is back (CODE.md 9u A4)
   | { c: 'closed' }                                  // the host closed the game, or the room expired
   | { c: 'kicked' };
 
@@ -80,6 +86,8 @@ export interface RoomInfo {
   maxSeats: number;
   version: string;
   createdAt: number;
+  /** The host's phone has left the screen: the room stays listed as "Host away" (CODE.md 9u A4). */
+  away?: boolean;
 }
 
 /** Room names: 1 to 20 characters after cleaning (the server checks the same). */

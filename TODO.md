@@ -352,6 +352,6 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 
 - [x] Plan and mockup written (docs only)
 - [ ] User approves the plan and the mockup
-- [ ] **2.24.0:** Part B see-through reactions sheet; Part D classic card faces and fanned hand; Part E table (edge fans, thrown pile, waste pile in the corner); checks; user's phone test; push
-- [ ] **2.25.0:** Part A away seats (10 minutes), host and joiner reconnect online, room kept on the list, server change and deploy; checks; phone test on two networks; push
-- [ ] **2.26.0:** Part C computer players in Multiplayer (replaces Phase 4b slice F); checks; phone test; push
+- [x] **2.24.0 (built, not pushed):** Part B see-through reactions sheet; Part D classic card faces and fanned hand; Part E table (edge fans, thrown pile, waste pile in the corner); checks; user's phone test; push
+- [x] **2.25.0 (built, not pushed):** Part A away seats (10 minutes), host and joiner reconnect online, room kept on the list, server change and deploy; checks; phone test on two networks; push
+- [x] **2.26.0 (built, not pushed):** Part C computer players in Multiplayer (replaces Phase 4b slice F); checks; phone test; push

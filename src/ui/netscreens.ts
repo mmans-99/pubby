@@ -21,7 +21,7 @@ import { netRoundStart } from './roundstart.ts';
 import { awardsRow, gameOverStage, podium, targetRow } from './between.ts';
 import { playerView } from '../session/view.ts';
 import { netSeats } from './netlobby.ts';
-import { roundTable, wasteMiddle } from './table.ts';
+import { roundTable, wastePile } from './table.ts';
 import { seatName } from '../net/lobby.ts';
 
 /**
@@ -51,6 +51,9 @@ export function netGameBody(g: SavedGame): Child {
 /** A phone lost its link: the game can't go on until rejoining exists (slice 4). */
 function connectionNotice(g: SavedGame): HTMLElement | null {
   if (!g.net || g.session.ended) return null;
+  // CODE.md 9u A5: an away phone is kept for 10 minutes; the game waits for it (no auto-play).
+  const away = (netSeats() ?? []).filter((x) => x.awaySince !== undefined && !x.isHost);
+  if (away.length) return h('p', { class: 'note warn net-lost', role: 'status' }, `${away.map(seatName).join(', ')} ${away.length === 1 ? 'is' : 'are'} away. The game waits for ${away.length === 1 ? 'them' : 'them all'} to come back.`);
   const gone = (netSeats() ?? []).filter((x) => !x.connected);
   if (!gone.length) return null;
   const who = gone.map(seatName).join(', ');
@@ -75,7 +78,7 @@ function waitingFor(g: SavedGame, text: string): Child {
   const s = g.session;
   const me = ownSeat(g)!;
   return h('div', { class: 'stack' },
-    roundTable(s, publicView(s), { bottom: me, middle: wasteMiddle(0) }),
+    roundTable(s, publicView(s), { bottom: me, waste: wastePile(0) }),
     h('p', { class: 'hint center wait-line' }, text),
     handBlock(s, playerView(s, me), null, { head: false }),
   );
@@ -91,7 +94,7 @@ function beforeRound(g: SavedGame): Child {
   const host = isHostSeat(g);
   const v = publicView(s);
   return h('div', { class: 'stack' },
-    roundTable(s, v, { bottom: me, middle: wasteMiddle(0) }),
+    roundTable(s, v, { bottom: me, waste: wastePile(0) }),
     handBlock(s, playerView(s, me), null, { head: false }),
     targetRow(s, { me }),
     h('div', { class: 'row' },

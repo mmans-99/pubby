@@ -20,7 +20,7 @@ import { getState, say, update } from './store.ts';
 import { receive, runActions, showReaction, startShuffle } from './game.ts';
 import { sfx } from '../audio/sfx.ts';
 import { clearSwapReveal } from './roundstart.ts';
-import type { SavedGame } from './storage.ts';
+import type { BotsInfo, SavedGame } from './storage.ts';
 
 export type { NetInfo };
 
@@ -63,12 +63,15 @@ function playerOfLink(linkId: string): PlayerId | null {
 // Host
 // ---------------------------------------------------------------------------
 
-/** Host pressed Start: the game begins on every phone. */
-export function hostStart(session: Session, links: Record<PlayerId, string>, me: PlayerId): void {
+/**
+ * Host pressed Start: the game begins on every phone. `bots` (CODE.md 9u C3) are the
+ * computer players, which run on this phone only: they have no link.
+ */
+export function hostStart(session: Session, links: Record<PlayerId, string>, me: PlayerId, bots?: BotsInfo): void {
   linkOf = {};
-  for (const [p, l] of Object.entries(links)) if (l !== 'host') linkOf[p] = l;
+  for (const [p, l] of Object.entries(links)) if (l !== 'host' && l !== 'bot') linkOf[p] = l;
   sentLog.clear();
-  const g: SavedGame = { session, stage: 'hand', holder: me, trickLog: [], lastTrick: null, notes: {}, net: { role: 'host', me } };
+  const g: SavedGame = { session, stage: 'hand', holder: me, trickLog: [], lastTrick: null, notes: {}, net: { role: 'host', me }, ...(bots ? { bots } : {}) };
   // Shuffle first, so the first screen drawn already shows it (2.4 fix).
   startShuffle();
   update({ game: g, screen: 'game', popups: [], selected: null, armed: null, menuOpen: false });
@@ -89,6 +92,11 @@ function sendUpdate(p: PlayerId, s: Session, events: readonly SessionEvent[], fu
     hostNow: Date.now(),
   };
   if (transport.sendTo(link, msg)) sentLog.set(link, s.log.length);
+}
+
+/** CODE.md 9u C4: a computer player's reaction goes to every other phone too (the host shows it as well). */
+export function hostSendReaction(from: PlayerId, r: number): void {
+  for (const link of Object.values(linkOf)) transport?.sendTo(link, { t: 'react', from, r });
 }
 
 /** game.ts `send` on the host's phone, after every change. */
