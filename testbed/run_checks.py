@@ -17,12 +17,12 @@ Path to script table (the first row that matches a path wins; a path can pick se
   *.md outside src/ (CODE.md, DEVLOG.md, ...)             none (unit tests cover tests/)
   src/rules/, src/session/, build.mjs, testbed/bot.js     all
   src/ai/, src/ui/bots.ts, src/content/catch-phrases.md   solo_check, drawer_check
-  src/net/                                                lobby_check, netgame_check, netvotes_check
+  src/net/, src/ui/netlobby.ts, netplay.ts, netscreens.ts  lobby_check, netgame_check, netvotes_check
   src/audio/                                              sound_check
   src/ui/back.ts                                          back_check
   src/pwa/, any file named *offline* or sw.* / sw.ts      offline_check
   other src/ui/ files                                     solo_check, playthrough, drawer_check,
-                                                          back_check, netgame_check
+                                                          back_check
   testbed/<name>.py                                       that script (solo_check also runs drawer_check)
   anything else                                           all
 
@@ -66,7 +66,7 @@ def scripts_for(path):
         return set(ALL), 'rules, session or shared test code'
     if path.startswith('src/ai/') or path in ('src/ui/bots.ts', 'src/content/catch-phrases.md'):
         return {'solo_check.py', 'drawer_check.py'}, 'computer players'
-    if path.startswith('src/net/'):
+    if path.startswith('src/net/') or path in ('src/ui/netlobby.ts', 'src/ui/netplay.ts', 'src/ui/netscreens.ts'):
         return {'lobby_check.py', 'netgame_check.py', 'netvotes_check.py'}, 'network'
     if path.startswith('src/audio/'):
         return {'sound_check.py'}, 'sound'
@@ -75,7 +75,7 @@ def scripts_for(path):
     if path.startswith('src/') and (path.startswith('src/pwa/') or 'offline' in name or stem == 'sw'):
         return {'offline_check.py'}, 'offline / service worker'
     if path.startswith('src/ui/'):
-        return {'solo_check.py', 'playthrough.py', 'drawer_check.py', 'back_check.py', 'netgame_check.py'}, 'other screens'
+        return {'solo_check.py', 'playthrough.py', 'drawer_check.py', 'back_check.py'}, 'other screens'
     if path.startswith('testbed/') and path.endswith('.py'):
         if name == 'solo_check.py':
             return {'solo_check.py', 'drawer_check.py'}, 'solo check (drawer imports it)'

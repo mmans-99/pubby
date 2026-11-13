@@ -4,6 +4,17 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (afternoon, after 9q) — run_checks: network checks only for network changes; test-only
+
+**User:** a change to the look of cards (or the computer players' reaction rate) should not run a whole network game. Asked for the mapping to change.
+
+**Done**
+- `testbed/run_checks.py`: lobby, netgame and netvotes run only for `src/net/`, `src/ui/netlobby.ts`, `netplay.ts`, `netscreens.ts`, and rules or session changes. The "other `src/ui/` files" row no longer includes netgame.
+- Picker check: `src/ui/cards.ts` picks back, drawer, playthrough and solo; `src/ai/react.ts` picks solo and drawer; `src/session/session.ts` picks all nine.
+- `CODE.md` 8: one sentence describing the mapping.
+
+**Checks:** no browser run for this edit (only the picker script changed). Test-only, no version bump.
+
 ## 2026-11-13 (later) — Plan 9q built and pushed (faster checks, part 2); test-only, no version bump
 
 **User:** "Do the 9q plan in CODE.md". Test files only, no app code, so the version stays 2.16.0 (`CLAUDE.md` rule 8).
