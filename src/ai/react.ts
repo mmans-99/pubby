@@ -25,7 +25,7 @@ function phraseIndex(phrases: readonly string[], text: string): number | null {
  * into `phrases`, or null. Each event has a chance from the personality's
  * reactRate, scaled by who is involved:
  *  - slapped: I slapped (x1.5, "You got slapped" or the kiiid version); I was
- *    slapped (x0.5, "Revenge time!!"); a person was slapped (x1, 😂).
+ *    slapped (x0.5, "Revenge time!!"); a person was slapped (always, 😂).
  *  - wastePilePickedUp: a person picked up (x1); I did (x0.5).
  *  - playerOut: a person went out (x1, "Too slow!!"); I went out (always, "Bye bye, losers!!").
  *  - roundEnded: I lost the round (x1, "Rigged, I tell you!!"); a person lost (x1, "Sit down, sweetheart!!");
@@ -54,7 +54,8 @@ export function reactionFor(
     case 'slapped':
       if (e.slapper === me) return roll(rate * 1.5, ['You got slapped', 'You got slapped', 'You got slapped', 'You got slapped by a kiiid']);
       if (e.slapped === me) return roll(rate * 0.5, ['Revenge time!!']);
-      if (human(e.slapped)) return rng() < rate ? LAUGH : null;
+      // 2.21: a person slapped always gets 😂 (was a chance).
+      if (human(e.slapped)) return LAUGH;
       return null;
     case 'wastePilePickedUp':
       if (e.player === me) return roll(rate * 0.5, ['Oofaa!!!!', 'Nooo, not again!!']);

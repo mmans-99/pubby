@@ -43,7 +43,7 @@ export interface SetupState {
 
 /** Pop-ups shown one after another, never dropped (CODE.md section 5a). */
 export type Popup =
-  | { kind: 'slap'; slapper: PlayerId; slapped: PlayerId; cards: number; /** The slap ended the game: no pick-up line. */ over?: boolean }
+  | { kind: 'slap'; slapper: PlayerId; slapped: PlayerId; cards: number; /** The slap ended the round (no pick-up line): 'game' if the game is over too. */ over?: 'round' | 'game' }
   /** Final two: the lower last card laughs at the higher one, who must pick up or forfeit. */
   | { kind: 'haha'; laugher: PlayerId; loser: PlayerId }
   | { kind: 'out'; player: PlayerId; place: number }

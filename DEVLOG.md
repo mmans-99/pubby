@@ -4,6 +4,18 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (evening, 18:11) — Version 2.21.0: slap pop-up after a round-ending slap; more reactions
+
+**User (single-player test):** reactions not frequent enough; after the last player was slapped the card still said they pick up cards though the game was over. Chose option 1 (raise the chances) and asked for the slap fix; "push it", no long tests.
+
+**Fixed**
+- Slap pop-up: a slap that ends the round (same batch as `roundEnded`) has no next trick, so it now says "Round over." (or "Game over." if the game ended) instead of the pick-up line. Cause: the pop-up only checked for `gameOver`, which the session reaches later.
+- Reactions: chances raised (careful 0.5 → 0.7, reckless 0.75 → 0.9, counter 0.6 → 0.8; windup stays 1.0). A person being slapped now always gets 😂.
+
+**Checks:** `npm run check` clean; `tests/ai/react.test.ts` 12/12 (updated for the always-laugh rule). Long browser checks not run, per the user.
+
+---
+
 ## 2026-11-13 (evening, 18:07) — Version 2.20.0: lobby scroll place, cards seen before play, Next round waits for everyone ready
 
 **User:** "Build CODE.md 9t (version 2.20)", then "Push it" after the local checks.

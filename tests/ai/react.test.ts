@@ -29,7 +29,7 @@ test('a slap of me gets "Revenge time!!" or nothing', () => {
   }
 });
 
-test('a person slapped while I am not involved gets 😂 now and then, never a phrase', () => {
+test('a person slapped while I am not involved always gets 😂, never a phrase', () => {
   const careful: Persona = { level: 'normal', personality: 'careful' };
   let laughs = 0;
   for (let s = 1; s <= 200; s++) {
@@ -37,7 +37,7 @@ test('a person slapped while I am not involved gets 😂 now and then, never a p
     assert.ok(r === null || r === LAUGH);
     if (r === LAUGH) laughs++;
   }
-  assert.ok(laughs > 0 && laughs < 200);
+  assert.equal(laughs, 200);
 });
 
 test('a computer player slapped while I am not involved does not react', () => {

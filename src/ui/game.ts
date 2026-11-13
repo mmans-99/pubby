@@ -369,7 +369,9 @@ function popupsFor(s: Session, events: readonly SessionEvent[]): Popup[] {
   for (const e of events) {
     switch (e.type) {
       case 'slapped':
-        out.push({ kind: 'slap', slapper: e.slapper, slapped: e.slapped, cards: e.cardsPickedUp, over: s.phase === 'gameOver' });
+        // 2.21: a slap that ends the round has no next trick, so no pick-up line (the round is over, the game may be too).
+        out.push({ kind: 'slap', slapper: e.slapper, slapped: e.slapped, cards: e.cardsPickedUp,
+          over: s.phase === 'gameOver' ? 'game' : events.some((x) => x.type === 'roundEnded') ? 'round' : undefined });
         break;
       case 'jokerPlayed': {
         // Every card in the trick was a joker: missed round.
@@ -973,7 +975,8 @@ export function popupLayer(): HTMLElement | null {
     body = [
       h('div', { class: 'slap-word', 'aria-label': 'Slap!' }, 'SLAP!'),
       h('div', { class: 'slap-who' }, `${nameOf(s, p.slapper)} slapped ${nameOf(s, p.slapped)}`),
-      h('div', { class: 'small' }, p.over ? 'Game over.' : `${nameOf(s, p.slapped)} picks up ${p.cards} ${p.cards === 1 ? 'card' : 'cards'} and leads.`),
+      h('div', { class: 'small' }, p.over === 'game' ? 'Game over.' : p.over === 'round' ? 'Round over.'
+        : `${nameOf(s, p.slapped)} picks up ${p.cards} ${p.cards === 1 ? 'card' : 'cards'} and leads.`),
       popupTimer(p),
     ];
   } else if (p.kind === 'out') {
