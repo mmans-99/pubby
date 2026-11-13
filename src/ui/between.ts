@@ -451,7 +451,7 @@ export function takeButton(g: SavedGame): HTMLElement | null {
     'aria-label': onHand ? 'Ask to take someone’s cards' : 'Someone wants to take cards',
     'aria-expanded': open ? 'true' : 'false',
     onclick: () => update({ armed: open ? null : mode, menuOpen: false }),
-  }, icon('take'), h('span', { class: 'take-label' }, ' Take'));
+  }, icon('take'));
 }
 
 /** For a player holding the phone out of turn (asking to take cards): hide and pass on. */
