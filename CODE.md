@@ -271,7 +271,7 @@ Every function is pure: it returns a new state and never changes the one passed 
 
 ## 9e. Version number and touch behaviour
 
-- **Version:** `package.json` `version` (`MAJOR.MINOR.0`) is the single source. `build.mjs` passes `MAJOR.MINOR` into the bundle as `__PUBBY_VERSION__`; `src/ui/version.ts` exports it as `VERSION` ("dev" if missing). Shown as "Version 1.0" at the bottom of the home screen and "Pubby version 1.0" at the bottom of the quick rules sheet (reachable from every screen, including mid-game). Rules for bumping: `CLAUDE.md` rule 8. History: 1.0 = Phase 3 offline app with version number, no zoom, no pull-to-refresh. 1.1 = back gesture. 1.2 = back gesture fix for the installed app. 1.3 = connection test screen (Phase 4 slice 0). 1.4 = Pubby's own QR reader. 1.5 = Samsung zoom fix. 2.0 = sound and the less-text redesign. 2.1 = network lobby. 2.2 = profiles in a saved game, connection test removed. 2.3 = play over the network (Phase 4 slice 2). 2.4 = round table, reactions on every phone, host line, shuffle fix. 2.5 = votes, take-cards, pause and ready-up on every phone (slice 3). 2.6 = computer player brain and arena (slice A). 2.7 = play against the computer on the phone (slice B). 2.8 = "Game over." on a slap that ends the game. 2.9 = computer players' levels (All Easy, All Normal, Mixed), names and icon at the table (slice C). 2.10 = reactions drawer keeps its scroll on redraw, one-phone game hidden from the menu (`?onephone=1` for the checks), new catch-phrases, Ultimate button and round chip fixed in the top bar. 2.11 = reactions as a grid sheet above the 😂 button (scrolls up and down, replaces the sideways strip), top-bar items never shrink. 2.13 = Hard level (slice D): imagined-deal search as a second opinion on Normal's card.
+- **Version:** `package.json` `version` (`MAJOR.MINOR.0`) is the single source. `build.mjs` passes `MAJOR.MINOR` into the bundle as `__PUBBY_VERSION__`; `src/ui/version.ts` exports it as `VERSION` ("dev" if missing). Shown as "Version 1.0" at the bottom of the home screen and "Pubby version 1.0" at the bottom of the quick rules sheet (reachable from every screen, including mid-game). Rules for bumping: `CLAUDE.md` rule 8. History: 1.0 = Phase 3 offline app with version number, no zoom, no pull-to-refresh. 1.1 = back gesture. 1.2 = back gesture fix for the installed app. 1.3 = connection test screen (Phase 4 slice 0). 1.4 = Pubby's own QR reader. 1.5 = Samsung zoom fix. 2.0 = sound and the less-text redesign. 2.1 = network lobby. 2.2 = profiles in a saved game, connection test removed. 2.3 = play over the network (Phase 4 slice 2). 2.4 = round table, reactions on every phone, host line, shuffle fix. 2.5 = votes, take-cards, pause and ready-up on every phone (slice 3). 2.6 = computer player brain and arena (slice A). 2.7 = play against the computer on the phone (slice B). 2.8 = "Game over." on a slap that ends the game. 2.9 = computer players' levels (All Easy, All Normal, Mixed), names and icon at the table (slice C). 2.10 = reactions drawer keeps its scroll on redraw, one-phone game hidden from the menu (`?onephone=1` for the checks), new catch-phrases, Ultimate button and round chip fixed in the top bar. 2.11 = reactions as a grid sheet above the 😂 button (scrolls up and down, replaces the sideways strip), top-bar items never shrink. 2.13 = Hard level (slice D): imagined-deal search as a second opinion on Normal's card. 2.14 = computer players taunt more and after more events (pick-ups, going out, takes, round losses, forfeits), six new catch-phrases, "X leads" pop-up stays 6 s.
 - **No zoom:** viewport tag `maximum-scale=1.0, user-scalable=no`; CSS `touch-action: pan-x pan-y` on `html, body` and, since v1.5, on every element (`*`), because `touch-action` isn't inherited and a scrolling area (quick rules, the hand, lists) starts its own chain; the Reaction Tap pad keeps `none`. `src/ui/nozoom.ts` `blockZoom()` cancels iPhone Safari gesture events, a `touchstart` with two or more fingers (v1.5: always cancellable, unlike a `touchmove` after a scroll has started) and two-finger moves. v1.5 fix for the user's report (2026-11-07 23:06): Samsung Internet sometimes zoomed in some spots after many pinches; iPhone didn't. Samsung Internet's own "Manual zoom" setting overrides any page. Headless Chromium never zoomed before or after (it honours the viewport tag), so the fix is checked on the phone; automated check: computed `touch-action` inside the rules sheet, a two-finger `touchstart` cancelled, a one-finger one not.
 - **Back gesture (v1.1, fixed in v1.2, `src/ui/back.ts`):** Pubby keeps two "guard" entries in the browser history (`{ pubby: 1 }`, `{ pubby: 2 }`); a back gesture pops one (`popstate`) and Pubby does its own back step. v1.1 still closed the installed app: Chrome's back gesture skips history entries added without a real tap, and v1.1 added them at start-up and inside `popstate`, and listened to `pointerdown` (not a tap on touch screens). v1.2 only adds guards inside `click` / `touchend` / `keydown`, keeps two so two quick backs stay inside Pubby, and tops them up on the next tap. Opening Pubby and swiping back before touching the screen still closes it (no tap yet, so no guards). The exit question jumps back over the remaining guards (`history.go`, that `popstate` ignored), so the next back gesture leaves; "Stay" tops the guards up. Order: close an open sheet (quick rules, CSV sheet, in-game menu, exit question); in a game do nothing (user choice); close an opened profile or past game; profiles, past games and setup go to the main menu; on the main menu show "Exit Pubby?" (Stay / Exit). Version 1.4: an "Exit Pubby" button on the main menu opens the same question (iPhones have no back gesture). "Exit" (`leavePubby()`) drops the guards, tries `window.close()`, and if Pubby is still showing after 300 ms shows the `bye` screen: how to leave on this phone (`isApplePhone()`, standalone or Safari) and "Open Pubby again" (`comeBack()`, tops the guards up). Coming back from the app switcher (`visibilitychange`) on the `bye` screen goes to the main menu. Check: `python3 testbed/back_check.py` (14 checks, including the history entries themselves).
 - **No pull-to-refresh:** CSS `overscroll-behavior: none` on `html, body` (also stops the bounce at the ends of the page). An installed Pubby has no pull-to-refresh anyway.
@@ -780,6 +780,94 @@ Places to switch (from the 2.5 code; check each with `grep -n "g.net" src/ui/*.t
 
 **Slice G: tuning.** Change weights and thresholds in `moves.ts` / `persona.ts` from the user's phone games; rerun the arena; record numbers in the DEVLOG.
 
+
+## 9n. Next version (2.15) build guide: faster checks, then secret missing suits (APPROVED PLAN, user 2026-11-13; written for any model, Haiku included)
+
+**Order:** step 0, then 9o (faster checks), then the stall hunt (9o.6), then 9p (secret missing suits), then 9n.1 (finish). Use the faster checks from 9o for everything after it.
+
+**Step 0: already done and pushed as 2.14.0 (user 2026-11-13 "push it", as a test build before 9o and 9p):**
+- Reactions (user 2026-11-13: "they should be antagonising the other players"): `src/ai/react.ts` reacts to slaps, pick-ups, players going out, cards taken, round losses and forfeits; higher `reactRate` per personality (careful 0.25, reckless 0.5, counter 0.35, windup 0.9); six new phrases in `src/content/catch-phrases.md`; tests in `tests/ai/react.test.ts`.
+- The "X leads" pop-up stays 6 s (`LEAD_MS` in `src/ui/game.ts`, `ms` field on info pop-ups in `store.ts`), user: "far too quick".
+- State: `npm run check` clean, `npm test` 225 of 225. `solo_check.py --slice-c` 13 of 14: the All Easy game stalled at 71 log events (see 9o.6).
+
+### 9n.1 Finish (after 9o and 9p)
+1. Full unit tests: `npm test`. All pass.
+2. Arena: the computer players' knowledge changed in 9p, so run the full `npx tsx testbed/ai_arena.ts --bars` (on both cores after 9o.5). Every bar must pass. If one fails, stop and tell the user the numbers; don't change the bars.
+3. `npm run build`, then the fast browser checks: `solo_check.py`, `--slice-c`, `--slice-d`, `back_check.py`, `offline_check.py`, `netgame_check.py`, `playthrough.py`.
+4. Version 2.15.0 in `package.json` and the history line in 9e. Update all five MD files (`CLAUDE.md` rule 4).
+5. Tell the user the version, give the phone checklist below, and wait for "push". Before committing: `rm node_modules` if it's the symlink.
+
+**Phone checklist (2.15):** (1) start a game where someone is missing a suit: the pop-up says who leads and "Missing a suit", never which suit; it stays up long enough to read. (2) Computer players taunt you often: after you pick up the pile, go out, lose a round, forfeit, or when they take your cards; not so much that it floods the screen. (3) A network game: the other phone never shows which suit the leader is missing.
+
+---
+
+## 9o. Faster checks (APPROVED PLAN, user 2026-11-13: "it's getting way too long for each step")
+
+**Why it's slow (measured 2026-11-13):** browser checks play in real time: up to about 1.2 s per computer move even at Fast, slap pop-up 4 s, other pop-ups 2.4 s, lead pop-up 6 s, trick hold 0.7 s, shuffle 1.7 s; about 250 log events per 2-round game, so 5 to 10 minutes per game. The full arena is about 6400 games (about 40 minutes). Unit tests take about 1 minute (fine). This machine has 2 CPU cores: two heavy jobs at once slow each other down.
+
+**Rules for this work:** test files only (`testbed/*`, `tests/*`), unless 9o.1 step 5 is needed (then ask the user first). A faster check must give the same pass/fail results as the slow one (compare once, see each step).
+
+### 9o.1 Fake clock in browser checks (biggest win)
+Playwright 1.63 is installed; its clock API fakes `setTimeout`, `setInterval`, `Date`, `performance` and `requestAnimationFrame` in the page.
+1. In `testbed/solo_check.py` add, near the top: `FAST = '--real-time' not in sys.argv` and `TICK_MS = 1000`.
+2. In `new_page()`: if `FAST`, call `page.clock.install()` **before** `page.goto(APP)`.
+3. Add a helper and use it wherever the script waits for the game to move on (replace `time.sleep(...)` waits for the game; keep tiny real sleeps of 0.02 s so the page can draw):
+   ```python
+   def advance(page, ms=TICK_MS):
+       if FAST:
+           page.clock.run_for(ms)
+       else:
+           time.sleep(ms / 1000)
+   ```
+   In `play_until_over()`, call `advance(page)` once per loop after `pubbyBot.step`.
+4. Check how `trickAnimating()` and `shuffling()` (`src/ui/game.ts`) end. If they end on a timer, the fake clock covers them. If they wait for a CSS `animationend` event, CSS animations still run in real time (under 2 s); that's fine, leave them.
+5. **Only if** the checks still wait on something the fake clock doesn't cover: stop and ask the user before adding a test-only link option (`?testspeed=20`, like `?onephone=1`) to app code.
+6. Acceptance: run `solo_check.py --slice-d` once with `--real-time` and once without. Same checks pass in both. Write both run times in the DEVLOG (goal: under 3 minutes without `--real-time`).
+7. Then add the same `FAST` / `advance()` to `playthrough.py`, `back_check.py`, `offline_check.py`, `lobby_check.py`, `netgame_check.py`, `netvotes_check.py`, `sound_check.py`, `drawer_check.py` where they wait on the game. If a script uses real network timing (WebRTC in `netgame_check.py`, `lobby_check.py`) and breaks under the fake clock, leave that script on real time and note it in 8 Testing.
+
+### 9o.2 Stuck-game check (fail fast)
+In `play_until_over()` (and any loop like it): remember the last time the log grew. If the log hasn't grown for 30 real seconds, stop, and `check(False, ...)` with a dump: the screen's headings and pop-up title (`.popup-title`), and from `stored(page, 'pubby.currentGame')['session']`: `phase`, `play.turn`, `play.pendingFinalTwo`, `vote`, `takeRequests`, `paused`. Save a screenshot to `/tmp/stuck-<check name>.png`. Return `over=False`. Keep `limit_s` as an upper limit.
+
+### 9o.3 Shorter browser games
+- Slice C and slice D checks: play 1 round instead of 2 (`cfg['rounds']`; if the round count is set on the setup screen instead, set it there).
+- Slice D Mixed: one Mixed game only, checking every level is Easy, Normal or Hard. Drop "at least one Hard seat in 3 games" from the browser check (the unit test `names.test.ts` already checks Mixed gives Hard).
+- Keep the slice B check (`solo_check.py` with no flag) at 2 rounds: it tests Carry on between rounds.
+
+### 9o.4 Which checks to run when (working rule)
+- **During each small step:** only the test files for what changed (for example `npx tsx --test tests/ai/react.test.ts`), plus `npx tsx testbed/ai_arena.ts --games 200 --levels hard,normal` only if `src/ai/` changed.
+- **Before asking the user to push:** `npm run check`, `npm test`, the fast browser checks for the screens touched (all of them if `src/session/` or `src/rules/` changed), and the full `--bars` only if `src/ai/` changed.
+- **Never run two heavy jobs at once** (arena, browser checks): wait for one to finish.
+Copy this rule into section 8 Testing.
+
+### 9o.5 Arena on both cores
+- Add `--workers N` to `testbed/ai_arena.ts` (default: `os.cpus().length`). `runMany()` splits its games into N chunks by game number and runs each chunk in a child process (`node:child_process` `fork` with `tsx`, or `worker_threads`). Each game keeps its own seed (`seedBase + g`), so results don't depend on the number of workers. The parent merges the totals (`absorb`), including the decision times.
+- Acceptance: `--games 100 --levels hard,normal --workers 1` and `--workers 2` print the same `averagePlaceByLevel`, `finished`, `refusedMoves` and `crashedMoves`. Then time `--bars` with 2 workers and write it in the DEVLOG (goal: about 20 minutes).
+- Don't change the number of games in the bars (2000): that's the user's call.
+
+### 9o.6 The stalled All Easy game (after 9o.1 and 9o.2)
+Run `solo_check.py --slice-c` (fast). If a game gets stuck, read the dump from 9o.2. If the cause is in the test script, fix it. **If it's in the app** (a game that really can't go on), don't fix it yet: write what you found in the DEVLOG and ask the user, with a one-line description of the bug and the fix you'd make.
+
+---
+
+## 9p. Secret missing suits (APPROVED RULE CHANGE, user 2026-11-13: "no one should know what suit is missing until they find out during play"; spec in `PROJECT.md` 5)
+
+**What changes:** the declaration still happens and still decides who leads (unchanged rule), but which suit is missing is never shown or sent to anyone. Other players (people and computer players) only find out during play, from a slap. The leader pop-up still says who leads and why ("Missing a suit"; "Slowest in Reaction Tap"), but no suits.
+
+**Where the suits leak today:** the session event `missingSuitDeclared { player, suits }` goes into the public log. The log is sent to every phone in a network game, the leader pop-up prints the suits (`popupsFor` in `src/ui/game.ts`), and computer players add them to their known voids (`src/ai/memory.ts`).
+
+**Changes:**
+1. `src/session/types.ts`: `missingSuitDeclared` becomes `{ readonly type: 'missingSuitDeclared'; readonly player: PlayerId; /** Old saved games only; never written now (PROJECT.md 5: secret). */ readonly suits?: readonly Suit[] }`.
+2. `src/session/session.ts` `decideLeaderStep`: emit `{ type: 'missingSuitDeclared', player: m.player }` (no suits). Nothing else in the session changes: `decideLeader` still uses the real hands.
+3. `src/ui/game.ts` `popupsFor`, case `leaderChosen`: drop the `lines` that list `no ♥` etc.; the text is only the reason. Remove the `missing` variable if nothing else uses it. Search `src/ui/` for any other place that shows a declared suit (`grep -rn "missingSuitDeclared\|suits" src/ui`) and remove the suit from it.
+4. `src/ai/memory.ts`: `missingSuitDeclared` does nothing now (computer players learn voids only from slaps). Update the comment and the table in 9m.3 ("missingSuitDeclared: nothing; secret since 2026-11-13").
+5. Old saved games: a saved log may still hold `suits`. Nothing may read it (steps 3 and 4). Carry on from an old save must still work.
+6. Tests:
+   - New, in the session tests: deal a round where one player has no hearts. The log has `missingSuitDeclared` for that player with **no** `suits` field, and the right leader is chosen (the rule is unchanged).
+   - `tests/ai/seen.test.ts`: over whole games at 2 to 8 players, no `missingSuitDeclared` event has a `suits` field.
+   - `tests/ai/memory.test.ts`: "missingSuitDeclared adds the suits to voids" becomes "missingSuitDeclared adds nothing".
+   - `tests/ai/eval.test.ts` (lines with `missingSuitDeclared` around 18 and 96) and `tests/ai/moves.test.ts` (around 35 and 95): these used a declaration to make a known void. Keep each test's meaning by making the void another way: a slap in the events (an off-suit `cardPlayed` after a lead) or set `m.voids[p].add(suit)` directly. Each test must still check the same behaviour.
+   - Browser: in `testbed/playthrough.py` or `solo_check.py`, when a "leads" pop-up shows, check its text has none of ♠ ♥ ♦ ♣. In `netgame_check.py`, check no joining phone's stored log has a `missingSuitDeclared` with `suits`.
+7. Arena: computer players now know less, so run the full bars in 9n.1. Hard and Normal both lose the declared voids; every bar must still pass.
 
 ## 8a. Playable test builds (required before every commit)
 

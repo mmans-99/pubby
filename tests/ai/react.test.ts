@@ -50,3 +50,46 @@ test('other events never cause a reaction, and a missing phrase is not sent', ()
   assert.equal(reactionFor(slap('p1', 'p2'), 'p1', ['p2'], windup, seededRng(2), []), null);
   assert.ok(PERSONALITY_WEIGHTS.windup.reactRate > PERSONALITY_WEIGHTS.careful.reactRate);
 });
+
+// Antagonism (user, 2026-11-13): computer players taunt people after more events.
+const TAUNTS = ['Pick them up!!', 'Enjoy the pile!!', 'Too slow!!', 'Hurry up!!', 'Bye bye, losers!!', 'Ha! Caught you!!', 'Not so clever now!!', 'Dirty move!!', 'Sit down, sweetheart!!', 'Who dealt this?!', 'Coward!!', 'Oofaa!!!!', 'Nooo, not again!!'];
+const count = (ev: SessionEvent, me: string, humans: string[], texts: string[], persona: Persona = windup): number => {
+  let n = 0;
+  for (let s = 1; s <= 300; s++) {
+    const r = reactionFor(ev, me, humans, persona, seededRng(s), texts);
+    if (r !== null && r !== LAUGH && texts.includes(texts[r] ?? '')) n++;
+  }
+  return n;
+};
+
+test('a computer player taunts a person who picks up the waste pile', () => {
+  const n = count({ type: 'wastePilePickedUp', player: 'p2', cards: 4 }, 'p1', ['p2'], TAUNTS);
+  assert.ok(n > 150, `only ${n} of 300`);
+});
+
+test('a computer player taunts a person who goes out, and says so when it goes out itself', () => {
+  assert.ok(count({ type: 'playerOut', player: 'p2', place: 1 }, 'p1', ['p2'], TAUNTS) > 150);
+  assert.ok(count({ type: 'playerOut', player: 'p1', place: 1 }, 'p1', ['p2'], TAUNTS) > 150);
+});
+
+test('taking a person\'s cards gets a gloat; having cards taken gets a complaint', () => {
+  const gloat = count({ type: 'cardsTaken', requester: 'p1', target: 'p2', count: 3 }, 'p1', ['p2'], TAUNTS);
+  assert.ok(gloat > 150, `gloat ${gloat}`);
+  const complaint = count({ type: 'cardsTaken', requester: 'p2', target: 'p1', count: 3 }, 'p1', ['p2'], TAUNTS);
+  assert.ok(complaint > 0 && complaint < gloat, `complaint ${complaint}`);
+});
+
+test('a person who loses the round gets teased; a person who forfeits gets "Coward!!"', () => {
+  assert.ok(count({ type: 'roundEnded', finishingOrder: ['p1', 'p2'], loser: 'p2', sharedSecondLast: null, forfeitedBy: null } as SessionEvent, 'p1', ['p2'], TAUNTS) > 150);
+  assert.ok(count({ type: 'forfeited', player: 'p2' }, 'p1', ['p2'], TAUNTS) > 150);
+});
+
+test('computer players do not taunt each other', () => {
+  assert.equal(count({ type: 'playerOut', player: 'p3', place: 1 }, 'p1', ['p2'], TAUNTS), 0);
+});
+
+test('a careful player taunts much less often than a wind-up player', () => {
+  const careful: Persona = { level: 'normal', personality: 'careful' };
+  const ev: SessionEvent = { type: 'wastePilePickedUp', player: 'p2', cards: 4 };
+  assert.ok(count(ev, 'p1', ['p2'], TAUNTS, careful) < count(ev, 'p1', ['p2'], TAUNTS, windup));
+});

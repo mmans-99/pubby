@@ -238,6 +238,16 @@ Built before network slice 4 (user 2026-11-12). One slice at a time; each needs 
   - [x] Full `--bars` (all pass), checks, version 2.13.0
   - [x] `solo_check.py --slice-d` 11 of 11; `--slice-c` 14 of 14; `back_check.py` 14 of 14; `offline_check.py` 20 of 20
   - [ ] User's phone test (`CODE.md` 9m.9, slice D checklist)
+- [x] **Version 2.14:** antagonising reactions and 6 s lead pop-up (pushed 2026-11-13 as a test build; phone test to do)
+- [ ] **Version 2.15** (plan `CODE.md` 9n to 9p, approved 2026-11-13)
+  - [ ] 9o.1 Fake clock in browser checks
+  - [ ] 9o.2 Stuck-game check
+  - [ ] 9o.3 Shorter browser games
+  - [ ] 9o.4 "Which checks when" rule in `CODE.md` 8
+  - [ ] 9o.5 Arena on both cores
+  - [ ] 9o.6 Find the stalled All Easy game
+  - [ ] 9p Secret missing suits
+  - [ ] 9n.1 Full checks, version 2.15.0, user's phone test, then "push"
 - [ ] **Slice E: people and computer players on one phone**
 - [ ] **Slice F: computer players in network games**
 - [ ] **Slice G: tuning from the user's games**

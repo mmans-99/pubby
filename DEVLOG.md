@@ -4,6 +4,19 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (late morning) — Version 2.14: antagonising reactions, slower lead pop-up; plan for 2.15
+
+**Done (pushed as 2.14.0 on the user's request, "Can you push it?"):**
+- Computer players taunt more and after more events (`src/ai/react.ts`, higher `reactRate`, six new catch-phrases). "X leads" pop-up stays 6 s (user: "far too quick"). `npm run check` clean; `npm test` 225 of 225. `solo_check.py --slice-c` 13 of 14: the All Easy game stalled at 71 log events (not yet explained; pushed anyway as a test build, to be found with 9o.6).
+
+**Decided (user):**
+- Missing suits are secret until found out during play (`PROJECT.md` 5).
+- Make the checks faster.
+
+**Plan for 2.15, written for the next session (any model):** `CODE.md` 9n (order and finish), 9o (faster checks: fake clock, stuck-game check, shorter games, which checks when, arena on both cores, find the stall), 9p (secret missing suits).
+
+---
+
 ## 2026-11-13 — Phase 4b slice D (Hard), fixed (D2), pushed as 2.13.0 (b878519); all arena bars pass
 
 **Done**

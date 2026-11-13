@@ -23,3 +23,9 @@ Add a new line starting with "- " to add a catch-phrase. Lines without "- " are 
 - Sit down, sweetheart!!
 - Ha! Caught you!!
 - Oh no, oh no, oh no!!
+- Pick them up!!
+- Enjoy the pile!!
+- Bye bye, losers!!
+- Coward!!
+- Not so clever now!!
+- Nice try, sweetheart!!

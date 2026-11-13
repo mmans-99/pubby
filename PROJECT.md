@@ -158,6 +158,7 @@ The Ace of Spades has no special rule. It is an ordinary card.
 ## 5. Missing-suit declaration (before a round starts)
 
 - After the deal, if a player holds **no cards of a suit**, they must **declare** it.
+- **The missing suit is secret (user 2026-11-13):** no one else is told which suit it is. The table only sees who leads and why ("Missing a suit"). Other players find out which suit is missing only during play (a slap shows it). Computer players learn it the same way.
 - A player who declares a missing suit **leads first in that round**, regardless of any other rule.
 - **If more than one player is missing a suit:** a mini-game decides who leads. The **slowest** player in the mini-game leads first.
 
@@ -456,7 +457,7 @@ A computer player knows exactly what a person sitting in its seat could see or r
 - **Its own hand.** Never anyone else's, never the deck still to deal, never the hidden decks, never the waste pile order beyond what it saw.
 - **Every card played face up** in a trick (everyone at the table sees these).
 - **Cards a player picked up after a slap.** The trick was face up, so everyone saw which cards went into the slapped player's hand. A sharp person remembers that "Ben is holding the K♥ he picked up".
-- **Missing suits:** declared at the start of the round, and shown by a slap (a player who slaps on hearts had no hearts at that moment, until they pick up hearts).
+- **Missing suits:** only shown by a slap (a player who slaps on hearts had no hearts at that moment, until they pick up hearts). The declaration at the start of the round is secret (section 5), so a computer player doesn't learn the suit from it.
 - **Card counts, scores, places, votes, take-cards requests and answers** (all public in a game with computer players, see below), and how many cards moved in a take.
 - **The joker count** shown at game start, and every joker seen played.
 - **Not known:** which cards were swapped out or swapped in (hidden swap), which cards moved in a take-cards request (only how many), and anything in the hidden decks.
@@ -466,7 +467,7 @@ How much of this it remembers depends on its level (Easy forgets a lot, Hard rem
 ### Levels
 | Level | Remembers | Plays like |
 |---|---|---|
-| **Easy** | Its hand, the current trick, declared missing suits. Forgets most played cards after a trick or two. | A casual player. Follows the obvious rules of thumb (play low when a slap could come), sometimes gets it wrong, holds jokers too long or wastes them. |
+| **Easy** | Its hand, the current trick, missing suits shown by slaps. Forgets most played cards after a trick or two. | A casual player. Follows the obvious rules of thumb (play low when a slap could come), sometimes gets it wrong, holds jokers too long or wastes them. |
 | **Normal** | Every card played this round, who picked up what, who is out of which suit. | A decent regular. Plays safe when a slap is likely, dumps high cards when it's safe, saves jokers for dangerous moments, chooses slap cards sensibly. |
 | **Hard** | Everything Normal remembers, plus careful counting of what's still out. | A strong player. Before each move it imagines many possible ways the unknown cards could be spread (only ones that fit what it knows) and picks the move that works best across them. It still can't see cards; it can only guess well. |
 
@@ -544,6 +545,7 @@ Answer these in any order. Each one unblocks part of the build.
 None. (2026-11-07 20:38: the multiplayer questions were answered; see section 12 and Decided.)
 
 ### Decided (for reference)
+- 2026-11-13: missing suits are secret: no one is told which suit a player is missing until they find out during play (a slap). The leader pop-up shows who leads and "Missing a suit", not the suit (section 5).
 - 2026-11-12, single player (section 12c): Mixed levels plus All Easy / Normal / Hard; fixed random names from many cultures, editable; computer reactions on by default; separate vs-computer stats; computer players with people on one phone and in network games are in the plan; single player is built before network slice 4; version numbers: any new number per pushed change, just say it.
 - 2026-11-12, network slice 3: votes in network games show live (each ballot on every phone as it's cast); take-cards requests in network games show who asked whom on every phone (answers too), never which cards.
 - 2026-11-08 (09:27), look: all 25 less-text changes approved (section 12a): line icons, no emoji, explanations in ? rules, self-closing pop-ups, target score row on the before-the-round and results screens, podium results.

@@ -56,8 +56,11 @@ const SLAP_MS = 4000;
 const POP_MS = 2400;
 /** How long a pop-up stays up. */
 function popupMs(p: Popup): number {
+  if (p.kind === 'info' && p.ms) return p.ms;
   return p.kind === 'slap' || p.kind === 'haha' ? SLAP_MS : p.kind === 'lastTwo' ? POP_MS + 600 : POP_MS;
 }
+/** "X leads" pop-up (who leads and any missing suits): long enough to read (user, 2026-11-13). */
+const LEAD_MS = 6000;
 /** A finished trick stays on the felt this long before its cards move. */
 const TRICK_HOLD_MS = 700;
 /** Cards sliding to the waste pile or into the slapped player's seat. */
@@ -470,7 +473,7 @@ function popupsFor(s: Session, events: readonly SessionEvent[]): Popup[] {
           : e.reason === 'reactionTap' ? 'Slowest in Reaction Tap'
           : e.reason === 'host' ? 'Host leads round 1'
           : '';
-        out.push({ kind: 'info', icon: 'play', title: `${who} leads`, text: [...lines, why].filter(Boolean).join(' · ') });
+        out.push({ kind: 'info', icon: 'play', title: `${who} leads`, text: [...lines, why].filter(Boolean).join(' · '), ms: LEAD_MS });
         break;
       }
       default:

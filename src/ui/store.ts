@@ -54,7 +54,8 @@ export type Popup =
       forfeitedBy: PlayerId | null;
     }
   | { kind: 'vote'; decidedBy: 'majority' | 'host' | 'both'; result: boolean; text: string }
-  | { kind: 'info'; icon: IconName; title: string; text: string };
+  /** `ms`: how long it stays up (default POP_MS in game.ts). */
+  | { kind: 'info'; icon: IconName; title: string; text: string; ms?: number };
 
 export type Screen = 'home' | 'profiles' | 'history' | 'setup' | 'solo' | 'game' | 'netlobby' | 'bye';
 
