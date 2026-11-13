@@ -20,7 +20,7 @@ import { defaultRng } from '../rules/rng.ts';
 import { createSession } from '../session/session.ts';
 import { h } from './dom.ts';
 import { pauseLayer } from './between.ts';
-import { afterRender, gameScreen, popupLayer, reactionsLayer, startShuffle } from './game.ts';
+import { afterRender, gameScreen, popupLayer, reactionsLayer, shuffling, startShuffle, trickAnimating } from './game.ts';
 import { csvSheetLayer, pastGamesScreen, profileDetails } from './history.ts';
 import { renderMarkdown } from './markdown.ts';
 import { joinLobbyFromLink, joinRoomFromLink, netLobbyScreen, stopNetLobby } from './netlobby.ts';
@@ -84,6 +84,16 @@ export function startApp(target: HTMLElement): void {
   if (link) { joinLobbyFromLink(link); render(); }
   if (room) { joinRoomFromLink(room); render(); }
   setupBack();
+  // CODE.md 9w.4 rule 5: turning the phone or resizing re-fits the table and hand. Debounced (150 ms);
+  // not while a trick flies or the deck shuffles: those end with their own redraw.
+  let resizeTimer = 0;
+  window.addEventListener('resize', () => {
+    window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(() => {
+      if (trickAnimating() || shuffling()) return;
+      update({});
+    }, 150);
+  });
   // A join link tapped while Pubby is already open (iPhone Safari reuses the
   // tab and only changes the #lobby=… part, so the page doesn't start again).
   // Back from the app switcher after Exit: show the main menu again.

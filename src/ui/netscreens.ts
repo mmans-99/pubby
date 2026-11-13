@@ -78,7 +78,7 @@ function waitingFor(g: SavedGame, text: string): Child {
   const s = g.session;
   const me = ownSeat(g)!;
   return h('div', { class: 'stack' },
-    roundTable(s, publicView(s), { bottom: me, waste: wastePile(0) }),
+    roundTable(s, publicView(s), { bottom: me, waste: wastePile(0), you: true }),
     h('p', { class: 'hint center wait-line' }, text),
     handBlock(s, playerView(s, me), null, { head: false }),
   );
@@ -94,7 +94,7 @@ function beforeRound(g: SavedGame): Child {
   const host = isHostSeat(g);
   const v = publicView(s);
   return h('div', { class: 'stack' },
-    roundTable(s, v, { bottom: me, waste: wastePile(0) }),
+    roundTable(s, v, { bottom: me, waste: wastePile(0), you: true }),
     handBlock(s, playerView(s, me), null, { head: false }),
     targetRow(s, { me }),
     h('div', { class: 'row' },

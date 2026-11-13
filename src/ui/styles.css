@@ -883,7 +883,7 @@ button.secondary.on { box-shadow: 0 0 0 3px var(--gold); }
 
 /* ---- 2.4: the round table (table.ts) ---- */
 .round-table {
-  position: relative; width: 100%; height: clamp(330px, 52vh, 460px); margin: 2px 0;
+  position: relative; margin: 2px auto; /* width and height come from tableBox (CODE.md 9w.2) */
   /* The felt fills the table area (CODE.md 9u Part E1). */
   background: radial-gradient(120% 70% at 50% 40%, #2e7d32, #14421a 80%);
   border-radius: 18px; overflow: hidden;
@@ -894,12 +894,12 @@ button.secondary.on { box-shadow: 0 0 0 3px var(--gold); }
 /* The trick: a messy pile in the middle, newest on top (CODE.md 9u Part E4). */
 .trick-pile { position: absolute; left: 50%; top: 45%; width: 0; height: 0; z-index: 2; }
 .trick-pile .table-play { left: 0; top: 0; }
-.trick-pile .card.small-card { width: 56px; }
+.trick-pile .card.small-card { width: calc(5 * var(--u, 11px)); }
 .trick-play.newest .card { box-shadow: 0 0 0 2px var(--gold), 0 3px 8px rgba(0, 0, 0, 0.4); }
 /* Another player's hand: a fan of card backs at the edge (CODE.md 9u Part E3). */
 .edge-fan { position: absolute; width: 0; height: 0; z-index: 1; }
 .edge-back {
-  position: absolute; left: 0; top: 0; width: 44px; height: 62px;
+  position: absolute; left: 0; top: 0; width: var(--bw, 44px); height: var(--bh, 62px);
   border-radius: 6px; border: 2px solid var(--cream);
   background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.12) 0 6px, transparent 6px 12px), linear-gradient(160deg, #b71c1c, #7f0000);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
@@ -908,9 +908,57 @@ button.secondary.on { box-shadow: 0 0 0 3px var(--gold); }
 .table-middle .deck { width: 54px; height: 75px; }
 .table-middle .deck .card-back { width: 54px; height: 75px; border-width: 2px; }
 .table-middle .deck-count { font-size: 0.85rem; padding: 1px 8px; }
-.table-seat { position: absolute; translate: -50% -50%; z-index: 3; min-width: 72px; min-height: 48px; padding: 4px 8px; background: rgba(0, 0, 0, 0.32); }
-button.table-seat { background: var(--cream); }
-.table-seat.me { min-width: 64px; }
+/* ---- 2.28 (CODE.md 9w.1): quiet seats. The fan is the seat: no box, no background. All sizes come from --u, --bw, --bh. ---- */
+.table-seat { position: absolute; z-index: 3; margin: 0; padding: 0; border: 0; background: none; color: var(--cream); font: inherit; text-align: left; }
+button.table-seat { cursor: pointer; }
+.table-seat.disabled { opacity: 0.4; }
+.seat-quiet .edge-back { border-width: 1.5px; }
+/* Tappable: the fan gets a thin cream outline, the name is full cream (not 70%). */
+.seat-quiet.tappable .edge-back { outline: 1px solid var(--cream); outline-offset: 1px; }
+.seat-quiet.tappable .seat-label { opacity: 1; }
+/* Whose turn: gold fan glow and gold name. */
+.seat-quiet.turn .edge-back { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold), 0 0 10px 2px rgba(242, 193, 78, 0.55); }
+.seat-quiet.turn .table-name { color: var(--gold); }
+.seat-quiet.away .table-name { color: var(--danger); }
+/* Out of the round: no fan, no bubble; the name stays at half strength with its place. */
+.seat-quiet.out .seat-label { opacity: 0.5; }
+.seat-bubble {
+  position: absolute; translate: -50% -50%;
+  width: auto; min-width: calc(2 * var(--u, 11px)); height: calc(2 * var(--u, 11px)); padding: 0 0.25em; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 999px; background: var(--cream); color: var(--ink);
+  font-size: calc(1.05 * var(--u, 11px)); font-weight: 800; line-height: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.seat-label {
+  position: absolute; display: inline-flex; align-items: center; gap: 0.25em;
+  max-width: calc(9 * var(--u, 11px)); white-space: nowrap;
+  font-size: max(10px, var(--u, 11px)); font-weight: 600; line-height: 1.2;
+  color: var(--cream); opacity: 0.7; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+}
+.table-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.seat-label .seat-host { position: static; font-size: 0.85em; color: var(--gold); }
+.seat-label .seat-bot { width: 0.9em; height: 0.9em; }
+.seat-dealer {
+  display: inline-grid; place-items: center; flex: none;
+  width: 1.5em; height: 1.5em; border-radius: 50%;
+  background: var(--gold); color: var(--ink); font-size: 0.75em; font-weight: 800; line-height: 1;
+}
+.seat-away { color: var(--danger); font-weight: 700; font-size: 0.85em; }
+/* Your own seat: a small pill at the bottom centre of the felt. */
+.me-pill {
+  translate: -50% -50%; box-sizing: border-box;
+  min-width: calc(9 * var(--u, 11px)); height: calc(2.2 * var(--u, 11px)); padding: 0 0.6em;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 2px solid transparent; border-radius: 999px; background: rgba(0, 0, 0, 0.32);
+  color: var(--cream); white-space: nowrap; font-size: max(11px, calc(1.1 * var(--u, 11px))); font-weight: 600;
+}
+button.me-pill { background: var(--cream); color: var(--ink); }
+.me-pill.turn { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(242, 193, 78, 0.35); }
+.me-pill .pill-label { display: inline-flex; align-items: center; gap: 0.3em; min-width: 0; }
+.me-pill .table-name { max-width: calc(5 * var(--u, 11px)); }
+.pill-count { font-weight: 800; }
+.me-pill .place-badge { font-size: 0.9em; }
 .table-play { position: absolute; translate: -50% -50%; z-index: 2; }
 .table-waste { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 /* The waste pile sits in the bottom-right corner of the felt (CODE.md 9u Part E5). */
@@ -953,19 +1001,29 @@ button.table-seat { background: var(--cream); }
 
 /* Computer players (CODE.md 9m.5, 9m.7; version 2.7): "thinking…" on a seat, and the setup screen. */
 .seat-chip.thinking { box-shadow: 0 0 0 2px var(--gold); }
-.think-dots {
-  display: block;
-  font-size: 0.7rem;
-  color: var(--gold);
-  animation: think-pulse 1.2s ease-in-out infinite;
-}
-.think-dots .dots { display: inline-block; min-width: 1ch; }
-@keyframes think-pulse {
-  0%, 100% { opacity: 0.45; }
-  50% { opacity: 1; }
+/* 2.28 (CODE.md 9w.1): three dots after the name, fading in turn; still with reduced motion. */
+.think-dots { display: inline-flex; gap: 2px; color: var(--gold); font-size: 0.9em; line-height: 1; }
+.think-dots .dot { animation: think-dot 1.2s ease-in-out infinite; animation-delay: calc(var(--i, 0) * 0.2s); opacity: 0.25; }
+@keyframes think-dot {
+  0%, 100% { opacity: 0.25; }
+  40% { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .think-dots { animation: none; }
+  .think-dots .dot { animation: none; opacity: 0.7; }
+}
+
+/* 2.28 (CODE.md 9w.4): any screen. The game screen is wider than the 520 px menu column. */
+.screen.game {
+  max-width: min(100vw, 1100px);
+  padding-left: calc(8px + env(safe-area-inset-left));
+  padding-right: calc(8px + env(safe-area-inset-right));
+}
+/* Landscape: top bar, table and hand in one column with no page scroll (CODE.md 9w.4 rule 4). */
+@media (orientation: landscape) {
+  .screen.game { height: 100vh; height: 100dvh; box-sizing: border-box; padding-top: calc(4px + env(safe-area-inset-top)); padding-bottom: 0; gap: 6px; overflow: hidden; }
+  .screen.game .game-bar { height: 48px; flex: none; }
+  .screen.game .game-bar .icon-btn, .screen.game .game-bar .round-chip { width: 40px; height: 40px; min-width: 40px; min-height: 40px; }
+  .screen.game .round-table { flex: none; }
 }
 .center-row { justify-content: center; align-items: center; }
 .center-row .grow { text-align: center; }

@@ -79,8 +79,9 @@ export interface FanSpot { x: number; y: number; rot: number; z: number }
  * Places n cards in one fanned row, or two rows when there are more than 12 (so
  * every visible strip stays at least 20 px wide on a 320 px phone: the tap target).
  */
-export function fanLayout(n: number, width: number): { cardW: number; height: number; spots: FanSpot[] } {
-  const cardW = Math.min(96, Math.max(64, width * 0.19));
+export function fanLayout(n: number, width: number, maxCardW?: number, minCardW = 64): { cardW: number; height: number; spots: FanSpot[] } {
+  // CODE.md 9w.5: landscape passes a smaller maxCardW (the hand is shorter) and a 48 px minimum.
+  const cardW = Math.min(maxCardW ?? 96, 96, Math.max(minCardW, width * 0.19));
   const cardH = cardW * 1.4;
   const rows = n > 12 ? [Math.ceil(n / 2), n - Math.ceil(n / 2)] : [n];
   const spots: FanSpot[] = [];

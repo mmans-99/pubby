@@ -4,6 +4,18 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (evening, 20:30) — Version 2.28.0: quiet seats and any-screen table (built, not pushed)
+
+**Built:** `CODE.md` 9w, spec `PROJECT.md` 12i. Changes in `src/ui/table.ts` (pure geometry, Option C markup), `src/ui/styles.css` (quiet seats, pill, bubble, landscape), `src/ui/cards.ts` (`fanLayout` maxCardW and minCardW), `src/ui/game.ts` (hand width, landscape card cap, `you` flag), `src/ui/netscreens.ts` (`you`), `src/ui/app.ts` (debounced resize redraw), `src/pwa/manifest.webmanifest` (orientation any), `package.json` 2.28.0. New tests `tests/ui/seats.test.ts`.
+
+**Checks:** `tsc` on `tsconfig.json` clean. Unit tests 357: 352 pass. The 5 failures are the existing `tests/server/relay_server.test.ts` (needs the `ws` package, not installed here). **Not run:** `npm run build` (esbuild not installed, network off), browser checks, phone test.
+
+**Deviations and known limits:** listed in `CODE.md` 9w ("Built notes"). Short windows (568 × 320 and 8 players in several portrait and landscape sizes) still have name or waste-pile overlaps after the shrink fallback.
+
+**Zoom report (user, 20:24, while building):** the screen seems to zoom in a little each time a card is played, and when the hand goes from two rows to one. Not reproduced here (no browser build). Likely contributors from the code: (1) `app.ts` rebuilds the whole screen with `replaceChildren` on every state change, so every bot move restarts all animations at once; (2) the newly played trick card runs `drop-in` (`scale(1.1)` with a rotation, `styles.css` ~line 411), a pop that can read as a zoom; (3) the hand's height changes when the rows change (`fanLayout` adds a row height), which moves the layout below it. Not yet confirmed; a screen recording would settle it.
+
+**Not committed or pushed.** Waiting for the user's phone test and "Push it". Test version: 2.28.0.
+
 ## 2026-11-13 (evening, 20:16) — 2.27.0 pushed; plan 9w (2.28): quiet seats and any-screen table (docs only)
 
 **Pushed:** 2.27.0 as 469d086 (user "Push it and commit", 20:09). Phone test still to do.

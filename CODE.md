@@ -2197,7 +2197,15 @@ It also takes `personOut`: true when every person's seat on this phone is out of
 - Then: `npm run build` (playable build), update all five MD files (CLAUDE.md rule 4) and `DEVLOG.md`, then ask the user to test on a phone and approve the push (CLAUDE.md rules 3 and 5).
 - Phone checklist (2.27): one-phone game with 3 computer players, you out of the round: Fast forward speeds the moves up; Skip to end of round stops at the round-over pop-up; Stop works during both; the menu items are hidden while you are still in the round. Network game: only the host sees the items.
 
-## 9w. Version 2.28: quiet seats ("the fan is the seat", Option C) and a table that fits any screen, portrait or landscape (PLAN, user 2026-11-13 20:16; written for any model, Haiku included; NOT BUILT; spec `PROJECT.md` 12i; mockup https://claude.ai/artifact/GkFLKsbdpWnqocf1zf61Jp artboard "C: the fan is the seat")
+## 9w. Version 2.28: quiet seats ("the fan is the seat", Option C) and a table that fits any screen, portrait or landscape (PLAN, user 2026-11-13 20:16; written for any model, Haiku included; BUILT as 2.28.0 on 2026-11-13, not pushed; spec `PROJECT.md` 12i; mockup https://claude.ai/artifact/GkFLKsbdpWnqocf1zf61Jp artboard "C: the fan is the seat")
+
+**Built notes (2.28.0):** `tableBox`, `handH`, `seatLayout`, `ownSeatBox`, `wasteBox`, `middleBox`, `fitBox` and `seatCollisions` are pure in `src/ui/table.ts`; tests in `tests/ui/seats.test.ts` (new file, not appended to `table.test.ts`). Deviations, each made so the plan holds on real screens:
+- Landscape table minimum is **160 px**, not 200 (9w.2): at 568 × 320, 200 px does not fit the top bar, table and hand (test 1 would fail).
+- `fitBox` (9w.3 rule 7) is applied in `roundTable`: shrink `u` by 5%, up to 6 times. The survey shows it clears every 9w.7 size except the **known tight cases** listed in the test file: all player counts at 568 × 320 (the middle zone and the top names collide), and 8 players at 320 × 568, 360 × 640, 375 × 667 and 667 × 375 (the right-hand name meets the waste pile). These are real limits of the geometry in short windows, not yet fixed.
+- `fanLayout` takes an optional fourth argument `minCardW` (default 64) so landscape can use 48 px; the third argument is `maxCardW` as planned.
+- The own seat says "You" when `you` is passed (trick, leader and network screens). The dealing screen does not pass it yet.
+- Side-edge fans with 13 backs are not checked for overlapping each other or the names; a phone check is needed.
+- Not run: `npm run build` (esbuild is not installed in this session, and the network is off, so the bundle was not made), browser checks (`testbed/table_check.py` not written), and the phone checklist below.
 
 Build only this plan (CLAUDE.md rules 1 and 2: the user approved it at 20:16 by asking for it to be written and pushed for Haiku). It changes how the table looks and how the game screen sizes itself. It changes no game rule and nothing sent between phones.
 

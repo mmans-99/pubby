@@ -34,7 +34,7 @@ import { icon, type IconName } from './icons.ts';
 import { botsOnlyFor, botsTick, startFastForward, startSkip, stopFastForward } from './bots.ts';
 import { fastForwardOn, hostIsSkipping, skipNote, skipping } from '../ai/fastforward.ts';
 import { hostBroadcast, joinSend, sendReaction } from './netplay.ts';
-import { roundTable, wastePile } from './table.ts';
+import { handH, roundTable, wastePile } from './table.ts';
 import { netGameBody, netMenu } from './netscreens.ts';
 import {
   askPausePanel, askToTake, gameOverStage, netPauseButton, notesPanel, passOnButton, pauseButton, pausePanel, pauseRequestsBanner,
@@ -604,6 +604,7 @@ function trickArea(s: Session, g: SavedGame, v: PlayerView, bottom: PlayerId, hi
     newFrom: shownTrickCount,
     waste: wastePile(v.wastePileCount),
     ledSuit: v.ledSuit,
+    you: ownSeat(g) !== null,
   });
   shownTrickCount = plays.length;
   return [table, g.lastTrick ? lastTrickRow(s, g.lastTrick) : null];
@@ -624,6 +625,7 @@ function trickFinishStage(g: SavedGame, a: TrickAnim): Child {
       plays: a.plays,
       newFrom: firstDraw ? last : a.plays.length,
       waste: wastePile(waste),
+      you: ownSeat(g) !== null,
     }),
     h('div', { class: 'anim-block', 'aria-hidden': 'true' }),
   );
@@ -781,7 +783,7 @@ export function chooseLeaderStage(g: SavedGame): Child {
   const winner = s.previous!.winner;
   return h('div', { class: 'stack' },
     h('h2', { class: 'center' }, `${ownSeat(g) ? 'You' : nameOf(s, winner)}: who leads?`),
-    roundTable(s, v, { bottom: bottomSeat(g, winner), onTap: (id) => send([{ type: 'chooseLeader', by: winner, leader: id }]), tapLabel: 'Leads:' }),
+    roundTable(s, v, { bottom: bottomSeat(g, winner), you: ownSeat(g) !== null, onTap: (id) => send([{ type: 'chooseLeader', by: winner, leader: id }]), tapLabel: 'Leads:' }),
   );
 }
 
@@ -853,7 +855,11 @@ export function handBlock(
 ): HTMLElement {
   const hand = sortHand(v.myHand);
   // The fanned hand (CODE.md 9u Part D): card size and place from the phone's width (portrait only).
-  const fan = fanLayout(hand.length, Math.min(window.innerWidth, 520) - 12);
+  // CODE.md 9w.5: the hand uses the window's width (not the 520 px menu column); in landscape the cards fit the shorter hand area.
+  const landscape = window.innerWidth > window.innerHeight;
+  const fan = landscape
+    ? fanLayout(hand.length, Math.min(window.innerWidth, 1100) - 12, (handH(window.innerWidth, window.innerHeight) - 30) / (hand.length > 12 ? 1.55 : 1.4), 48)
+    : fanLayout(hand.length, Math.min(window.innerWidth, 1100) - 12);
   const legal = new Set(opts.all ? v.myHand.map((c) => c.id) : v.legalCardIds);
   const selected = getState().selected;
   const raised = (id: string): boolean => (opts.picked ? opts.picked.has(id) && !opts.mark : selected === id);

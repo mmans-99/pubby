@@ -635,7 +635,7 @@ From the user's Multiplayer test of 2.23:
 
 **Version:** 2.27.0 (after 2.26.0). Build guide `CODE.md` 9v has the steps, files and tests.
 
-### 12i. Quiet seats ("the fan is the seat") and a table that fits any screen (PLAN, user 2026-11-13 20:16; build guide `CODE.md` 9w; mockup https://claude.ai/artifact/GkFLKsbdpWnqocf1zf61Jp; NOT BUILT)
+### 12i. Quiet seats ("the fan is the seat") and a table that fits any screen (PLAN, user 2026-11-13 20:16; build guide `CODE.md` 9w; mockup https://claude.ai/artifact/GkFLKsbdpWnqocf1zf61Jp; BUILT as 2.28.0 on 2026-11-13, not pushed, phone test to do)
 
 **Request (user 2026-11-13 20:06 to 20:16):** names on the table are in the way: make them more minimal and away from the centre. From the mockup the user chose **Option C, "the fan is the seat"**, and asked that it fits **any size screen, portrait or landscape**.
 
