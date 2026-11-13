@@ -283,6 +283,16 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [ ] **Slice O3: rejoin online** (version 2.19; with Nearby slice 4)
 - [ ] Slice O4 (game on the server): only if the user asks
 
+## Phase 4d — Everyone at the table before a game starts (plan written 2026-11-13, `PROJECT.md` 12e, build guide `CODE.md` 9s; not built)
+
+- [x] Plan written (docs only, 2026-11-13)
+- [ ] User answers the four questions in `PROJECT.md` 12e (what "at the table" means; host starting without a player who left; where "Waiting for" shows; quick rules mention)
+- [ ] Read-first checks in `CODE.md` 9s.0 (card screen stage; reconnect path), and record the answers in 9s
+- [ ] Build Option A or B (`CODE.md` 9s.2) with the messages and rules in 9s.3-9s.5
+- [ ] Unit tests (ready set), `testbed/pregame_check.py`, existing checks still pass
+- [ ] Playable test build and checklist (`PROJECT.md` 12e); user tests on phones (Nearby and Online)
+- [ ] MD files and DEVLOG updated; user approves commit and push; version number told to the user
+
 ## Phase 5 — Polish
 
 - [ ] Animations for slap and trick resolution

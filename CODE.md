@@ -1415,6 +1415,65 @@ Run `src/session/` inside the Room object instead of on the host's phone, so the
 - Don't put the API token, Account ID or any secret in the repo; the workers.dev address is public and fine.
 - Don't change `src/rules/`, `src/session/`, `src/ai/`, `lobby.ts`, `netgame.ts` or `netplay.ts` without asking.
 
+## 9s. Everyone at the table before a game starts (PLAN, 2026-11-13; spec `PROJECT.md` 12e; not built, not approved)
+
+Build guide for the user's rule: all players at the table before a game starts, and a "Waiting for X" message while anyone is missing. Plan only. Nothing here may be built until the user answers the four questions in `PROJECT.md` 12e and approves the build (CLAUDE.md rules 1 and 2).
+
+### 9s.0 Read first (before any code)
+
+1. `CLAUDE.md`, `PROJECT.md` 12e, `TODO.md` Phase 4d, the latest `DEVLOG.md` entry.
+2. Confirm the stage a joiner is in while looking at cards in network play: is the card screen a stage of the shared game (`roundstart.ts`, `g.stage`), or a screen before the game? This decides between Option A and Option B below. Record the answer in this section before coding.
+3. Confirm how a joiner reaches the game after a reconnect (`hostSync` and `joinGotGame` in `netplay.ts`). Any path that sets `screen: 'game'` must wait for the start signal.
+
+### 9s.1 Why it happens (as read at 2.18.0)
+
+- `hostStart()` in `src/ui/netplay.ts` (around lines 67-76) sets the host's screen to `game` and sends every joiner a full `GameUpdate` at once.
+- `joinGotGame()` in `src/ui/netplay.ts` (around lines 133-146) sets the joiner's screen to `game` on arrival, without checking whether that phone has finished its own card screen.
+- The card screen's Done in `src/ui/roundstart.ts` (around lines 360-372) is local: for the player's own seat it calls `update({})` and sends nothing.
+- The Reaction Tap Start button (`roundstart.ts`, around line 444) is a separate mini-game. Do not change it.
+
+### 9s.2 Options (the user picks; `PROJECT.md` 12e)
+
+- **Option A (recommended): gate on the table screen before the game starts.** Each phone is at the table screen (lobby, seat list) and sends `{t:'ready', seat}` to the host on arrival. The host keeps a ready set per seat and sends `{t:'table', seats:[{seat, name, ready, online}]}` to every phone on each change. The host's Start is enabled only when all seats are ready. On Start the host sends the start signal (the full game update, as today) to everyone. Phones enter the game only on that signal.
+- **Option B: gate on the card screen.** A phone's Done on its card screen sends `{t:'ready'}`. The host starts the game when all are ready. More fragile: one slow player holds up everyone, and pass-the-phone steps do not apply online.
+
+Under Option A the cards screen still runs inside the game after the start signal. Step 9s.0.2 decides whether the cards screen also needs a wait; if it does, Option A is extended with the same ready set for that stage, and that is written back into this section before coding.
+
+### 9s.3 Behaviour rules (from `PROJECT.md` 12e)
+
+- Host's Start greyed while any seat is not ready; the host sees "Waiting for Fay" (or "Waiting for Ben and Fay").
+- Joiner's table screen shows the seat list (name, ready or waiting) and the same waiting text.
+- A seat that leaves or loses the connection shows "Waiting for X (reconnecting)", or "X left" if the host removes them. Its ready state is cleared; on rejoin it must be ready again.
+- A join that happens as Start is tapped: Start is re-checked on every change, so no game begins with a seat that is not ready.
+- Host leaves before start: existing behaviour (room ends) stays.
+
+### 9s.4 Messages (`src/net/`)
+
+- `{t:'ready', seat}` joiner to host.
+- `{t:'table', seats:[...]}` host to joiners, on every change.
+- The existing full `GameUpdate` is the start signal, sent only after all seats are ready. Its shape does not change.
+- Keep the chunking and `FRAME_MAX` rules (`src/net/chunk.ts`, `relayproto.ts`). Type the new messages in `relayproto.ts` only if they travel over the relay; Nearby (`Peer`) uses the same `Link` (`src/net/link.ts`).
+
+### 9s.5 Files likely to change
+
+- `src/ui/netplay.ts`: split `hostStart` into "send table" and "start"; ready tracking on the host; `joinGotGame` only on the start signal. Note: `CODE.md` 9r.9 says not to change `netplay.ts` without asking. This change is asked for by the user in this plan, but the approval must name it.
+- `src/ui/netlobby.ts`: table screen, "Waiting for" text, greyed Start.
+- `src/net/link.ts`, `src/net/relayproto.ts`: message types if needed.
+- `src/ui/roundstart.ts`: no change under Option A, unless 9s.0.2 says otherwise.
+- `src/content/quick-rules.md`: one line, only if decision 4 is yes.
+
+### 9s.6 Tests
+
+- Unit (`tests/`): ready set (join, leave, rejoin, ready twice, start with all ready, start blocked by one missing).
+- Browser (`testbed/pregame_check.py`, new): 3-4 phones via `testbed/bot.js` and the local relay. Start greyed while a bot is not ready; the waiting text; all phones enter the game in the same run; a leaver is shown and cleared. Add it to `testbed/run_checks.py` (`ALL_ORDER` and the path table).
+- Existing checks must still pass: `online_check.py` (37), `lobby_check.py`, `netgame_check.py`, `netvotes_check.py`; unit tests (286); type check.
+- Real phones: host on mobile data, joiners on Wi-Fi (the same test as 9r.8).
+
+### 9s.7 Version and process
+
+- Version: the next free number when built. Slice O3 (9r.8) is also planned as 2.19, so whichever ships first takes 2.19 and the other goes to the next number. Tell the user the number when asking to push.
+- Before any commit: update all five MD files, add a DEVLOG entry, give the user a playable test build and checklist (`PROJECT.md` 12e and the draft in `claude/pubby-pregame-sync-plan.md` in the Pubby project), and wait for the user's test.
+
 ## 8a. Playable test builds (required before every commit)
 
 `CLAUDE.md` rule 5: the user tests every change on their phone before approving a commit.

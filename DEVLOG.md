@@ -4,6 +4,28 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (late afternoon) — Plan written: everyone at the table before a game starts (docs only; not committed or pushed)
+
+**User:** "Maybe have all players at table before a game begins. Have something to say waiting for x player. Do you know which bit? What can you plan for that?" Then: "Write up a detailed plan so I can continue on a different chat", and "Update to the repo. The plan."
+
+**Found in the code (2.18.0, read only)**
+- `hostStart` in `src/ui/netplay.ts` sets the host to the game and sends every joiner the full game update at once. `joinGotGame` moves a joiner into the game on arrival, with no check that its card screen is done.
+- The card screen's Done in `src/ui/roundstart.ts` is local and sends nothing, so the host cannot tell who is still looking at cards.
+- Not checked yet: whether the card screen is a stage of the shared game or a screen before it, and whether a reconnect can enter the game without a start signal. Both are first steps in `CODE.md` 9s.0.
+
+**Done (docs only, no code, no version change)**
+- `PROJECT.md`: new section 12e (the rule, the "Waiting for X" text, the four open decisions) and a line in the open-questions summary.
+- `CODE.md`: new build guide section 9s (cause, two options with a recommendation, messages, files, tests, version note).
+- `TODO.md`: new Phase 4d with its checklist, before Phase 5.
+- The plan is also in the Pubby project as `claude/pubby-pregame-sync-plan.md`. Its Option A wording differs slightly from 9s.2; `CODE.md` 9s is the authoritative version.
+
+**Not done**
+- No code, no tests, no version bump (2.18.0 is still the version).
+- Nothing committed or pushed. The repo is at f803031 on main with these doc edits uncommitted.
+- The four decisions are open.
+
+---
+
 ## 2026-11-13 (afternoon) — Online play slice O2 built (version 2.18.0); not committed or pushed
 
 - Built the online screens and the app side of rooms: `src/net/link.ts` (shared link interface), `chunk.ts` (moved out of peer.ts; Nearby unchanged), `server.ts` (server address; `?server=` only on localhost), `online.ts` (create, join, room list, host and joiner sockets, keep-alive), `src/ui/online.ts` (room form, room list, passcode screen), and the netlobby changes (Online/Nearby, host/join, room-list watch, invite links `#room=`).
