@@ -249,11 +249,11 @@ Built before network slice 4 (user 2026-11-12). One slice at a time; each needs 
   - [x] 9p Secret missing suits (session, pop-up, computer memory, tests)
   - [x] 9n.1 Checks all pass; pushed as d14b4a1; user's phone test passed (2026-11-13)
 - [~] **Version 2.16:** computer players react more (rates, going out always, round-end triggers, 2.5 s gap, three per event); built locally, checks pass; waiting for the user's phone test and "push"
-- [ ] **Faster checks, part 2** (plan `CODE.md` 9q, approved 2026-11-13)
-  - [ ] 9q.1 `testbed/run_checks.py`: run only the checks for what changed
-  - [ ] 9q.2 netgame: 3-player game 1 round
-  - [ ] 9q.3 Shorter real sleeps in fast mode (keep only if faster)
-  - [ ] 9q.4 Full run once, times in the DEVLOG, then "push"
+- [x] **Faster checks, part 2** (plan `CODE.md` 9q, approved 2026-11-13; pushed 2026-11-13, test-only)
+  - [x] 9q.1 `testbed/run_checks.py`: run only the checks for what changed
+  - [x] 9q.2 netgame: 3-player game 1 round
+  - [x] 9q.3 Shorter real sleeps in fast mode (keep only if faster)
+  - [x] 9q.4 Full run once, times in the DEVLOG, then "push"
 - [ ] **Slice E: people and computer players on one phone**
 - [ ] **Slice F: computer players in network games**
 - [ ] **Slice G: tuning from the user's games**

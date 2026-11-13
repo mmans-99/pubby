@@ -24,7 +24,7 @@ def main():
               'the home menu still has "Play against the computer"')
         start_solo(page)
 
-        phrases = sum(1 for line in pathlib.Path('/home/claude/pubby/src/content/catch-phrases.md').read_text().splitlines() if line.startswith('- '))
+        phrases = sum(1 for line in (pathlib.Path(__file__).resolve().parent.parent / 'src' / 'content' / 'catch-phrases.md').read_text().splitlines() if line.startswith('- '))
         page.get_by_role('button', name='Open reactions').click()
         sheet = page.locator('.reactions-sheet')
         sheet.wait_for()

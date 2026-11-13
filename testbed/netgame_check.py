@@ -33,7 +33,7 @@ results = []
 
 GAMES = [
     {'players': 2, 'rounds': 2, 'manualDeal': True, 'swap': True, 'reshuffle': False, 'ultimate': False, 'voteYes': False, 'forfeitChance': 0.3, 'stayAtEnd': True},
-    {'players': 3, 'rounds': 2, 'manualDeal': False, 'swap': True, 'reshuffle': False, 'ultimate': False, 'voteYes': True, 'forfeitChance': 0.0, 'stayAtEnd': True},
+    {'players': 3, 'rounds': 1, 'manualDeal': False, 'swap': True, 'reshuffle': False, 'ultimate': False, 'voteYes': True, 'forfeitChance': 0.0, 'stayAtEnd': True},
     {'players': 5, 'rounds': 1, 'manualDeal': True, 'swap': False, 'reshuffle': False, 'ultimate': False, 'voteYes': False, 'forfeitChance': 0.2, 'stayAtEnd': True},
 ]
 

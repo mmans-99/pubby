@@ -4,6 +4,31 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (later) — Plan 9q built and pushed (faster checks, part 2); test-only, no version bump
+
+**User:** "Do the 9q plan in CODE.md". Test files only, no app code, so the version stays 2.16.0 (`CLAUDE.md` rule 8).
+
+**Done (pushed to main on the user's "Push it all")**
+- **9q.1 `testbed/run_checks.py` (new):** runs only the browser checks that match the changed files (`git diff HEAD` or `--since REF`, plus new files). `--all`, `--dry-run`. Path table in the script header. Runs `npm run build` first, one script at a time, logs in `/tmp/checks/`, prints a summary and exits 1 on any failure.
+- **9q.2 netgame:** the 3-player game is 1 round (was 2). The 2-player game stays at 2 rounds.
+- **9q.3 shorter real pauses in fast mode:** `playthrough.py` 120 to 20 ms after a wait, 15 to 10 ms after other steps; `solo_check.py` 120 to 20 ms and 40 to 10 ms. Real-time mode unchanged.
+- **Bug fixed in `testbed/drawer_check.py`:** it read `/home/claude/pubby/src/content/catch-phrases.md` (a hard-coded path that doesn't exist in this workspace). It now uses the repo's own path. Found by the full run (drawer failed in 1 s).
+
+**Times (seconds)**
+- 9q.2 netgame (one run): 449, old range 430 to 490. Full run: 424. The 3-player round saving is small; the 2-player game is most of the time.
+- 9q.3 playthrough, before: 185, 167. After: 83, 100. Average 176 to 92.
+- 9q.3 solo slice D, before: 36, 40. After: 21, 21. Average 38 to 21.
+- All kept: every check passed in each after-run.
+- Full `run_checks.py --all`: 837 s (14.0 min), against 1006 s for 2.16. Goal under 13 minutes **not met**. Per script: solo 35, playthrough 98, drawer 1 (failed, path bug, fixed), back 9, offline 6, netvotes 172, netgame 424, lobby 45, sound 47. Drawer re-run after the fix: 8 of 8 in 2 s.
+
+**Acceptance (9q.1, `--dry-run`):** `src/ai/react.ts` only: solo and drawer. `CODE.md` only: nothing. `src/session/session.ts`: all nine. Chosen picks for this session's edits: solo, playthrough, drawer, netgame.
+
+**Checks:** `npm test` 228 of 228. `npm run check` clean (both `tsconfig.rules.json` and `tsconfig.json`). The workspace now has `@types/node` through a symlink to `/opt/npm-tools/node_modules/@types`, so the stand-in described in `CODE.md` 3 is not needed here (not changed in `CODE.md`). `node_modules` is symlinks only (esbuild, tsx, typescript, @types); remove it before committing.
+
+**Docs:** `CODE.md` (8 "Which checks to run", 9q status), `TODO.md` (9q boxes). `PROJECT.md` and `CLAUDE.md` have no rule change.
+
+**Next:** the 13-minute goal is still open (netgame and netvotes run in real time over WebRTC, which the plan kept out of fake-clock work). Possible next step: the user's decision on whether to take that on.
+
 ## 2026-11-13 (afternoon) — Version 2.16.0 built: computer players react more; not pushed
 
 **User:** 2.15 phone test "all works" (pushed earlier as d14b4a1). Reactions still not enough; computer players should react when they finish their cards. Approved the proposal ("Yes").

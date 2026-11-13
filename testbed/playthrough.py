@@ -91,10 +91,10 @@ def play_game(page, cfg, errors):
                 print(page.inner_text('body')[:1500])
                 check(False, f"{cfg['players']} players: bot stuck")
                 raise SystemExit(1)
-            page.wait_for_timeout(120)
+            page.wait_for_timeout(20 if FAST else 120)  # 9q.3: shorter real pauses in fast mode
             continue
         stuck_since = None
-        page.wait_for_timeout(15)
+        page.wait_for_timeout(10 if FAST else 15)
     else:
         check(False, f"{cfg['players']} players: game did not finish in time")
     bot = page.evaluate('window.pubbyBot.state')

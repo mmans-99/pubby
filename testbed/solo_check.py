@@ -123,9 +123,9 @@ def play_until_over(page, limit_s=600, watch='.think-dots', label='game', rounds
             dump_stuck(page, label)
             return False, saw_thinking, log_len(page) - start_log
         if action in ('wait', 'stuck'):
-            page.wait_for_timeout(120)
+            page.wait_for_timeout(20 if FAST else 120)  # 9q.3: shorter real pauses in fast mode
             continue
-        page.wait_for_timeout(40)
+        page.wait_for_timeout(10 if FAST else 40)
     return False, saw_thinking, log_len(page) - start_log
 
 
