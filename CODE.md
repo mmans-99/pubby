@@ -2550,7 +2550,7 @@ Pause and reactions work as now during a notice.
   2. Start a new game. Do the bots go back to their normal habits?
   3. Turn the switch off. The bots play as before.
 
-## ## 8a. Playable test builds (required before every commit)
+## 8a. Playable test builds (required before every commit)
 
 `CLAUDE.md` rule 5: the user tests every change on their phone before approving a commit.
 
