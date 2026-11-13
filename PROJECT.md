@@ -520,7 +520,7 @@ Built after single player works (`CODE.md` 9m slices E and F):
 6. Order: single player (this whole section) is built **before** network slice 4 and the multiplayer release.
 7. Version numbers: the user doesn't mind which number; every pushed code change gets a new version and the user is told the new number (`CLAUDE.md` rule 8).
 
-## 12d. Online play: rooms over the internet (PLAN, user 2026-11-13; build guide `CODE.md` 9r; slice O1, the server, pushed as 2.17.0 and fixed in 2.17.1; deploy check open; no screen yet)
+## 12d. Online play: rooms over the internet (PLAN, user 2026-11-13; build guide `CODE.md` 9r; slice O1, the server, pushed as 2.17.0 and fixed in 2.17.1; deployed; phone `/health` check open; no screen yet)
 
 **User 2026-11-13:** wants to play with people who aren't on the same network, free to run if possible, and "something like: click multiplayer, then host makes a room with a name and code, other people click join, find the room and pass and then start together."
 
@@ -543,11 +543,11 @@ How it works: a small relay server on Cloudflare's free plan passes the messages
 - If the host's phone loses its connection, the others see it straight away; until slice O3 the game ends as in Nearby. Slice O3 (rejoin) brings phones back to their seats automatically, following the Nearby slice 4 rules (section 12: a dropped phone pauses the game for everyone; the host can remove a player who doesn't come back).
 - Online and Nearby players can't be mixed in one game.
 
-### Defaults used in the plan (user to confirm or change before slice O2; asked 2026-11-13, not answered yet)
-- Nearby (no internet) is kept alongside Online.
-- Joining phones see a list of open rooms (rather than typing the room name).
-- The passcode is 4 digits.
-- The server is Cloudflare Workers with Durable Objects on the free plan (rather than the user's Chromebox).
+### Defaults used in the plan (agreed by the user 2026-11-13; slice O2 can start)
+- Nearby (no internet) is kept alongside Online. **Agreed by the user 2026-11-13.**
+- Joining phones see a list of open rooms (rather than typing the room name). **Agreed by the user 2026-11-13.**
+- The passcode is 4 digits. **Agreed by the user 2026-11-13.**
+- The server is Cloudflare Workers with Durable Objects on the free plan (rather than the user's Chromebox). **Agreed by the user 2026-11-13.** The server address is `https://pubby-rooms.mmans99.workers.dev`.
 
 ---
 
@@ -574,7 +574,7 @@ How it works: a small relay server on Cloudflare's free plan passes the messages
 
 Answer these in any order. Each one unblocks part of the build.
 
-- **Online play defaults (section 12d, asked 2026-11-13):** keep Nearby alongside Online? Room list or type the room name? 4-digit passcode? Cloudflare or the Chromebox? The plan uses: yes, list, 4 digits, Cloudflare. Needed before slice O2.
+- **Online play defaults (section 12d, asked 2026-11-13):** answered 2026-11-13: keep Nearby, room list, 4-digit passcode, Cloudflare. Slice O2 can start.
 
 (2026-11-07 20:38: the multiplayer questions were answered; see section 12 and Decided.)
 

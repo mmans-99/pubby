@@ -923,7 +923,7 @@ Acceptance: run `playthrough.py` and `solo_check.py --slice-d` before and after,
 
 ---
 
-## 9r. Online play (rooms over the internet): build guide (PLAN, user 2026-11-13: "write up a detailed plan for every step ... so I can code it with haiku"; slice O1, the server, BUILT 2026-11-13 as 2.17.0, not pushed; O2 and O3 not built)
+## 9r. Online play (rooms over the internet): build guide (PLAN, user 2026-11-13: "write up a detailed plan for every step ... so I can code it with haiku"; slice O1, the server, PUSHED 2026-11-13 as 2.17.0 and fixed in 2.17.1; the deploy is live; O2 and O3 not built)
 
 Written for any model, Haiku included. Read the whole section once before starting a slice. The spec (what the player sees) is `PROJECT.md` 12d. Do one slice at a time. Every slice follows `CLAUDE.md` (checks, a test build, the user's phone test and "push" before committing).
 
@@ -956,7 +956,7 @@ Checked 2026-11-13 on developers.cloudflare.com (Workers and Durable Objects pri
 - Over a free limit, the extra operations fail with an error. **No bill.** The app must show a plain message (9r.6) and point to Nearby.
 - A Cloudflare free account needs no card.
 
-**Open WebSockets (answer, checked 2026-11-13 in slice O1):** Cloudflare publishes no cap on open WebSockets for the free plan. The Hibernatable WebSockets API allows up to 32,768 connections per Durable Object instance, and one room has at most 8 phones, so the room limit is not the constraint. Cloudflare's network page lists the free plan's concurrent connections only as "Low (hobby projects)", with no number. **Still to check** on the dashboard after the first deploy (9r.4 step 7): the Durable Objects metrics for the free plan.
+**Open WebSockets (answer, checked 2026-11-13 in slice O1):** Cloudflare publishes no cap on open WebSockets for the free plan. The Hibernatable WebSockets API allows up to 32,768 connections per Durable Object instance, and one room has at most 8 phones, so the room limit is not the constraint. Cloudflare's network page lists the free plan's concurrent connections only as "Low (hobby projects)", with no number. **Still to check** on the dashboard (9r.4 step 7): the Durable Objects metrics for the free plan. The first deploy has gone out, so this can be checked now.
 
 **Message budget (estimate, keep it true while building):**
 - Each phone sends the text `ping` every 25 seconds. The relay answers `pong` with Cloudflare's auto-response, which does not wake the room. 8 phones for an hour ≈ 1,150 pings ≈ 58 billed requests (if auto-response pings are billed at all; check).
@@ -1208,7 +1208,7 @@ jobs:
 
 The app (`pages.yml`) and the server deploy separately. A push that changes both deploys both. The server must accept the previous app version's frames for as long as phones may still run it; with `RELAY_PROTOCOL` unchanged, that's automatic. If the protocol ever has to change, bump `RELAY_PROTOCOL` and have the server answer the old one with `protocol` so the app says "Update Pubby".
 
-### 9r.4 The user's one-time Cloudflare setup (do this before slice O1 is pushed)
+### 9r.4 The user's one-time Cloudflare setup (done 2026-11-13: subdomain `mmans99`, token and Account ID saved as GitHub secrets)
 
 Give the user these steps when slice O1 is ready to push. They're written for a phone or a computer browser. About 10 minutes.
 
@@ -1374,7 +1374,7 @@ Screens are in `PROJECT.md` 12d. Code shape:
 5. `.github/workflows/server.yml`.
 6. `package.json` version 2.17.1 (rule 8; no screen changes yet).
 7. Docs: this section's status, `TODO.md`, `DEVLOG.md` (results), `PROJECT.md` 12d status.
-8. **Test for the user (doc rule 5: nothing to play yet, say so):** after the user does 9r.4 and says "push", push; check the Actions tab with the user; the user opens `/health` on their phone. Also check the free-plan WebSocket question in 9r.1 and write the answer there.
+8. **Test for the user (doc rule 5: nothing to play yet, say so):** done up to the deploy: the push went out, the first deploy failed on type errors, and 2.17.1 deployed green. Still open: the user opens `https://pubby-rooms.mmans99.workers.dev/health` on their phone (expect `{"ok":true,"protocol":1}`), and the free-plan WebSocket question in 9r.1 is still to check on the dashboard.
 
 #### Slice O2: online rooms in the app (version 2.18)
 

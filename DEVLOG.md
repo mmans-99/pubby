@@ -22,9 +22,14 @@ Newest entries at the top. One entry per session, added before each commit.
 - Workers subdomain: `mmans99` (the server address will be `https://pubby-rooms.mmans99.workers.dev`).
 - GitHub secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` added.
 
+**Later the same session**
+- The 2.17.1 deploy went green.
+- The user agreed to the four defaults: keep Nearby, room list, 4-digit passcode, Cloudflare. Recorded in PROJECT.md section 12d.
+- Docs brought up to date: CODE.md 9r header, 9r.1, 9r.4, 9r.8 step 8; TODO.md; PROJECT.md.
+
 **Next steps**
-- Check the deploy; if it fails again, send the error lines.
-- Slice O2 (online rooms in the app) still waits on the four defaults in PROJECT.md and the server address in the app.
+- The user opens `/health` on their phone (expect `{"ok":true,"protocol":1}`).
+- Slice O2 (online rooms in the app, 2.18) can start in a new chat: read CODE.md 9r.5 and 9r.8; the server address is `https://pubby-rooms.mmans99.workers.dev`.
 
 ---
 
