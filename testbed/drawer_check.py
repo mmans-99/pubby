@@ -10,7 +10,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from solo_check import BOT, check, log_len, new_page, report, start_solo  # noqa: E402
+from solo_check import BOT, advance, check, log_len, new_page, report, start_solo  # noqa: E402
 from playwright.sync_api import sync_playwright  # noqa: E402
 
 
@@ -39,7 +39,7 @@ def main():
         before = log_len(page)
         for _ in range(40):
             page.evaluate('cfg => window.pubbyBot.step(cfg)', cfg)
-            page.wait_for_timeout(100)
+            advance(page, 100)  # the fake clock (solo_check.py, 9o.1) only moves when advanced
             if log_len(page) > before + 15:
                 break
         check(log_len(page) > before, 'the game moved on while the sheet was open')

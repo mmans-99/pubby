@@ -32,9 +32,10 @@ test('following: plays low under the top card when someone after me may be void 
     leader: 'p3',
     turn: 'p1',
     plays: [{ player: 'p3', cardId: 'hearts-9' }],
-    events: [START, playOf('hearts-9', 'p3'), { type: 'missingSuitDeclared', player: 'p2', suits: ['hearts'] }],
+    events: [START, playOf('hearts-9', 'p3')],
     personality: 'counter',
   });
+  p.memory.voids.p2!.add('hearts'); // known void (a slap shows it; missing suits are secret)
   // My 10 would be the top card: I play my highest card under 9, which is the 3.
   assert.equal(cardOf(chooseCard(p.seen, p.memory, p.persona, seededRng(1))), 'hearts-3');
 });
@@ -90,13 +91,13 @@ test('leading: with a single joker and every suit risky, a joker can be led', ()
     hands: { p1: cards('joker-1', 'clubs-9', 'hearts-8'), p2: cards('diamonds-2'), p3: cards('spades-3') },
     leader: 'p1',
     turn: 'p1',
-    events: [
-      START,
-      { type: 'missingSuitDeclared', player: 'p2', suits: ['clubs', 'hearts'] },
-      { type: 'missingSuitDeclared', player: 'p3', suits: ['clubs', 'hearts'] },
-    ],
+    events: [START],
     jokers: true,
   });
+  for (const who of ['p2', 'p3'] as const) {
+    p.memory.voids[who]!.add('clubs');
+    p.memory.voids[who]!.add('hearts');
+  }
   // Reckless scales every risk above 0.7, so a joker lead is chosen.
   const move = chooseCard(p.seen, p.memory, { level: 'normal', personality: 'reckless' }, seededRng(1)) as { type: string; cardId: string };
   assert.equal(move.type, 'playCard');

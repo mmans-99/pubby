@@ -366,7 +366,6 @@ function popupsFor(s: Session, events: readonly SessionEvent[]): Popup[] {
   const out: Popup[] = [];
   const end = events.find((e) => e.type === 'roundEnded');
   const lastTwo = end && end.type === 'roundEnded' ? end.finishingOrder.slice(-2) : [];
-  const missing = events.filter((e) => e.type === 'missingSuitDeclared');
   for (const e of events) {
     switch (e.type) {
       case 'slapped':
@@ -465,15 +464,13 @@ function popupsFor(s: Session, events: readonly SessionEvent[]): Popup[] {
         break;
       case 'leaderChosen': {
         const who = nameOf(s, e.leader);
-        const lines = missing.map((m) => m.type === 'missingSuitDeclared'
-          ? `${nameOf(s, m.player)}: no ${m.suits.map((x) => SUIT_SYMBOL[x]).join(' ')}`
-          : '');
+        // Secret suits (2026-11-13): the pop-up says why, never which suit is missing.
         const why =
           e.reason === 'missingSuit' ? 'Missing a suit'
           : e.reason === 'reactionTap' ? 'Slowest in Reaction Tap'
           : e.reason === 'host' ? 'Host leads round 1'
           : '';
-        out.push({ kind: 'info', icon: 'play', title: `${who} leads`, text: [...lines, why].filter(Boolean).join(' · '), ms: LEAD_MS });
+        out.push({ kind: 'info', icon: 'play', title: `${who} leads`, text: why, ms: LEAD_MS });
         break;
       }
       default:

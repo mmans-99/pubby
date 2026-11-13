@@ -198,7 +198,9 @@
       remaining: shuffledDeck.slice(pos),
       hands,
       mode,
-      nextSeat: null
+      nextSeat: null,
+      lastSeat: null,
+      lap: []
     };
   }
   function isDealComplete(state) {
@@ -210,11 +212,19 @@
   function giveTopCard(state, seat) {
     const [top2, ...rest] = state.remaining;
     if (!top2) throw new Error("No cards left to deal");
+    const lap = [...(state.lap ?? []).filter((x) => x !== seat), seat];
     return {
       ...state,
       remaining: rest,
-      hands: { ...state.hands, [seat]: [...state.hands[seat] ?? [], top2] }
+      hands: { ...state.hands, [seat]: [...state.hands[seat] ?? [], top2] },
+      lastSeat: seat,
+      lap: lap.length >= state.seats.length ? [] : lap
     };
+  }
+  function lockedSeats(state) {
+    const locked = new Set(state.lap ?? []);
+    if (state.lastSeat) locked.add(state.lastSeat);
+    return state.seats.filter((x) => locked.has(x));
   }
   function nextClockwise(state, seat) {
     const i = state.seats.indexOf(seat);
@@ -230,7 +240,9 @@
   function autoDealStep(state) {
     if (state.mode !== "auto") throw new Error("Not in auto deal mode");
     if (state.nextSeat === null) throw new Error("Auto deal has not started");
-    const seat = state.nextSeat;
+    const locked = lockedSeats(state);
+    let seat = state.nextSeat;
+    for (let i = 0; i < state.seats.length && locked.includes(seat); i++) seat = nextClockwise(state, seat);
     const dealt = giveTopCard(state, seat);
     return { ...dealt, nextSeat: nextClockwise(dealt, seat) };
   }
@@ -242,6 +254,9 @@
   function manualDealCard(state, seat) {
     if (state.mode !== "manual") throw new Error("Not in manual deal mode");
     assertSeat(state, seat);
+    if (lockedSeats(state).includes(seat)) {
+      throw new Error(seat === state.lastSeat ? "The next card has to go to someone else" : "Everyone gets a card before anyone gets another");
+    }
     return giveTopCard(state, seat);
   }
 
@@ -298,6 +313,10 @@
       else no++;
     }
     if (yes + no > playerCount) throw new Error("More ballots than players");
+    if (playerCount === 2) {
+      if (no > 0) return "failed";
+      return yes === 2 ? "passed" : "hostDecides";
+    }
     if (yes * 2 > playerCount) return "passed";
     if (no * 2 > playerCount) return "failed";
     return "hostDecides";
@@ -448,12 +467,13 @@
   function legalCards(state, player) {
     if (state.over || state.turn !== player) return [];
     const hand = handOf(state, player);
-    const led = state.trick.ledSuit;
-    if (led === null) return hand.slice();
-    const following = hand.filter((c) => isStandard(c) && c.suit === led);
     const jokers = hand.filter(isJoker);
+    const normal = hand.filter(isStandard);
+    const led = state.trick.ledSuit;
+    if (led === null) return [...normal, ...jokers];
+    const following = normal.filter((c) => c.suit === led);
     if (following.length > 0) return [...following, ...jokers];
-    return hand.slice();
+    return [...normal, ...jokers];
   }
   function playCard(state, player, cardId) {
     if (state.over) throw new Error("The round is over");
@@ -468,32 +488,22 @@
     const events = [];
     const hands = { ...state.hands, [player]: hand.filter((c) => c.id !== cardId) };
     const trick = state.trick;
-    const finalTwo = trick.participants.length === 2;
     if (isJoker(card)) {
       const asLeader = trick.plays.length === 0;
       events.push({ type: "jokerPlayed", player, asLeader });
       const nextTrick2 = { ...trick, acted: [...trick.acted, player] };
       const s2 = { ...state, hands, trick: nextTrick2, usedJokers: [...state.usedJokers, card] };
-      if (finalTwo && (hands[player] ?? []).length === 0 && trick.acted.length === 0) {
-        const other = otherOf(trick.participants, player);
-        const otherHand = hands[other] ?? [];
-        const order = [...state.finished, player, other];
-        if (otherHand.length === 1 && isJoker(otherHand[0])) {
-          const otherJoker = otherHand[0];
-          events.push({ type: "jokerPlayed", player: other, asLeader: false });
-          const both = {
-            ...s2,
-            hands: { ...hands, [other]: [] },
-            usedJokers: [...s2.usedJokers, otherJoker]
-          };
-          return endRound(both, events, order, state.wastePile, { sharedSecondLast: [player, other] });
-        }
-        return endRound(s2, events, order, state.wastePile);
-      }
       return finishTurn(s2, player, events);
     }
     const std = card;
     events.push({ type: "cardPlayed", player, card: std });
+    const rest = hands[player] ?? [];
+    let base = state;
+    if (rest.length > 0 && rest.every(isJoker)) {
+      hands[player] = [];
+      base = { ...state, usedJokers: [...state.usedJokers, ...rest] };
+      events.push({ type: "jokersDiscarded", player, count: rest.length });
+    }
     if (trick.ledSuit === null) {
       const nextTrick2 = {
         ...trick,
@@ -501,7 +511,7 @@
         plays: [{ player, card: std }],
         acted: [...trick.acted, player]
       };
-      return finishTurn({ ...state, hands, trick: nextTrick2 }, player, events);
+      return finishTurn({ ...base, hands, trick: nextTrick2 }, player, events);
     }
     const plays = [...trick.plays, { player, card: std }];
     if (std.suit !== trick.ledSuit) {
@@ -510,10 +520,10 @@
       const afterHands = { ...hands, [high.player]: [...hands[high.player] ?? [], ...pickup] };
       events.push({ type: "slapped", slapper: player, slapped: high.player, cardsPickedUp: pickup.length });
       const resolvedTrick = { ...trick, plays, acted: [...trick.acted, player] };
-      return resolveTrick({ ...state, hands: afterHands, trick: resolvedTrick }, high.player, [], events);
+      return resolveTrick({ ...base, hands: afterHands, trick: resolvedTrick }, high.player, [], events);
     }
     const nextTrick = { ...trick, plays, acted: [...trick.acted, player] };
-    return finishTurn({ ...state, hands, trick: nextTrick }, player, events);
+    return finishTurn({ ...base, hands, trick: nextTrick }, player, events);
   }
   function finishTurn(state, player, events) {
     const trick = state.trick;
@@ -537,12 +547,6 @@
     const emptied = pair.filter((p) => handOf(state, p).length === 0);
     const playOf = (p) => trick.plays.find((x2) => x2.player === p);
     if (trick.plays.length === 0) {
-      if (emptied.length === 2) {
-        const [a, b] = trick.acted;
-        return endRound(state, events, [...state.finished, a, b], state.wastePile, {
-          sharedSecondLast: [a, b]
-        });
-      }
       return resolveTrick(state, trick.acted[0], [], events);
     }
     if (emptied.length === 0) {
@@ -735,7 +739,8 @@
       players: setup.players.map((p) => ({
         id: p.id,
         profileName: p.profileName.trim(),
-        sessionName: p.sessionName?.trim() || p.profileName.trim()
+        sessionName: p.sessionName?.trim() || p.profileName.trim(),
+        ...p.computer ? { computer: true } : {}
       })),
       order: ids,
       jokerRuleEnabled,
@@ -746,7 +751,7 @@
       previous: null,
       dealer: setup.hostId,
       deal: null,
-      dealMode: "auto",
+      dealMode: "manual",
       hands: {},
       hiddenDecks: {},
       reshuffleUsed: false,
@@ -795,8 +800,8 @@
       pauseRequests: []
     };
     const dealer = dealerFor(roundSetup(s2));
-    const deal = shuffleAndStartDeal(roundSetup(s2), rng2, "auto");
-    s2 = { ...s2, dealer, deal, dealMode: "auto", hiddenDecks: deal.hiddenDecks };
+    const deal = shuffleAndStartDeal(roundSetup(s2), rng2, "manual");
+    s2 = { ...s2, dealer, deal, dealMode: "manual", hiddenDecks: deal.hiddenDecks };
     out.emit(s2, { type: "roundStarted", round: s2.round, dealer, ultimate: s2.ultimateRound });
     return s2;
   }
@@ -856,6 +861,7 @@
         const tally = tallyVote(v.ballots, s2.order.length);
         if (tally === "passed") return resolveVote(s2, true, "majority", rng2, out);
         if (tally === "failed") return resolveVote(s2, false, "majority", rng2, out);
+        if (s2.order.length === 2) return resolveVote(s2, false, "majority", rng2, out);
         return needHost(s2, out);
       }
       case "hostDecides": {
@@ -926,10 +932,11 @@
       // ----- Take-cards request -----
       case "requestTake": {
         assertPhase(s2, "playing");
+        if (!betweenTricks(s2.play)) fail("You can only ask before a trick starts");
         const why = takeAllowed(s2.play, a.by, a.target);
         if (why) fail(why);
-        if (s2.takeRequests.some((r) => r.requester === a.by && r.target === a.target)) {
-          fail(`You have already asked ${nameOf(s2, a.target)}`);
+        if (s2.takeRequests.some((r) => r.requester === a.by)) {
+          fail("You can only ask one player at a time");
         }
         out.emit(s2, { type: "takeRequested", requester: a.by, target: a.target });
         return { ...s2, takeRequests: [...s2.takeRequests, { requester: a.by, target: a.target, agreed: false }] };
@@ -939,7 +946,13 @@
         const req = s2.takeRequests.find((r) => r.requester === a.requester && r.target === a.by && !r.agreed);
         if (!req) fail("No take-cards request to answer");
         out.emit(s2, { type: "takeAnswered", requester: a.requester, target: a.by, accepted: a.accept });
-        const rest = s2.takeRequests.filter((r) => r !== req);
+        let rest = s2.takeRequests.filter((r) => r !== req);
+        if (a.accept) {
+          for (const r of rest.filter((x) => x.target === a.by && !x.agreed)) {
+            out.emit(s2, { type: "takeAnswered", requester: r.requester, target: a.by, accepted: false });
+          }
+          rest = rest.filter((x) => x.target !== a.by);
+        }
         const takeRequests = a.accept ? [...rest, { ...req, agreed: true }] : rest;
         return processTakes({ ...s2, takeRequests }, out);
       }
@@ -1000,7 +1013,7 @@
         assertHost(s2, a.by, "end the session");
         assertPhase(s2, "results");
         if (s2.vote) fail("Finish the vote first");
-        return endSession(s2, "hostEnded", out);
+        return endOrOfferDraw(s2, "hostEnded", 1, out);
     }
   }
   function dealerOnly(s2, by) {
@@ -1020,7 +1033,7 @@
     if (s22.reshuffleUsed) return afterReshuffleWindow(s22, out);
     return { ...s22, phase: "reshuffle" };
   }
-  function callVote(s2, by, kind, value, out) {
+  function callVote(s2, by, kind, value, out, draw) {
     if (s2.vote) fail("A vote is already in progress");
     if (kind === "reshuffle") {
       if (s2.phase !== "reshuffle") fail("A reshuffle vote can only be called after the deal, before the round begins");
@@ -1033,17 +1046,38 @@
         fail("A target vote can only happen before round 1 starts or on the results screen");
       }
       if (value === null || !Number.isInteger(value) || value < 1) fail("The target must be a whole number of points, 1 or more");
+      const min = minimumTarget(s2);
+      if (value < min) fail(`The target can't be lower than the highest score (${min})`);
     } else {
       if (s2.phase !== "results") fail("This vote can only happen on the results screen");
       if (s2.ultimateRound) fail("The Ultimate Round has already been agreed");
       value = null;
     }
     out.emit(s2, { type: "voteCalled", kind, by, value });
+    const ballots = s2.order.length === 2 && by !== null ? { [by]: "yes" } : {};
     return {
       ...s2,
       reshuffleUsed: kind === "reshuffle" ? true : s2.reshuffleUsed,
-      vote: { kind, calledBy: by, ballots: {}, value, awaitingHost: false }
+      vote: { kind, calledBy: by, ballots, value, awaitingHost: false, ...draw ? { draw } : {} }
     };
+  }
+  function highestScore(s2) {
+    return Math.max(0, ...s2.order.map((p) => s2.scores[p] ?? 0));
+  }
+  function minimumTarget(s2) {
+    return Math.max(1, highestScore(s2));
+  }
+  function drawnTop(s2) {
+    if (s2.ultimateLabels?.winner) return [];
+    const f = finalStandings(s2);
+    return f.winners.length > 1 ? f.winners : [];
+  }
+  function endOrOfferDraw(s2, reason, offer, out) {
+    const tied = drawnTop(s2);
+    if (tied.length === 0) return endSession(s2, reason, out);
+    if (offer === 1) out.emit(s2, { type: "drawAtEnd", players: tied });
+    else out.emit(s2, { type: "drawCoward", players: tied });
+    return callVote({ ...s2, phase: "results" }, null, "ultimate", null, out, offer);
   }
   function targetVoteAllowed(s2) {
     if (s2.vote || s2.paused || s2.target !== null || s2.ultimateRound) return false;
@@ -1062,9 +1096,9 @@
     switch (v.kind) {
       case "reshuffle": {
         if (!result) return afterReshuffleWindow(s22, out);
-        const deal = shuffleAndStartDeal(roundSetup(s22), rng2, "auto");
+        const deal = shuffleAndStartDeal(roundSetup(s22), rng2, "manual");
         out.emit(s22, { type: "reshuffled", dealer: s22.dealer });
-        return { ...s22, phase: "dealing", deal, dealMode: "auto", hands: {}, hiddenDecks: deal.hiddenDecks };
+        return { ...s22, phase: "dealing", deal, dealMode: "manual", hands: {}, hiddenDecks: deal.hiddenDecks };
       }
       case "target": {
         if (!result) return s22;
@@ -1072,7 +1106,9 @@
       }
       case "ultimate": {
         if (result) return { ...s22, ultimateRound: true };
-        if (v.calledBy === null) return endSession(s22, "ultimateVoteFailedAtTarget", out);
+        if (v.draw === 1) return endOrOfferDraw(s22, "drawDeclined", 2, out);
+        if (v.draw === 2) return endSession(s22, "drawDeclined", out);
+        if (v.calledBy === null) return endOrOfferDraw(s22, "ultimateVoteFailedAtTarget", 2, out);
         return s22;
       }
     }
@@ -1090,7 +1126,7 @@
   }
   function decideLeaderStep(s2, out) {
     for (const m of missingSuitPlayers(s2.order, s2.hands)) {
-      out.emit(s2, { type: "missingSuitDeclared", player: m.player, suits: m.suits });
+      out.emit(s2, { type: "missingSuitDeclared", player: m.player });
     }
     const d = decideLeader(roundSetup(s2), s2.hands);
     if (d.kind === "leader") return beginPlay(s2, d.leader, d.reason, out);
@@ -1380,6 +1416,7 @@
       savedAt: savedAt.toISOString(),
       playerCount: s2.order.length,
       players: s2.players,
+      vsComputer: s2.players.some((p) => p.computer === true),
       hostId: s2.hostId,
       jokerRuleEnabled: s2.jokerRuleEnabled,
       jokerTotal: s2.jokerTotal,
@@ -1529,10 +1566,9 @@
     );
     return rows(lines) + "\r\n";
   }
-  function profileCsv(p) {
+  function profileLines(p) {
     const r = profileRivals(p);
-    return rows([
-      ["Pubby profile", p.profileName],
+    return [
       ["Games played", p.gamesPlayed],
       ["Points", p.points],
       ["Round wins", p.roundWins],
@@ -1544,7 +1580,14 @@
       ["Slaps given", p.slapsGiven],
       ["Slapped by most", r.slappedByMost.join(" & ") || "\u2014"],
       ["Slapped most", r.slappedMost.join(" & ") || "\u2014"]
-    ]) + "\r\n";
+    ];
+  }
+  function profileCsv(p, vs) {
+    let out = rows([["Pubby profile", p.profileName], ...profileLines(p)]) + "\r\n";
+    if (vs && vs.gamesPlayed > 0) {
+      out += rows([[], ["Vs computer", vs.profileName], ...profileLines(vs)]) + "\r\n";
+    }
+    return out;
   }
 
   // testbed/main.ts
@@ -1739,7 +1782,7 @@
       case "swapped":
         return e.count ? `${nm(e.player)} swaps ${e.count} card(s).` : `${nm(e.player)} keeps their hand.`;
       case "missingSuitDeclared":
-        return `${nm(e.player)} declares missing: ${e.suits.join(", ")}.`;
+        return `${nm(e.player)} is missing a suit (secret).`;
       case "reactionTapStarted":
         return `Reaction Tap: ${names(e.players)}.`;
       case "reactionTapped":

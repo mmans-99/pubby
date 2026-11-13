@@ -54,6 +54,14 @@
     const no = buttons().find((b) => b.textContent.trim() === 'NO');
     if (yes && no) return cfg.voteYes ? click(yes, 'vote yes') : click(no, 'vote no');
 
+    // Take-cards request asking the person (PROJECT.md 4.2): answer like a person would, half the time each way.
+    if (visible(document.querySelector('.take-ask'))) {
+      const give = buttons().filter((b) => b.classList.contains('vote-yes'));
+      const refuse = buttons().find((b) => b.classList.contains('vote-no'));
+      if (give.length && Math.random() < 0.5) return click(pick(give), 'take request: give cards');
+      if (refuse) return click(refuse, 'take request: refuse');
+    }
+
     // Game over.
     if (/Final standings/.test(text()) && byText('Back to home')) {
       if (cfg.stayAtEnd) return 'GAME OVER';

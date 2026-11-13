@@ -3,6 +3,8 @@
 //   npx tsx testbed/ai_arena.ts [--games N] [--players 2..8] [--levels normal,easy,random]
 //                               [--rounds R] [--seed S]
 //   npx tsx testbed/ai_arena.ts --bars     (the pass bars in CODE.md 9m.4, 2000 games each)
+//   add --workers N (default: the number of CPU cores). Games are split into N chunks, each run
+//   in its own process; each game keeps its seed, so the results do not depend on N (CODE.md 9o.5).
 //
 // Output is JSON: games finished, refused moves (must be 0), crashed moves
 // (must be 0), average place by level and personality (place 1 = first out,
@@ -10,6 +12,9 @@
 // The arena does the host's jobs (start, advance, end, auto deal). The bots
 // only ever get seenBy (tests/ai/botgame.ts).
 
+import { execFile } from 'node:child_process';
+import { cpus } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import { playBotGame, type BotGameResult, type SeatLevel } from '../tests/ai/botgame.ts';
 
 interface Args {
@@ -19,6 +24,17 @@ interface Args {
   rounds: number;
   seed: number;
   bars: boolean;
+  workers: number;
+}
+
+/** One chunk of games: game numbers from `from` (inclusive) to `to` (exclusive). */
+interface Job {
+  players: number;
+  levels: SeatLevel[];
+  rounds: number;
+  seedBase: number;
+  from: number;
+  to: number;
 }
 
 function parseArgs(argv: string[]): Args {
@@ -34,6 +50,7 @@ function parseArgs(argv: string[]): Args {
     rounds: Number(get('rounds') ?? 3),
     seed: Number(get('seed') ?? 1),
     bars: argv.includes('--bars'),
+    workers: Math.max(1, Number(get('workers') ?? cpus().length)),
   };
 }
 
@@ -112,17 +129,53 @@ function report(t: Totals, extra: Record<string, unknown> = {}): Record<string, 
   };
 }
 
-/** Runs `games` games with a fixed seat pattern; returns totals. */
-function runMany(games: number, players: number, levels: SeatLevel[], rounds: number, seedBase: number): Totals {
+/** Plays the games of one chunk, in order. */
+function runGames(job: Job): BotGameResult[] {
+  const out: BotGameResult[] = [];
+  for (let g = job.from; g < job.to; g++) {
+    out.push(playBotGame({ players: job.players, levels: job.levels, rounds: job.rounds, seed: job.seedBase + g }));
+  }
+  return out;
+}
+
+/** Runs one chunk in a child process (same file, child mode) and reads its results back. */
+function runChunk(job: Job): Promise<BotGameResult[]> {
+  return new Promise((resolve, reject) => {
+    const self = fileURLToPath(import.meta.url);
+    execFile(process.execPath, ['--import', 'tsx', self, '--child', JSON.stringify(job)], { maxBuffer: 1 << 30 }, (err, stdout) => {
+      if (err) reject(err);
+      else resolve(JSON.parse(stdout) as BotGameResult[]);
+    });
+  });
+}
+
+/**
+ * Runs `games` games with a fixed seat pattern; returns totals. The games are split into
+ * contiguous chunks, one per worker, and absorbed in game order, so the totals match a
+ * single-worker run exactly (each game keeps its own seed).
+ */
+async function runMany(games: number, players: number, levels: SeatLevel[], rounds: number, seedBase: number, workers = 1): Promise<Totals> {
   const t = emptyTotals();
-  for (let g = 0; g < games; g++) absorb(t, playBotGame({ players, levels, rounds, seed: seedBase + g }));
+  const n = Math.max(1, Math.min(workers, games));
+  const jobs: Job[] = [];
+  for (let w = 0; w < n; w++) {
+    jobs.push({ players, levels, rounds, seedBase, from: Math.floor((games * w) / n), to: Math.floor((games * (w + 1)) / n) });
+  }
+  const parts = n === 1 ? [runGames(jobs[0]!)] : await Promise.all(jobs.map(runChunk));
+  for (const part of parts) for (const r of part) absorb(t, r);
   return t;
 }
 
-function main(): void {
-  const args = parseArgs(process.argv.slice(2));
+async function main(): Promise<void> {
+  const argv = process.argv.slice(2);
+  const child = argv.indexOf('--child');
+  if (child !== -1) {  // child mode: play one chunk and print its results as JSON
+    process.stdout.write(JSON.stringify(runGames(JSON.parse(argv[child + 1] ?? '{}') as Job)));
+    return;
+  }
+  const args = parseArgs(argv);
   if (!args.bars) {
-    const t = runMany(args.games, args.players, args.levels, args.rounds, args.seed);
+    const t = await runMany(args.games, args.players, args.levels, args.rounds, args.seed, args.workers);
     console.log(JSON.stringify(report(t, { players: args.players, levels: args.levels, rounds: args.rounds }), null, 2));
     return;
   }
@@ -130,28 +183,28 @@ function main(): void {
   // Pass bars (CODE.md 9m.4), slice A: 2000 four-player games each.
   const N = 2000;
   const rounds = args.rounds;
-  const mixed = runMany(N, 4, ['normal', 'random'], rounds, args.seed);
+  const mixed = await runMany(N, 4, ['normal', 'random'], rounds, args.seed, args.workers);
   const normalAvg = mean(mixed.byLevel.get('normal'));
   const randomAvg = mean(mixed.byLevel.get('random'));
   const vsRandom = normalAvg !== null && randomAvg !== null ? Math.round((randomAvg - normalAvg) * 1000) / 1000 : null;
 
-  const versus = runMany(N, 4, ['normal', 'easy'], rounds, args.seed + 1_000_000);
+  const versus = await runMany(N, 4, ['normal', 'easy'], rounds, args.seed + 1_000_000, args.workers);
   const normalVsEasyAvg = mean(versus.byLevel.get('normal'));
   const easyAvg = mean(versus.byLevel.get('easy'));
   const vsEasy = normalVsEasyAvg !== null && easyAvg !== null ? Math.round((easyAvg - normalVsEasyAvg) * 1000) / 1000 : null;
 
-  const timing = runMany(200, 4, ['easy', 'normal'], rounds, args.seed + 2_000_000);
+  const timing = await runMany(200, 4, ['easy', 'normal'], rounds, args.seed + 2_000_000, args.workers);
   const p95 = (level: string): number | null => {
     const ms = (timing.decisionMs.get(level) ?? []).slice().sort((a, b) => a - b);
     return percentile(ms, 0.95);
   };
 
   // Slice D (Hard): 2000 four-player games, 2 Hard and 2 Normal seats; and 200 games for timing.
-  const hardVersus = runMany(N, 4, ['hard', 'normal'], rounds, args.seed + 3_000_000);
+  const hardVersus = await runMany(N, 4, ['hard', 'normal'], rounds, args.seed + 3_000_000, args.workers);
   const hardAvg = mean(hardVersus.byLevel.get('hard'));
   const normalVsHardAvg = mean(hardVersus.byLevel.get('normal'));
   const vsNormal = hardAvg !== null && normalVsHardAvg !== null ? Math.round((normalVsHardAvg - hardAvg) * 1000) / 1000 : null;
-  const hardTiming = runMany(200, 4, ['hard', 'normal'], rounds, args.seed + 4_000_000);
+  const hardTiming = await runMany(200, 4, ['hard', 'normal'], rounds, args.seed + 4_000_000, args.workers);
   const hardP95 = percentile((hardTiming.decisionMs.get('hard') ?? []).slice().sort((a, b) => a - b), 0.95);
 
   const refusedAll = mixed.refused + versus.refused + timing.refused + hardVersus.refused + hardTiming.refused;
@@ -180,4 +233,7 @@ function main(): void {
   }, null, 2));
 }
 
-main();
+main().catch((err: unknown) => {
+  console.error(err);
+  process.exit(1);
+});

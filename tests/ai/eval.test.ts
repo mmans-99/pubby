@@ -13,11 +13,10 @@ test('pVoid is 1 for a known void with no known card of the suit', () => {
     hands: { p1: cards('hearts-3'), p2: cards('clubs-4', 'clubs-9'), p3: cards('spades-2') },
     leader: 'p1',
     turn: 'p1',
-    events: [
-      { type: 'roundStarted', round: 1, dealer: 'p1', ultimate: false },
-      { type: 'missingSuitDeclared', player: 'p2', suits: ['hearts'] },
-    ],
+    events: [{ type: 'roundStarted', round: 1, dealer: 'p1', ultimate: false }],
   });
+  // p2 is known void in hearts (missing suits are secret, so a slap is how it becomes known).
+  p.memory.voids.p2!.add('hearts');
   assert.equal(pVoid(p.memory, p.seen, 'p2', 'hearts'), 1);
 });
 
@@ -93,10 +92,10 @@ test('pSlapAfterMe uses only the players still to play', () => {
     events: [
       { type: 'roundStarted', round: 1, dealer: 'p1', ultimate: false },
       { type: 'cardPlayed', player: 'p3', card: standard('hearts-8') },
-      { type: 'missingSuitDeclared', player: 'p2', suits: ['hearts'] },
     ],
   });
-  // p2 is the only player still to play, and is known void in hearts.
+  // p2 is the only player still to play, and is known void in hearts (a slap shows it).
+  p.memory.voids.p2!.add('hearts');
   assert.equal(pSlapAfterMe(p.memory, p.seen, 'hearts'), 1);
 });
 

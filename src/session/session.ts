@@ -569,7 +569,8 @@ function afterReshuffleWindow(s: Session, out: Out): Session {
 
 function decideLeaderStep(s: Session, out: Out): Session {
   for (const m of missingSuitPlayers(s.order, s.hands)) {
-    out.emit(s, { type: 'missingSuitDeclared', player: m.player, suits: m.suits });
+    // Secret: the suit is never logged or sent (PROJECT.md 5). The leader still follows the real hands.
+    out.emit(s, { type: 'missingSuitDeclared', player: m.player });
   }
   const d = decideLeader(roundSetup(s), s.hands);
   if (d.kind === 'leader') return beginPlay(s, d.leader, d.reason, out);

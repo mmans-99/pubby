@@ -4,6 +4,33 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (midday) — Version 2.15.0 built: faster checks (9o), secret missing suits (9p); not pushed
+
+**Done (local only: not committed, not pushed; waiting for the user's phone test and "push")**
+- **9o.1 Fake clock:** `solo_check.py`, `drawer_check.py` (through `solo_check`) and `playthrough.py` run on `page.clock` and move only when the script advances it (`advance()`, `page.clock.run_for`). `--real-time` keeps the old behaviour. Lobby, netgame and netvotes stay on real time (WebRTC). Sound and back/offline checks have no game timing to change.
+- **9o.2 Stuck-game check:** a game whose log stops growing for 30 real seconds fails with the screen headings, pop-up, the saved game's phase, turn, pending final two, vote, take requests and pause, plus a screenshot in `/tmp`. The first run caught a real stall (below).
+- **9o.3 Shorter games:** slice C and D games are one round each; slice D has one Mixed game (the "at least one Hard in 3 games" check dropped; `names.test.ts` covers Mixed giving Hard).
+- **9o.5 Arena `--workers N`:** games split into contiguous chunks, each run in a child process (same file, child mode). Each game keeps its seed. Check: `--games 100 --levels hard,normal` with 1 and 2 workers gave identical totals (games, finished, refused, crashed, average place by level, personality and seat, and decision call counts). The 100-game run went from 40 s to 24 s.
+- **9o.6 The All Easy stall:** the stall was in the test bot, not the app. `bot.js` never answered a take-cards request on the person's seat (the "wants your cards" panel), so the game waited forever. It shows up in the one-round Mixed game. Fixed in `bot.js`. `--slice-c` in fast mode passed 14 of 14 once after the fix; the 2.14 stall was not re-run in real time, so the bot fix is the likely cause, not a proven one.
+- **Test bot change:** answers the take-cards panel half the time each way.
+- **Lowered real-time waits (tried, reverted):** 20 ms pauses instead of 120/40 ms made slice D slower (10 min 36 s) and one game stopped before the 600 s limit. Reverted; nothing kept.
+- **9p Secret missing suits:** `missingSuitDeclared` carries only the player (`suits` is optional and read from old saves never). `decideLeaderStep` emits no suits. The leader pop-up says only the reason ("Missing a suit", "Slowest in Reaction Tap"), never a suit. Computer players learn nothing from the declaration (voids come from slaps only). `testbed/main.ts` log text updated. Tests: the memory test now expects nothing; `eval.test.ts` and `moves.test.ts` make the known void directly (`memory.voids`), with the same behaviour checked. New `tests/session/secret-suits.test.ts`: the logged event has no `suits` and the missing-suit leader really is missing a suit, over 8 rounds; and no logged event carries suits in whole rounds at 2, 3, 5 and 8 players.
+- **Docs:** `PROJECT.md` computer-player note; `CODE.md` 8 (check speed rule), 9e (2.15 history), 9m.3 table row, 9n/9o/9p status; `TODO.md` 2.15 list. Version 2.15.0 in `package.json`.
+
+**Checks (2.15.0 build)**
+- `npm run check` clean. `npm test` 227 of 227.
+- `npm run build` and `npm run testbed` done.
+- Browser checks (fast, fake clock): solo_check 32 of 32 (82 s); playthrough 53 of 53 (164 s); drawer 8 of 8 (1 s); back 14 of 14; offline 20 of 20; netvotes 30 of 30 (121 s); netgame 94 of 94 (489 s); lobby 67 of 67 (45 s); sound 44 of 44 (63 s).
+- Slice D timing: fast 44 s, 6 of 6 (one Mixed game); real time 314 s, 6 of 6. Earlier with 3 Mixed games and 2 rounds: fast 2 min 25 s, real time 9 min 7 s (both 11 of 11). Goal (under 3 min fast) met.
+- Arena `--bars` with 2 workers, after 9p: all 9 bars pass, 6400 of 6400 games finished, 0 refused, 0 crashed. Normal beats random by 1.398, Normal beats Easy by 0.526, Hard beats Normal by 0.25 (bar 0.15), P95 Easy 0.04 ms, Normal 0.05 ms, Hard 5.48 ms (bar 150 ms). 460 s. Before 9p (partly overlapping the edits, baseline only): 464 s.
+
+**Phone checklist (2.15)** in `CODE.md` 9n: missing-suit pop-up never names the suit; computer players taunt after pick-ups, going out, round losses, forfeits, takes; network game leader's phone never shows the suit.
+
+**Next:** user's phone test of 2.15.0, then "push".
+- Not done: rm the local `node_modules` symlink before any commit (it's a link to `/opt/npm-tools`; never commit it).
+
+---
+
 ## 2026-11-13 (late morning) — Version 2.14: antagonising reactions, slower lead pop-up; plan for 2.15
 
 **Done (pushed as 2.14.0 on the user's request, "Can you push it?"):**

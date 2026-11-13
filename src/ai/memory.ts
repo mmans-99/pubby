@@ -100,7 +100,7 @@ export function remember(m: Memory, events: readonly SessionEvent[], rng: Rng): 
         clearKnowledge(m);
         break;
       case 'missingSuitDeclared':
-        for (const suit of e.suits) m.voids[e.player]?.add(suit);
+        // Secret (PROJECT.md 5, 2026-11-13): nothing is learned here. Computer players learn voids from slaps only.
         break;
       case 'swapped':
         m.known[e.player]?.clear();

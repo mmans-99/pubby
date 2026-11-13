@@ -242,7 +242,7 @@ function logLine(entry: LogEntry): string | null {
     case 'reshuffled': return `${nm(e.dealer)} reshuffles and deals again.`;
     case 'reshuffleWindowClosed': return 'Host starts the round. Reshuffle vote no longer available.';
     case 'swapped': return e.count ? `${nm(e.player)} swaps ${e.count} card(s).` : `${nm(e.player)} keeps their hand.`;
-    case 'missingSuitDeclared': return `${nm(e.player)} declares missing: ${e.suits.join(', ')}.`;
+    case 'missingSuitDeclared': return `${nm(e.player)} is missing a suit (secret).`;
     case 'reactionTapStarted': return `Reaction Tap: ${names(e.players)}.`;
     case 'reactionTapped': return `${nm(e.player)} taps: ${e.falseStart ? 'FALSE START' : `${e.ms} ms`}.`;
     case 'reactionTapReplay': return `Tie: ${names(e.players)} replay.`;

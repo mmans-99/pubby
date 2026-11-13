@@ -27,6 +27,12 @@ GAMES = [
 
 checks = []
 
+# Fast mode (CODE.md 9o.1): the page runs on a fake clock that advances once per bot step.
+# Pass --real-time to play at the normal speed instead.
+FAST = '--real-time' not in sys.argv
+TICK_MS = 1000
+STALL_S = 30  # real seconds without a new log event before a game counts as stuck (9o.2)
+
 
 def check(ok, what):
     checks.append((bool(ok), what))
@@ -47,13 +53,31 @@ def setup_game(page, n, jokers):
     page.get_by_role('button', name=f'Start game · {n} players').click()
 
 
+def log_len(page):
+    raw = page.evaluate("localStorage.getItem('pubby.currentGame')")
+    return len(json.loads(raw)['session']['log']) if raw else -1
+
+
 def play_game(page, cfg, errors):
     page.evaluate(BOT)
     counts = {}
     stuck_since = None
     t0 = time.time()
+    last_len, last_grew, steps_seen = -2, time.time(), 0
     while time.time() - t0 < 900:
         action = page.evaluate('cfg => window.pubbyBot.step(cfg)', cfg)
+        if FAST:
+            page.clock.run_for(TICK_MS)
+        # 9o.2: a game whose log stops growing for 30 real seconds is stuck; say what the screen shows.
+        steps_seen += 1
+        if steps_seen % 20 == 0:
+            now_len = log_len(page)
+            if now_len != last_len:
+                last_len, last_grew = now_len, time.time()
+            elif time.time() - last_grew > STALL_S:
+                print(page.inner_text('body')[:1500])
+                check(False, f"{cfg['players']} players: game stalled at {now_len} log events ({action})")
+                raise SystemExit(1)
         key = action.split(' ')[0]
         counts[key] = counts.get(key, 0) + 1
         steps = sum(counts.values())
@@ -82,6 +106,8 @@ def main():
         browser = pw.chromium.launch()
         ctx = browser.new_context(viewport={'width': 390, 'height': 844}, has_touch=True, is_mobile=True, device_scale_factor=2)
         page = ctx.new_page()
+        if FAST:
+            page.clock.install()  # before goto: timers wait until the bot advances the clock
         errors = []
         page.on('pageerror', lambda e: errors.append(str(e)))
         page.on('console', lambda m: errors.append(m.text) if m.type == 'error' else None)

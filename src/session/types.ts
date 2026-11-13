@@ -219,7 +219,8 @@ export type SessionEvent =
   | { readonly type: 'reshuffled'; readonly dealer: PlayerId }
   | { readonly type: 'reshuffleWindowClosed' }
   | { readonly type: 'swapped'; readonly player: PlayerId; readonly count: number }
-  | { readonly type: 'missingSuitDeclared'; readonly player: PlayerId; readonly suits: readonly Suit[] }
+  // Secret (PROJECT.md 5, 2026-11-13): only the player is logged. `suits` is read from old saved games only.
+  | { readonly type: 'missingSuitDeclared'; readonly player: PlayerId; readonly suits?: readonly Suit[] }
   | { readonly type: 'reactionTapStarted'; readonly players: readonly PlayerId[] }
   | { readonly type: 'reactionTapped'; readonly player: PlayerId; readonly ms: number; readonly falseStart: boolean }
   | { readonly type: 'reactionTapReplay'; readonly players: readonly PlayerId[] }

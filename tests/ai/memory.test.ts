@@ -23,7 +23,7 @@ function play(player: string, id: string): SessionEvent {
 test('roundStarted resets everything for the new round', () => {
   const m = fresh();
   remember(m, [{ type: 'roundStarted', round: 1, dealer: 'p1', ultimate: false }, play('p2', 'hearts-9'), { type: 'trickResolved', nextLeader: 'p3' }], rng());
-  remember(m, [{ type: 'missingSuitDeclared', player: 'p3', suits: ['clubs'] }], rng());
+  remember(m, [{ type: 'missingSuitDeclared', player: 'p3' }], rng());
   remember(m, [{ type: 'roundStarted', round: 2, dealer: 'p2', ultimate: false }], rng());
   assert.equal(m.round, 2);
   assert.equal(m.played.size, 0);
@@ -34,10 +34,10 @@ test('roundStarted resets everything for the new round', () => {
   assert.equal(m.ledSuit, null);
 });
 
-test('missingSuitDeclared adds the suits to voids', () => {
+test('missingSuitDeclared adds nothing: missing suits are secret (PROJECT.md 5)', () => {
   const m = fresh();
-  remember(m, [{ type: 'missingSuitDeclared', player: 'p2', suits: ['hearts', 'spades'] }], rng());
-  assert.deepEqual([...m.voids.p2!].sort(), ['hearts', 'spades']);
+  remember(m, [{ type: 'missingSuitDeclared', player: 'p2' }], rng());
+  assert.equal(m.voids.p2!.size, 0);
 });
 
 test('swapped clears what is known about that player', () => {

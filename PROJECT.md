@@ -457,7 +457,7 @@ A computer player knows exactly what a person sitting in its seat could see or r
 - **Its own hand.** Never anyone else's, never the deck still to deal, never the hidden decks, never the waste pile order beyond what it saw.
 - **Every card played face up** in a trick (everyone at the table sees these).
 - **Cards a player picked up after a slap.** The trick was face up, so everyone saw which cards went into the slapped player's hand. A sharp person remembers that "Ben is holding the K♥ he picked up".
-- **Missing suits:** only shown by a slap (a player who slaps on hearts had no hearts at that moment, until they pick up hearts). The declaration at the start of the round is secret (section 5), so a computer player doesn't learn the suit from it.
+- **Missing suits:** only shown by a slap (a player who slaps on hearts had no hearts at that moment, until they pick up hearts). The declaration at the start of the round is secret (section 5): it says who is missing a suit, never which, so a computer player doesn't learn the suit from it.
 - **Card counts, scores, places, votes, take-cards requests and answers** (all public in a game with computer players, see below), and how many cards moved in a take.
 - **The joker count** shown at game start, and every joker seen played.
 - **Not known:** which cards were swapped out or swapped in (hidden swap), which cards moved in a take-cards request (only how many), and anything in the hidden decks.
