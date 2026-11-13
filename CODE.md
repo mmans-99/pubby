@@ -318,7 +318,7 @@ Every function is pure: it returns a new state and never changes the one passed 
 
 ## 9i. Network lobby (Phase 4 slice 1, version 2.1)
 
-- **Main menu:** "New game · one phone" (pass-and-play, unchanged) and "Play on several phones" (new). (The connection test link went in 2.2.)
+- **Main menu:** "New game · one phone" (pass-and-play, unchanged) and "Multiplayer" (new). (The connection test link went in 2.2.)
 - **Version 2.3:** Start now starts the game on every phone (section 9j); "Back to the lobby" is gone. `LOBBY_PROTOCOL` is 2 (game messages).
 - **`src/net/lobby.ts` (pure, unit-tested):** the `Lobby` (seats in order, joker rule, pause limit, `started`) kept on the host's phone, and the messages. Seats have a link id (`host`, `c1`, `c2`…), profile name, optional name for this game, host flag and `connected`. `joinProblem()` refuses a phone with a different Pubby version or `LOBBY_PROTOCOL`, a game already started (no late joining) and a full game (8). `lobbyProblems()` = at least 2 players and no two shown names alike (same check as the one-phone setup). `sessionPlayers()` turns the seats into `p1`, `p2`… in seat order with the host's id and the link id of each player, ready for `createSession` in slice 2.
 - **Messages (JSON over the data channel):** joining phone → host: `hello` (protocol, version, profile name, game name), `rename`, `leave`, `ping`. Host → joining phone: `lobby` (the whole lobby and which seat is yours, sent after every change), `refused` (why), `removed`, `closed`, `ping`. `readToHost` / `readToJoiner` check every message and ignore anything else.
@@ -923,7 +923,7 @@ Acceptance: run `playthrough.py` and `solo_check.py --slice-d` before and after,
 
 ---
 
-## 9r. Online play (rooms over the internet): build guide (PLAN, user 2026-11-13: "write up a detailed plan for every step ... so I can code it with haiku"; slice O1, the server, PUSHED 2026-11-13 as 2.17.0 and fixed in 2.17.1; the deploy is live; O2 and O3 not built)
+## 9r. Online play (rooms over the internet): build guide (PLAN, user 2026-11-13: "write up a detailed plan for every step ... so I can code it with haiku"; slice O1, the server, PUSHED as 2.17.0 and fixed in 2.17.1, deployed; slice O2 BUILT 2026-11-13 as 2.18.0, not pushed; O3 not built)
 
 Written for any model, Haiku included. Read the whole section once before starting a slice. The spec (what the player sees) is `PROJECT.md` 12d. Do one slice at a time. Every slice follows `CLAUDE.md` (checks, a test build, the user's phone test and "push" before committing).
 
@@ -1378,13 +1378,15 @@ Screens are in `PROJECT.md` 12d. Code shape:
 
 #### Slice O2: online rooms in the app (version 2.18)
 
+**Status (2026-11-13): BUILT as 2.18.0, not pushed.** Files: `src/net/link.ts`, `chunk.ts`, `server.ts`, `online.ts`; `src/ui/online.ts`; changed `peer.ts`, `netlobby.ts`, `app.ts`, `styles.css`, `build.mjs`, `quick-rules.md`, `package.json`. Tests: `tests/net/chunk.test.ts`; `testbed/online_check.py` (37 of 37, four phases with their own local relay). Nearby checks pass unchanged. Build notes: the room-list socket runs on the passcode screen too, so an invite shows the room name; parts are halved until every frame fits FRAME_MAX (quote-heavy text takes more room); the menu says "Multiplayer" (was "Play on several phones"). Not covered in the browser: a version mismatch (unit test) and frames over FRAME_MAX (unit test).
+
 1. `link.ts` and `chunk.ts`, Peer changes, netlobby types (9r.5.2). Nearby checks pass unchanged.
 2. `server.ts`, `build.mjs` define, `online.ts`.
 3. Screens (`online.ts` UI) and netlobby online mode (9r.5.4), invite links in `app.ts`, quick rules line.
 4. `online_check.py` and `run_checks.py` row (9r.7). Run `npm run check`, `npm test`, `python3 testbed/run_checks.py --since origin/main`.
 5. Version 2.18.0, docs.
 6. **Phone checklist for the user** (on GitHub Pages after "push", since it needs the real server):
-   - Two phones on **different networks** (one on home Wi-Fi, one on mobile data with Wi-Fi off). Phone A: Play on several phones → Online → Host a room. Room name and a 4-digit passcode show.
+   - Two phones on **different networks** (one on home Wi-Fi, one on mobile data with Wi-Fi off). Phone A: Multiplayer → Online → Host a room. Room name and a 4-digit passcode show.
    - Phone B: Online → Join a room: the room appears by itself with A's name and 1/8.
    - Wrong passcode is refused; the right one joins; both lobbies show both players.
    - Share invite on A sends a link; opening it on a third phone (or B after leaving) goes straight to the passcode screen.

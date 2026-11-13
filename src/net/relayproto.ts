@@ -69,3 +69,22 @@ export function readFrame(text: string): { header: Record<string, unknown>; payl
   if (typeof h.c !== 'string') return null;
   return { header: h, payload: text.slice(at + 1) };
 }
+
+/** One open room, as the room list shows it (the Directory sends a list of these). Same shape as the server's ListEntry. */
+export interface RoomInfo {
+  roomId: string;
+  name: string;
+  hostName: string;
+  /** People in the room, the host included. */
+  seats: number;
+  maxSeats: number;
+  version: string;
+  createdAt: number;
+}
+
+/** Room names: 1 to 20 characters after cleaning (the server checks the same). */
+export const ROOM_NAME_MAX = 20;
+/** Room ids: 8 characters from this set (no 0, o, 1, l, i). */
+export const ROOM_ID_RE = /^[23456789abcdefghjkmnpqrstuvwxyz]{8}$/;
+/** Passcodes: exactly 4 digits. */
+export const PASSCODE_RE = /^\d{4}$/;

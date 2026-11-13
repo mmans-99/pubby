@@ -28,7 +28,11 @@ const result = await build({
   target: 'es2020',
   minify: true,
   loader: { '.md': 'text' },
-  define: { __PUBBY_VERSION__: JSON.stringify(appVersion) },
+  define: {
+    __PUBBY_VERSION__: JSON.stringify(appVersion),
+    // The room server (CODE.md 9r.5.1). PUBBY_SERVER overrides it for a test build.
+    __PUBBY_SERVER__: JSON.stringify(process.env.PUBBY_SERVER ?? 'https://pubby-rooms.mmans99.workers.dev'),
+  },
   write: false,
 });
 const js = result.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');

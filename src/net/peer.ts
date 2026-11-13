@@ -9,6 +9,10 @@
  */
 
 import { codeToDescription, CodeError, packSdp, parseCandidate, unpackCode } from './signal.ts';
+import { CHUNK_CHARS, encodeParts, Rejoin } from './chunk.ts';
+import type { Link } from './link.ts';
+
+export { CHUNK_CHARS };
 
 export type Role = 'host' | 'join';
 
@@ -23,19 +27,15 @@ export interface PathInfo {
 }
 
 const GATHER_TIMEOUT_MS = 4000;
-/**
- * Messages longer than this are sent in parts (slice 2: a whole game can be
- * bigger than some phones allow in one data-channel message, about 64 KB on
- * older Safari). The channel is ordered, so the parts arrive in order.
- */
-export const CHUNK_CHARS = 16000;
-
-export class Peer {
+export class Peer implements Link {
+  readonly kind = 'nearby' as const;
+  /** Nearby links have no keep-alive of their own: the lobby pings them. */
+  readonly keepsAlive = false;
   readonly pc: RTCPeerConnection;
   private channel: RTCDataChannel | null = null;
   private closedOnce = false;
   private sendId = 0;
-  private parts: { id: number; n: number; got: string[] } | null = null;
+  private rejoin = new Rejoin();
   onOpen: () => void = () => undefined;
   onMessage: (msg: unknown) => void = () => undefined;
   onClose: (why: string) => void = () => undefined;
@@ -87,34 +87,11 @@ export class Peer {
   send(msg: unknown): boolean {
     if (!this.isOpen) return false;
     try {
-      const text = JSON.stringify(msg);
-      if (text.length <= CHUNK_CHARS) {
-        this.channel!.send(text);
-        return true;
-      }
-      const id = ++this.sendId;
-      const n = Math.ceil(text.length / CHUNK_CHARS);
-      for (let i = 0; i < n; i++) {
-        this.channel!.send(JSON.stringify({ '~part': id, i, n, d: text.slice(i * CHUNK_CHARS, (i + 1) * CHUNK_CHARS) }));
-      }
+      for (const text of encodeParts(msg, CHUNK_CHARS, ++this.sendId)) this.channel!.send(text);
       return true;
     } catch {
       return false;
     }
-  }
-
-  /** Puts a message sent in parts back together; null while parts are still coming. */
-  private whole(raw: unknown): unknown {
-    if (typeof raw !== 'object' || raw === null || !('~part' in raw)) return raw;
-    const m = raw as { '~part': unknown; i: unknown; n: unknown; d: unknown };
-    if (typeof m['~part'] !== 'number' || typeof m.i !== 'number' || typeof m.n !== 'number' || typeof m.d !== 'string') return null;
-    if (m.i === 0 || !this.parts || this.parts.id !== m['~part']) this.parts = { id: m['~part'], n: m.n, got: [] };
-    if (m.i !== this.parts.got.length) { this.parts = null; return null; }
-    this.parts.got.push(m.d);
-    if (this.parts.got.length < this.parts.n) return null;
-    const text = this.parts.got.join('');
-    this.parts = null;
-    return JSON.parse(text);
   }
 
   close(): void {
@@ -171,7 +148,7 @@ export class Peer {
       if (typeof e.data !== 'string') return;
       let msg: unknown;
       try {
-        msg = this.whole(JSON.parse(e.data));
+        msg = this.rejoin.take(JSON.parse(e.data));
       } catch {
         return; // Not ours; ignore.
       }

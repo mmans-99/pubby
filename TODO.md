@@ -150,7 +150,7 @@ Built in slices; each slice gets a test link and a checklist.
 - [x] **Version 1.4:** Pubby's own QR reader (iPhones scan in Pubby and can host), join link fixed when Pubby is already open, Exit Pubby button. Pushed 22:44; connection test passed again on a hotspot (23:06)
 - [~] **Version 1.5:** stop pinch zoom slipping through in Samsung Internet. Pushed; user to test on the Samsung phone
 - [x] **Slice 1: network lobby** (version 2.1, built 2026-11-08, `CODE.md` 9i; pushed; user tested 2.2 on phones: "Test is fine", 15:12)
-  - [x] "Play on several phones" on the main menu; one-phone game renamed "New game · one phone"
+  - [x] "Multiplayer" on the main menu; one-phone game renamed "New game · one phone"
   - [x] Host or Join; "Who's on this phone?" (profile or new name)
   - [x] Add player: code 1 as a `#lobby=` link QR, scan code 2, connect; one at a time; Try again / Cancel
   - [x] Every phone sees the same seats and settings (Host / You tags); names for this game set on each phone
@@ -258,7 +258,7 @@ Built before network slice 4 (user 2026-11-12). One slice at a time; each needs 
 - [ ] **Slice F: computer players in network games**
 - [ ] **Slice G: tuning from the user's games**
 
-## Phase 4c — Online play: rooms over the internet (plan written 2026-11-13, `PROJECT.md` 12d, build guide `CODE.md` 9r; not started)
+## Phase 4c — Online play: rooms over the internet (plan written 2026-11-13, `PROJECT.md` 12d, build guide `CODE.md` 9r; O1 deployed, O2 built as 2.18.0 not pushed)
 
 Order against Phase 4b slice E is the user's call. One slice at a time; each needs checks, a test build and the user's "push".
 
@@ -273,11 +273,12 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
   - [x] `.github/workflows/server.yml` written
   - [ ] User's Cloudflare setup (`CODE.md` 9r.4), then push, then the deploy works and `/health` opens on the user's phone
   - [x] Free plan: open-WebSocket limit checked and written in 9r.1 (no published cap; still to check on the dashboard after the first deploy)
-- [ ] **Slice O2: online rooms in the app** (version 2.18)
-  - [ ] `Link` interface and `chunk.ts`; Nearby checks unchanged
-  - [ ] `server.ts`, `online.ts` (createRoom, joinRoom, watchRooms, HostRoom, OnlineLink)
-  - [ ] Screens: Online/Nearby, room form, room list, passcode, Share invite, `#room=` links
-  - [ ] `testbed/online_check.py`, `run_checks.py` row
+- [~] **Slice O2: online rooms in the app** (version 2.18.0; built 2026-11-13, not pushed; `CODE.md` 9r.8)
+  - [x] `Link` interface and `chunk.ts`; Nearby checks unchanged (lobby 67/67, netgame 94/94, votes 30/30)
+  - [x] `server.ts`, `online.ts` (createRoom, joinRoom, watchRooms, HostRoom, OnlineLink)
+  - [x] Screens: Online/Nearby, room form, room list, passcode, Share invite, `#room=` links
+  - [x] `testbed/online_check.py` (37/37 against the local relay), `run_checks.py` row
+  - [ ] Real online test: the deployed server only accepts the GitHub Pages origin, so this needs the push
   - [ ] User's phone test on two different networks (9r.8 checklist)
 - [ ] **Slice O3: rejoin online** (version 2.19; with Nearby slice 4)
 - [ ] Slice O4 (game on the server): only if the user asks

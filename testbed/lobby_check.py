@@ -111,7 +111,8 @@ def joinProblem_started(host):
 
 
 def open_lobby(page, as_host, name):
-    page.get_by_role('button', name='Play on several phones').click()
+    page.get_by_role('button', name='Multiplayer').click()
+    page.get_by_role('button', name='Nearby').click()  # 2.18: Online or Nearby first
     page.get_by_role('button', name='Host a game' if as_host else 'Join a game').click()
     page.get_by_placeholder('New name').fill(name)
     page.get_by_role('button', name='Go', exact=True).click()
@@ -163,7 +164,7 @@ def main():
             pages.append(pg)
         host, ali, bea = pages
 
-        check('main menu has Play on several phones', host.get_by_role('button', name='Play on several phones').count() == 1)
+        check('main menu has Multiplayer', host.get_by_role('button', name='Multiplayer').count() == 1)
         want = '.'.join(json.loads((ROOT / 'package.json').read_text())['version'].split('.')[:2])
         check(f'version {want} on the main menu', f'Version {want}' in host.inner_text('main'))
         check('no connection test on the main menu (removed in 2.2)', 'Connection test' not in host.inner_text('main'))
@@ -241,7 +242,8 @@ def main():
         ali.get_by_role('button', name='Leave', exact=True).click()
         check('Ali back on the main menu', ali.inner_text('main h1') == 'Pubby')
         check('host sees Ali leave', wait_for(lambda: names(host) == ['Boss', 'Bea'], 5), str(names(host)))
-        ali.get_by_role('button', name='Play on several phones').click()
+        ali.get_by_role('button', name='Multiplayer').click()
+        ali.get_by_role('button', name='Nearby').click()
         ali.get_by_role('button', name='Join a game').click()
         ali.get_by_role('button', name='Ali', exact=True).click()  # saved profile chip
         add(host, ali)
@@ -277,7 +279,8 @@ def main():
         check('closed screen offers Join again', ali.get_by_role('button', name='Join again').count() == 1)
 
         # --- Lobby link tapped while Pubby is already open (iPhone Safari reuses the tab) ---
-        host.get_by_role('button', name='Play on several phones').click()
+        host.get_by_role('button', name='Multiplayer').click()
+        host.get_by_role('button', name='Nearby').click()
         host.get_by_role('button', name='Host a game').click()
         host.get_by_role('button', name='Hosty', exact=True).click()
         host.get_by_role('button', name='Add player').click()

@@ -47,6 +47,8 @@ With 2 players there are no votes: one of you asks, and it only happens if the o
 A target can't be lower than the highest score. Picking the highest score means that player has reached it, so the Ultimate Round vote starts.
 
 ## Several phones
+**Online** works anywhere with internet: the host makes a room with a name and a 4-digit passcode, and others find it in the room list or open the host's invite. **Nearby** needs no internet: scan the QR codes on the same Wi-Fi or hotspot.
+
 Any player can call a vote from their own phone. The host pauses straight away; anyone else asks the host, who says yes or no. Only the host can resume the game or set a pause time limit. On the results screen, tap **I'm ready** on your own phone; the host moves on when they're ready.
 
 ## Ultimate Round

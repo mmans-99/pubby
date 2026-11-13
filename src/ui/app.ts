@@ -23,7 +23,7 @@ import { pauseLayer } from './between.ts';
 import { afterRender, gameScreen, popupLayer, reactionsLayer, startShuffle } from './game.ts';
 import { csvSheetLayer, pastGamesScreen, profileDetails } from './history.ts';
 import { renderMarkdown } from './markdown.ts';
-import { joinLobbyFromLink, netLobbyScreen, stopNetLobby } from './netlobby.ts';
+import { joinLobbyFromLink, joinRoomFromLink, netLobbyScreen, stopNetLobby } from './netlobby.ts';
 import { addProfile, deleteProfile, findProfile, loadGame, loadProfiles, loadRecords, loadVsProfiles, saveProfiles, saveVsProfiles } from './storage.ts';
 import { getState, initState, say, update, type SetupSeat, type SetupState, type State } from './store.ts';
 import { soloScreen, soloSetupFresh } from './solosetup.ts';
@@ -73,7 +73,8 @@ export function startApp(target: HTMLElement): void {
   // Opened from a host's QR code (iPhone Camera app): go straight to joining.
   // A game's "Add player" code (#lobby=…) opened from a Camera app.
   const link = location.hash.startsWith('#lobby=') ? location.href : null;
-  if (link) {
+  const room = roomFromHash(location.hash);
+  if (link || room) {
     history.replaceState(history.state, '', location.pathname + location.search);
     initial.screen = 'netlobby';
   }
@@ -81,6 +82,7 @@ export function startApp(target: HTMLElement): void {
   setupSound();
   render();
   if (link) { joinLobbyFromLink(link); render(); }
+  if (room) { joinRoomFromLink(room); render(); }
   setupBack();
   // A join link tapped while Pubby is already open (iPhone Safari reuses the
   // tab and only changes the #lobby=… part, so the page doesn't start again).
@@ -89,14 +91,20 @@ export function startApp(target: HTMLElement): void {
     if (!document.hidden && getState().screen === 'bye') update({ screen: 'home' });
   });
   window.addEventListener('hashchange', () => {
-    if (!location.hash.startsWith('#lobby=')) return;
     const again = location.href;
+    const roomId = roomFromHash(location.hash);
+    if (!location.hash.startsWith('#lobby=') && !roomId) return;
     history.replaceState(history.state, '', location.pathname + location.search);
     // A one-phone game in progress stays saved.
     update({ screen: 'netlobby', menuOpen: false, rulesOpen: false, soundOpen: false, exitAsk: false });
-    joinLobbyFromLink(again);
+    if (roomId) joinRoomFromLink(roomId); else joinLobbyFromLink(again);
     render();
   });
+}
+
+/** The room id from an online invite link (#room=<id>), or null. */
+function roomFromHash(hash: string): string | null {
+  return hash.startsWith('#room=') ? hash.slice('#room='.length) : null;
 }
 
 function freshSetup(): SetupState {
@@ -224,7 +232,7 @@ function homeScreen(): HTMLElement {
       // Pass-and-play on one phone is kept in the code but hidden from the menu (user, 2.10).
       showOnePhoneButton() ? h('button', { class: g ? 'big secondary' : 'big', onclick: () => startSetup('setup') }, 'New game · one phone') : null,
       h('button', { class: 'big secondary', onclick: () => startSetup('solo') }, icon('bot'), ' Play against the computer'),
-      h('button', { class: 'big secondary', onclick: () => update({ screen: 'netlobby' }) }, icon('phone'), ' Play on several phones'),
+      h('button', { class: 'big secondary', onclick: () => update({ screen: 'netlobby' }) }, icon('phone'), ' Multiplayer'),
       h('button', { class: 'big secondary', onclick: () => update({ screen: 'profiles', armed: null, openProfile: null }) },
         `Profiles (${Object.keys(getState().profiles).length})`),
       h('button', { class: 'big secondary', onclick: () => update({ screen: 'history', armed: null, openRecord: null }) },

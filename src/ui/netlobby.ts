@@ -20,6 +20,10 @@ import { getState, update } from './store.ts';
 import { addProfile, findProfile, saveProfiles } from './storage.ts';
 import { makeQr, qrSvg } from '../net/qr.ts';
 import { Peer } from '../net/peer.ts';
+import type { Link } from '../net/link.ts';
+import { HostRoom, createRoom, joinRoom, joinSocket, watchRooms, type OnlineLink, type RoomInfo } from '../net/online.ts';
+import { PASSCODE_RE, ROOM_ID_RE, ROOM_NAME_MAX } from '../net/relayproto.ts';
+import { roomFormView, roomListView, roomPassView } from './online.ts';
 import { lobbyLink } from '../net/signal.ts';
 import { canScan, startScanner, type Scanner } from '../net/scan.ts';
 import {
@@ -35,10 +39,12 @@ import { hostGotAct, hostGotReact, hostStart, hostSync, inNetGame, joinEnded, jo
 
 type Role = 'host' | 'join';
 type Step =
-  | 'pick' // host or join
+  | 'mode' // Online or Nearby (first screen)
+  | 'pick' // host or join (Nearby, or Online after the mode)
   | 'name' // which profile is this phone
   | 'lobby' // host: the lobby; joiner: what the host sent
   | 'join-scan' | 'join-code' | 'join-wait'
+  | 'room-form' | 'room-list' | 'room-pass' | 'room-wait' | 'room-lost' // online rooms
   | 'lost' | 'removed' | 'closed' | 'refused' | 'failed';
 
 /** Host adding one player: show code 1, scan code 2, wait for the link. */
@@ -50,8 +56,9 @@ interface Adding {
   failText: string;
 }
 
-interface Link {
-  peer: Peer;
+/** A phone in the host's room. The link is a Peer (Nearby) or an OnlineLink. */
+interface HostLink {
+  peer: Link;
   lastHeard: number;
   /** Sent its name (hello) and got a seat. */
   seated: boolean;
@@ -75,23 +82,44 @@ const LOST_AFTER_MS = 20000;
 let root: HTMLElement | null = null;
 let onBack: () => void = () => undefined;
 let role: Role | null = null;
-let step: Step = 'pick';
+let step: Step = 'mode';
 let myProfile = '';
+/** Nearby (QR codes) or Online (rooms through the server); chosen on the first screen. */
+let mode: 'nearby' | 'online' | null = null;
+let modeNote = '';
 
 // Host
 let lobby: Lobby | null = null;
-const links = new Map<string, Link>();
+const links = new Map<string, HostLink>();
 let adding: Adding | null = null;
 let nextId = 0;
+/** Online: the room this phone hosts. */
+let hostRoom: HostRoom | null = null;
+
+// Online rooms (host's form, the room list, the passcode)
+let roomId = '';
+let roomName = '';
+let roomCode = '';
+let roomFormError = '';
+let rooms: RoomInfo[] = [];
+let roomsLoaded = false;
+let roomsProblem = '';
+let stopRooms: (() => void) | null = null;
+let roomPick: { roomId: string; name: string } | null = null;
+let roomPass = '';
+let roomPassError = '';
+let joiningRoom = false;
 
 // Joiner
-let peer: Peer | null = null;
+let peer: Link | null = null;
 let hostHeard = 0;
 let myCode = '';
 let you = '';
 let seen: Lobby | null = null;
 /** A host's code from a join link, used once this phone has picked a name. */
 let pendingCode: string | null = null;
+/** A room id from an invite link (#room=…), used once this phone has picked a name. */
+let pendingRoom: string | null = null;
 let endText = '';
 
 // Shared
@@ -136,8 +164,19 @@ export function stopNetLobby(): void {
 /** Opened from the host's "Add player" link (iPhone Camera app): pick a name, then join. */
 export function joinLobbyFromLink(text: string): void {
   reset();
+  mode = 'nearby';
   role = 'join';
   pendingCode = text;
+  go('name');
+}
+
+/** Opened from an invite link (#room=…): pick a name, then the passcode of that room. */
+export function joinRoomFromLink(id: string): void {
+  reset();
+  if (!ROOM_ID_RE.test(id)) return;
+  mode = 'online';
+  role = 'join';
+  pendingRoom = id;
   go('name');
 }
 
@@ -149,7 +188,10 @@ export function netLobbyBack(): boolean {
   if (leaveAsk) { leaveAsk = false; draw(); return true; }
   if (adding) { cancelAdding(); return true; }
   if (step === 'lobby' && othersConnected()) { leaveAsk = true; draw(); return true; }
-  if (step === 'name' && !pendingCode) { reset(); draw(); return true; }
+  if (step === 'name' && !pendingCode && !pendingRoom) { reset(); draw(); return true; }
+  if (step === 'pick') { go('mode'); return true; }
+  if (step === 'room-form' || step === 'room-list') { go('pick'); return true; }
+  if (step === 'room-pass') { go('room-list'); return true; }
   return false;
 }
 
@@ -159,14 +201,20 @@ export function netLobbyBack(): boolean {
 
 function reset(): void {
   stopScan();
+  stopList();
   clearInterval(pingTimer);
   clearInterval(helloTimer);
   clearTimeout(connectTimer);
   pingTimer = undefined;
   if (adding) adding.peer.close();
   adding = null;
-  for (const l of links.values()) { l.peer.send({ t: 'closed' } satisfies ToJoiner); closeSoon(l.peer); }
+  for (const l of links.values()) {
+    // Online phones are told by the room itself (hostRoom.close below).
+    if (!l.peer.keepsAlive) { l.peer.send({ t: 'closed' } satisfies ToJoiner); closeSoon(l.peer); }
+  }
   links.clear();
+  hostRoom?.close();
+  hostRoom = null;
   if (peer) { peer.send({ t: 'leave' }); closeSoon(peer); }
   peer = null;
   lobby = null;
@@ -174,8 +222,17 @@ function reset(): void {
   you = '';
   myCode = '';
   role = null;
+  mode = null;
+  modeNote = '';
   myProfile = '';
   pendingCode = null;
+  pendingRoom = null;
+  roomId = '';
+  roomFormError = '';
+  roomPick = null;
+  roomPass = '';
+  roomPassError = '';
+  joiningRoom = false;
   endText = '';
   scanError = '';
   scanHint = '';
@@ -184,11 +241,11 @@ function reset(): void {
   nameBox = null;
   drawLater = false;
   releaseWake();
-  step = 'pick';
+  step = 'mode';
 }
 
 /** Close after a moment, so a last message ("closed", "leave") gets out first. */
-function closeSoon(p: Peer): void {
+function closeSoon(p: Link): void {
   setTimeout(() => p.close(), 300);
 }
 
@@ -196,6 +253,9 @@ function go(next: Step): void {
   if (next !== step) { scanHint = ''; scanError = ''; }
   step = next;
   if (step !== 'join-scan' && !(adding && adding.stage === 'scan')) stopScan();
+  if (step !== 'room-list' && step !== 'room-pass') stopList();
+  // The list also runs on the passcode screen, so an invite shows the room’s name when it arrives.
+  if ((step === 'room-list' || step === 'room-pass') && !stopRooms) startList();
   draw();
 }
 
@@ -261,7 +321,27 @@ function body(): View {
   if (leaveAsk) return leaveView();
   if (role === 'host' && adding) return addingView(adding);
   switch (step) {
+    case 'mode': return modeView();
     case 'pick': return pickView();
+    case 'room-form': return roomFormView(topBar('Host a room'), {
+      name: roomName, code: roomCode, error: roomFormError, maxName: ROOM_NAME_MAX,
+      onName: (v) => { roomName = v; },
+      onCode: (v) => { roomCode = v.replace(/\D/g, '').slice(0, 4); },
+      onNewCode: () => { roomCode = randomCode(); draw(); },
+      onMake: () => { void makeRoom(); },
+    });
+    case 'room-list': return roomListView(topBar('Join a room'), {
+      rooms, loaded: roomsLoaded, problem: roomsProblem, version: VERSION,
+      onPick: (r) => { roomPick = { roomId: r.roomId, name: r.name }; roomPass = ''; roomPassError = ''; go('room-pass'); },
+    });
+    case 'room-pass': return roomPassView(topBar('Join a room'), {
+      name: rooms.find((r) => r.roomId === roomPick?.roomId)?.name ?? roomPick?.name ?? '',
+      value: roomPass, error: roomPassError,
+      onInput: (v) => { roomPass = v.replace(/\D/g, '').slice(0, 4); },
+      onJoin: () => { void joinRoomNow(); },
+    });
+    case 'room-wait': return [topBar(role === 'host' ? 'Host a room' : 'Join a room'), h('div', { class: 'panel center' }, h('p', { class: 'net-big' }, role === 'host' ? 'Making the room…' : 'Joining the room…'), h('p', { class: 'muted small' }, 'A few seconds.'))];
+    case 'room-lost': return roomLostView();
     case 'name': return nameView();
     case 'lobby': return role === 'host' ? hostLobbyView() : joinLobbyView();
     case 'join-scan': return joinScanView();
@@ -275,7 +355,40 @@ function body(): View {
   }
 }
 
+function modeView(): View {
+  return [
+    topBar('Several phones'),
+    h('p', { class: 'muted' }, 'Everyone plays on their own phone. Online works anywhere there is internet. Nearby needs no internet: the same Wi-Fi, or one phone’s hotspot.'),
+    h('div', { class: 'stack' },
+      h('button', { class: 'big', onclick: () => chooseMode('online') }, icon('share'), ' Online', h('span', { class: 'muted small block' }, 'Anywhere, needs internet')),
+      h('button', { class: 'big secondary', onclick: () => chooseMode('nearby') }, icon('phone'), ' Nearby', h('span', { class: 'muted small block' }, 'Same room, scan QR codes. No internet.')),
+    ),
+    modeNote ? h('p', { class: 'note warn' }, modeNote) : null,
+  ];
+}
+
+function chooseMode(m: 'nearby' | 'online'): void {
+  if (m === 'online' && navigator.onLine === false) {
+    modeNote = 'You’re offline. Play Nearby, or connect to the internet.';
+    draw();
+    return;
+  }
+  modeNote = '';
+  mode = m;
+  go('pick');
+}
+
 function pickView(): View {
+  if (mode === 'online') {
+    return [
+      topBar('Online'),
+      h('p', { class: 'muted' }, 'Host a room and share the invite, or join a room from the list. Each room has a 4-digit passcode.'),
+      h('div', { class: 'stack' },
+        h('button', { class: 'big', onclick: () => { role = 'host'; go('name'); } }, icon('crown'), ' Host a room'),
+        h('button', { class: 'big secondary', onclick: () => { role = 'join'; go('name'); } }, icon('phone'), ' Join a room'),
+      ),
+    ];
+  }
   return [
     topBar('Several phones'),
     h('p', { class: 'muted' }, 'Everyone plays on their own phone. Same Wi-Fi, or everyone on one phone’s hotspot. No internet needed.'),
@@ -303,7 +416,7 @@ function nameView(): View {
   };
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') addNew(); });
   return [
-    topBar(role === 'host' ? 'Host a game' : 'Join a game'),
+    topBar(mode === 'online' ? (role === 'host' ? 'Host a room' : 'Join a room') : (role === 'host' ? 'Host a game' : 'Join a game')),
     h('section', { class: 'panel' },
       h('h2', null, 'Who’s on this phone?'),
       profiles.length
@@ -316,7 +429,22 @@ function nameView(): View {
 
 function chooseProfile(name: string): void {
   myProfile = name;
-  if (role === 'host') {
+  if (mode === 'online' && role === 'host') {
+    roomName = `${name}’s table`.slice(0, ROOM_NAME_MAX);
+    roomCode = randomCode();
+    roomFormError = '';
+    go('room-form');
+  } else if (mode === 'online') {
+    if (pendingRoom) {
+      roomPick = { roomId: pendingRoom, name: '' };
+      pendingRoom = null;
+      roomPass = '';
+      roomPassError = '';
+      go('room-pass');
+    } else {
+      go('room-list');
+    }
+  } else if (role === 'host') {
     lobby = newLobby(name);
     startPings();
     void keepAwake();
@@ -386,16 +514,21 @@ function hostLobbyView(): View {
   const waiting = [...links.values()].filter((x) => !x.seated).length;
   const full = l.seats.length >= MAX_PLAYERS;
   const me = l.seats.find((s) => s.isHost)!;
+  const online = mode === 'online';
   return [
-    topBar('Host a game'),
+    topBar(online ? 'Host a room' : 'Host a game'),
+    online ? roomCard() : null,
     h('section', { class: 'panel' },
       h('h2', null, 'Players ', h('span', { class: 'count' }, `${l.seats.length} / ${MAX_PLAYERS}`)),
       h('ol', { class: 'seats' }, l.seats.map((seat, i) => hostSeatRow(seat, i, l.seats.length))),
       waiting ? h('p', { class: 'muted small' }, 'A phone is connecting…') : null,
+      online && !full ? h('p', { class: 'muted small' }, `Waiting for players… ${l.seats.length} of ${MAX_PLAYERS}`) : null,
       l.seats.length > 1 ? h('p', { class: 'muted small' }, 'Seats go clockwise. Use the arrows to match where people sit.') : null,
     ),
-    h('button', { class: 'big secondary', disabled: full, onclick: () => { void startAdding(); } },
-      icon('phone'), full ? ` Full (${MAX_PLAYERS} players)` : ' Add player'),
+    online
+      ? h('button', { class: 'big secondary', onclick: shareInvite }, icon('share'), ' Share invite')
+      : h('button', { class: 'big secondary', disabled: full, onclick: () => { void startAdding(); } },
+          icon('phone'), full ? ` Full (${MAX_PLAYERS} players)` : ' Add player'),
     h('section', { class: 'panel' },
       h('h2', null, 'Your name for this game'),
       myNameBox(me.sessionName),
@@ -418,6 +551,15 @@ function hostLobbyView(): View {
     h('button', { class: 'big sticky', disabled: problems.length > 0 || waiting > 0, onclick: startGame },
       problems.length ? 'Start game' : `Start game · ${l.seats.length} players`),
   ];
+}
+
+/** The room’s name and passcode, at the top of the lobby (online). */
+function roomCard(): HTMLElement {
+  return h('section', { class: 'panel room-card' },
+    h('p', { class: 'room-title' }, roomName),
+    h('p', { class: 'muted small' }, 'Passcode'),
+    h('p', { class: 'room-code', 'aria-label': `Passcode ${roomCode.split('').join(' ')}` }, roomCode),
+  );
 }
 
 function hostSeatRow(seat: LobbySeat, i: number, n: number): HTMLElement {
@@ -454,7 +596,7 @@ function setOption(change: Partial<Pick<Lobby, 'jokers' | 'pauseLimit'>>): void 
 function kick(id: string): void {
   const link = links.get(id);
   const name = lobby?.seats.find((s) => s.id === id);
-  if (link) { link.peer.send({ t: 'removed' } satisfies ToJoiner); closeSoon(link.peer); links.delete(id); }
+  if (link) { link.peer.send({ t: 'removed' } satisfies ToJoiner); dropLink(id, link); }
   lobby = removeSeat(lobby!, id);
   if (name) flash(`${seatName(name)} removed`);
   broadcast();
@@ -468,6 +610,8 @@ function broadcast(): void {
   for (const [id, l] of links) {
     if (l.seated) l.peer.send({ t: 'lobby', you: id, lobby: out } satisfies ToJoiner);
   }
+  // Online: the room list shows the seats and whether the game has started.
+  hostRoom?.update(lobby.seats.length, lobby.started);
 }
 
 function startGame(): void {
@@ -484,7 +628,7 @@ function startGame(): void {
   lobby = { ...l, started: true };
   // Phones still connecting don't get in (no late joining).
   for (const [id, link] of links) {
-    if (!link.seated) { link.peer.send({ t: 'refused', why: 'The game has already started.' } satisfies ToJoiner); closeSoon(link.peer); links.delete(id); }
+    if (!link.seated) { link.peer.send({ t: 'refused', why: 'The game has already started.' } satisfies ToJoiner); dropLink(id, link); }
   }
   broadcast();
   draw();
@@ -495,7 +639,7 @@ function startGame(): void {
 // ----- Host: adding a player -----
 
 async function startAdding(): Promise<void> {
-  if (adding || !lobby || lobby.started) return;
+  if (adding || !lobby || lobby.started || mode === 'online') return;
   if (lobby.seats.length + [...links.values()].filter((x) => !x.seated).length >= MAX_PLAYERS) return;
   const id = `c${++nextId}`;
   const p = new Peer('host');
@@ -511,12 +655,7 @@ async function startAdding(): Promise<void> {
     stopScan();
     adding = null;
     broadcast();
-    const link: Link = { peer: p, lastHeard: performance.now(), seated: false };
-    links.set(id, link);
-    p.onClose = () => linkLost(id);
-    setTimeout(() => {
-      if (links.get(id) === link && !link.seated) { links.delete(id); p.close(); flash('That phone didn’t send its name. Add it again.'); draw(); }
-    }, HELLO_TIMEOUT_MS);
+    addLink(id, p);
     draw();
   };
   p.onOpen = promote;
@@ -535,6 +674,155 @@ async function startAdding(): Promise<void> {
     a.failText = `This phone couldn’t make a code. ${errText(e)}`;
   }
   draw();
+}
+
+/** A phone is in the room (Nearby or online): it gets a link entry and a short time to say hello. */
+function addLink(id: string, p: Link): HostLink {
+  const link: HostLink = { peer: p, lastHeard: performance.now(), seated: false };
+  links.set(id, link);
+  p.onClose = () => linkLost(id);
+  setTimeout(() => {
+    if (links.get(id) === link && !link.seated) {
+      dropLink(id, link);
+      flash(mode === 'online' ? 'That phone didn’t send its name.' : 'That phone didn’t send its name. Add it again.');
+      draw();
+    }
+  }, HELLO_TIMEOUT_MS);
+  return link;
+}
+
+/** Takes a phone out of the room. Its last message goes first (closeSoon); online, the room drops its socket too. */
+function dropLink(id: string, link: HostLink): void {
+  links.delete(id);
+  if (link.peer.keepsAlive) hostRoom?.kick(id);
+  closeSoon(link.peer);
+}
+
+/** Online: the room says a phone has come in. From here it is handled like a Nearby phone. */
+function addOnlineLink(p: OnlineLink): void {
+  if (!lobby) return;
+  if (lobby.started) { hostRoom?.kick(p.id); return; }
+  links.delete(p.id);
+  addLink(p.id, p);
+  p.onMessage = (m) => hostGot(p.id, m);
+}
+
+/** Online: opens the host's room socket and passes its events on to the lobby. */
+function startHostRoom(id: string, token: string): void {
+  const hr = new HostRoom(id, token);
+  hostRoom = hr;
+  hr.onReady = () => { if (hostRoom === hr && lobby) hr.update(lobby.seats.length, lobby.started); };
+  hr.onJoined = (link) => { if (hostRoom === hr) addOnlineLink(link); };
+  hr.onLost = () => {
+    if (hostRoom !== hr) return;
+    hostRoom = null;
+    for (const linkId of [...links.keys()]) linkLost(linkId);
+    if (lobby && !lobby.started) go('room-lost');
+    else { draw(); netChanged(); }
+  };
+}
+
+/** Online: makes the room (room name and passcode from the form), then shows the lobby. */
+async function makeRoom(): Promise<void> {
+  const name = cleanRoomName(roomName);
+  if (!name) { roomFormError = `Type a room name, up to ${ROOM_NAME_MAX} characters.`; draw(); return; }
+  if (!PASSCODE_RE.test(roomCode)) { roomFormError = 'The passcode is 4 digits.'; draw(); return; }
+  roomName = name;
+  roomFormError = '';
+  go('room-wait');
+  try {
+    const made = await createRoom({ name, passcode: roomCode, hostName: myProfile });
+    if (step !== 'room-wait') return;
+    roomId = made.roomId;
+    lobby = newLobby(myProfile);
+    startPings();
+    void keepAwake();
+    startHostRoom(made.roomId, made.hostToken);
+    go('lobby');
+  } catch (e) {
+    if (step !== 'room-wait') return;
+    roomFormError = errText(e);
+    go('room-form');
+  }
+}
+
+/** Room names: the same cleaning as the server (no control characters, trimmed, up to 20). */
+function cleanRoomName(value: string): string {
+  return value.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, ROOM_NAME_MAX);
+}
+
+/** A passcode suggestion: 4 random digits. */
+function randomCode(): string {
+  const a = new Uint32Array(1);
+  crypto.getRandomValues(a);
+  return String(1000 + (a[0]! % 9000));
+}
+
+/** The invite: the room's link and passcode (WhatsApp or any app, or copied). */
+function shareInvite(): void {
+  const text = `Join my Pubby game "${roomName}": ${pageAddress()}#room=${roomId}  Passcode: ${roomCode}`;
+  const nav = navigator as Navigator & { share?: (d: { text: string }) => Promise<void> };
+  if (nav.share) { nav.share({ text }).catch(() => undefined); return; }
+  navigator.clipboard?.writeText(text).then(
+    () => flash('Invite copied'),
+    () => flash('Couldn’t copy the invite. Write the link and passcode down.'),
+  );
+}
+
+// ----- Online: the joiner's rooms -----
+
+/** The room list socket runs while the list (or its passcode screen) is on screen. */
+function startList(): void {
+  stopList();
+  rooms = [];
+  roomsLoaded = false;
+  roomsProblem = '';
+  stopRooms = watchRooms(
+    (list) => { rooms = list; roomsLoaded = true; if (step === 'room-list' || step === 'room-pass') draw(); },
+    (text) => { roomsProblem = text; if (step === 'room-list') draw(); },
+  );
+}
+
+function stopList(): void {
+  stopRooms?.();
+  stopRooms = null;
+}
+
+/** Joins the picked room with the typed passcode, then connects like any joining phone. */
+async function joinRoomNow(): Promise<void> {
+  const pick = roomPick;
+  if (!pick || joiningRoom) return;
+  if (!PASSCODE_RE.test(roomPass)) { roomPassError = 'The passcode is 4 digits.'; draw(); return; }
+  joiningRoom = true;
+  roomPassError = '';
+  try {
+    const { joinToken } = await joinRoom(pick.roomId, roomPass);
+    if (step !== 'room-pass') return;
+    const p = joinSocket(pick.roomId, joinToken);
+    peer = p;
+    wireJoin(p);
+    go('room-wait');
+    clearTimeout(connectTimer);
+    connectTimer = window.setTimeout(() => {
+      if (peer === p && step === 'room-wait') joinFail('The room didn’t answer in time. Try again.');
+    }, CONNECT_TIMEOUT_MS);
+  } catch (e) {
+    if (step === 'room-pass') { roomPassError = errText(e); draw(); }
+  } finally {
+    joiningRoom = false;
+  }
+}
+
+function roomLostView(): View {
+  return [
+    topBar('Host a room'),
+    h('div', { class: 'panel center' },
+      h('p', { class: 'net-big bad' }, 'Room closed'),
+      h('p', null, 'This phone lost the connection to the room. Make a new room to play again.'),
+    ),
+    h('button', { class: 'big', onclick: () => { const name = myProfile; reset(); mode = 'online'; role = 'host'; chooseProfile(name); } }, 'Make a new room'),
+    h('button', { class: 'big secondary', onclick: () => onBack() }, 'Main menu'),
+  ];
 }
 
 function cancelAdding(): void {
@@ -584,7 +872,7 @@ function addingView(a: Adding): View {
   return [
     head,
     h('ol', { class: 'net-steps' },
-      h('li', null, 'On their phone: Play on several phones › Join a game, then scan this.'),
+      h('li', null, 'On their phone: Multiplayer › Join a game, then scan this.'),
       h('li', null, 'Then tap “Scan their code” here.'),
     ),
     qr,
@@ -614,8 +902,7 @@ function hostGot(id: string, raw: unknown): void {
     const problem = joinProblem(lobby, m, VERSION);
     if (problem) {
       link.peer.send({ t: 'refused', why: problem } satisfies ToJoiner);
-      closeSoon(link.peer);
-      links.delete(id);
+      dropLink(id, link);
       flash('A phone couldn’t join.');
       draw();
       return;
@@ -746,6 +1033,12 @@ function startedView(l: Lobby, as: Role): View {
 
 function newJoinPeer(): Peer {
   const p = new Peer('join');
+  wireJoin(p);
+  return p;
+}
+
+/** The joining phone’s handlers for its link to the host (Nearby or online). */
+function wireJoin(p: Link): void {
   p.onOpen = () => {
     if (peer !== p) return;
     clearTimeout(connectTimer);
@@ -769,8 +1062,8 @@ function newJoinPeer(): Peer {
     if (peer !== p) return;
     if (step === 'lobby' || step === 'join-wait') lost();
     else if (step === 'join-code') joinFail('The phones scanned each other but couldn’t link up.');
+    else if (step === 'room-wait') joinFail('The room didn’t answer. Check your internet, then try again.');
   };
-  return p;
 }
 
 function joinGot(raw: unknown): void {
@@ -827,7 +1120,7 @@ function endView(title: string, text: string): View {
       h('p', { class: 'net-big bad' }, title),
       text ? h('p', null, text) : null,
     ),
-    h('button', { class: 'big', onclick: () => { const name = myProfile; reset(); role = 'join'; if (name) chooseProfile(name); else go('name'); } }, 'Join again'),
+    h('button', { class: 'big', onclick: () => { const name = myProfile; const m = mode; reset(); mode = m; role = 'join'; if (name) chooseProfile(name); else go('name'); } }, 'Join again'),
     h('button', { class: 'big secondary', onclick: () => onBack() }, 'Main menu'),
   ];
 }
@@ -932,10 +1225,11 @@ function startPings(): void {
     const now = performance.now();
     if (role === 'host') {
       for (const [id, l] of links) {
+        if (l.peer.keepsAlive) continue; // online: the room tells us when a phone is lost
         if (now - l.lastHeard > LOST_AFTER_MS) linkLost(id);
         else l.peer.send({ t: 'ping' } satisfies ToJoiner);
       }
-    } else if (peer?.isOpen) {
+    } else if (peer?.isOpen && !peer.keepsAlive) {
       if (now - hostHeard > LOST_AFTER_MS) lost();
       else peer.send({ t: 'ping' });
     }
@@ -966,6 +1260,8 @@ function exposeTestHook(): void {
     scan: (text: string) => onScanned(text),
     step: () => step,
     role: () => role,
+    mode: () => mode,
+    room: () => roomId,
     adding: () => adding?.stage ?? null,
     lobby: () => (role === 'host' ? lobby : seen),
     you: () => (role === 'host' ? 'host' : you),

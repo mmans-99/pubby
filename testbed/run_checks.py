@@ -20,7 +20,8 @@ Path to script table (the first row that matches a path wins; a path can pick se
   .github/workflows/server.yml                            none (unit tests cover them; no app screen uses the relay before O2)
   src/rules/, src/session/, build.mjs, testbed/bot.js     all
   src/ai/, src/ui/bots.ts, src/content/catch-phrases.md   solo_check, drawer_check
-  src/net/, src/ui/netlobby.ts, netplay.ts, netscreens.ts  lobby_check, netgame_check, netvotes_check
+  src/net/, src/ui/netlobby.ts, netplay.ts, netscreens.ts  lobby_check, netgame_check, netvotes_check, online_check
+  src/ui/online.ts                                        online_check, lobby_check
   src/audio/                                              sound_check
   src/ui/back.ts                                          back_check
   src/pwa/, any file named *offline* or sw.* / sw.ts      offline_check
@@ -51,6 +52,7 @@ ALL_ORDER = [
     'netvotes_check.py',
     'netgame_check.py',
     'lobby_check.py',
+    'online_check.py',
     'sound_check.py',
 ]
 ALL = set(ALL_ORDER)
@@ -70,7 +72,9 @@ def scripts_for(path):
     if path.startswith('src/ai/') or path in ('src/ui/bots.ts', 'src/content/catch-phrases.md'):
         return {'solo_check.py', 'drawer_check.py'}, 'computer players'
     if path.startswith('src/net/') or path in ('src/ui/netlobby.ts', 'src/ui/netplay.ts', 'src/ui/netscreens.ts'):
-        return {'lobby_check.py', 'netgame_check.py', 'netvotes_check.py'}, 'network'
+        return {'lobby_check.py', 'netgame_check.py', 'netvotes_check.py', 'online_check.py'}, 'network'
+    if path == 'src/ui/online.ts':
+        return {'online_check.py', 'lobby_check.py'}, 'online room screens'
     if path.startswith('src/audio/'):
         return {'sound_check.py'}, 'sound'
     if path == 'src/ui/back.ts':
@@ -79,8 +83,10 @@ def scripts_for(path):
         return {'offline_check.py'}, 'offline / service worker'
     if path.startswith('src/ui/'):
         return {'solo_check.py', 'playthrough.py', 'drawer_check.py', 'back_check.py'}, 'other screens'
-    if path.startswith('server/') or path in ('testbed/relay_server.ts', '.github/workflows/server.yml'):
-        return set(), 'online relay: unit tests cover it (no app screen uses it before slice O2)'
+    if path == 'testbed/relay_server.ts':
+        return {'online_check.py'}, 'online relay stand-in'
+    if path.startswith('server/') or path == '.github/workflows/server.yml':
+        return set(), 'online relay server: unit tests cover it'
     if path.startswith('testbed/') and path.endswith('.py'):
         if name == 'solo_check.py':
             return {'solo_check.py', 'drawer_check.py'}, 'solo check (drawer imports it)'

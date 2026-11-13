@@ -68,7 +68,8 @@ def wait_for(fn, timeout=20):
 
 
 def open_lobby(page, as_host, name):
-    page.get_by_role('button', name='Play on several phones').click()
+    page.get_by_role('button', name='Multiplayer').click()
+    page.get_by_role('button', name='Nearby').click()  # 2.18: Online or Nearby first
     page.get_by_role('button', name='Host a game' if as_host else 'Join a game').click()
     page.get_by_placeholder('New name').fill(name)
     page.get_by_role('button', name='Go', exact=True).click()
@@ -93,7 +94,7 @@ def new_page(browser, base, errors, label):
     page.on('pageerror', lambda e: errors.append(f'{label}: {e}'))
     page.on('console', lambda m: errors.append(f'{label} console: {m.text}') if m.type == 'error' else None)
     page.goto(base)
-    page.wait_for_selector('text=Play on several phones')
+    page.wait_for_selector('text=Multiplayer')
     return page
 
 
@@ -292,7 +293,7 @@ def play(cfg, browser, base):
     time.sleep(1.5)
     check(f'{n} players: phones keep the game over screen when the host leaves', all(p.get_by_text('Final standings').count() for p in pages[1:]))
     pages[1].get_by_role('button', name='Back to home').click()
-    check(f'{n} players: Back to home on a joining phone', pages[1].get_by_role('button', name='Play on several phones').count() == 1)
+    check(f'{n} players: Back to home on a joining phone', pages[1].get_by_role('button', name='Multiplayer').count() == 1)
     check(f'{n} players: no page errors', not errors, '; '.join(errors[:3]))
     for p in pages:
         p.context.close()
@@ -308,7 +309,7 @@ def leaving(browser, base):
     pages[2].get_by_role('button', name='Leave the game').click()
     check('leaving: asks first', pages[2].get_by_role('button', name='Tap again to leave the game').count() == 1)
     pages[2].get_by_role('button', name='Tap again to leave the game').click()
-    check('leaving: the phone is back on the main menu', wait_for(lambda: pages[2].get_by_role('button', name='Play on several phones').count() == 1, 5))
+    check('leaving: the phone is back on the main menu', wait_for(lambda: pages[2].get_by_role('button', name='Multiplayer').count() == 1, 5))
     check('leaving: the host and the others are told', wait_for(lambda: all(p.locator('.net-lost').count() == 1 for p in pages[:2]), 8),
           pages[0].locator('main').inner_text()[:200])
     # A one-phone game saved before is still there after a network game.
@@ -316,7 +317,7 @@ def leaving(browser, base):
     pages[0].get_by_role('button', name='Menu').click()
     pages[0].get_by_role('button', name='Close the game').click()
     pages[0].get_by_role('button', name='Tap again: close the game on every phone').click()
-    check('closing: host back on the main menu', wait_for(lambda: pages[0].get_by_role('button', name='Play on several phones').count() == 1, 5))
+    check('closing: host back on the main menu', wait_for(lambda: pages[0].get_by_role('button', name='Multiplayer').count() == 1, 5))
     check('closing: the other phone sees "Game closed"', wait_for(lambda: pages[1].get_by_text('Game closed').count() == 1, 8),
           pages[1].locator('main').inner_text()[:200])
     check('leaving and closing: no page errors', not errors, '; '.join(errors[:3]))

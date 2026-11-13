@@ -4,6 +4,14 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (afternoon) — Online play slice O2 built (version 2.18.0); not committed or pushed
+
+- Built the online screens and the app side of rooms: `src/net/link.ts` (shared link interface), `chunk.ts` (moved out of peer.ts; Nearby unchanged), `server.ts` (server address; `?server=` only on localhost), `online.ts` (create, join, room list, host and joiner sockets, keep-alive), `src/ui/online.ts` (room form, room list, passcode screen), and the netlobby changes (Online/Nearby, host/join, room-list watch, invite links `#room=`).
+- Fixed on the way: "Join again" dropped online mode; the invite screen waited for the list (now the list runs on the passcode screen too).
+- Renamed the main menu button "Play on several phones" to "Multiplayer" (user, 2026-11-13).
+- Results: `npm run check` clean; `npm test` 286 of 286; Nearby lobby 67/67, network game 94/94, network votes 30/30; `testbed/online_check.py` 37/37 (rooms, list, passcodes, kick and rejoin, invite link, start and late join refused, whole four-phone game with matching standings, host goes home, try limits, idle expiry, relay stopped).
+- Not done: the real server only accepts `https://mmans-99.github.io`, so online play can't be tried from a test page; it needs a push. Not pushed; waiting for approval.
+
 ## 2026-11-13 (afternoon) — Slice O1 pushed; deploy fixed in 2.17.1
 
 **User:** "Yes" (approved the push after being told nothing is playable yet); then "Push" for the fix.
