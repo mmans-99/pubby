@@ -255,7 +255,7 @@ Built before network slice 4 (user 2026-11-12). One slice at a time; each needs 
   - [x] 9q.3 Shorter real sleeps in fast mode (keep only if faster)
   - [x] 9q.4 Full run once, times in the DEVLOG, then "push"
 - [ ] **Slice E: people and computer players on one phone**
-- [ ] **Slice F: computer players in network games**
+- [ ] **Slice F: computer players in network games** (now Phase 4f, version 2.26, `CODE.md` 9u Part C)
 - [ ] **Slice G: tuning from the user's games**
 
 ## Phase 4c — Online play: rooms over the internet (plan written 2026-11-13, `PROJECT.md` 12d, build guide `CODE.md` 9r; O1 deployed, O2 built as 2.18.0 not pushed)
@@ -347,3 +347,11 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 ## Blocked
 
 - (none)
+
+## Phase 4f — Classic cards, see-through reactions, staying connected, computer players in Multiplayer (plan 2026-11-13, `PROJECT.md` 12g, build guide `CODE.md` 9u; not built)
+
+- [x] Plan and mockup written (docs only)
+- [ ] User approves the plan and the mockup
+- [ ] **2.24.0:** Part B see-through reactions sheet; Part D classic card faces and fanned hand; Part E table (edge fans, thrown pile, waste pile in the corner); checks; user's phone test; push
+- [ ] **2.25.0:** Part A away seats (10 minutes), host and joiner reconnect online, room kept on the list, server change and deploy; checks; phone test on two networks; push
+- [ ] **2.26.0:** Part C computer players in Multiplayer (replaces Phase 4b slice F); checks; phone test; push

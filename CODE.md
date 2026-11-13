@@ -1716,6 +1716,395 @@ The user said no quick-rules lines for these waits (12f). Search `src/content/qu
 - Version **2.20.0** (`package.json`). Tell the user the number when asking to push.
 - Before any commit: update all five MD files, add a DEVLOG entry, run every check in Part A, B9 and C5, then ask the user to push to GitHub Pages as the test build (CLAUDE.md rule 5, and the user's habit: "Push it"). Test checklist: `PROJECT.md` 12f.
 
+## 9u. Versions 2.24 to 2.26: classic cards, see-through reactions, staying connected when you leave the screen, computer players in Multiplayer (PLAN, user 2026-11-13 19:07; written for any model, Haiku included; NOT BUILT; spec `PROJECT.md` 12g; mockups https://claude.ai/artifact/Vi55KTC1TtVWwiktGXVqnM and https://claude.ai/artifact/1EPeaQaijP1bwD1oPQjoyC (table))
+
+Four changes from the user's Multiplayer test of 2.23. Nothing here may be built until the user approves (CLAUDE.md rules 1 and 2). Build and push them as **three versions**, each with its own phone test, in this order:
+
+| Version | Parts | Why this order |
+|---|---|---|
+| 2.24.0 | B (see-through reactions), D (classic cards, fanned hand), E (table: edge fans, thrown pile, waste pile in the corner) | Screen-only, no network risk |
+| 2.25.0 | A (stay connected when a phone leaves the screen) | Needs a server deploy as well as the app |
+| 2.26.0 | C (computer players in Multiplayer, was slice F of 9m) | Uses the "away" seats from Part A |
+
+Rules for every part:
+- Change only the files named. If a named function is not where this guide says, search for its name; never rewrite a whole file.
+- After each numbered step run `npm run check`. After each part run `npm test` and `python3 testbed/run_checks.py --since origin/main`.
+- Exact on-screen text is in quotes. Use it word for word. No emoji in new UI (user rule, 2.0).
+
+### 9u.0 Read first
+
+1. `CLAUDE.md`, `PROJECT.md` 12g, `TODO.md` Phase 4f, the latest `DEVLOG.md` entry.
+2. Part B: `src/ui/styles.css` "Reactions drawer" block (~line 476), `src/ui/game.ts` drawer code (~line 1042), `testbed/drawer_check.py`.
+3. Part D: `src/ui/cards.ts` (`cardFace`), `src/ui/game.ts` `handBlock` (~line 819), `src/ui/styles.css` `.card` (~line 246), `.small-card` (~387), `.tiny-card` (~790), `.card.dim/.selected` (~399).
+4. Part A: `src/net/online.ts` (`RoomSocket`, `HostRoom`, `joinSocket`), `src/net/relayproto.ts`, `server/src/core/room.ts` (`connect`, `closed`, `listEntry`), `src/ui/netlobby.ts` (`startHostRoom`, `addOnlineLink`, `addLink`, `linkLost`, `wireJoin`, `joinGot`, `startPings`, `hostSeatRow`, `waitingText` use), `src/net/lobby.ts` (`LobbySeat`, messages, `readToJoiner`), `tests/server/room.test.ts`.
+5. Part C: `CODE.md` 9m slice F (the old outline, replaced by Part C here), `src/ui/bots.ts`, `src/ui/solosetup.ts` (level chips, speed, reactions, names), `src/ai/names.ts` (`pickNames`, `botNamesProblem`), `src/ai/persona.ts` (`randomPersona`), `src/net/lobby.ts` (`sessionPlayers`), `src/ui/netplay.ts` (`hostStart`, reaction relay ~line 160), `src/ui/storage.ts` (`BotsInfo`).
+
+---
+
+### Part B — see-through reactions sheet (2.24)
+
+**User:** "Make the reactions tab transparent, so can still see the gameplay in the back."
+
+B1. In `src/ui/styles.css`, `.reactions-sheet`: change
+- `background: rgba(20, 30, 20, 0.96);` → `background: rgba(20, 30, 20, 0.28);`
+- `border: 2px solid var(--gold);` → `border: 1px solid rgba(242, 193, 78, 0.55);`
+- `box-shadow: ...` → `box-shadow: none;`
+- `max-height: 55vh;` → `max-height: 42vh;` (more of the table stays in view).
+
+B2. `.phrase-chip`: `background: var(--ink);` → `background: rgba(29, 29, 27, 0.55);` and add `text-shadow: 0 1px 2px #000;` so the gold text still reads over cards.
+
+B3. Do not add `backdrop-filter` (blurs the game, slow on older Android). Do not change the toggle button.
+
+B4. Check: in `testbed/drawer_check.py`, after the sheet opens, read `getComputedStyle(sheet).backgroundColor` and check the alpha is `<= 0.35` ("reactions sheet is see-through").
+
+---
+
+### Part D — classic card faces and a fanned hand (2.24)
+
+**User:** "see attached screenshot, can you make the cards like that instead?" (a classic Hearts app: cream cards, big rank and suit in the top-left corner, a large suit shape in the bottom-right corner, overlapping hand in an arc). The look is copied, **not** the other app's artwork: court cards (J, Q, K) get Pubby's own simple design below. The mockup shows the result.
+
+#### D1. Suit shapes (no font symbols)
+
+Font suits (♥ ♠) turn into emoji on some phones. Draw them as SVG. In `src/ui/cards.ts` add:
+
+```ts
+const SUIT_PATH: Record<Suit, string> = {
+  hearts: '<path d="M50 92C22 68 2 50 2 29 2 13 14 2 28 2c10 0 18 6 22 14C54 8 62 2 72 2c14 0 26 11 26 27 0 21-20 39-48 63z"/>',
+  diamonds: '<path d="M50 2 90 50 50 98 10 50z"/>',
+  spades: '<path d="M50 2C62 22 98 38 98 63c0 14-11 24-24 24-9 0-16-4-20-10 1 9 5 16 12 21H34c7-5 11-12 12-21-4 6-11 10-20 10C13 87 2 77 2 63 2 38 38 22 50 2z"/>',
+  clubs: '<circle cx="50" cy="26" r="22"/><circle cx="25" cy="58" r="22"/><circle cx="75" cy="58" r="22"/><path d="M46 56c0 20-5 32-14 42h36c-9-10-14-22-14-42z"/>',
+};
+const CROWN_PATH: Record<'J' | 'Q' | 'K', string> = {
+  K: '<path d="M4 46 10 10 30 30 50 4 70 30 90 10 96 46z"/>',
+  Q: '<path d="M6 46 14 18a6 6 0 1 1 6 0l12 16 12-26a6 6 0 1 1 6 0l12 26 12-16a6 6 0 1 1 6 0l8 28z"/>',
+  J: '<path d="M10 46 18 16h64l8 30zM30 16 50 4l20 12z"/>',
+};
+const STAR_PATH = '<path d="M50 4 62 38 98 38 69 60 80 95 50 74 20 95 31 60 2 38 38 38z"/>';
+
+/** An SVG element from fixed path text (our own constants only, never user text). */
+function shape(paths: string, cls: string, viewBox = '0 0 100 100'): SVGSVGElement {
+  const t = document.createElement('template');
+  t.innerHTML = `<svg class="${cls}" viewBox="${viewBox}" fill="currentColor" aria-hidden="true">${paths}</svg>`;
+  return t.content.firstElementChild as SVGSVGElement;
+}
+export function suitShape(suit: Suit, cls = ''): SVGSVGElement { return shape(SUIT_PATH[suit], cls); }
+```
+
+Check `h()` in `src/ui/dom.ts` accepts an `SVGSVGElement` as a child; if its child type is `HTMLElement` only, widen it to `Element`.
+
+#### D2. New `cardFace`
+
+Keep the signature and the `aria-label`s. New markup:
+
+- Standard card: `div.card[.red]` containing
+  - `div.idx` with `span.r` (rank; add class `ten` when the rank is 10) and `suitShape(suit)`;
+  - ranks 11 to 13: `div.court` with `shape(CROWN_PATH[r], 'crown', '0 0 100 50')`, `span.big-letter` (the letter), `suitShape(suit, 'crest')`;
+  - every other rank (2 to 10 and Ace): `suitShape(suit, 'pip-big')`.
+- Joker: `div.card.joker` with `div.idx > span.r` "JOKER" and `shape(STAR_PATH, 'jstar')`.
+
+Callers that read `.rank` / `.suit` classes (search `querySelector('.rank` and `.suit` in `src/ui/` and `testbed/`) must be updated to `.idx .r`. `testbed/bot.js` reads cards by `aria-label` (check; if it reads `.rank`, update it).
+
+`.card.tiny-card` (seat badges, last trick row): keep it tiny. In CSS hide `.pip-big`, `.court` and `.jstar` inside `.tiny-card` and keep only the index.
+
+#### D3. CSS
+
+Replace the `.card` rules at ~line 246 to ~259 (keep `.hand.fresh` and `deal-in`) with:
+
+```css
+/* ===== 2.24 card faces (CODE.md 9u Part D) ===== */
+.card {
+  position: relative; overflow: hidden;
+  aspect-ratio: 5 / 7;
+  border-radius: 7%/5%;
+  background: #fbf8f1;
+  color: var(--ink);
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  box-shadow: -2px 2px 6px rgba(0, 0, 0, 0.35);
+  container-type: inline-size;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+.card.red { color: #d0312d; }
+.card .idx { position: absolute; left: 3%; top: 3%; width: 30%; display: flex; flex-direction: column; align-items: center; line-height: 1; z-index: 2; }
+.card .idx .r { font-size: 34cqw; font-weight: 700; letter-spacing: -0.04em; }
+.card .idx .r.ten { font-size: 29cqw; letter-spacing: -0.09em; }
+.card .idx svg { width: 22cqw; height: 22cqw; margin-top: 2cqw; }
+.card .pip-big { position: absolute; width: 74%; right: -14%; bottom: -10%; opacity: 1; }
+.card .court {
+  position: absolute; left: 34%; top: 6%; right: 6%; bottom: 6%;
+  border: 2px solid currentColor; border-radius: 4cqw;
+  background: linear-gradient(170deg, #fff5d8, #f4dfa6);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2cqw;
+}
+.card .court .crown { width: 46cqw; height: 26cqw; }
+.card .court .big-letter { font-size: 44cqw; font-weight: 700; line-height: 0.9; }
+.card .court .crest { width: 20cqw; height: 20cqw; }
+.card.joker { background: linear-gradient(160deg, #fffaf0, #f6e3ad); color: #6a3fa0; }
+.card.joker .idx .r { font-size: 15cqw; writing-mode: vertical-rl; text-orientation: upright; letter-spacing: -0.1em; }
+.card.joker .jstar { position: absolute; width: 62%; right: 6%; bottom: 8%; }
+```
+
+Notes: `container-type: inline-size` makes `cqw` units follow the card's own width, so the same face works at every size (hand, trick, swap). Remove the old `.card .rank` / `.card .suit` / `.small-card .rank/.suit` font sizes. `.card.small-card` keeps its width.
+
+#### D4. Fanned hand
+
+In `handBlock` (`src/ui/game.ts`), the hand `div` gets class `hand fan` and each card gets its place from a new pure helper in `src/ui/cards.ts` (pure so it can be unit-tested):
+
+```ts
+export interface FanSpot { x: number; y: number; rot: number; z: number }
+/** Places n cards in one fanned row, or two rows when there are more than 16. */
+export function fanLayout(n: number, width: number): { cardW: number; height: number; spots: FanSpot[] } {
+  const cardW = Math.min(96, Math.max(64, width * 0.19));
+  const cardH = cardW * 1.4;
+  const rows = n > 16 ? [Math.ceil(n / 2), n - Math.ceil(n / 2)] : [n];
+  const spots: FanSpot[] = [];
+  rows.forEach((m, ri) => {
+    const usable = width - cardW * 0.5;
+    const step = m > 1 ? Math.min(cardW * 0.62, (usable - cardW) / (m - 1)) : 0;
+    const x0 = (width - (cardW + step * (m - 1))) / 2;
+    const ang = Math.min(3, 30 / Math.max(1, m));
+    const mid = (m - 1) / 2;
+    for (let i = 0; i < m; i++) {
+      const d = i - mid;
+      spots.push({ x: x0 + i * step, y: ri * cardH * 0.55 + d * d * 0.9, rot: d * ang, z: spots.length + 1 });
+    }
+  });
+  return { cardW, height: cardH + (rows.length > 1 ? cardH * 0.55 : 0) + 30, spots };
+}
+```
+
+- Width: `Math.min(window.innerWidth, 520) - 12` (the app's max width is 520; check `styles.css` for the real value and use it). No layout reads.
+- Set on the hand div: `--card-w` and `--fan-h` (px). On each card: `--x`, `--y`, `--rot` (px, px, deg) and `style.zIndex = z`. Keep `--i` for the deal-in animation.
+- Cards stay sorted as today (`sortHand`), left to right, later cards on top, as in the screenshot.
+- Redraw on `resize` is not needed (phones don't resize mid-game; rotation is locked by the PWA manifest; check `manifest.webmanifest` `orientation`; if not portrait, add a `resize` listener that calls the game's existing redraw).
+- `.hand.fresh .card` animation: the `deal-in` keyframe uses `transform`, which would fight the fan's transform. Change `deal-in` to animate only `opacity` and add `translate: 0 14px` → `translate: 0 0` (the separate `translate` property does not clash with `transform`).
+- Every `handBlock` caller (play, swap, new-hand screens) gets the fan; the swap screen's raised cards use `.selected`, so they lift the same way.
+- `.dim` in a fan must not be see-through (overlapped cards would show through): `.hand.fan .card.dim { opacity: 1; filter: brightness(0.55) saturate(0.6); }` (already in D3).
+- Tap targets: the visible strip of each card is at least `step` wide (about 22 px at 22 cards on a 360 px phone). If `step < 20` in `fanLayout`, that is a bug: add a unit test that 26 cards on 320 px give `step >= 20` (the two-row split makes this hold).
+
+#### D5. Checks
+
+- Unit (new `tests/ui/fan.test.ts`, or next to the other ui tests if that folder doesn't exist): 1 card centred; 14 cards fit inside the width (first `x >= 0`, last `x + cardW <= width`); 17 cards make two rows; 26 cards on 320 px: every step ≥ 20; z rises left to right.
+- Browser: `solo_check.py` and `playthrough.py` must still play to the end (they tap cards by `aria-label`). Take a phone-size screenshot of the hand in `solo_check.py` and save it to `testbed/out/hand.png` for the DEVLOG.
+- **Phone checklist (2.24):** cards look like the mockup; tapping a card in the middle of the fan picks that card (not its neighbour); the lifted card is clearly raised; cards you can't play are darker; a 2-player game (big hands) shows two rows and every card can be tapped; the trick cards on the table and the swap screen use the new faces; reactions sheet shows the table through it.
+
+---
+
+### Part A — stay connected when a phone leaves the screen (2.25)
+
+**User:** "as soon as the screen is left, it times out, so can never share a code through messages as it doesn't have the room anymore."
+
+**Causes (read 2026-11-13 at 2.23):**
+1. Online, host: when the host opens Messages, the phone closes or freezes the room socket. `HostRoom` `onLost` → `startHostRoom` sends the host to `room-lost` at once. The server would wait 2 minutes (`hostGraceMs`) for the same host token, but the app never reconnects.
+2. Online, server: while the host's socket is gone the room is taken off the room list (`{ list: null }` in `RoomCore.closed`), so friends who got the invite can't find it.
+3. Online, any phone coming back: `RoomSocket` judges silence from `heard`, which is stale after the phone slept. The timer that fires first on return can call it lost before the fresh pong arrives.
+4. Online, a joining phone that leaves the screen: its socket closes, the host gets `left` and `linkLost` removes the seat at once. The server would let it back in with the same join token, but the app never tries.
+5. Nearby: pings stop while a phone is in the background; after 20 s (`LOST_AFTER_MS` in `netlobby.ts`) the seat is gone.
+
+**Rule (PROJECT.md 12g):** a phone that leaves the screen is **away**, not gone. Its seat is kept for **10 minutes** in the lobby and in the game. Everyone sees "Away" on that seat with the time left. The host can still remove it. Start stays off while someone is away ("Waiting for Sam", the 2.19 rule). In a game, play simply waits when it is the away player's turn (no auto-play, no skip).
+
+#### A1. `RoomSocket`: don't judge silence after sleeping (`src/net/online.ts`)
+
+- Add `private hiddenAt: number | null = null;`. In `onVisible`: when `document.visibilityState === 'hidden'`, set `hiddenAt = Date.now()` and return. When visible again: set `this.heard = Date.now()` first (the gap was sleep, not silence), then the existing ping and 5 s check.
+- In `beat()`: if `document.visibilityState === 'hidden'`, return without judging.
+- If on return `ws.readyState` is `CLOSING` or `CLOSED`, call `this.lost('lost')` at once (the reconnect in A2/A3 handles it).
+
+#### A2. Host reconnects with the same token (`HostRoom`)
+
+- `HostRoom` keeps `roomId` and `hostToken`. On socket lost (not `close()` on purpose): do **not** clear `links`; set each link `isOpen = false` but don't call their `onClose`; call a new callback `onAway()`; then reconnect: new `RoomSocket` with the same URL, tries at 0 s (or as soon as the page is visible again), 2 s, 5 s, 10 s, then every 15 s.
+- Give up and call the old `onLost` only when: the server refuses the socket with close code 4003 (room gone), or 10 minutes have passed since the first loss.
+- New callback `onBack()` when the new socket gets `ready`.
+- When the server sends `joined` for a link id already in `links`, reuse that `OnlineLink` (the code already does) and set `isOpen = true`.
+
+In `netlobby.ts` `startHostRoom`:
+- `hr.onAway = () => { hostAway = true; draw(); }` → the lobby stays on screen with a banner at the top: "Reconnecting… your room is kept". Buttons that send (Start, Add, options) are off while `hostAway`.
+- `hr.onBack = () => { hostAway = false; broadcast(); draw(); netChanged(); }` (`broadcast` sends the lobby to every phone again; in a game, also send every phone a full game: call `hostSync` for each player, the same as when a phone asks for `sync`).
+- `hr.onLost` unchanged (room-lost screen), but now it only fires after A2's give-up.
+- `addOnlineLink`: if the link id already has a **seated** seat in the lobby, this is that phone coming back: set `connected`/away off (A5), do not call `addLink` (which would wait for a new hello and drop it after 10 s), send it the lobby (and in a game, a full game update). Otherwise as today.
+
+#### A3. Joining phone reconnects with its join token (`joinSocket`)
+
+- `joinRoomNow` keeps the join token (module variable `joinToken` in `netlobby.ts`); pass it to `joinSocket`.
+- In `joinSocket`, on socket lost (and on `host-gone`): don't close the link; set `isOpen = false`, call a new `link.onAway?.()`; reconnect with the same token on the A2 timetable; on `ready` set `isOpen = true` and call `link.onOpen()`; give up (call `onClose`) after 10 minutes or on close code 4003.
+- New frame `host-back` (A4): call `link.onBack?.()`.
+- In `wireJoin`: `onAway` → banner "Reconnecting…" (own socket) or "The host stepped away. Waiting for them to come back." (`host-gone`); `onBack`/`onOpen` after an away → clear the banner, send `{ t: 'hello', ... }` again only if the host asks (it won't: A2 recognises the seat); in a game, send `{ t: 'sync' }` so the screen catches up.
+- `joinGot` already handles `lobby`; make sure `readySent` is not sent twice.
+
+#### A4. Server (`server/src/core/room.ts`, `src/net/relayproto.ts`)
+
+1. `hostGraceMs`: 120 000 → **600 000** (10 minutes).
+2. In `closed()` for the host socket: keep the room on the list. Replace `{ list: null }` with `{ list: this.listEntry() }` and add `away: true` to the list entry while `hostSocket === null` (add `away?: boolean` to `RoomInfo` in `relayproto.ts` and to `isRoom` in `online.ts`). The room list shows "Host away" under such a room; joining still works.
+3. In `connect()` for the host token (a reconnect): after `ready`, also send `{ c: 'joined', link }` to the host for **every** link in `linkSockets`, and send `{ c: 'host-back' }` to every link socket. Add `| { c: 'host-back' }` to `JoinIn`.
+4. In `connect()` for a join token while `hostSocket === null`: after `ready`, also send that socket `{ c: 'host-gone' }` so it waits (A3) instead of timing out on hello.
+5. A joining phone that closes its socket: unchanged (`left` to the host); the host now treats `left` as away (A5).
+6. Tests in `tests/server/room.test.ts`: host drops → room still listed with `away: true`; host back within 10 min → `joined` for each link + `host-back` to each; host back after 10 min → refused 4003 and room ended; join while host away → `ready` then `host-gone`; old `left`/`kicked` tests still pass.
+7. Deploy: the server deploys from `.github/workflows/server.yml` on push. The app and server go out in the same push; the app must not break against the old server (it won't: unknown frames are ignored).
+
+#### A5. Away seats in the lobby and the game (`src/net/lobby.ts`, `netlobby.ts`)
+
+- `LobbySeat`: add `awaySince?: number` (host clock, ms). `readToJoiner` reads it (`typeof === 'number'`). `LOBBY_PROTOCOL` 6 → **7**.
+- New pure helpers in `lobby.ts`: `setAway(lobby, id, at)` and `setBack(lobby, id)`; `waitingText` counts an away seat as not ready (so Start shows "Waiting for Sam").
+- New messages: joining phone → host `{ t: 'away' }` and `{ t: 'back' }` (add to `ToHost` and `readToHost`); host → joining phones `{ t: 'hostAway' }` / `{ t: 'hostBack' }` (add to `ToJoiner` and `readToJoiner`). Sent from a `visibilitychange` listener in `netlobby.ts` (hidden → away, visible → back), best effort (the send may fail; that's fine).
+- Host: `linkLost(id)` becomes "away": instead of removing the seat or marking it disconnected, call `setAway`, keep the link object if it is online (it may come back, A2), broadcast, draw. A 1-second check in `startPings` turns an away seat older than 10 minutes into today's `linkLost` behaviour (lobby: seat removed; game: `connected: false`, host can remove the player as before).
+- Nearby pings: a seat marked away (by its `away` message) is not judged by `LOST_AFTER_MS`; only by the 10-minute limit. A Nearby phone whose WebRTC link really closed can't come back without a new QR (that is slice 4); it stays "Away" until the 10 minutes run out or the host removes it.
+- Joining phone, Nearby: after `hostAway`, don't judge `hostHeard` for 10 minutes.
+- Seat row text (`seatTags`): "Away 4:12" (minutes:seconds left, counting down). In the game, the seat at the table shows the same small tag (use the existing seat badge place in `table.ts`; search "lost" or `connected` there).
+
+#### A6. Checks
+
+- Unit: `tests/net/lobby.test.ts` (away/back messages parse; `waitingText` counts away seats; `setAway`/`setBack`); `tests/server/room.test.ts` (A4.6).
+- Browser `testbed/online_check.py` (local relay): host page `page.evaluate` fires `visibilitychange` hidden (override `document.visibilityState` with `Object.defineProperty`) and closes its socket (test hook: add `pubbyLobby.dropSocket()` to `exposeTestHook`), wait 3 s, check the joining page shows "The host stepped away"; make the host visible again → both lobbies match and Start works. Same for a joining phone: drop → host shows "Away"; back → seat normal. A joiner joining while the host is away gets in once the host is back.
+- `lobby_check.py` (Nearby): send `away` from a joining page, wait 25 s (more than the old 20 s), seat still there with "Away".
+- **Phone checklist (2.25), two phones on different networks:** host makes a room, taps Share invite, sends it in Messages, comes back: the lobby is still there (maybe "Reconnecting…" for a second). Friend opens the link from Messages, finds the room, joins. Friend switches to another app for a minute: the host sees "Away" with a countdown; friend comes back: seat normal. Mid-game, each phone leaves for 30 s and comes back: the game carries on where it was.
+
+---
+
+### Part C — computer players in Multiplayer (2.26; replaces the 9m slice F outline)
+
+**User:** "I want to add computer players into multiplayer too, but it should be an option, like I can remove them or add them and should have the same rules as single player, that is no cheating and 3 difficulty levels."
+
+Works for Nearby and Online. The computer players run **on the host's phone only**, with the same brain (`decide`), the same one door to the game (`seenBy`, no hidden cards) and the same driver (`bots.ts`) as single player.
+
+#### C1. Lobby model (`src/net/lobby.ts`)
+
+- `LobbySeat`: add `bot?: { level: Level }` (import `Level` from `src/ai/persona.ts`). Bot seat ids are `"b1"`, `"b2"`… (never `host`, `cN` or `oN`). A bot seat is always `connected: true`, `ready: true`.
+- `readToJoiner`: read `bot` when it's an object with `level` in `easy|normal|hard`.
+- New pure helpers: `addBot(lobby, name, level)`, `setBotLevel(lobby, id, level)`, `removeSeat` (existing) works for bots.
+- `lobbyProblems`: unchanged count rules (2 to 8 seats, bots included); add: "Add at least one other player" is not needed — host + 1 computer player is allowed (works like single player).
+- `sessionPlayers`: players from bot seats get `computer: true`; their `linkIds` entry is `'bot'`.
+- Names: `pickNames(1, takenNames, rng)` from `src/ai/names.ts`, taken = every seat's shown name. A person joining with a name a bot has: the bot gets a new name (`pickNames` again), the person keeps theirs.
+- `LOBBY_PROTOCOL` 7 → **8**.
+
+#### C2. Host screen (`netlobby.ts` `hostLobbyView`, `hostSeatRow`)
+
+- Under the seat list, host only, not started, fewer than 8 seats: button "Add computer player". Tap: adds a Normal computer player at the end with a new name. No dialog.
+- A bot's seat row: the computer icon (`icon('bot')`, as at the table), the name, a three-part level switch "Easy" / "Normal" / "Hard" (reuse the solo setup's `seg-btn` styles), and a remove button (`icon('close')`, `aria-label` "Remove <name>"). Removing a computer player doesn't ask first.
+- Renaming: tapping the name opens the same small text box the host uses for their own game name; checked with `botNamesProblem` (no clash with any seat).
+- Host options, shown only when at least one computer player is seated: "Computer speed" (Relaxed / Normal / Fast, default Normal) and "Reactions from the computer players" (on by default). Copy the controls from `solosetup.ts`. Keep them in `Lobby` (`botSpeed`, `botReactions`) so other phones see them in the settings summary.
+- Seat order arrows work for bots like for people.
+- Online: `hostRoom.update(seats, started)` counts bots as seats (so the room list shows how full the table is and the server refuses joins at 8).
+
+Other phones: a bot seat shows the icon, name and a small level tag ("Hard"); no controls.
+
+#### C3. Starting (`startGame` → `hostStart`)
+
+- `hostStart(session, linkIds, hostId, bots?)`: `linkOf` skips `'bot'` links (as it skips `'host'`). Build `bots: BotsInfo = { seats: { [playerId]: { level, personality: randomPersona(level, rng).personality } }, speed, reactions }` with **no `me`** and put it on the `SavedGame` (`{ ..., net: {...}, bots }`). No bots → no `bots` field (today's behaviour).
+- `waitingText` ignores bot seats (they are always ready).
+
+#### C4. Driver on the host (`src/ui/bots.ts`)
+
+- The driver already runs only where `runsSession(g)` is true (check `botsTick`; if it checks `g.bots.me`, change it to only need `g.bots`).
+- Network rules apply as they are (open live votes, public take-cards, ready-up, cards seen after the swap): bots answer through `decide`, which already handles these phases in single player. Check each one with the browser check below.
+- Reactions: where `bots.ts` calls `showReaction(id, r)` (~line 122), also pass it to the other phones when `g.net?.role === 'host'`: add `export function hostSendReaction(from: PlayerId, r: number)` in `netplay.ts` that sends `{ t: 'react', from, r }` to every link in `linkOf` (same as the host's own reaction), and call it there.
+- "Thinking…": only on the host's phone (others see whose turn it is by the glowing seat). No new message.
+- The host's screen gates the bots (`canMove`: pop-ups, animations, game screen). If the host is on the pause screen or away, bots wait. That's accepted (12g).
+- Votes in a network game are live and open, so a bot's ballot shows on every phone as it is cast (this is the existing broadcast; no change).
+
+#### C5. Fair play
+
+- `redactSession` already blanks every hand but the phone's own, so bot hands never leave the host's phone; add a unit test in `tests/net/netgame.test.ts`: a session with a `computer: true` player, `redactSession(s, 'p2')` has only blank cards for the bot.
+- `tests/ai/fairplay` must still pass unchanged.
+- Game records: any game with a computer player is a vs-computer game (`vsComputer`), on every phone, as in single player.
+
+#### C6. Checks
+
+- Unit: `tests/net/lobby.test.ts`: `addBot`, `setBotLevel`, remove, names never clash, `sessionPlayers` marks `computer`, bot seats ignored by `waitingText`, protocol 8 round trip of a bot seat.
+- Browser `netgame_check.py`: new game "2 phones + 2 computer players (Easy, Hard)" to the end of the game (one round is enough, per 9q.2), with `bot.js` playing the two people: the bots' ballots appear on both pages; a bot reaction appears on the joining page; nobody's hand is seen on the other page. `online_check.py`: 1 phone + 1 joining + 1 computer player plays one round.
+- Arena: no change to `src/ai/` brains, so no arena run needed unless `bots.ts` changes `decide` calls.
+- **Phone checklist (2.26):** host adds two computer players, sets one to Hard, renames one, removes and re-adds one; the friend's phone sees them with their levels; play a round: computer players play on both phones, their reactions show on both, their votes show live; past games on both phones say "vs computer".
+
+---
+
+### Part E — the table: players' fans at the edges, a thrown pile in the middle, waste pile in the corner (2.24, with Part D)
+
+**User (2026-11-13 19:18 to 19:26, from the table mockup https://claude.ai/artifact/1EPeaQaijP1bwD1oPQjoyC):** other players should look like the screenshot (a fan of card backs at the edge); the waste pile moves to the side "so everyone can throw their played cards in the centre"; the trick cards "pulled on top of each other" with "randomness being thrown on the table", but every card underneath must still show at least its corner. No name on each trick card ("we should know who put it by the order").
+
+Files: `src/ui/table.ts`, `src/ui/styles.css`, `src/ui/game.ts` (only where it calls `roundTable` / `wasteMiddle` and the end-of-trick target at ~line 605). Everything stays public information only (CLAUDE.md fair play: card backs and counts only).
+
+#### E1. Felt fills the table area
+
+- `.round-table` keeps its place in the game screen but loses the wooden oval: remove the `.table-oval` border and shadow, and give `.round-table` the felt background (`radial-gradient(120% 70% at 50% 40%, #2e7d32, #14421a 80%)`), `overflow: hidden`, `border-radius: 18px`. Height: `height: clamp(330px, 52vh, 460px)` (all player counts). Keep the led-suit mark in the middle (faint, behind the pile).
+- Keep `data-seat`, `.seat-chip`, `.turn`, `.thinking`, `.out`, the place badge, Deals tag, host star and bot icon exactly as today: only the position and the card backs change.
+
+#### E2. Where each other player sits (new pure helper in `table.ts`)
+
+```ts
+export type Edge = 'top' | 'left' | 'right';
+/** Edge spots for the other players, clockwise from your left (k = 1 … n-1). t is 0..1 along that edge (top: left→right; sides: top→bottom). */
+const EDGE_SPOTS: Record<number, [Edge, number][]> = {
+  2: [['top', 0.5]],
+  3: [['top', 0.28], ['top', 0.72]],
+  4: [['left', 0.4], ['top', 0.5], ['right', 0.4]],
+  5: [['left', 0.4], ['top', 0.28], ['top', 0.72], ['right', 0.4]],
+  6: [['left', 0.45], ['top', 0.2], ['top', 0.5], ['top', 0.8], ['right', 0.45]],
+  7: [['left', 0.7], ['left', 0.22], ['top', 0.3], ['top', 0.7], ['right', 0.22], ['right', 0.7]],
+  8: [['left', 0.75], ['left', 0.2], ['top', 0.18], ['top', 0.5], ['top', 0.82], ['right', 0.2], ['right', 0.75]],
+};
+export function edgeSpot(n: number, k: number): { edge: Edge; t: number } { const s = EDGE_SPOTS[n]![k - 1]!; return { edge: s[0], t: s[1] }; }
+```
+
+Clockwise from you means: your left-hand side first (bottom of the left edge), up the left, across the top, down the right. `tableOrder` already gives seats clockwise; seat k ≥ 1 uses `edgeSpot(n, k)`. Seat 0 (you, or whoever holds the phone) keeps a chip at the bottom centre, above the hand.
+
+#### E3. Edge fans of card backs (replaces `miniBacks` on other players)
+
+For each other seat, before the chip, add `div.edge-fan.edge-<top|left|right>` (`aria-hidden`) holding `min(cardCount, 13)` `span.edge-back` (the existing red `.card-back` look, 44 × 62 px, 2 px cream border):
+
+- Top edge: the fan is centred at `left: t*100%`, its cards' top at −22 px (partly off the felt, as in the mockup), rotated `180deg + d*2.5deg` where `d = i - (k-1)/2`, spaced `step = min(8, 70/k)` px, `top` nudged by `|d|*0.8` px. Chip under it (`top: 60px` from the felt's top).
+- Left/right edges: the fan is centred at `top: 70px + (feltHeight − 70px) * t`, cards at `left`/`right: −30px + |d|*0.6px`, rotated `±90deg + d*2.5deg`, spaced `min(6, 55/k)` px vertically. Chip just inside (62 px from that edge, same height).
+- A player who is out (place badge) shows no fan. The chip still shows the count number (the fan is decoration; the number is the truth).
+- Set positions with inline `left/top/right` styles in px or % from the helpers; no layout reads.
+- Keep `miniBacks` for seat 0? No: your own count is in the hand header; seat 0 shows name and count only.
+
+#### E4. The thrown pile in the middle (replaces the per-seat `table-play` spots)
+
+New pure helper in `table.ts` (unit-tested):
+
+```ts
+/** A number 0..1 from a text, always the same for the same text (so a card never jumps on a redraw). */
+export function seeded(text: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return ((h >>> 0) % 10000) / 10000;
+}
+/** Where each card of the trick lands: down-right of the one before, with a random tilt, so every earlier card keeps its top-left corner showing. */
+export function pileSpots(cardIds: readonly string[], salt: string): { x: number; y: number; rot: number }[] {
+  let x = 0, y = 0;
+  const out = cardIds.map((id, k) => {
+    if (k > 0) { x += 20 + seeded(`${salt}:${id}:x`) * 7; y += 8 + seeded(`${salt}:${id}:y`) * 14; }
+    return { x, y, rot: (seeded(`${salt}:${id}:r`) - 0.5) * 28 };
+  });
+  // Centre the whole pile on (0, 0).
+  const cx = x / 2, cy = y / 2;
+  return out.map((p) => ({ x: p.x - cx, y: p.y - cy, rot: p.rot }));
+}
+```
+
+- `salt` = `${s.round}:${trick number}` (use the play state's trick counter; search `session/types.ts` for it; if there is none, use the id of the trick's first card). A new trick gets a new random look; the same trick never changes.
+- In `roundTable`, draw the plays in play order inside `div.trick-pile` (centred in the felt, slightly above the middle: `top: 45%`). Each card: `cardFaceFromId(p.card, 'small-card')` in `div.table-play.trick-play` with `translate: calc(-50% + Xpx) calc(-50% + Ypx); rotate: Rdeg; z-index: 2 + i`. Use the separate `translate`/`rotate` properties, so the existing drop-in animation on `.new` (if it uses `transform`) still works.
+- Card width in the pile: 56 px (`.trick-pile .card.small-card { width: 56px; }`).
+- The newest card (`i === plays.length - 1`) gets class `newest`: `box-shadow: 0 0 0 2px var(--gold), 0 3px 8px rgba(0,0,0,.4)`.
+- Keep each card's `aria-label` "<name> played" (screen readers and `testbed/bot.js` may read it).
+- Why the corner stays visible: each next card sits at least 20 px right and 8 px lower; the corner index is about 17 × 24 px at 56 px wide. Unit test: for 8 random ids and 20 salts, every step has `dx >= 20` and `rot` within ±14°.
+
+#### E5. Waste pile in the corner
+
+- `wasteMiddle` → rename to `wastePile(count)` (update callers); it is drawn outside `table-middle`, as `div.table-waste.corner` at `right: 16px; bottom: 16px` of the felt, with the label "Waste" + count (`span.waste-count` "Waste 14").
+- `table-middle` keeps only the deck while dealing (and nothing during play).
+- End-of-trick slide (`game.ts` ~line 605) targets `.round-table .waste-pile` already; check it still finds it and slides to the corner. A slap still slides to the slapped seat's chip.
+- The final-two "pick up the waste pile" cards fly from the corner (search `waste-pile` in `game.ts` and `between.ts`).
+
+#### E6. Checks for Part E
+
+- Unit (new `tests/ui/table.test.ts`): `edgeSpot` has n−1 spots for n = 2…8 and every `t` is in 0..1; `seeded` is stable; `pileSpots` as in E4; the pile for one trick is the same on two calls.
+- Browser: `solo_check.py`, `playthrough.py`, `netgame_check.py` (they use `data-seat`; must pass unchanged). Add to `solo_check.py`: after the second card of a trick, every `.trick-play` except the last has its top-left 14 × 18 px not covered (use `document.elementFromPoint` at the card's top-left + (8, 10) after un-rotating: simplest is to check that point's element is inside that card).
+- Screenshots at 3, 5 and 8 players into `testbed/out/` for the DEVLOG.
+- **Phone checklist (2.24, added):** other players hold a fan at the edge; their fan shrinks as they play; the trick lands as a messy pile in the middle and you can still read every card's corner; the newest card has a gold edge; the waste pile is in the bottom-right corner and the end-of-trick cards slide into it; a slap still sends the cards to the slapped player.
+
+
+### 9u.1 Version and process
+
+- 2.24.0 (B + D + E), 2.25.0 (A, app and server), 2.26.0 (C). Each: update all five MD files, DEVLOG entry, checks in that part, then ask the user to push (CLAUDE.md rule 5; the user says "Push it"). Tell the user the version number each time.
+- Don't start the next version until the user has pushed the last one (or says to go on).
+
 ## 8a. Playable test builds (required before every commit)
 
 `CLAUDE.md` rule 5: the user tests every change on their phone before approving a commit.

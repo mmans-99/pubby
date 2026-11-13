@@ -4,6 +4,20 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (evening, 19:07) — Plan 9u: classic cards, see-through reactions, staying connected, computer players in Multiplayer (docs only)
+
+**User (after a Multiplayer test of 2.23):** leaving the screen times out, so the invite can't be shared through Messages; make the reactions tab transparent; computer players in Multiplayer as an option (add/remove, same no-cheating rules, 3 levels); cards like the screenshot (classic Hearts style). Asked for a plan Haiku can code.
+
+**Found (read only, at 2.23.0):** online host socket loss goes straight to "room lost" with no reconnect, though the server keeps the room 2 minutes for the host token; the server takes the room off the list while the host is away; `RoomSocket` can call a socket lost right after the phone wakes (stale `heard`); a joining phone's `left` removes its seat at once; Nearby seats go after 20 s silent.
+
+**Written:** `CODE.md` 9u (Parts A to D, three versions 2.24 to 2.26), `PROJECT.md` 12g, `TODO.md` Phase 4f (slice F moved there). Mockup of cards, fan, sheet and lobby: https://claude.ai/artifact/Vi55KTC1TtVWwiktGXVqnM (card CSS in 9u D3 checked by rendering it in headless Chromium).
+
+**Table (19:18 to 19:26):** user asked for the other players to look like the screenshot; table mockup https://claude.ai/artifact/1EPeaQaijP1bwD1oPQjoyC went through three rounds: waste pile moved to the bottom-right corner; the trick as a thrown, tilted pile where every card keeps its corner showing; no names on trick cards (order is enough). Added as `CODE.md` 9u Part E (in 2.24).
+
+**Next:** user says "push it" for the plan docs; then build 2.24.0.
+
+---
+
 ## 2026-11-13 (evening) — Version 2.23.0: visual quick rules; situational reactions (take button icon only)
 
 **User:** "Make it more visual" for the quick rules; symbols at the top; minimal text on the take button; the two new phrases; reactions that fit the situation through the game. Answers: computer players say the take phrases when they slap a person or when a person picks up the pile; the button label is "Take". "Push it", no long tests.

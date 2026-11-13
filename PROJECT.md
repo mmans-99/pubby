@@ -601,6 +601,16 @@ User, 2026-11-13: "When setting up a game, when I change host options, the scree
 8. Multiplayer results screen: one player doesn't tap "I'm ready". Host's Next round is off and says "Waiting for <name>". They tap ready: Next round turns on. End the game still works at any time.
 9. Against the computer: Next round works after the computer players have readied (a moment).
 
+### 12g. Classic cards, see-through reactions, staying connected, computer players in Multiplayer (PLAN, user 2026-11-13 19:07; build guide `CODE.md` 9u; mockup https://claude.ai/artifact/Vi55KTC1TtVWwiktGXVqnM; not built)
+
+From the user's Multiplayer test of 2.23:
+- **Leaving the screen:** "as soon as the screen is left, it times out, so can never share a code through messages." A phone that leaves the screen (to send the invite, read a message) is **away**, not gone. Its seat is kept for 10 minutes, in the lobby and in a game; every phone shows "Away" with the time left; the host can still remove it; Start waits for it ("Waiting for X"); in a game play waits when it's the away player's turn. Online, the room stays on the room list while the host is away ("Host away") and friends can still join. A Nearby phone whose link really dropped still needs slice 4 (rejoin) to come back.
+- **Reactions sheet:** see-through, so the game shows behind it.
+- **Computer players in Multiplayer (Nearby and Online):** host only, in the lobby: "Add computer player", remove, level Easy / Normal / Hard per player, rename; computer speed and reactions options. Same brain and same no-cheating rule as single player (they only know what a person in that seat would know). They run on the host's phone. Their reactions and live votes show on every phone. Games with them count as vs-computer games. Not addable after Start.
+- **Cards:** the classic look from the user's screenshot: cream cards, rank and suit in the top-left corner, a large suit in the bottom-right corner, Pubby's own simple court cards (not copied art), and the hand as an overlapping fan (two rows for big hands). Cards you can't play are darker.
+- **Table (user 19:18 to 19:26, table mockup https://claude.ai/artifact/1EPeaQaijP1bwD1oPQjoyC, approved):** other players hold a fan of card backs at the edge of the felt (top and sides), sized by their card count, with the number on their name. The trick is thrown into the middle as a messy pile, each card at a random tilt, newest on top with a gold edge; every card underneath still shows its top-left corner. No names on trick cards (the order tells who played what). The waste pile sits in the bottom-right corner.
+- Open questions (defaults used in the plan unless the user says otherwise): 10 minutes away limit; host + only computer players allowed in Multiplayer; computer players added only before Start.
+
 ## 13. Quick rules (in-game help)
 
 - **What it is:** A short, simplified rules guide inside the app.
