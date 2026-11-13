@@ -4,6 +4,28 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (evening, 18:07) — Version 2.20.0: lobby scroll place, cards seen before play, Next round waits for everyone ready
+
+**User:** "Build CODE.md 9t (version 2.20)", then "Push it" after the local checks.
+
+**Built (CODE.md 9t, Parts A, B and C)**
+- Part A: `draw()` in `netlobby.ts` keeps the window's scroll place across the rebuild. `lobby_check.py` checks the joker toggle and pause select keep their place (541 → 541).
+- Part B: session flag `waitForAll` (on for Multiplayer, games against the computer and the arena; off for one-phone pass-and-play). After the last swap the phase is `cardCheck` until every player sends `seenHand`; then the leader step runs as before. Phone action `seenHand`, `LOBBY_PROTOCOL` 5 → 6. Screens: Done sends `seenHand`, "Waiting for X", and a plain new-hand screen if the app was reopened. Computer players send `seenHand` at once. Old saved games default to `waitForAll: false`, `handSeen: []`.
+- Part C: `advance` fails with "Waiting for X" until every player is ready (End the game is never held). The host's Next round is disabled with the same text; one tap readies and advances. Other phones see "Waiting for X" (not their own name).
+- Shared helper `src/session/names.ts` (`joinNames`) now also used by the lobby's "Waiting for" text.
+- Version 2.20.0.
+
+**Checks run**
+- `npm run check` clean; `npm test` 312 of 312 (293 existing, 19 new in `card-check.test.ts` and `ready-gate.test.ts`).
+- Browser: `lobby_check.py` 70/70; `netgame_check.py` 97/97 (new holds: a phone that has not pressed Done holds up play; Next round stays off until a held phone readies); `solo_check.py` all pass, plus new `--two-player` check 5/5; `netvotes`, `playthrough`, `drawer`, `back`, `offline`, `sound`, `online` all pass.
+- Arena (`tests/ai/botgame.ts` now uses `waitForAll: true`): 50 games each at 2, 3 and 8 players, all finished, 0 refused, 0 crashed.
+
+**Open (not changed):** `src/content/quick-rules.md` line about the host moving on when ready (no quick-rules line for these waits was decided; wording left as is for the user to confirm).
+
+**Next:** user's phone test with the 12f checklist, then the fix or next slice.
+
+---
+
 ## 2026-11-13 (evening, 17:20-17:24) — Answers for 12f; full screen check; Part C added to plan 9t (docs only)
 
 **User:** "1 no 2 no. Is that all the screens where it could happen? Or are there any other scenarios?" Then "Yes" to Next round waiting for everyone.

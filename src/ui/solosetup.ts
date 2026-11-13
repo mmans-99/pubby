@@ -260,6 +260,7 @@ export function startSoloGame(): void {
       hostId: 'p1',
       jokerRuleEnabled: solo.jokers,
       pauseTimeLimitSec: solo.pauseLimit,
+      waitForAll: true, // 2.20: the person and the computer players all see their cards first
     }, rng);
     const seats: Record<PlayerId, BotInfo> = {};
     bots.forEach((b, i) => {

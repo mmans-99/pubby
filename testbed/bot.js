@@ -47,7 +47,8 @@
     const start = document.querySelector('button.tap-start');
     if (visible(start)) return click(start, 'reaction start');
     const done = byText('Done · pass on') || buttons().find((b) => b.textContent.trim() === 'Done');
-    if (done) return click(done, 'done');
+    // 2.20 test holds (netgame_check.py): a held phone waits before Done on its new hand.
+    if (done) return window.pubbyBotHold ? 'wait' : click(done, 'done');
 
     // Votes.
     const yes = buttons().find((b) => b.textContent.trim() === 'YES');
@@ -93,6 +94,9 @@
     }
 
     // Pass-the-phone screens.
+    // 2.20 test hold: a held phone does not tap "I'm ready" on the results screen.
+    const readyBtn = buttons().find((b) => b.textContent.trim() === "I'm ready");
+    if (readyBtn && window.pubbyBotHoldReady) return 'wait';
     const me = buttons().find((b) => /^I'm \S/.test(b.textContent.trim()));
     if (me) return click(me, 'show my cards');
 

@@ -13,7 +13,8 @@
 import { h, type Child } from './dom.ts';
 import { icon } from './icons.ts';
 import type { SavedGame } from './storage.ts';
-import type { PlayerId, Session } from '../session/types.ts';
+import type { PlayerId, Session, SessionAction } from '../session/types.ts';
+import { joinNames } from '../session/names.ts';
 import { getState, update } from './store.ts';
 import { chooseLeaderStage, dealingStage, handBlock, isHostSeat, nameOf, ownSeat, playHandStage, publicView, send } from './game.ts';
 import { netRoundStart } from './roundstart.ts';
@@ -112,6 +113,9 @@ function beforeRound(g: SavedGame): Child {
 /** Ready-up (2.5): who is ready, on every phone; each phone readies only its own player. */
 function readyRow(s: Session, me: PlayerId): HTMLElement {
   const iReady = s.ready.includes(me);
+  // 2.20 (Part C): on every phone except the host's and the player's own, say who the host is waiting for.
+  const waitingFor = s.waitForAll ? s.order.filter((p) => p !== s.hostId && p !== me && !s.ready.includes(p)) : [];
+  const hostPhone = me === s.hostId;
   return h('section', { class: 'ready-row', 'aria-label': 'Ready' },
     h('div', { class: 'name-chips' }, s.order.map((p) => {
       const on = s.ready.includes(p);
@@ -121,6 +125,7 @@ function readyRow(s: Session, me: PlayerId): HTMLElement {
       }, on ? [icon('check'), ` ${nameOf(s, p)}`] : nameOf(s, p));
     })),
     h('p', { class: 'muted small center' }, `${s.ready.length} of ${s.order.length} ready`),
+    waitingFor.length && !hostPhone ? h('p', { class: 'warn center' }, `Waiting for ${joinNames(waitingFor.map((p) => nameOf(s, p)))}`) : null,
     iReady
       ? h('button', { class: 'secondary', disabled: true }, icon('check'), ' Ready')
       : h('button', { class: 'big', onclick: () => send([{ type: 'readyUp', by: me }]) }, "I'm ready"),
@@ -134,6 +139,8 @@ function results(g: SavedGame): Child {
   if (!rec) return h('p', null, 'No results yet.');
   const host = isHostSeat(g);
   const armed = getState().armed === 'endsession';
+  // 2.20 (Part C): the host's button waits for every other player to be ready.
+  const missingOthers = s.waitForAll ? s.order.filter((p) => p !== s.hostId && !s.ready.includes(p)) : [];
   return h('div', { class: 'stack' },
     h('h2', { class: 'center results-head' }, icon('trophy'), ` ${nameOf(s, rec.finishingOrder[0])} wins ${rec.ultimate ? 'the Ultimate Round' : `round ${rec.round}`}`),
     s.ultimateRound ? h('p', { class: 'center' }, h('span', { class: 'chip-info gold' }, icon('bolt'), ' Next: Ultimate Round')) : null,
@@ -150,8 +157,17 @@ function results(g: SavedGame): Child {
       }, icon('bolt'), s.order.length === 2 ? ' Ask for the Ultimate Round' : ' Ultimate Round vote'),
     host
       ? [
-        h('button', { class: 'big', onclick: () => send([{ type: 'advance', by: s.hostId }]) },
-          icon('play'), s.ultimateRound ? ' Start the Ultimate Round' : ` Next round · ${nameOf(s, s.hostId)}`),
+        h('button', {
+          class: 'big',
+          disabled: missingOthers.length > 0,
+          onclick: () => {
+            // One tap for the host: ready the host (if not yet) and move on.
+            const acts: SessionAction[] = s.ready.includes(s.hostId) ? [] : [{ type: 'readyUp', by: s.hostId }];
+            send([...acts, { type: 'advance', by: s.hostId }]);
+          },
+        }, icon('play'), missingOthers.length
+          ? ` Waiting for ${joinNames(missingOthers.map((p) => nameOf(s, p)))}`
+          : s.ultimateRound ? ' Start the Ultimate Round' : ` Next round · ${nameOf(s, s.hostId)}`),
         h('button', {
           class: armed ? 'danger' : 'ghost',
           onclick: () => {

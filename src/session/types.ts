@@ -33,12 +33,15 @@ export interface SessionSetup {
   readonly jokerRuleEnabled?: boolean;
   /** Optional pause time limit in seconds. Default: none. */
   readonly pauseTimeLimitSec?: number | null;
+  /** 2.20: wait for every player (after the hidden swap until all have pressed Done on their new hand, Part B; and on the results screen until all are ready, Part C). On for network games and games against the computer. Off for one-phone pass-and-play, where the phone is passed anyway. */
+  readonly waitForAll?: boolean;
 }
 
 export type SessionPhase =
   | 'dealing'
   | 'reshuffle' // after the deal: anyone may call the reshuffle vote
   | 'swap' // hidden swap (2 and 3 players)
+  | 'cardCheck' // 2.20: after the swap, until every player has seen their new hand
   | 'reactionTap' // two or more players missing a suit
   | 'chooseLeader' // last round's winner picks who leads
   | 'playing'
@@ -130,6 +133,10 @@ export interface Session {
   /** Only one reshuffle vote per round. */
   readonly reshuffleUsed: boolean;
   readonly swapDone: readonly PlayerId[];
+  /** 2.20: which players have pressed Done on their new hand (cardCheck). */
+  readonly handSeen: readonly PlayerId[];
+  /** 2.20: wait for every player (see SessionSetup.waitForAll). */
+  readonly waitForAll: boolean;
   readonly tap: { readonly players: readonly PlayerId[]; readonly results: Readonly<Record<PlayerId, TapEntry>> } | null;
   readonly play: PlayState | null;
   /** Take-cards requests this round, oldest first (PROJECT.md section 4.2). */
@@ -172,6 +179,7 @@ export type SessionAction =
   // Round start
   | { type: 'startRound'; by: PlayerId } // host: close the reshuffle window
   | { type: 'swap'; by: PlayerId; cardIds: readonly string[] }
+  | { type: 'seenHand'; by: PlayerId } // 2.20: Done on the new hand
   | { type: 'reactionTap'; by: PlayerId; ms: number; falseStart: boolean }
   | { type: 'chooseLeader'; by: PlayerId; leader: PlayerId }
   // Play
@@ -219,6 +227,7 @@ export type SessionEvent =
   | { readonly type: 'reshuffled'; readonly dealer: PlayerId }
   | { readonly type: 'reshuffleWindowClosed' }
   | { readonly type: 'swapped'; readonly player: PlayerId; readonly count: number }
+  | { readonly type: 'handSeen'; readonly player: PlayerId }
   // Secret (PROJECT.md 5, 2026-11-13): only the player is logged. `suits` is read from old saved games only.
   | { readonly type: 'missingSuitDeclared'; readonly player: PlayerId; readonly suits?: readonly Suit[] }
   | { readonly type: 'reactionTapStarted'; readonly players: readonly PlayerId[] }

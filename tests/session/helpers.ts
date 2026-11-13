@@ -41,6 +41,11 @@ export function step(s: Session, rng: Rng): Session {
       const who = s.order.find((p) => !s.swapDone.includes(p))!;
       return act(s, { type: 'swap', by: who, cardIds: [] }, rng);
     }
+    case 'cardCheck': {
+      // 2.20: every player presses Done on the new hand.
+      const who = s.order.find((p) => !s.handSeen.includes(p))!;
+      return act(s, { type: 'seenHand', by: who }, rng);
+    }
     case 'reactionTap': {
       const who = s.tap!.players.find((p) => !s.tap!.results[p])!;
       return act(s, { type: 'reactionTap', by: who, ms: Math.floor(rng() * 500) + 100, falseStart: false }, rng);

@@ -308,6 +308,13 @@ export function chooseTap(persona: Persona, rng: Rng, me: PlayerId): SessionActi
   return { type: 'reactionTap', by: me, ms, falseStart };
 }
 
+/** 2.20: after the swap, a computer player says it has seen its new hand (at once). */
+export function chooseSeenHand(seen: AiSeen): SessionAction | null {
+  const cc = seen.view.cardCheck;
+  if (!cc || cc.seen.includes(seen.me)) return null;
+  return { type: 'seenHand', by: seen.me };
+}
+
 /** On the results screen: ready up, if I am not already. */
 export function chooseReady(seen: AiSeen): SessionAction | null {
   const me = seen.view.players.find((p) => p.id === seen.me);

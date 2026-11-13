@@ -217,6 +217,22 @@ def play(cfg, browser, base):
 
     for p in pages:
         p.evaluate(BOT)
+    # 2.20 holds (Parts B and C): phone 2 keeps its new hand (no Done) for a while, and later
+    # does not tap "I'm ready" on the results screen (2-player games have a second round).
+    swap_hold_on = bool(cfg['swap'])
+    ready_hold_on = cfg['rounds'] > 1
+    if swap_hold_on:
+        pages[1].evaluate('window.pubbyBotHold = true')
+    if ready_hold_on:
+        pages[1].evaluate('window.pubbyBotHoldReady = true')
+    hold_swap_at = None
+    hold_ready_at = None
+    saw_card_check = False
+    held_playing = False
+    saw_waiting = False
+    gate_disabled = False
+    gate_text_ok = False
+    diag = []
     leaks = []
     mismatch = []
     turns_by = set()
@@ -249,6 +265,30 @@ def play(cfg, browser, base):
             lk = p.evaluate(LEAKS_JS)
             if lk:
                 leaks.append((i, lk[:3]))
+        if swap_hold_on and snaps[0] and snaps[0]['phase'] == 'cardCheck' and hold_swap_at is None:
+            hold_swap_at = time.time()
+            saw_card_check = True
+        if swap_hold_on and hold_swap_at is not None and any(s and s['phase'] == 'playing' for s in snaps):
+            held_playing = True
+        if swap_hold_on and hold_swap_at is not None and not saw_waiting:
+            saw_waiting = f'Waiting for {NAMES[1]}' in pages[0].locator('main').inner_text()
+        if swap_hold_on and hold_swap_at is not None and time.time() - hold_swap_at > 3:
+            pages[1].evaluate('window.pubbyBotHold = false')
+            swap_hold_on = False
+        # Start the hold once the results screen (its ready row) is on the host's phone, not at the phase change:
+        # the round-end animations come first and take a while.
+        if ready_hold_on and hold_ready_at is None and pages[0].locator('.ready-row').count():
+            hold_ready_at = time.time()
+        if ready_hold_on and hold_ready_at is not None:
+            if len(diag) < 12:
+                diag.append((round(time.time() - hold_ready_at, 1), snaps[0]['phase'], pages[0].locator('main').inner_text()[-120:].replace(chr(10), ' | '), pages[1].evaluate('window.pubbyBotHoldReady'), [b.inner_text() for b in pages[1].locator('button').all()][:6]))
+            gate = pages[0].locator('button', has_text=f'Waiting for {NAMES[1]}')
+            if gate.count():
+                gate_text_ok = True
+                gate_disabled = gate_disabled or gate.first.is_disabled()
+            if time.time() - hold_ready_at > 3:
+                pages[1].evaluate('window.pubbyBotHoldReady = false')
+                ready_hold_on = False
         h = snaps[0]
         if h and h['log'] != last_log:
             last_log = h['log']
@@ -264,6 +304,12 @@ def play(cfg, browser, base):
         if time.time() - last_progress > 45:
             break
         time.sleep(0.05)
+    if cfg['swap'] and cfg['players'] <= 3:
+        check(f'{n} players: a phone that has not pressed Done on its new hand holds up play', saw_card_check and not held_playing and saw_waiting,
+              f'cardCheck seen {saw_card_check}, playing while held {held_playing}, host says waiting {saw_waiting}')
+    if cfg['rounds'] > 1:
+        check(f'{n} players: Next round is off and says "Waiting for <name>" until every phone is ready', gate_text_ok and gate_disabled,
+              f'text {gate_text_ok}, disabled {gate_disabled}; diag {json.dumps(diag, ensure_ascii=False)[:1500]}')
     check(f'{n} players: game played to the end on every phone', done,
           '' if done else f'stuck: {[p.evaluate(SNAP_JS) for p in pages]} {[p.locator("main").inner_text()[:160] for p in pages]}')
     check(f'{n} players: no phone ever held another player\'s card', not leaks, str(leaks[:3]))

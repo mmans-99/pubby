@@ -1480,7 +1480,7 @@ Under Option A the cards screen still runs inside the game after the start signa
 - Version: the next free number when built. Slice O3 (9r.8) is also planned as 2.19, so whichever ships first takes 2.19 and the other goes to the next number. Tell the user the number when asking to push.
 - Before any commit: update all five MD files, add a DEVLOG entry, give the user a playable test build and checklist (`PROJECT.md` 12e and the draft in `claude/pubby-pregame-sync-plan.md` in the Pubby project), and wait for the user's test.
 
-## 9t. Version 2.20: lobby keeps its scroll place, everyone has seen their cards before play, and Next round waits for everyone ready (PLAN, 2026-11-13; spec `PROJECT.md` 12f; not built, not approved)
+## 9t. Version 2.20: lobby keeps its scroll place, everyone has seen their cards before play, and Next round waits for everyone ready (BUILT and PUSHED as 2.20.0, 2026-11-13; spec `PROJECT.md` 12f)
 
 Three fixes from the user's phone test of 2.19 and the follow-up check (2026-11-13, 17:06, 17:10 and 17:24). Written so Haiku can build them step by step. Build Part A first (tiny, safe), then Part B, then Part C (it uses the flag from Part B). One version for all three: **2.20.0**. Nothing here may be built until the user approves (CLAUDE.md rules 1 and 2).
 

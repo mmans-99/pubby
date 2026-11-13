@@ -152,8 +152,10 @@ export function loadGame(): SavedGame | null {
   if (!g || !g.session || g.session.ended) return null;
   // Games saved by an older build: fill in what's missing.
   const stage: GameStage = g.stage === 'hand' || g.stage === 'handoff' ? g.stage : 'table';
+  // 2.20 fields: older saves have neither, which means the old behaviour.
+  const session = { ...g.session, waitForAll: g.session.waitForAll ?? false, handSeen: g.session.handSeen ?? [] };
   return {
-    session: g.session, stage, holder: g.holder ?? g.session.hostId, trickLog: g.trickLog ?? [], lastTrick: g.lastTrick ?? null, notes: g.notes ?? {},
+    session, stage, holder: g.holder ?? g.session.hostId, trickLog: g.trickLog ?? [], lastTrick: g.lastTrick ?? null, notes: g.notes ?? {},
     ...(g.bots ? { bots: g.bots } : {}),
   };
 }

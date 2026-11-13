@@ -171,7 +171,8 @@ function rulesTopicFor(st: State): string | null {
   switch (s.phase) {
     case 'dealing':
     case 'reshuffle': return 'Dealing';
-    case 'swap': return 'Hidden decks';
+    case 'swap':
+    case 'cardCheck': return 'Hidden decks';
     case 'reactionTap': return 'Missing a suit';
     case 'chooseLeader': return 'How to win';
     case 'results': return 'Scoring';

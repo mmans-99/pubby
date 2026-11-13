@@ -9,9 +9,10 @@
 
 import { jokerCount, MAX_PLAYERS, MIN_PLAYERS } from '../rules/cards.ts';
 import { readGameUpdate, type GameRefused, type GameUpdate } from './netgame.ts';
+import { joinNames } from '../session/names.ts';
 
-/** Bumped when the messages change, so mixed phones refuse each other. 2: game messages (slice 2). 3: reactions, host adding (2.4). 4: online rooms (2.18). 5: ready at the table (2.19). */
-export const LOBBY_PROTOCOL = 5;
+/** Bumped when the messages change, so mixed phones refuse each other. 2: game messages (slice 2). 3: reactions, host adding (2.4). 4: online rooms (2.18). 5: ready at the table (2.19). 6: cards seen after the swap (2.20). */
+export const LOBBY_PROTOCOL = 6; // 6: cards seen after the swap (2.20).
 export const NAME_MAX = 16;
 
 export interface LobbySeat {
@@ -199,8 +200,7 @@ export function waitingSeats(lobby: Lobby): LobbySeat[] {
 export function waitingText(lobby: Lobby): string | null {
   const names = waitingSeats(lobby).map(seatName);
   if (names.length === 0) return null;
-  if (names.length === 1) return `Waiting for ${names[0]}`;
-  return `Waiting for ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+  return `Waiting for ${joinNames(names)}`;
 }
 
 /** Problems that stop the host starting. Same rules as the one-phone setup. */

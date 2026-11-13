@@ -570,7 +570,7 @@ How it works: a small relay server on Cloudflare's free plan passes the messages
   3. Show "Waiting for" in the lobby before the host taps Start, or only after? Recommended: both, from the same list.
   4. Should the quick rules (section 13) mention the wait?
 
-### 12f. Lobby scroll place, everyone has seen their cards before play, and Next round waits for everyone ready (PLAN, user 2026-11-13; build guide `CODE.md` 9t; version 2.20; not built, not approved)
+### 12f. Lobby scroll place, everyone has seen their cards before play, and Next round waits for everyone ready (BUILT and PUSHED as 2.20.0 on 2026-11-13, user: "Push it"; build guide `CODE.md` 9t)
 
 User, 2026-11-13: "When setting up a game, when I change host options, the screen goes back to the top why" and "I swapped cards both players and as host I was in game but other player was on the done screen, still not at table. I thought that was corrected. Can you check properly and make a detailed plan as well as the above about scrolling so I can code this with haiku."
 

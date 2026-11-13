@@ -130,6 +130,7 @@ export function playBotGame(opts: BotGameOptions): BotGameResult {
       players: ids.map((id) => ({ id, profileName: `computer:${id}`, sessionName: id, computer: true })),
       hostId: 'p1',
       jokerRuleEnabled: opts.jokers ?? true,
+      waitForAll: true, // 2.20: as in games against the computer (everyone sees their cards, Next round waits)
     },
     rng,
   ).session;

@@ -230,12 +230,68 @@ def report():
         sys.exit(1)
 
 
+def two_player_checks(browser):
+    """2.20 (Part B): a 2-player game against one computer player. The computer has seen its
+    new hand at once, and nobody plays while the person has not pressed Done on theirs."""
+    ctx, page = new_page(browser)
+    page.get_by_role('button', name='Play against the computer').click()
+    page.get_by_role('heading', name='Computer players').wait_for()
+    if page.get_by_label('New profile name').count() and page.get_by_role('button', name='Sam').count() == 0:
+        page.get_by_label('New profile name').fill('Sam')
+        page.get_by_role('button', name='Add', exact=True).click()
+    page.get_by_role('button', name='Sam', exact=True).click()
+    page.get_by_role('button', name='Fast', exact=True).click()
+    for _ in range(2):  # 3 computer players by default: take two away
+        page.get_by_label('One fewer computer player').click()
+    page.get_by_role('button', name=re.compile(r'Start game · you and 1 computer player')).click()
+    page.wait_for_selector('.round-table')
+    page.evaluate(BOT)
+    page.evaluate('window.pubbyBotHold = true')  # the person's Done on the new hand waits
+    cfg = {'players': 2, 'rounds': 1, 'manualDeal': False, 'swap': True, 'reshuffle': False,
+           'ultimate': False, 'voteYes': True, 'forfeitChance': 0.0, 'jokers': True, 'stayAtEnd': True}
+    saw_check = False
+    played_while_held = False
+    computer_seen = False
+    first_check = None
+    t0 = time.time()
+    while time.time() - t0 < 120:
+        page.evaluate('cfg => window.pubbyBot.step(cfg)', cfg)
+        if FAST:
+            advance(page)
+        g = stored(page, 'pubby.currentGame')
+        sess = g['session'] if g else {}
+        if sess.get('phase') == 'cardCheck':
+            saw_check = True
+            first_check = first_check or time.time()
+            computer_seen = computer_seen or 'p2' in sess.get('handSeen', [])
+        if first_check and sess.get('phase') == 'playing':
+            played_while_held = True
+        if first_check and time.time() - first_check > 2.5:
+            break
+        page.wait_for_timeout(20 if FAST else 120)
+    page.evaluate('window.pubbyBotHold = false')
+    check(saw_check, 'two-player game: the new-hand step (cardCheck) comes after the swap')
+    check(computer_seen, 'the computer player has seen its new hand without waiting for the person')
+    check(not played_while_held, 'nobody plays while the person has not pressed Done on their new hand')
+    over, _, moves = play_until_over(page, limit_s=600, label='two players', rounds=1)
+    check(over, f'two-player game against the computer played to the end ({moves} log events)')
+    check(not [e for e in page.errors if 'refused' in e or 'could not decide' in e], 'no refused moves in the two-player game')
+    ctx.close()
+
+
 def main():
     failures = 0
     if '--slice-d' in sys.argv:  # only the slice D checks
         with sync_playwright() as p:
             browser = p.chromium.launch()
             slice_d_checks(browser)
+            browser.close()
+        report()
+        return
+    if '--two-player' in sys.argv:  # only the 2.20 two-player check
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            two_player_checks(browser)
             browser.close()
         report()
         return
@@ -326,6 +382,7 @@ def main():
         check(not [e for e in page.errors if 'refused' in e or 'could not decide' in e], 'no refused moves after Carry on')
         ctx.close()
         slice_c_checks(browser)
+        two_player_checks(browser)
         browser.close()
 
     report()

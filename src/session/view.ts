@@ -42,6 +42,8 @@ export interface PlayerView {
   /** A target score vote can be proposed now. */
   readonly canProposeTarget: boolean;
   readonly canSwap: boolean;
+  /** 2.20: after the swap, who has pressed Done on their new hand (null outside cardCheck). */
+  readonly cardCheck: { readonly seen: readonly PlayerId[] } | null;
   readonly reactionTap: { readonly players: readonly PlayerId[]; readonly tapped: readonly PlayerId[] } | null;
   readonly chooser: PlayerId | null;
   readonly turn: PlayerId | null;
@@ -109,6 +111,7 @@ export function playerView(s: Session, me: PlayerId): PlayerView {
     canCallReshuffle: s.phase === 'reshuffle' && !s.reshuffleUsed && !s.vote && !s.paused,
     canProposeTarget: targetVoteAllowed(s),
     canSwap: s.phase === 'swap' && swapAllowed(s.order.length) && !s.swapDone.includes(me),
+    cardCheck: s.phase === 'cardCheck' ? { seen: s.handSeen } : null,
     reactionTap:
       s.phase === 'reactionTap' && s.tap ? { players: s.tap.players, tapped: Object.keys(s.tap.results) } : null,
     chooser: s.phase === 'chooseLeader' ? (s.previous?.winner ?? null) : null,

@@ -14,6 +14,7 @@
  * The Ultimate Round goes straight to the end of the session.
  */
 
+import { joinNames } from './names.ts';
 import { assertPlayerCount, jokerCount } from '../rules/cards.ts';
 import type { Card } from '../rules/cards.ts';
 import { autoDealAll, autoDealStart, autoDealStep, isDealComplete, manualDealCard, setDealMode } from '../rules/deal.ts';
@@ -46,7 +47,7 @@ import type {
 } from './types.ts';
 
 /** Phases that are part of a round. The host can pause during these. */
-const ROUND_PHASES: readonly SessionPhase[] = ['dealing', 'reshuffle', 'swap', 'reactionTap', 'chooseLeader', 'playing'];
+const ROUND_PHASES: readonly SessionPhase[] = ['dealing', 'reshuffle', 'swap', 'cardCheck', 'reactionTap', 'chooseLeader', 'playing'];
 
 /** Collects events, stamped with the round they happened in. */
 class Out {
@@ -127,6 +128,8 @@ export function createSession(setup: SessionSetup, rng: Rng): ActionResult {
     hiddenDecks: {},
     reshuffleUsed: false,
     swapDone: [],
+    handSeen: [],
+    waitForAll: setup.waitForAll ?? false,
     tap: null,
     play: null,
     takeRequests: [],
@@ -164,6 +167,7 @@ function startNextRound(prev: Session, rng: Rng, out: Out): Session {
     hands: {},
     reshuffleUsed: false,
     swapDone: [],
+    handSeen: [],
     tap: null,
     play: null,
     takeRequests: [],
@@ -273,7 +277,19 @@ function reduce(s: Session, a: SessionAction, rng: Rng, out: Out): Session {
         hiddenDecks: res.hiddenDecks,
         swapDone: [...s.swapDone, a.by],
       };
-      if (s2.order.every((p) => s2.swapDone.includes(p))) return decideLeaderStep(s2, out);
+      if (s2.order.every((p) => s2.swapDone.includes(p))) {
+        // 2.20: with waitForAll, nobody leads until every phone has seen its new hand.
+        if (s2.waitForAll) return { ...s2, phase: 'cardCheck', handSeen: [] };
+        return decideLeaderStep(s2, out);
+      }
+      return s2;
+    }
+    case 'seenHand': {
+      assertPhase(s, 'cardCheck');
+      if (s.handSeen.includes(a.by)) return s; // a repeat is harmless
+      out.emit(s, { type: 'handSeen', player: a.by });
+      const s2: Session = { ...s, handSeen: [...s.handSeen, a.by] };
+      if (s2.order.every((p) => s2.handSeen.includes(p))) return decideLeaderStep(s2, out);
       return s2;
     }
     case 'reactionTap': {
@@ -398,6 +414,10 @@ function reduce(s: Session, a: SessionAction, rng: Rng, out: Out): Session {
       assertHost(s, a.by, 'start the next round');
       assertPhase(s, 'results');
       if (s.vote) fail('Finish the vote first');
+      // 2.20 (Part C): with waitForAll, the host waits until every player is ready.
+      if (s.waitForAll && !s.order.every((p) => s.ready.includes(p))) {
+        fail(`Waiting for ${joinNames(s.order.filter((p) => !s.ready.includes(p)).map((p) => nameOf(s, p)))}`);
+      }
       return startNextRound(s, rng, out);
     case 'endSession':
       assertHost(s, a.by, 'end the session');
@@ -563,7 +583,7 @@ function checkTarget(s: Session, out: Out): Session {
 // ---------------------------------------------------------------------------
 
 function afterReshuffleWindow(s: Session, out: Out): Session {
-  if (swapAllowed(s.order.length)) return { ...s, phase: 'swap', swapDone: [] };
+  if (swapAllowed(s.order.length)) return { ...s, phase: 'swap', swapDone: [], handSeen: [] };
   return decideLeaderStep(s, out);
 }
 

@@ -303,7 +303,10 @@ function draw(): void {
   if (!root) return;
   if (nameBox && document.activeElement === nameBox) { drawLater = true; return; }
   drawLater = false;
+  // 2.20: keep the scroll place; a rebuild under the finger sent the page up.
+  const y = window.scrollY;
   root.replaceChildren(...body().filter((x): x is HTMLElement => x !== null));
+  if (window.scrollY !== y) window.scrollTo(0, y);
 }
 
 type View = (HTMLElement | null)[];
@@ -626,7 +629,7 @@ function startGame(): void {
   const { players, hostId, linkIds } = sessionPlayers(l);
   let session;
   try {
-    session = createSession({ players, hostId, jokerRuleEnabled: l.jokers, pauseTimeLimitSec: l.pauseLimit }, defaultRng()).session;
+    session = createSession({ players, hostId, jokerRuleEnabled: l.jokers, pauseTimeLimitSec: l.pauseLimit, waitForAll: true }, defaultRng()).session;
   } catch (e) {
     flash(errText(e));
     return;

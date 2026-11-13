@@ -673,6 +673,7 @@ function tableStage(g: SavedGame): Child {
     case 'dealing': return dealingStage(g);
     case 'reshuffle': return reshuffleStage(g);
     case 'swap':
+    case 'cardCheck': // 2.20: the wait and new-hand screens come from netRoundStart
     case 'reactionTap': return roundStartScreen(g) ?? h('p', null, 'Waiting…');
     case 'chooseLeader': return chooseLeaderStage(g);
     case 'results': return resultsStage(g);

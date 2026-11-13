@@ -11,6 +11,7 @@
 import type { Card } from '../rules/cards.ts';
 import { MAX_SWAP } from '../rules/round.ts';
 import type { PlayerId, Session, VoteKind } from '../session/types.ts';
+import { joinNames } from '../session/names.ts';
 import { playerView } from '../session/view.ts';
 import { h, type Child } from './dom.ts';
 import { handBlock, handoffBlock, nameOf, nextClockwise, ownSeat, publicView, seatStrip, send } from './game.ts';
@@ -90,6 +91,11 @@ export function roundStartScreen(g: SavedGame): Child | null {
  */
 export function netRoundStart(g: SavedGame, me: PlayerId): Child | null {
   const s = g.session;
+  // 2.20 (Part B): after the swap, nobody leads until every phone has pressed Done on its new hand.
+  if (s.phase === 'cardCheck') {
+    if (s.handSeen.includes(me)) return waitStage(g, me, 'cards', s.order.filter((p) => !s.handSeen.includes(p)));
+    return newHandStage(g, me);
+  }
   if (swapReveal && swapReveal.player === me) {
     // The new hand shows once the host has made the swap.
     return s.swapDone.includes(me) || s.phase !== 'swap' ? swapRevealStage(g) : waitStage(g, me, 'swap', [me]);
@@ -113,14 +119,15 @@ export function netRoundStart(g: SavedGame, me: PlayerId): Child | null {
 }
 
 /** Network game: this phone has answered; waiting for the others. */
-function waitStage(g: SavedGame, me: PlayerId, what: 'vote' | 'swap' | 'tap', waitingFor: readonly PlayerId[]): Child {
+function waitStage(g: SavedGame, me: PlayerId, what: 'vote' | 'swap' | 'tap' | 'cards', waitingFor: readonly PlayerId[]): Child {
   const s = g.session;
   const v = s.vote;
   const [ic, title]: [IconName, string] =
     what === 'vote' ? [voteIcon(v!.kind), voteShort(s, v!.kind, v!.value)]
     : what === 'swap' ? ['swap', 'Hidden swap']
+    : what === 'cards' ? ['hand', 'New hands']
     : ['hand', 'Reaction Tap'];
-  const who = waitingFor.map((p) => nameOf(s, p)).join(', ');
+  const who = joinNames(waitingFor.map((p) => nameOf(s, p)));
   return h('div', { class: 'stack' },
     h('div', { class: 'step-head' }, h('div', { class: 'step-title' }, icon(ic), ` ${title}`),
       v?.awaitingHost ? h('div', { class: 'muted small' }, 'No majority') : h('div', { class: 'muted small' }, `Waiting for ${who}`)),
@@ -353,12 +360,38 @@ function swapStage(g: SavedGame, me: PlayerId): Child {
   );
 }
 
+/**
+ * 2.20: the new hand on a network phone, after the swap, before Done. Used when the
+ * app was reopened or the phone rejoined and this phone no longer remembers its swap.
+ */
+function newHandStage(g: SavedGame, me: PlayerId): Child {
+  if (swapReveal && swapReveal.player === me) return swapRevealStage(g);
+  const s = g.session;
+  const view = playerView(s, me);
+  const done = (): void => {
+    if (!send([{ type: 'seenHand', by: me }], { stage: 'hand', holder: me })) return;
+    update({});
+  };
+  return h('div', { class: 'stack' },
+    h('h2', { class: 'center' }, 'Your hand'),
+    handBlock(s, view, null, { picked: new Set(), all: false, mark: false, head: false }),
+    h('button', { class: 'big', onclick: done }, 'Done'),
+  );
+}
+
 function swapRevealStage(g: SavedGame): Child {
   const s = g.session;
   const me = swapReveal!.player;
   const view = playerView(s, me);
   const fresh = new Set(view.myHand.filter((c) => !swapReveal!.before.has(c.id)).map((c) => c.id));
   const done = (): void => {
+    if (s.waitForAll && s.phase === 'cardCheck') {
+      // 2.20: tell the others this phone has seen its hand. The screen stays if the host refuses.
+      if (!send([{ type: 'seenHand', by: me }], { stage: 'hand', holder: me })) return;
+      swapReveal = null;
+      update({});
+      return;
+    }
     swapReveal = null;
     if (ownSeat(g)) { update({}); return; }
     const next = roundStartHolder(s) ?? (s.phase === 'playing' ? (s.play?.pendingFinalTwo ?? s.play?.turn ?? null) : null);

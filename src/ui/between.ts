@@ -478,7 +478,7 @@ export function notesPanel(g: SavedGame, me: PlayerId): HTMLElement | null {
 // Pause (PROJECT.md section 8)
 // ---------------------------------------------------------------------------
 
-const ROUND_PHASES: readonly SessionPhase[] = ['dealing', 'reshuffle', 'swap', 'reactionTap', 'chooseLeader', 'playing'];
+const ROUND_PHASES: readonly SessionPhase[] = ['dealing', 'reshuffle', 'swap', 'cardCheck', 'reactionTap', 'chooseLeader', 'playing'];
 
 export function canPause(s: Session): boolean {
   return ROUND_PHASES.includes(s.phase) && !s.vote && !s.paused && !s.ended;

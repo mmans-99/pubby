@@ -29,6 +29,7 @@ import {
   chooseFinalTwo,
   chooseLeader,
   chooseReady,
+  chooseSeenHand,
   chooseSwap,
   chooseTakeAnswer,
   chooseTakeAsk,
@@ -64,6 +65,8 @@ export function decide(seen: AiSeen, m: Memory, persona: Persona, rng: Rng): Dec
   }
 
   if (v.canSwap) return one(chooseSwap(seen, persona, rng), 'hard');
+  // 2.20: after the swap, nobody leads before every player has seen their hand.
+  if (v.cardCheck && !v.cardCheck.seen.includes(me)) return one(chooseSeenHand(seen), 'easy');
 
   if (v.reactionTap && v.reactionTap.players.includes(me) && !v.reactionTap.tapped.includes(me)) {
     return one(chooseTap(persona, rng, me), 'forced');
