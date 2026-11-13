@@ -10,7 +10,7 @@ export const ROOM_ID_LENGTH = 8;
 
 function randomBytes(n: number): Uint8Array {
   const bytes = new Uint8Array(n);
-  globalThis.crypto.getRandomValues(bytes);
+  crypto.getRandomValues(bytes);
   return bytes;
 }
 
@@ -37,6 +37,6 @@ export function makeToken(): string {
 /** SHA-256 of "roomId:passcode" as hex. The server keeps only this, never the passcode. */
 export async function passcodeHash(roomId: string, passcode: string): Promise<string> {
   const data = new TextEncoder().encode(`${roomId}:${passcode}`);
-  const digest = new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', data));
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', data));
   return Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }

@@ -265,7 +265,7 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [x] Plan written and pushed (docs only, 2026-11-13)
 - [ ] User confirms the four defaults (`PROJECT.md` Open questions): keep Nearby, room list, 4-digit passcode, Cloudflare
 - [ ] User's one-time Cloudflare setup: account, workers.dev name, Account ID, API token, two GitHub secrets (`CODE.md` 9r.4)
-- [~] **Slice O1: the server** (version 2.17.0; built 2026-11-13, not pushed; `CODE.md` 9r.8)
+- [~] **Slice O1: the server** (version 2.17.1; built 2026-11-13, pushed 2.17.0, fixed in 2.17.1; deploy and `/health` check still open; `CODE.md` 9r.8)
   - [x] `src/net/relayproto.ts` + tests
   - [x] `RoomCore`, `DirectoryCore`, ids, api checks + tests (`tests/server/`)
   - [x] Cloudflare wrappers, `wrangler.toml`, `server/package.json`, `server/tsconfig.json` (bundled with esbuild; not type checked here, CI does it)

@@ -48,7 +48,7 @@ export class Room extends DurableObject<Env> {
   }
 
   /** A WebSocket upgrade: the host's socket or a joining phone's, decided by the token in the URL. */
-  async fetch(request: Request): Promise<Response> {
+  override async fetch(request: Request): Promise<Response> {
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('expected a WebSocket upgrade', { status: 426 });
     }
@@ -70,14 +70,14 @@ export class Room extends DurableObject<Env> {
     return new Response(null, { status: 101, webSocket: client });
   }
 
-  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
+  override async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
     if (typeof message !== 'string' || !this.core) return;
     const att = ws.deserializeAttachment() as { socketId: string } | null;
     if (!att) return;
     await this.run(this.core.frame(att.socketId, message, Date.now()));
   }
 
-  async webSocketClose(ws: WebSocket, code: number, reason: string): Promise<void> {
+  override async webSocketClose(ws: WebSocket, code: number, reason: string): Promise<void> {
     try {
       ws.close(code, reason);
     } catch {
@@ -86,12 +86,12 @@ export class Room extends DurableObject<Env> {
     await this.socketGone(ws);
   }
 
-  async webSocketError(ws: WebSocket): Promise<void> {
+  override async webSocketError(ws: WebSocket): Promise<void> {
     await this.socketGone(ws);
   }
 
   /** The wake-up time came: expiry checks. */
-  async alarm(): Promise<void> {
+  override async alarm(): Promise<void> {
     if (!this.core) return;
     await this.run(this.core.alarm(Date.now()));
   }

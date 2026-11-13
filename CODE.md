@@ -1350,7 +1350,7 @@ Screens are in `PROJECT.md` 12d. Code shape:
 
 #### Slice O1: the server (version 2.17)
 
-**Status (2026-11-13): BUILT as 2.17.0, not committed or pushed.** No screen changes, so nothing to play yet (`CLAUDE.md` rule 5). Waiting for the user's Cloudflare setup (9r.4), then "push", then the `/health` check in step 8.
+**Status (2026-11-13): PUSHED as 2.17.0 (commit ebf8168); the first deploy failed on type errors; fixed in 2.17.1.** No screen changes, so nothing to play yet (`CLAUDE.md` rule 5). Still to do: the deploy must go green, then the `/health` check in step 8 on the phone.
 
 **Build notes (what was decided where this plan left room):**
 - Files built: `src/net/relayproto.ts`; `server/src/core/ids.ts`, `api.ts` (input and origin checks, shared by the Worker and the stand-in; not in the list below), `room.ts`, `directory.ts`; `server/src/env.ts`, `room.ts`, `directory.ts`, `index.ts`; `server/wrangler.toml`, `server/package.json`, `server/tsconfig.json`; `testbed/relay_server.ts`; `.github/workflows/server.yml`; tests `tests/net/relayproto.test.ts`, `tests/server/room.test.ts`, `directory.test.ts`, `ids.test.ts`, `relay_server.test.ts`.
@@ -1363,7 +1363,7 @@ Screens are in `PROJECT.md` 12d. Code shape:
 - **Rejoin keeps the link id:** a phone that reconnects with its own token gets the same link id (needed for slice O3). After the game starts, only a phone that already had a seat can connect.
 - **Stand-in test:** `tests/server/relay_server.test.ts` starts `testbed/relay_server.ts` as a child process on a random port, so the type check never follows its `ws` import (`@types/ws` is not installed here, and the testbed is not type checked).
 - **Picker (`testbed/run_checks.py`):** `server/`, `testbed/relay_server.ts`, `.github/workflows/server.yml` and `.gitignore` select no browser check (no app screen uses the relay before O2). The O2 row in step 4 is partly done here.
-- **`package.json`:** `ws` `^8` added as a dev dependency (9r.7); version 2.17.0.
+- **`package.json`:** `ws` `^8` added as a dev dependency (9r.7); version 2.17.1 (2.17.0 was pushed first; 2.17.1 fixes the type errors that stopped the first deploy).
 - **Not checked here:** the Worker files in `server/src` cannot be type checked, because `@cloudflare/workers-types` is not on this machine. They were bundled with esbuild (every import resolves). The `npm run check` step in `server.yml` type checks them on push, and the first deploy is still to do. Pin the `latest` versions in `server/package.json` on the day of the first deploy.
 - **Checks run here:** `npm run check` (both projects) clean; `npm test` 280 of 280 in 33 files; `node build.mjs` builds 2.17; the three network browser checks (see the DEVLOG entry for the results).
 
@@ -1372,7 +1372,7 @@ Screens are in `PROJECT.md` 12d. Code shape:
 3. `server/src/index.ts`, `room.ts`, `directory.ts`, `wrangler.toml`, `package.json`, `tsconfig.json`.
 4. `testbed/relay_server.ts`, and a small Node script check (`tests/server/relay_server.test.ts` starting it on a random port and using Node 22's built-in `WebSocket` client): create, list socket gets the room, join, frames both ways, close.
 5. `.github/workflows/server.yml`.
-6. `package.json` version 2.17.0 (rule 8; no screen changes yet).
+6. `package.json` version 2.17.1 (rule 8; no screen changes yet).
 7. Docs: this section's status, `TODO.md`, `DEVLOG.md` (results), `PROJECT.md` 12d status.
 8. **Test for the user (doc rule 5: nothing to play yet, say so):** after the user does 9r.4 and says "push", push; check the Actions tab with the user; the user opens `/health` on their phone. Also check the free-plan WebSocket question in 9r.1 and write the answer there.
 

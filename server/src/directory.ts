@@ -40,7 +40,7 @@ export class Directory extends DurableObject<Env> {
   }
 
   /** The list socket: gets the whole list now, and again after each change. */
-  async fetch(request: Request): Promise<Response> {
+  override async fetch(request: Request): Promise<Response> {
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('expected a WebSocket upgrade', { status: 426 });
     }
@@ -50,11 +50,11 @@ export class Directory extends DurableObject<Env> {
     return new Response(null, { status: 101, webSocket: pair[0] });
   }
 
-  async webSocketMessage(): Promise<void> {
+  override async webSocketMessage(): Promise<void> {
     // The list socket only receives; pings are answered by the runtime.
   }
 
-  async webSocketClose(ws: WebSocket, code: number, reason: string): Promise<void> {
+  override async webSocketClose(ws: WebSocket, code: number, reason: string): Promise<void> {
     try {
       ws.close(code, reason);
     } catch {
@@ -63,7 +63,7 @@ export class Directory extends DurableObject<Env> {
   }
 
   /** The debounce: send the list to every list socket. */
-  async alarm(): Promise<void> {
+  override async alarm(): Promise<void> {
     const text = this.listFrame();
     for (const ws of this.ctx.getWebSockets('list')) {
       try {

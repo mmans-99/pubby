@@ -4,6 +4,30 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (afternoon) — Slice O1 pushed; deploy fixed in 2.17.1
+
+**User:** "Yes" (approved the push after being told nothing is playable yet); then "Push" for the fix.
+
+**Done**
+- Pushed slice O1 to `main` as 2.17.0 (commit `ebf8168`). Repo access was added with push rights first.
+- The "Deploy the room server" workflow failed at `npm run check` (CI type check), so nothing was deployed. Causes: `globalThis.crypto` is not typed in the Workers types (changed to plain `crypto` in `server/src/core/ids.ts`), and nine Durable Object methods overrode base-class methods without `override` (added in `server/src/directory.ts` and `server/src/room.ts`).
+- Server unit tests: 40/40 pass after the fix. The local type check cannot run here because `@cloudflare/workers-types` is not installed in this sandbox; CI is the check.
+- Version 2.17.1.
+
+**Not done**
+- The deploy run for 2.17.1 must go green; then the user opens `https://pubby-rooms.mmans99.workers.dev/health` on their phone (expect `{"ok":true,"protocol":1}`).
+- Free-plan metrics check (9r.4 step 7) and pinning the `latest` versions in `server/package.json`.
+
+**User setup (done)**
+- Workers subdomain: `mmans99` (the server address will be `https://pubby-rooms.mmans99.workers.dev`).
+- GitHub secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` added.
+
+**Next steps**
+- Check the deploy; if it fails again, send the error lines.
+- Slice O2 (online rooms in the app) still waits on the four defaults in PROJECT.md and the server address in the app.
+
+---
+
 ## 2026-11-13 (late) — Online play slice O1 built: the relay server (version 2.17.0); not committed or pushed
 
 **User:** "Read CLAUDE.md, then build slice O1 from CODE.md 9r."
