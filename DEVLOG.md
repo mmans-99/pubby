@@ -4,6 +4,14 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (21:25) — Plan 9z: computer players that learn from the user (docs only, pushed to main)
+
+**User (21:23 to 21:25):** asked whether the AI can learn from playing against them. Answered: not today; three options. Asked for a plan in the code, to push, and to build later.
+
+**Written:** `CODE.md` 9z (options, fairness rule, option 1 detail, files, phone checklist), `PROJECT.md` 12l (decision needed), `TODO.md` Phase 4k. No code changed; version unchanged (doc-only). Decision pending: option 1, 2, 3 or a mix.
+
+---
+
 ## 2026-11-13 (night) — Built 2.29 and 2.30 (not committed)
 
 **Built:** 2.29 (full version shown, "Pubby updated" notice, one-screen game layout, see `CODE.md` 9x) and 2.30 (missing-suit notices stay until everyone taps OK, see `CODE.md` 9y). `package.json` is 2.30.0; the 2.29 behaviour is included in that build. One `dist/index.html`, so 2.29 is not a separate test build.

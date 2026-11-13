@@ -378,3 +378,10 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 ## Phase 4j — Missing-suit notices that stay until everyone taps OK (plan 2026-11-13 20:54, `PROJECT.md` 12k, build guide `CODE.md` 9y; built, not committed)
 
 - [~] **2.30.0:** `leadNotice` phase and `seenNotice` action with tests (9y.2, 9 tests pass); notice screens (9y.3, not yet seen in a browser); checks passed (377 tests); user's phone test pending; push pending
+
+## Phase 4k — Computer players that learn from you (plan 2026-11-13 21:25, `PROJECT.md` 12l, build guide `CODE.md` 9z; NOT BUILT; decision pending)
+
+- [!] **Decision:** user picks option 1 (within a game), 2 (across games on the phone), 3 (offline tuning), or a mix (`PROJECT.md` 12l)
+- [ ] Build the chosen option per `CODE.md` 9z (option 1 would be 2.31.0), with the fairness test (hidden-card test) and the arena check
+- [ ] Phone checklist (`CODE.md` 9z.5) and push, after the user says "Push it"
+

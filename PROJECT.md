@@ -688,6 +688,21 @@ From the user's Multiplayer test of 2.23:
 
 **Version:** 2.30.0. Phone checklist in `CODE.md` 9y.5.
 
+### 12l. Computer players that learn from the people they play against (PLAN, user 2026-11-13 21:25; build guide `CODE.md` 9z; NOT BUILT; DECISION PENDING)
+
+**Request (user 21:23 to 21:25):** "Can I make the AI learn by me playing against it?" Then: write it up as a plan, push, and build later.
+
+**Answer given:** not today. Computer players start fresh each round. Learning is possible in three ways (see `CODE.md` 9z.0):
+1. **Within one game** (recommended first step): bots nudge their weights toward your public habits; nothing saved; resets at game end.
+2. **Across games on the same phone:** the same habits kept in profile history, with a reset button.
+3. **Offline tuning:** the arena tunes `persona.ts` from your saved game records; the app itself doesn't change.
+
+**Fairness:** a learning bot may use only what a person at the table could see. Hidden cards and the secret missing suit are never used.
+
+**Decision needed from the user:** which option (1, 2, 3, or a mix). Until then nothing is built. Option 1 would be version 2.31.0.
+
+**Open questions:** should learning be on by default (plan says off until tested)? Should it apply to Normal and Hard only, or also Easy?
+
 ## 13. Quick rules (in-game help)
 
 - **What it is:** A short, simplified rules guide inside the app.

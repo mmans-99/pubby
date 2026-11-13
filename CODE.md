@@ -2496,7 +2496,61 @@ Pause and reactions work as now during a notice.
   3. Multiplayer on two phones: tap OK on one; it shows "Waiting for …" until the other taps; play starts only then.
   4. The suit is never named.
 
-## 8a. Playable test builds (required before every commit)
+## 9z. Computer players that learn from the people they play against (PLAN, user 2026-11-13 21:25; NOT BUILT; decision pending in `PROJECT.md` 12l)
+
+**Today:** computer players learn nothing between rounds or games. `src/ai/memory.ts` is built only from public events in the current round (and reset each round). Their personality and level are fixed at setup (`src/ai/persona.ts`, `PERSONALITY_WEIGHTS`). Nothing writes learned values to storage.
+
+**Goal:** after several games, a computer player plays a little more like the people it actually plays against, without ever seeing a hidden card.
+
+**Fairness rule (must hold):** a learning bot may use only what a person at the table could see: public events in the log (plays, slaps, pick-ups, takes, round results, who led). It may never read a hand, a hidden deck, the declared-but-secret missing suit, or the session's private state. The no-cheating test (`tests/ai/fair` style check, CODE.md 9m) must still pass, and a new test must show that changing a hidden card does not change a learned value.
+
+### 9z.0 Options (the user chooses; none is built)
+
+| Option | What it does | Where it is kept | Risk |
+|---|---|---|---|
+| 1. Within one game (recommended first step) | Each bot watches each human's public habits in the current game (slap rate, joker timing, leads high or low, cards picked up) and nudges its own weights a little toward or away from them. Resets when the game ends. | Memory only (nothing saved) | Low. Easy to switch off. Effect is small and only lasts one game. |
+| 2. Across games on the same phone | Same counters, kept over several games and saved with the game records (`src/session/record.ts`, profile history). A bot's personality weights drift slowly toward the saved habits of its opponents. | Storage (needs a reset button and a size cap) | Medium. Needs storage design and a clear "reset learning" control. |
+| 3. Offline tuning from your game records | A script (arena, `npm run` arena scripts) uses your saved records to tune the weights, then the new weights are written into `persona.ts` by hand. No change to the app at run time. | Code (`persona.ts`) | Low. Changes only happen when you run and approve the tune. |
+
+### 9z.1 Option 1 in detail (if chosen)
+
+- **Counters per human player, this game only:** slaps made, slaps on a suit they were missing (shown by the slap, so public), jokers played and how early, leads of a low card when they had a high one (only when the lead is public), cards picked up.
+- **Nudge, not rewrite:** each counter moves the bot's `risk` and `jokerSave` weight by at most ±20% of its base value (base values are in `persona.ts`). A bot never goes below 50% or above 150% of its base weight, so its personality stays recognisable.
+- **Minimum evidence:** no nudge until the human has had at least 6 public chances to show the habit (e.g. 6 slap chances). Before that the bot plays its normal personality.
+- **Reset:** the nudge is cleared when the game ends or when a new game starts. Option 1 saves nothing.
+- **Setting:** a new setup switch, "Computer players learn from me" (on or off, default off until the user tests it).
+
+### 9z.2 Option 2 in detail (if chosen, after option 1 is tested)
+
+- Same counters, kept in a profile record per human name (the names in profile history), capped at the last 20 games.
+- A "Reset computer learning" button in the profiles screen. Deleting a profile deletes its learning.
+- Stored only on the phone that holds the saved game. Nothing leaves the phone.
+
+### 9z.3 Option 3 in detail (if chosen)
+
+- A script reads exported game records, runs the arena with the proposed weights, and prints the win rate and average score before and after.
+- Weights are changed in `persona.ts` only after the user reads the printed result and says so. Each change is a normal versioned build.
+
+### 9z.4 Files likely to change (option 1)
+
+| File | Change |
+|---|---|
+| `src/ai/memory.ts` | Count public habits per human player this game |
+| `src/ai/persona.ts` | Nudge helper with the ±20% bound and the 50–150% clamp |
+| `src/ai/moves.ts` | Use the nudged `risk` and `jokerSave` (only when the setting is on) |
+| `src/session/types.ts`, `src/ui/solosetup.ts` | The "learn from me" switch |
+| `tests/ai/` | New tests: bound and clamp; minimum evidence; hidden-card test; reset at game end |
+
+### 9z.5 Version and process (when built)
+
+- Proposed version: 2.31.0 (option 1). Options 2 and 3 get their own version numbers when chosen.
+- `npm run check`, `npm test`, `npm run build`; arena check that the learning bot does not get worse than the current bot (win rate within the arena's usual margin); update the five MD files; playable test build; phone checklist; push only after the user says "Push it".
+- **Phone checklist (option 1, when built):**
+  1. Turn on "Computer players learn from me". Play one game where you slap often. Do the bots slap you back more by the end of the game than at the start?
+  2. Start a new game. Do the bots go back to their normal habits?
+  3. Turn the switch off. The bots play as before.
+
+## ## 8a. Playable test builds (required before every commit)
 
 `CLAUDE.md` rule 5: the user tests every change on their phone before approving a commit.
 
