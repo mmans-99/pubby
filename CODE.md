@@ -2105,6 +2105,97 @@ export function pileSpots(cardIds: readonly string[], salt: string): { x: number
 - 2.24.0 (B + D + E), 2.25.0 (A, app and server), 2.26.0 (C). Each: update all five MD files, DEVLOG entry, checks in that part, then ask the user to push (CLAUDE.md rule 5; the user says "Push it"). Tell the user the version number each time.
 - Don't start the next version until the user has pushed the last one (or says to go on).
 
+## 9v. Version 2.27: fast forward and skip to end of round when only computer players are left to act (PLAN, user 2026-11-13 19:58; answers recorded 19:59; NOT BUILT; spec `PROJECT.md` 12h)
+
+Nothing here may be built until the user approves this plan and answers the open questions in `PROJECT.md` 12h (CLAUDE.md rules 1 and 2). It is written so that any model can build it.
+
+### 9v.0 Read first
+
+Terms used below:
+- **Computer player** (also "bot"): a player whose `computer` flag is true. Their moves come from `decide()` in `src/ai/decide.ts`. They only see what `seenBy()` gives them.
+- **Driver**: the code in `src/ui/bots.ts` that picks the next computer move, waits a "thinking" time, and sends the move through `runActions()`. It runs after every redraw (`botsTick()`), so there is no loop of its own.
+- **Thinking time**: `thinkMs()` in `src/ai/persona.ts`. It is a random time in a range for each kind of decision, multiplied by a speed factor (relaxed 1.5, normal 1, fast 0.5). Speed is set in one-phone setup (`solosetup.ts`) and in Multiplayer (`netlobby.ts`, "Computer speed").
+- **Actor**: the player whose turn it is, from `actorOf()` in `src/ui/game.ts` (the player choosing in the final two, or the player whose turn it is). Returns null when the game is not in play.
+- **Bots-only moment**: the game is waiting only on computer players. No person's seat has anything to do. Defined exactly in 9v.2.
+- **Fast forward**: the same game, with shorter thinking times. Every move still shows on screen.
+- **Skip to end**: the rest of the game is played at once, with no thinking time, no pop-ups and no reactions. The screen shows the result at the end.
+
+### 9v.1 What the user sees
+
+- During a bots-only moment, the game menu (the same menu as "Quick rules" and "Leave" in the top bar; check `src/ui/game.ts` for the menu it uses) gets two new items: **Fast forward** and **Skip to end of round**. A small banner under the top bar shows **Fast forward on** or **Skipping to the end of the round…** while it runs, with a **Stop** button.
+- Outside a bots-only moment, both items are hidden, not greyed out.
+- **Stop** ends fast forward or skip at the next move. Fast forward stays on until the person stops it or a person must act. Skip stops by itself at the end of the round, where the round-over pop-up shows and waits for the person's tap as normal, or when a person must act.
+- While a person must act, the banner goes away and the game returns to normal. The person sees the same screen as in a normal game at that point.
+
+### 9v.2 The bots-only rule (one function, tested on its own)
+
+Create `src/ai/fastforward.ts` with one pure function, `botsOnlyNow(input)`, that takes:
+- `actor`: the actor from `actorOf()` (or null),
+- `isComputer(id)`: true for a computer player,
+- `waitingForPerson`: true if any person's seat has a pending vote, swap, tap, take-cards request or reshuffle vote, or if a pop-up is on screen,
+- `paused` and `ended`.
+
+It also takes `personOut`: true when every person's seat on this phone is out of the round (see below). It returns true when `actor` is a computer player (or null, meaning a round is between moves and the driver is waiting), `personOut` is true, `waitingForPerson` is false, `paused` is false, and `ended` is false. Everything else returns false. This function is what the menu items and the stop rule both use.
+
+**Answered 2026-11-13 19:59 (user): bots-only means the person is out of the round.** Before building, read the rules engine (`src/rules/`) for how a player is out of a round, and use that exact state for `personOut`. If the rules engine has no such state, stop and ask the user before building.
+
+### 9v.3 Fast forward (changes time only)
+
+1. In `src/ui/bots.ts`, add a module setting `fastForward: boolean` (false at start, reset when a game is left or a new game starts) with functions `setFastForward(on)` and `fastForwardOn()`.
+2. In `schedule()`, when `fastForwardOn()` is true, pass the thinking time through a factor of 0.25 (so "normal" speed becomes a quarter of its time). Do not change the random draw itself; multiply the result.
+3. Reactions: when fast forward is on, reactions stay on (they are part of the table feel) but their 300 to 1200 ms delay becomes 0 to 300 ms. Do not change `REACT_GAP_MS`.
+4. Trick animation: `trickAnimating()` in `src/ui/game.ts` waits for the trick-end animation before the next move. When fast forward is on, the animation may run at half its normal time. Look at the animation code first and change only the duration, not the order of steps.
+5. Every move still goes through `runActions()`, so the log, the table and the history are the same as a normal game.
+
+### 9v.4 Skip to end of game (plays the rest in chunks)
+
+1. Add `skipping: boolean` in `src/ui/bots.ts`, with `startSkip()`, `stopSkip()` and `skipping()`.
+2. `startSkip()` sets the flag, then calls `skipChunk()`. `skipChunk()` plays up to 20 computer moves, each by calling the same decision and `runActions()` used by `fire()`, then returns to the browser with `setTimeout(skipChunk, 30)`. Chunks keep the screen responsive so the **Stop** button still works.
+3. Before each move, `skipChunk()` checks `botsOnlyNow()`. If it returns false, or the round is over, or `stopSkip()` was called, it stops and calls `botsTick()` so the normal driver takes over.
+4. Pop-ups: the round-over pop-up is shown as normal and waits for the person's tap, as in a normal round. No other pop-up (such as the "X leads" pop-up) is added during a skip. The round's scores are recorded as normal.
+5. Reactions: off while skipping (set a flag checked in `reactTo()`; the flag is not saved).
+6. Safety cap: stop after 2000 moves in one skip, show a note "Stopped: too many moves", and log it with `console.error`. This stops a bug from looping forever.
+7. If `runActions()` returns an error during a skip, stop the skip, log the error, and call `botsTick()` (the same handling `fire()` uses).
+
+### 9v.5 Network games (host only)
+
+- Only the host's phone runs the computer players (`runsSession()` in `game.ts`), so only the host sees **Fast forward** and **Skip to end**. Joining phones do not show the items.
+- The host's moves reach the other phones through the existing sync path (`hostSendReaction` and the session sync in `src/ui/netplay.ts`). Skipping sends the same messages as normal play, so nothing new goes on the wire. Confirm this by reading `src/ui/netplay.ts` before building; if a skip sends many moves at once, send them in the same order as the chunks.
+- A joining phone can see a small note "Host is skipping to the end" when it receives moves quickly. This is optional; ask the user (open question 4).
+
+### 9v.6 Privacy: skipping must not show anything more
+
+- A computer player's hand is never shown during fast forward or skip. The skip uses the same `decide()` and `seenBy()` as normal play, so it cannot see more.
+- A person's own hand is shown only on that person's own phone, as normal.
+- Skipping does not change the result, only the time. A test checks that a skipped game and a normal game with the same seed reach the same final scores (9v.7).
+
+### 9v.7 Tests
+
+- `tests/ai/fastforward.test.ts` (new): `botsOnlyNow` returns true only in the cases listed in 9v.2 (table of cases: actor bot, actor person, actor null, pop-up on, vote open, paused, ended).
+- `tests/ai/fastforward.test.ts`: `thinkMs` with the fast-forward factor is a quarter of the normal time for the same random draw (the factor is applied after the draw).
+- `tests/ui/skip.test.ts` (new, if the driver can run without a browser; if not, skip this file and say so in DEVLOG): a skipped round with a fixed seed ends with the same scores as a normal round with the same seed.
+- Browser check `testbed/skip_check.py` (new; do not run it unless the user asks, since they asked for no long tests): one-phone game with 3 computer players and the person out; check the menu items show only while the person is out, Stop works, Skip to end of round stops at the round-over pop-up, and the scores are saved.
+
+### 9v.8 Files likely to change
+
+| File | Change |
+|---|---|
+| `src/ai/fastforward.ts` (new) | `botsOnlyNow()` |
+| `src/ai/persona.ts` | none, unless the factor is best put there (then add a `FAST_FORWARD_FACTOR = 0.25` constant) |
+| `src/ui/bots.ts` | fast-forward flag, factor in `schedule()`, skip loop `startSkip` / `skipChunk` / `stopSkip`, reactions flag |
+| `src/ui/game.ts` | the two menu items, the banner with **Stop**, `trickAnimating` duration, no pop-ups while skipping |
+| `src/ui/netplay.ts` | check only (host-only items) |
+| `src/ui/history.ts` | check only (one save per game) |
+| `src/ui/styles.css` | banner style |
+| `tests/ai/fastforward.test.ts`, `tests/ui/skip.test.ts` (new) | 9v.7 |
+
+### 9v.9 Version and process
+
+- This is **2.27.0** (the number after 2.26.0; `CLAUDE.md` rule 8).
+- Build order: 9v.2 first (with its tests), then 9v.3, then 9v.4, then 9v.5. Run `npm run check` and `npm test` after each step (the unit tests only, not the browser checks).
+- Then: `npm run build` (playable build), update all five MD files (CLAUDE.md rule 4) and `DEVLOG.md`, then ask the user to test on a phone and approve the push (CLAUDE.md rules 3 and 5).
+- Phone checklist (2.27): one-phone game with 3 computer players, you out of the round: Fast forward speeds the moves up; Skip to end of round stops at the round-over pop-up; Stop works during both; the menu items are hidden while you are still in the round. Network game: only the host sees the items.
+
 ## 8a. Playable test builds (required before every commit)
 
 `CLAUDE.md` rule 5: the user tests every change on their phone before approving a commit.

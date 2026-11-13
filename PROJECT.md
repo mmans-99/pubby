@@ -611,6 +611,30 @@ From the user's Multiplayer test of 2.23:
 - **Table (user 19:18 to 19:26, table mockup https://claude.ai/artifact/1EPeaQaijP1bwD1oPQjoyC, approved):** other players hold a fan of card backs at the edge of the felt (top and sides), sized by their card count, with the number on their name. The trick is thrown into the middle as a messy pile, each card at a random tilt, newest on top with a gold edge; every card underneath still shows its top-left corner. No names on trick cards (the order tells who played what). The waste pile sits in the bottom-right corner.
 - Open questions (defaults used in the plan unless the user says otherwise): 10 minutes away limit; host + only computer players allowed in Multiplayer; computer players added only before Start.
 
+### 12h. Fast forward and skip to end of round when only computer players are left (PLAN, user 2026-11-13 19:58; answers 19:59; build guide `CODE.md` 9v; NOT BUILT)
+
+**Request (user 2026-11-13 19:58):** "When there's only computer bots playing, there should be an option to fast forward or skip to end."
+
+**What it does:** while the game is waiting only on computer players and the person is out of the round, the game menu offers **Fast forward** (computer players move faster, every move still shows) and **Skip to end of round** (the rest of the round is played at once, and it stops at the round-over pop-up for the person's tap). A **Stop** button ends either. The options are hidden while the person is still in the round. Network games: only the host's phone shows them.
+
+**Rules that do not change:** computer hands stay hidden; a person's hand is shown only on their own phone; the result of a skipped game is the same as a normal game with the same cards; history saves each game once.
+
+**Answers (user, 2026-11-13 19:59):**
+1. Only when the person is out of the round.
+2. Skip to end of the round only.
+3. Reactions off while skipping.
+4. Not asked. Default: joining phones show one line, "Host is skipping to the end".
+5. Round-over pop-ups still shown and wait for a tap; no other pop-ups added during a skip.
+
+**Former open questions (kept for the record):**
+1. **"Only computer players playing":** (a) the options show whenever the game is waiting on computer players, even while the person is still in the round (recommended, because it also covers the short gaps between their turns), or (b) only when the person is out of the round and watching?
+2. **Skip scope:** (a) skip to the end of the game (recommended, as asked), or (b) skip to the end of the round only, or (c) both, as two separate items?
+3. **Reactions while skipping:** (a) off (recommended, so it's quick), or (b) on at the normal rate?
+4. **Network:** should joining phones show a note "Host is skipping to the end" (recommended: yes, one line), or nothing?
+5. **Pop-ups while skipping:** (a) none, with one Game over screen at the end (recommended), or (b) round-end pop-ups still shown and waited on?
+
+**Version:** 2.27.0 (after 2.26.0). Build guide `CODE.md` 9v has the steps, files and tests.
+
 ## 13. Quick rules (in-game help)
 
 - **What it is:** A short, simplified rules guide inside the app.

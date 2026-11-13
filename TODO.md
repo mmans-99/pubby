@@ -311,6 +311,12 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [x] Pushed as 2.20.0 (GitHub Pages test build); version told to the user. Tests: 312 unit, all browser checks pass (lobby 70, netgame 97, solo incl. 2-player, arena 2/3/8 players)
 - [ ] Phone test by the user (checklist in `PROJECT.md` 12f)
 
+## Phase 4g — Fast forward and skip to end of round when only computer players are left (plan 2026-11-13, `PROJECT.md` 12h, build guide `CODE.md` 9v; answers recorded; not built)
+
+- [x] Plan written (docs only)
+- [x] User answers the five open questions in `PROJECT.md` 12h (recorded 2026-11-13 19:59)
+- [ ] **2.27.0:** `botsOnlyNow` (9v.2) with tests; fast forward (9v.3); skip to end (9v.4); host-only network part (9v.5); checks; user's phone test; push
+
 ## Phase 5 — Polish
 
 - [ ] Animations for slap and trick resolution

@@ -4,6 +4,16 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (evening, 19:58) — Plan 9v: fast forward and skip to end of round when only computer players are left (docs only, not built)
+
+**User request:** "When there's only computer bots playing, there should be an option to fast forward or skip to end."
+
+**Written:** `CODE.md` 9v (build guide, Haiku-ready), `PROJECT.md` 12h (spec; the user answered the five questions at 19:59: only when out of the round, skip to end of round, reactions off, round pop-ups kept), `TODO.md` Phase 4g. Target version 2.27.0. Not built and not committed.
+
+**Deployed earlier today:** 2.26.0 merged to `main` (commit 4c6d6d3) at the user's request; the Pages deploy and the room server deploy both ran on that push.
+
+---
+
 ## 2026-11-13 (night) — Versions 2.24.0, 2.25.0, 2.26.0: classic cards, see-through reactions, table, staying connected, computer players in Multiplayer (committed and pushed to branch `v2.26-classic-away-bots`)
 
 **Built per `CODE.md` 9u, all three in one session at the user's direction ("build it all"). Committed as one commit and pushed to a branch on the user's "push it and commit it" (phone tests not yet done; merge after the user tests).**
