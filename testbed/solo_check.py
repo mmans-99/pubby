@@ -90,6 +90,7 @@ def new_page(browser):
 
 def start_solo(page):
     page.get_by_role('button', name='Play against the computer').click()
+    page.get_by_role('heading', name='Computer players').wait_for()  # the setup screen is drawn before we look at it
     if page.get_by_label('New profile name').count() and page.get_by_role('button', name='Sam').count() == 0:
         page.get_by_label('New profile name').fill('Sam')
         page.get_by_role('button', name='Add', exact=True).click()

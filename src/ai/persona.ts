@@ -28,10 +28,10 @@ export function mixedLevel(rng: Rng): SetupLevel {
 
 /** How each personality nudges the rules of thumb (never what it can see). */
 export const PERSONALITY_WEIGHTS: Record<Personality, { risk: number; jokerSave: number; reactRate: number; reshuffleBar: number }> = {
-  careful: { risk: 0.7, jokerSave: 1.3, reactRate: 0.25, reshuffleBar: 0.9 },
-  reckless: { risk: 1.4, jokerSave: 0.7, reactRate: 0.5, reshuffleBar: 1.1 },
-  counter: { risk: 1.0, jokerSave: 1.0, reactRate: 0.35, reshuffleBar: 1.0 },
-  windup: { risk: 1.0, jokerSave: 1.0, reactRate: 0.9, reshuffleBar: 1.0 },
+  careful: { risk: 0.7, jokerSave: 1.3, reactRate: 0.5, reshuffleBar: 0.9 },
+  reckless: { risk: 1.4, jokerSave: 0.7, reactRate: 0.75, reshuffleBar: 1.1 },
+  counter: { risk: 1.0, jokerSave: 1.0, reactRate: 0.6, reshuffleBar: 1.0 },
+  windup: { risk: 1.0, jokerSave: 1.0, reactRate: 1.0, reshuffleBar: 1.0 },
 };
 
 export function randomPersona(level: Level, rng: Rng): Persona {

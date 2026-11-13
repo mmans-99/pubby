@@ -4,6 +4,24 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (afternoon) — Version 2.16.0 built: computer players react more; not pushed
+
+**User:** 2.15 phone test "all works" (pushed earlier as d14b4a1). Reactions still not enough; computer players should react when they finish their cards. Approved the proposal ("Yes").
+
+**Done (local only, not committed or pushed)**
+- `src/ai/persona.ts` reactRate: careful 0.25 -> 0.5, reckless 0.5 -> 0.75, counter 0.35 -> 0.6, windup 0.9 -> 1.0.
+- `src/ai/react.ts`: a computer player that goes out always says "Bye bye, losers!!". New triggers at round end: its own round loss ("Rigged, I tell you!!", "Just a bad round!!") and a person's round win ("Beginner's luck!!", "Enjoy it while it lasts!!"). Four new lines in `src/content/catch-phrases.md`.
+- `src/ui/bots.ts`: one reaction per computer player every 2.5 s (was 4 s); up to three per event (was two).
+- Tests: `react.test.ts` (going out always reacts, even for a careful player; own loss and person's win; the 😂 test uses the careful personality now that wind-up always reacts). `testbed/solo_check.py` `start_solo` waits for the setup screen (the drawer check failed once on that race).
+
+**Checks:** `npm run check` clean; `npm test` 228 of 228. Browser (2.16 vs 2.15 run, seconds): solo 108 / 82 (32 of 32), playthrough 130 / 164 (53), drawer 31 failed on the race, after the fix 2 / 1 (8), back 8 / 8 (14), offline 6 / 6 (20), netvotes 176 / 121 (30), netgame 428 / 489 (94), lobby 45 / 45 (67), sound 74 / 63 (44). Totals about 16 min 46 s / 16 min 19 s. Arena not re-run: reactions don't change the bars.
+
+**Check timings compared (user asked):** see the 2.15/2.16 numbers above. Ideas 1 (run only the checks for what changed), 2 (shorter network games) and 4 (shorter real sleeps in fast mode) approved and written as `CODE.md` 9q for Haiku to code.
+
+**Next:** user's phone test of 2.16 and "push"; then 9q.
+
+---
+
 ## 2026-11-13 (midday) — Version 2.15.0 built: faster checks (9o), secret missing suits (9p); not pushed
 
 **Done (local only: not committed, not pushed; waiting for the user's phone test and "push")**

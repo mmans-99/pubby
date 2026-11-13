@@ -27,7 +27,9 @@ function phraseIndex(phrases: readonly string[], text: string): number | null {
  *  - slapped: I slapped (x1.5, "You got slapped" or the kiiid version); I was
  *    slapped (x0.5, "Revenge time!!"); a person was slapped (x1, 😂).
  *  - wastePilePickedUp: a person picked up (x1); I did (x0.5).
- *  - playerOut: a person went out (x1, "Too slow!!"); I went out (x1, "Bye bye, losers!!").
+ *  - playerOut: a person went out (x1, "Too slow!!"); I went out (always, "Bye bye, losers!!").
+ *  - roundEnded: I lost the round (x1, "Rigged, I tell you!!"); a person lost (x1, "Sit down, sweetheart!!");
+ *    a person won (x1, "Beginner's luck!!").
  *  - cardsTaken: I took a person's cards (x1.5); a person took mine (x0.5).
  *  - roundEnded: a person lost the round (x1).
  *  - forfeited: a person forfeited (x1, "Coward!!").
@@ -58,14 +60,16 @@ export function reactionFor(
       if (e.player === me) return roll(rate * 0.5, ['Oofaa!!!!', 'Nooo, not again!!']);
       return human(e.player) ? roll(rate, ['Pick them up!!', 'Enjoy the pile!!']) : null;
     case 'playerOut':
-      if (e.player === me) return roll(rate, ['Bye bye, losers!!']);
+      if (e.player === me) return roll(1, ['Bye bye, losers!!']);
       return human(e.player) ? roll(rate, ['Too slow!!', 'Hurry up!!']) : null;
     case 'cardsTaken':
       if (e.requester === me) return human(e.target) ? roll(rate * 1.5, ['Ha! Caught you!!', 'Not so clever now!!']) : null;
       if (e.target === me) return human(e.requester) ? roll(rate * 0.5, ['Dirty move!!']) : null;
       return null;
     case 'roundEnded':
-      return human(e.loser) ? roll(rate, ['Sit down, sweetheart!!', 'Who dealt this?!']) : null;
+      if (e.loser === me) return roll(rate, ['Rigged, I tell you!!', 'Just a bad round!!']);
+      if (human(e.loser)) return roll(rate, ['Sit down, sweetheart!!', 'Who dealt this?!']);
+      return human(e.finishingOrder[0]) ? roll(rate, ["Beginner's luck!!", 'Enjoy it while it lasts!!']) : null;
     case 'forfeited':
       return human(e.player) ? roll(rate, ['Coward!!']) : null;
     default:

@@ -29,3 +29,7 @@ Add a new line starting with "- " to add a catch-phrase. Lines without "- " are 
 - Coward!!
 - Not so clever now!!
 - Nice try, sweetheart!!
+- Rigged, I tell you!!
+- Just a bad round!!
+- Beginner's luck!!
+- Enjoy it while it lasts!!

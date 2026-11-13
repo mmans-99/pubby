@@ -239,7 +239,7 @@ Built before network slice 4 (user 2026-11-12). One slice at a time; each needs 
   - [x] `solo_check.py --slice-d` 11 of 11; `--slice-c` 14 of 14; `back_check.py` 14 of 14; `offline_check.py` 20 of 20
   - [ ] User's phone test (`CODE.md` 9m.9, slice D checklist)
 - [x] **Version 2.14:** antagonising reactions and 6 s lead pop-up (pushed 2026-11-13 as a test build; phone test to do)
-- [~] **Version 2.15** (plan `CODE.md` 9n to 9p, approved 2026-11-13; built locally 2026-11-13, not committed or pushed)
+- [x] **Version 2.15** (plan `CODE.md` 9n to 9p, approved 2026-11-13; built locally 2026-11-13, not committed or pushed)
   - [x] 9o.1 Fake clock in browser checks (solo, drawer, playthrough; lobby, netgame, netvotes stay on real time)
   - [x] 9o.2 Stuck-game check (solo and playthrough: 30 s without a new log event fails with a dump)
   - [x] 9o.3 Shorter browser games (slice C and D one round; slice D one Mixed game)
@@ -247,7 +247,13 @@ Built before network slice 4 (user 2026-11-12). One slice at a time; each needs 
   - [x] 9o.5 Arena on both cores (`--workers`, same results as one worker; `--bars` 460 s with 2 workers)
   - [x] 9o.6 All Easy stall: the test bot never answered take-cards requests on the person's seat (test script, not app); fixed in `testbed/bot.js`
   - [x] 9p Secret missing suits (session, pop-up, computer memory, tests)
-  - [ ] 9n.1 Checks all pass; version 2.15.0 set. Waiting for the user's phone test (checklist in `CODE.md` 9n) and "push"
+  - [x] 9n.1 Checks all pass; pushed as d14b4a1; user's phone test passed (2026-11-13)
+- [~] **Version 2.16:** computer players react more (rates, going out always, round-end triggers, 2.5 s gap, three per event); built locally, checks pass; waiting for the user's phone test and "push"
+- [ ] **Faster checks, part 2** (plan `CODE.md` 9q, approved 2026-11-13)
+  - [ ] 9q.1 `testbed/run_checks.py`: run only the checks for what changed
+  - [ ] 9q.2 netgame: 3-player game 1 round
+  - [ ] 9q.3 Shorter real sleeps in fast mode (keep only if faster)
+  - [ ] 9q.4 Full run once, times in the DEVLOG, then "push"
 - [ ] **Slice E: people and computer players on one phone**
 - [ ] **Slice F: computer players in network games**
 - [ ] **Slice G: tuning from the user's games**

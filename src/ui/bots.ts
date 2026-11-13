@@ -31,9 +31,9 @@ import { getState } from './store.ts';
 
 const rng = defaultRng();
 /** A computer player reacts at most once in this many milliseconds. */
-const REACT_GAP_MS = 4000;
+const REACT_GAP_MS = 2500;
 /** At most this many computer players react to one event. */
-const REACT_PER_EVENT = 2;
+const REACT_PER_EVENT = 3;
 
 interface Pending {
   bot: PlayerId;
