@@ -923,7 +923,7 @@ Acceptance: run `playthrough.py` and `solo_check.py --slice-d` before and after,
 
 ---
 
-## 9r. Online play (rooms over the internet): build guide (PLAN, user 2026-11-13: "write up a detailed plan for every step ... so I can code it with haiku"; NOT BUILT)
+## 9r. Online play (rooms over the internet): build guide (PLAN, user 2026-11-13: "write up a detailed plan for every step ... so I can code it with haiku"; slice O1, the server, BUILT 2026-11-13 as 2.17.0, not pushed; O2 and O3 not built)
 
 Written for any model, Haiku included. Read the whole section once before starting a slice. The spec (what the player sees) is `PROJECT.md` 12d. Do one slice at a time. Every slice follows `CLAUDE.md` (checks, a test build, the user's phone test and "push" before committing).
 
@@ -956,7 +956,7 @@ Checked 2026-11-13 on developers.cloudflare.com (Workers and Durable Objects pri
 - Over a free limit, the extra operations fail with an error. **No bill.** The app must show a plain message (9r.6) and point to Nearby.
 - A Cloudflare free account needs no card.
 
-Not found on 2026-11-13: a published cap on open WebSockets at once on the free plan. Slice O1's last step checks this on the dashboard and in the docs; write the answer here.
+**Open WebSockets (answer, checked 2026-11-13 in slice O1):** Cloudflare publishes no cap on open WebSockets for the free plan. The Hibernatable WebSockets API allows up to 32,768 connections per Durable Object instance, and one room has at most 8 phones, so the room limit is not the constraint. Cloudflare's network page lists the free plan's concurrent connections only as "Low (hobby projects)", with no number. **Still to check** on the dashboard after the first deploy (9r.4 step 7): the Durable Objects metrics for the free plan.
 
 **Message budget (estimate, keep it true while building):**
 - Each phone sends the text `ping` every 25 seconds. The relay answers `pong` with Cloudflare's auto-response, which does not wake the room. 8 phones for an hour ≈ 1,150 pings ≈ 58 billed requests (if auto-response pings are billed at all; check).
@@ -1349,6 +1349,23 @@ Screens are in `PROJECT.md` 12d. Code shape:
 ### 9r.8 Slices
 
 #### Slice O1: the server (version 2.17)
+
+**Status (2026-11-13): BUILT as 2.17.0, not committed or pushed.** No screen changes, so nothing to play yet (`CLAUDE.md` rule 5). Waiting for the user's Cloudflare setup (9r.4), then "push", then the `/health` check in step 8.
+
+**Build notes (what was decided where this plan left room):**
+- Files built: `src/net/relayproto.ts`; `server/src/core/ids.ts`, `api.ts` (input and origin checks, shared by the Worker and the stand-in; not in the list below), `room.ts`, `directory.ts`; `server/src/env.ts`, `room.ts`, `directory.ts`, `index.ts`; `server/wrangler.toml`, `server/package.json`, `server/tsconfig.json`; `testbed/relay_server.ts`; `.github/workflows/server.yml`; tests `tests/net/relayproto.test.ts`, `tests/server/room.test.ts`, `directory.test.ts`, `ids.test.ts`, `relay_server.test.ts`.
+- **Seats** = people in the room, the host included, as the host reports them with `update`. A join token holds a seat from the moment it is issued until it is used or 2 minutes pass. The host's lobby stays the authority for seats.
+- **Wrong passcodes:** the 5-per-address limit counts an address's tries in one room; the 20-per-room limit counts across all addresses. The room limit is the one that stops guessing.
+- **Origin:** a request with no `Origin` header is allowed (a plain request, such as opening `/health` in a tab; CORS only concerns browsers). An `Origin` that is present must be in `ALLOWED_ORIGINS`, else 403. The stand-in also allows `127.0.0.1` and `localhost`.
+- **`lastActive` is saved at most once a minute while messages flow**, not only with other saves. Without this, a room that Cloudflare put to sleep during a long game could expire while still in use. Still no write per relayed message (9r.1 rule 4).
+- **Alarms, not timers:** the alarm is set to the earliest expiry and re-checked when it fires. The room list's 500 ms wait is also an alarm, so the Directory can sleep.
+- **Order of checks in `tryPasscode`:** rate limit, then version, then passcode, then started, then full. Version comes before passcode so a version mismatch does not spend a try.
+- **Rejoin keeps the link id:** a phone that reconnects with its own token gets the same link id (needed for slice O3). After the game starts, only a phone that already had a seat can connect.
+- **Stand-in test:** `tests/server/relay_server.test.ts` starts `testbed/relay_server.ts` as a child process on a random port, so the type check never follows its `ws` import (`@types/ws` is not installed here, and the testbed is not type checked).
+- **Picker (`testbed/run_checks.py`):** `server/`, `testbed/relay_server.ts`, `.github/workflows/server.yml` and `.gitignore` select no browser check (no app screen uses the relay before O2). The O2 row in step 4 is partly done here.
+- **`package.json`:** `ws` `^8` added as a dev dependency (9r.7); version 2.17.0.
+- **Not checked here:** the Worker files in `server/src` cannot be type checked, because `@cloudflare/workers-types` is not on this machine. They were bundled with esbuild (every import resolves). The `npm run check` step in `server.yml` type checks them on push, and the first deploy is still to do. Pin the `latest` versions in `server/package.json` on the day of the first deploy.
+- **Checks run here:** `npm run check` (both projects) clean; `npm test` 280 of 280 in 33 files; `node build.mjs` builds 2.17; the three network browser checks (see the DEVLOG entry for the results).
 
 1. `src/net/relayproto.ts` + tests.
 2. `server/src/core/ids.ts`, `room.ts`, `directory.ts` + tests (`tests/server/`). Put `RoomCore` and `DirectoryCore` constants at the top of each file.

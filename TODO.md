@@ -265,13 +265,14 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [x] Plan written and pushed (docs only, 2026-11-13)
 - [ ] User confirms the four defaults (`PROJECT.md` Open questions): keep Nearby, room list, 4-digit passcode, Cloudflare
 - [ ] User's one-time Cloudflare setup: account, workers.dev name, Account ID, API token, two GitHub secrets (`CODE.md` 9r.4)
-- [ ] **Slice O1: the server** (version 2.17; `CODE.md` 9r.8)
-  - [ ] `src/net/relayproto.ts` + tests
-  - [ ] `RoomCore`, `DirectoryCore`, ids + tests (`tests/server/`)
-  - [ ] Cloudflare wrappers, `wrangler.toml`, `server/package.json`, `server/tsconfig.json`
-  - [ ] `testbed/relay_server.ts` + its test
-  - [ ] `.github/workflows/server.yml`; deploy works; `/health` opens on the user's phone
-  - [ ] Free plan: open-WebSocket limit checked and written in 9r.1
+- [~] **Slice O1: the server** (version 2.17.0; built 2026-11-13, not pushed; `CODE.md` 9r.8)
+  - [x] `src/net/relayproto.ts` + tests
+  - [x] `RoomCore`, `DirectoryCore`, ids, api checks + tests (`tests/server/`)
+  - [x] Cloudflare wrappers, `wrangler.toml`, `server/package.json`, `server/tsconfig.json` (bundled with esbuild; not type checked here, CI does it)
+  - [x] `testbed/relay_server.ts` + its test (`tests/server/relay_server.test.ts`)
+  - [x] `.github/workflows/server.yml` written
+  - [ ] User's Cloudflare setup (`CODE.md` 9r.4), then push, then the deploy works and `/health` opens on the user's phone
+  - [x] Free plan: open-WebSocket limit checked and written in 9r.1 (no published cap; still to check on the dashboard after the first deploy)
 - [ ] **Slice O2: online rooms in the app** (version 2.18)
   - [ ] `Link` interface and `chunk.ts`; Nearby checks unchanged
   - [ ] `server.ts`, `online.ts` (createRoom, joinRoom, watchRooms, HostRoom, OnlineLink)

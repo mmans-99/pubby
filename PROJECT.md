@@ -520,7 +520,7 @@ Built after single player works (`CODE.md` 9m slices E and F):
 6. Order: single player (this whole section) is built **before** network slice 4 and the multiplayer release.
 7. Version numbers: the user doesn't mind which number; every pushed code change gets a new version and the user is told the new number (`CLAUDE.md` rule 8).
 
-## 12d. Online play: rooms over the internet (PLAN, user 2026-11-13; build guide `CODE.md` 9r; not built)
+## 12d. Online play: rooms over the internet (PLAN, user 2026-11-13; build guide `CODE.md` 9r; slice O1, the server, built as 2.17.0 and not pushed; no screen yet)
 
 **User 2026-11-13:** wants to play with people who aren't on the same network, free to run if possible, and "something like: click multiplayer, then host makes a room with a name and code, other people click join, find the room and pass and then start together."
 

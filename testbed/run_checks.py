@@ -13,8 +13,11 @@ Path to script table (the first row that matches a path wins; a path can pick se
 
   path                                                    scripts
   ------------------------------------------------------  -------------------------------------
-  node_modules/, dist/, tests/, package.json, testbed/run_checks.py,
+  node_modules/, dist/, tests/, package.json, .gitignore,
+  testbed/run_checks.py,
   *.md outside src/ (CODE.md, DEVLOG.md, ...)             none (unit tests cover tests/)
+  server/, testbed/relay_server.ts,
+  .github/workflows/server.yml                            none (unit tests cover them; no app screen uses the relay before O2)
   src/rules/, src/session/, build.mjs, testbed/bot.js     all
   src/ai/, src/ui/bots.ts, src/content/catch-phrases.md   solo_check, drawer_check
   src/net/, src/ui/netlobby.ts, netplay.ts, netscreens.ts  lobby_check, netgame_check, netvotes_check
@@ -58,7 +61,7 @@ def scripts_for(path):
     """Return (set of scripts, reason) for one changed path."""
     name = pathlib.PurePosixPath(path).name
     stem = name.split('.')[0]
-    if path.startswith(('node_modules/', 'dist/', 'tests/')) or path in ('package.json', 'testbed/run_checks.py'):
+    if path.startswith(('node_modules/', 'dist/', 'tests/')) or path in ('package.json', '.gitignore', 'testbed/run_checks.py'):
         return set(), 'no browser check'
     if path.endswith('.md') and not path.startswith('src/'):
         return set(), 'docs only'
@@ -76,6 +79,8 @@ def scripts_for(path):
         return {'offline_check.py'}, 'offline / service worker'
     if path.startswith('src/ui/'):
         return {'solo_check.py', 'playthrough.py', 'drawer_check.py', 'back_check.py'}, 'other screens'
+    if path.startswith('server/') or path in ('testbed/relay_server.ts', '.github/workflows/server.yml'):
+        return set(), 'online relay: unit tests cover it (no app screen uses it before slice O2)'
     if path.startswith('testbed/') and path.endswith('.py'):
         if name == 'solo_check.py':
             return {'solo_check.py', 'drawer_check.py'}, 'solo check (drawer imports it)'

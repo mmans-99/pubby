@@ -1,0 +1,27 @@
+# Deploys the online-play relay (server/) to Cloudflare Workers (CODE.md 9r.3.7).
+# Needs two repo secrets: CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID (CODE.md 9r.4).
+name: Deploy the room server
+
+on:
+  push:
+    branches: [main]
+    paths: ['server/**', 'src/net/relayproto.ts', '.github/workflows/server.yml']
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+        working-directory: server
+      - run: npm run check
+        working-directory: server
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: server

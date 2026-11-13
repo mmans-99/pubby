@@ -4,6 +4,45 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (late) — Online play slice O1 built: the relay server (version 2.17.0); not committed or pushed
+
+**User:** "Read CLAUDE.md, then build slice O1 from CODE.md 9r."
+
+**Done (local only: not committed, not pushed)**
+- Attached the repo for reading (`mmans-99/pubby`, cloned to `/home/claude/mmans-99/pubby`). Read CLAUDE.md, CODE.md, PROJECT.md, TODO.md and DEVLOG.md.
+- Built the O1 list in `CODE.md` 9r.8: `src/net/relayproto.ts`; the server's pure cores in `server/src/core/` (`ids.ts`, `api.ts`, `room.ts` RoomCore, `directory.ts` DirectoryCore); Cloudflare wrappers `server/src/{env,room,directory,index}.ts`; `server/wrangler.toml`, `server/package.json`, `server/tsconfig.json`; the local stand-in `testbed/relay_server.ts` (same cores); `.github/workflows/server.yml`.
+- Version 2.17.0 (`package.json`), `ws` `^8` dev dependency, `.wrangler/` in `.gitignore`.
+- `testbed/run_checks.py`: `server/`, `testbed/relay_server.ts`, `server.yml` and `.gitignore` select no browser check (no app screen uses the relay before O2). Before this, the catch-all row sent them to all nine checks.
+- Free-plan answer written in `CODE.md` 9r.1: no published cap on open WebSockets; 32,768 per Durable Object.
+- Docs: `CODE.md` 9r (status, build notes, free-plan answer), `TODO.md` Phase 4c, `PROJECT.md` 12d.
+
+**Decisions where the plan left room** (listed in `CODE.md` 9r.8, "Build notes")
+- `seats` = people in the room including the host; a join token holds a seat until used or 2 minutes pass.
+- Wrong-passcode limit per address counts within one room; the 20-per-room limit counts across addresses.
+- A request with no `Origin` is allowed (so `/health` opens in a tab); a present `Origin` must be `https://mmans-99.github.io` (or local, in the stand-in only).
+- `lastActive` is saved at most once a minute while messages flow, so a room that slept during a long game can't expire early.
+
+**Checks**
+- `npm run check` (rules and app projects): clean.
+- `npm test`: 280 of 280 in 33 files. New: relayproto 7, RoomCore 26, Directory 7, ids and api 8, relay end-to-end 5 (the stand-in run as a child process on a random port: HTTP, list socket, host and joining sockets, frames both ways, ping/pong, 4003, origin, version, close).
+- `node build.mjs`: builds v2.17.
+- Browser (network checks, since `src/net/relayproto.ts` is in `src/net/`): netvotes 30 of 30 (194 s), netgame 94 of 94 (426 s), lobby 67 of 67 (45 s). The app is unchanged in behaviour; these confirm it still runs.
+- Worker files: not type checked (`@cloudflare/workers-types` is not on this machine). Bundled with esbuild: all imports resolve.
+
+**Not done / open**
+- No commit, no push (`CLAUDE.md` rule 3). Nothing playable (rule 5): O1 adds no screen. The first real check is `/health` after the user's Cloudflare setup (`CODE.md` 9r.4) and "push".
+- The four online defaults in `PROJECT.md` (open questions) are still unanswered; needed before O2.
+- Free-plan dashboard check after the first deploy (9r.4 step 7).
+
+**Environment notes**
+- `node_modules` is a set of symlinks to `/opt/npm-tools` (tsx, typescript, esbuild, ws, @types/node); npm installs are blocked here. It is gitignored.
+- The working copy is `/home/claude/mmans-99/pubby` (a read clone). Pushing later needs the repo attached with push access.
+
+**Next**
+- The user does `CODE.md` 9r.4, answers the four defaults, and says "push". Then check the deploy and `/health`, then slice O2.
+
+---
+
 ## 2026-11-13 (afternoon) — Online play plan written (`CODE.md` 9r, `PROJECT.md` 12d); docs only
 
 **User:** asked how to play online rather than WebRTC on the same network, preferably free: "click multiplayer, then host makes a room with a name and code, other people click join, find the room and pass and then start together." Then asked how the Cloudflare free plan works (games, connections), and: "write up a detailed plan for every step in getting this done, including the cloud flare part etc so I can code it with haiku. Push and commit it once done."
