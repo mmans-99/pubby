@@ -16,11 +16,11 @@ export interface Persona {
 
 export const PERSONALITIES: readonly Personality[] = ['careful', 'reckless', 'counter', 'windup'];
 
-/** Levels the setup screen can give a computer player (CODE.md 9m.7). Hard joins in slice D. */
-export type SetupLevel = 'easy' | 'normal';
+/** Levels the setup screen can give a computer player (CODE.md 9m.7). */
+export type SetupLevel = 'easy' | 'normal' | 'hard';
 
-/** What "Mixed" draws from. Until slice D, Hard is not offered, so Mixed is Easy and Normal only. */
-export const MIXED_LEVELS: readonly SetupLevel[] = ['easy', 'normal'];
+/** What "Mixed" draws from (all three levels from slice D). */
+export const MIXED_LEVELS: readonly SetupLevel[] = ['easy', 'normal', 'hard'];
 
 export function mixedLevel(rng: Rng): SetupLevel {
   return MIXED_LEVELS[Math.floor(rng() * MIXED_LEVELS.length)] ?? 'normal';

@@ -44,9 +44,9 @@ test('botNamesProblem refuses a computer player with the person\'s name', () => 
   assert.equal(botNamesProblem(['Sam'], null), null, 'no person chosen yet: nothing to clash with');
 });
 
-test('Mixed draws only Easy or Normal until Hard arrives (slice D)', () => {
-  assert.deepEqual([...MIXED_LEVELS], ['easy', 'normal']);
+test('Mixed draws Easy, Normal or Hard (slice D)', () => {
+  assert.deepEqual([...MIXED_LEVELS], ['easy', 'normal', 'hard']);
   const seen = new Set<string>();
   for (let seed = 1; seed <= 200; seed++) seen.add(mixedLevel(seededRng(seed)));
-  assert.deepEqual([...seen].sort(), ['easy', 'normal']);
+  assert.deepEqual([...seen].sort(), ['easy', 'hard', 'normal']);
 });

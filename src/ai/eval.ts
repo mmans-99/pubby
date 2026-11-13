@@ -89,3 +89,23 @@ export function handBadness(hand: readonly Card[]): number {
   score -= 0.4 * hand.filter((c) => !isStandard(c)).length;
   return score;
 }
+
+/**
+ * How dangerous a hand is to be left holding (higher is worse), used by the
+ * Hard search at the cut-off. A high card is a liability (it wins tricks and
+ * gets slapped), a kept joker is an asset, and each suit I hold none of helps.
+ * Per standard card: 0.1 + ((rank - 2) / 12) ** 2 (2 -> 0.1, 8 -> 0.35, Ace -> 1.1).
+ * Per joker: -0.5. If any standard card is held: -0.3 per suit with none.
+ * An empty hand is 0.
+ */
+export function handDanger(hand: readonly Card[]): number {
+  if (hand.length === 0) return 0;
+  const standard = hand.filter(isStandard);
+  let score = 0;
+  for (const c of standard) score += 0.1 + ((c.rank - 2) / 12) ** 2;
+  score -= 0.5 * (hand.length - standard.length);
+  if (standard.length > 0) {
+    for (const suit of SUITS) if (!standard.some((c) => c.suit === suit)) score -= 0.3;
+  }
+  return score;
+}

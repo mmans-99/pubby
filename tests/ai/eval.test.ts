@@ -3,7 +3,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { pSlapAfterMe, pVoid, handBadness, rankValue, yetToPlay } from '../../src/ai/eval.ts';
+import { pSlapAfterMe, pVoid, handBadness, handDanger, rankValue, yetToPlay } from '../../src/ai/eval.ts';
 import { cards, position, standard } from './position.ts';
 
 test('pVoid is 1 for a known void with no known card of the suit', () => {
@@ -114,4 +114,19 @@ test('handBadness: high cards are worse, missing suits and jokers help', () => {
   assert.ok(handBadness(withJoker) < handBadness(aces));
   // Four missing suits at -0.3 each (an empty hand is never decided on, so this only checks the formula).
   assert.equal(handBadness([]), -1.2);
+});
+
+test('handDanger: high cards are worse than low ones (D2.1)', () => {
+  assert.ok(handDanger(cards('spades-14', 'hearts-13')) > handDanger(cards('spades-2', 'hearts-3')));
+});
+
+test('handDanger: a kept joker lowers the danger (D2.1)', () => {
+  const base = cards('spades-9', 'hearts-10');
+  assert.ok(handDanger([...base, { kind: 'joker', id: 'joker-1' }]) < handDanger(base));
+});
+
+test('handDanger: an empty hand is 0, and holding fewer suits is an asset (D2.1)', () => {
+  assert.equal(handDanger([]), 0);
+  // Same ranks; one hand is all spades (three suits missing), the other spades and hearts (two missing).
+  assert.ok(handDanger(cards('spades-5', 'spades-6')) < handDanger(cards('spades-5', 'hearts-6')));
 });

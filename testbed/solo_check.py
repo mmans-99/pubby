@@ -145,12 +145,45 @@ def slice_c_checks(browser):
     page.wait_for_selector('.round-table')
     game = stored(page, 'pubby.currentGame') or {}
     levels = [b['level'] for b in (game.get('bots') or {}).get('seats', {}).values()]
-    check(len(levels) == 3 and all(lv in ('easy', 'normal') for lv in levels), f'Mixed saves Easy or Normal for each computer player ({levels})')
+    check(len(levels) == 3 and all(lv in ('easy', 'normal', 'hard') for lv in levels), f'Mixed saves Easy, Normal or Hard for each computer player ({levels})')
     check((game.get('bots') or {}).get('reactions') is False, 'the reactions switch is saved as off')
     over, saw_reaction, moves = play_until_over(page, watch='.float-react')
     check(over, f'Mixed game with reactions off played to the end ({moves} log events)')
     check(not saw_reaction, 'no reactions appear when the reactions switch is off')
     ctx.close()
+
+
+def slice_d_checks(browser):
+    """Slice D (CODE.md 9m.9): the Hard level on the setup screen and at the table."""
+    # Game 1: All Hard. Every computer player saves Hard, the game finishes, no refused moves.
+    ctx, page = new_page(browser)
+    setup_c(page, 'All Hard', reactions=True)
+    page.get_by_role('button', name=re.compile('Start game')).click()
+    page.wait_for_selector('.round-table')
+    game = stored(page, 'pubby.currentGame') or {}
+    levels = [b['level'] for b in (game.get('bots') or {}).get('seats', {}).values()]
+    check(len(levels) == 3 and all(lv == 'hard' for lv in levels), f'All Hard saves Hard for every computer player ({levels})')
+    over, _saw, moves = play_until_over(page, watch='.float-react')
+    check(over, f'All Hard game played to the end ({moves} log events)')
+    check(not [e for e in page.errors if 'refused' in e or 'could not decide' in e], 'no refused moves in the All Hard game')
+    check(not page.errors, 'no page errors in the All Hard game')
+    ctx.close()
+
+    # Games 2 to 4: Mixed. Each game saves only Easy, Normal or Hard; across the games, at least one Hard seat appears.
+    saw_hard = False
+    for k in range(3):
+        ctx, page = new_page(browser)
+        setup_c(page, 'Mixed', reactions=False)
+        page.get_by_role('button', name=re.compile('Start game')).click()
+        page.wait_for_selector('.round-table')
+        game = stored(page, 'pubby.currentGame') or {}
+        levels = [b['level'] for b in (game.get('bots') or {}).get('seats', {}).values()]
+        check(all(lv in ('easy', 'normal', 'hard') for lv in levels), f'Mixed game {k + 1} saves only Easy, Normal or Hard ({levels})')
+        saw_hard = saw_hard or 'hard' in levels
+        over, _saw, moves = play_until_over(page, watch='.float-react')
+        check(over, f'Mixed game {k + 1} played to the end ({moves} log events)')
+        ctx.close()
+    check(saw_hard, 'a Mixed game gave at least one computer player Hard (3 games)')
 
 
 def report():
@@ -163,6 +196,13 @@ def report():
 
 def main():
     failures = 0
+    if '--slice-d' in sys.argv:  # only the slice D checks
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            slice_d_checks(browser)
+            browser.close()
+        report()
+        return
     if '--slice-c' in sys.argv:  # only the slice C checks (the slice B ones take several minutes)
         with sync_playwright() as p:
             browser = p.chromium.launch()

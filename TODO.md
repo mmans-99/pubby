@@ -230,7 +230,14 @@ Built before network slice 4 (user 2026-11-12). One slice at a time; each needs 
   - [x] Personalities, Easy forgetting and slips (built in slice A); arena: Normal beats Easy (bar 0.15, measured 0.536)
   - [x] Checks: `npm test` 207 of 207; `solo_check.py --slice-c` 14 of 14; `solo_check.py` 18 of 18; `back_check.py` 14 of 14; `offline_check.py` 20 of 20
   - [ ] User's phone check (`CODE.md` 9m.9, slice C checklist: All Easy and All Normal games, reactions not spammy, speeds)
-- [ ] **Slice D: Hard** (sampling and search; Web Worker if needed)
+- [~] **Slice D: Hard** (sampling and search). Built locally as 2.13.0 on 2026-11-13, NOT pushed. All arena bars pass (Hard beats Normal by 0.242 over 2000 games); unit tests 219 of 219; browser check `solo_check.py --slice-d` (see DEVLOG). Waiting for the user's phone test after "push" (`CODE.md` 9m.9).
+  - [x] D2.1 Score card quality at the cut-off (`handDanger`, `SEARCH_WEIGHTS`)
+  - [x] D2.2 Imagined opponents play like Normal (`_rolloutCard`)
+  - [x] D2.3 Search as a second opinion (`searchScores`, `HARD_TUNING.switchMargin` = 0.3)
+  - [x] D2.4 Longer look-ahead / more samples: not needed (gap over 0.2)
+  - [x] Full `--bars` (all pass), checks, version 2.13.0
+  - [x] `solo_check.py --slice-d` 11 of 11; `--slice-c` 14 of 14; `back_check.py` 14 of 14; `offline_check.py` 20 of 20
+  - [ ] User's phone test (`CODE.md` 9m.9, slice D checklist), then "push"
 - [ ] **Slice E: people and computer players on one phone**
 - [ ] **Slice F: computer players in network games**
 - [ ] **Slice G: tuning from the user's games**

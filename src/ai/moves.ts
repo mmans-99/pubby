@@ -14,6 +14,7 @@ import type { PlayerId, SessionAction } from '../session/types.ts';
 import { PERSONALITY_WEIGHTS, type Persona } from './persona.ts';
 import { handBadness, leadRisk, pSlapAfterMe, rankValue, yetToPlay } from './eval.ts';
 import { unknownPool, type Memory } from './memory.ts';
+import { searchScores } from './search.ts';
 import type { AiSeen } from './seen.ts';
 
 function pickRandom<T>(items: readonly T[], rng: Rng): T | undefined {
@@ -48,6 +49,24 @@ function unknownOfSuit(m: Memory, seen: AiSeen, suit: Suit): number {
 // Cards
 // ---------------------------------------------------------------------------
 
+/**
+ * Hard's card (D2.3): Normal's card is the default. The imagined-deal search
+ * (search.ts) replaces it only when its best card beats Normal's by at least
+ * the switch margin. Tuning lives in HARD_TUNING so tests can change it.
+ */
+export const HARD_TUNING = { switchMargin: 0.3 };
+
+function hardCard(seen: AiSeen, m: Memory, ruleCard: () => string | undefined, rng: Rng): string | undefined {
+  const normal = ruleCard();
+  const scores = searchScores(seen, m, rng);
+  if (scores.length === 0) return normal;
+  const best = scores.reduce((a, b) => (b.avg > a.avg ? b : a));
+  if (normal === undefined) return best.id;
+  const mine = scores.find((x) => x.id === normal);
+  if (!mine) return normal;
+  return best.avg - mine.avg >= HARD_TUNING.switchMargin ? best.id : normal;
+}
+
 /** My card on my turn (not a final-two choice). */
 export function chooseCard(seen: AiSeen, m: Memory, persona: Persona, rng: Rng): SessionAction | null {
   const v = seen.view;
@@ -56,13 +75,16 @@ export function chooseCard(seen: AiSeen, m: Memory, persona: Persona, rng: Rng):
   if (legal.length === 0) return null;
   const legalSet = new Set(legal);
 
+  const ruleCard = (): string | undefined =>
+    v.ledSuit === null ? leadCard(seen, m, persona, legalSet) : followCard(seen, m, persona, legalSet);
+
   let cardId: string | undefined;
-  if (persona.level === 'easy' && rng() < 0.2) {
+  if (persona.level === 'hard') {
+    cardId = hardCard(seen, m, ruleCard, rng);
+  } else if (persona.level === 'easy' && rng() < 0.2) {
     cardId = pickRandom(legal, rng);
-  } else if (v.ledSuit === null) {
-    cardId = leadCard(seen, m, persona, legalSet);
   } else {
-    cardId = followCard(seen, m, persona, legalSet);
+    cardId = ruleCard();
   }
   // Every choice above is a legal card; falling back to the first legal one keeps the game moving.
   const chosen = cardId !== undefined && legalSet.has(cardId) ? cardId : legal[0];

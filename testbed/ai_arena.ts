@@ -146,20 +146,35 @@ function main(): void {
     return percentile(ms, 0.95);
   };
 
+  // Slice D (Hard): 2000 four-player games, 2 Hard and 2 Normal seats; and 200 games for timing.
+  const hardVersus = runMany(N, 4, ['hard', 'normal'], rounds, args.seed + 3_000_000);
+  const hardAvg = mean(hardVersus.byLevel.get('hard'));
+  const normalVsHardAvg = mean(hardVersus.byLevel.get('normal'));
+  const vsNormal = hardAvg !== null && normalVsHardAvg !== null ? Math.round((normalVsHardAvg - hardAvg) * 1000) / 1000 : null;
+  const hardTiming = runMany(200, 4, ['hard', 'normal'], rounds, args.seed + 4_000_000);
+  const hardP95 = percentile((hardTiming.decisionMs.get('hard') ?? []).slice().sort((a, b) => a - b), 0.95);
+
+  const refusedAll = mixed.refused + versus.refused + timing.refused + hardVersus.refused + hardTiming.refused;
+  const crashedAll = mixed.crashed + versus.crashed + timing.crashed + hardVersus.crashed + hardTiming.crashed;
+  const finishedAll = mixed.finished + versus.finished + timing.finished + hardVersus.finished + hardTiming.finished;
+  const gamesAll = mixed.games + versus.games + timing.games + hardVersus.games + hardTiming.games;
   const bars = {
-    noRefusedMoves: { value: mixed.refused + versus.refused + timing.refused, pass: mixed.refused + versus.refused + timing.refused === 0 },
-    noCrashes: { value: mixed.crashed + versus.crashed + timing.crashed, pass: mixed.crashed + versus.crashed + timing.crashed === 0 },
-    allGamesFinish: { value: `${mixed.finished + versus.finished + timing.finished} of ${mixed.games + versus.games + timing.games}`, pass: mixed.finished + versus.finished + timing.finished === mixed.games + versus.games + timing.games },
+    noRefusedMoves: { value: refusedAll, pass: refusedAll === 0 },
+    noCrashes: { value: crashedAll, pass: crashedAll === 0 },
+    allGamesFinish: { value: `${finishedAll} of ${gamesAll}`, pass: finishedAll === gamesAll },
     normalBeatsRandomBy0_3: { value: vsRandom, pass: vsRandom !== null && vsRandom >= 0.3 },
     normalBeatsEasyBy0_15: { value: vsEasy, pass: vsEasy !== null && vsEasy >= 0.15 },
     easyP95UnderMs20: { value: p95('easy'), pass: (p95('easy') ?? Infinity) < 20 },
     normalP95UnderMs20: { value: p95('normal'), pass: (p95('normal') ?? Infinity) < 20 },
+    hardBeatsNormalBy0_15: { value: vsNormal, pass: vsNormal !== null && vsNormal >= 0.15 },
+    hardP95UnderMs150: { value: hardP95, pass: (hardP95 ?? Infinity) < 150 },
   };
   console.log(JSON.stringify({
     note: 'Pass bars, CODE.md 9m.4. Place 1 = first out (lower is better). Gaps: random minus normal, easy minus normal.',
     rounds,
     normalVsRandom: { games: N, normalAvg, randomAvg, gain: vsRandom },
     normalVsEasy: { games: N, normalAvg: normalVsEasyAvg, easyAvg, gain: vsEasy },
+    normalVsHard: { games: N, normalAvg: normalVsHardAvg, hardAvg, gain: vsNormal },
     bars,
     allPass: Object.values(bars).every((b) => b.pass),
   }, null, 2));

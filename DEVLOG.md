@@ -4,6 +4,37 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 — Phase 4b slice D (Hard), fixed (D2) and built as 2.13.0, not pushed; all arena bars pass
+
+**Done**
+- New `src/ai/sample.ts` (`sampleDeals`: imagined deals from memory only; keeps hand sizes and known cards; respects voids where it can, else falls back for that sample) and `src/ai/search.ts` (`searchCard`: for each legal card, play it in 40 imagined deals, play three tricks on with a simple rule for everyone, score +3 out, -1 per card picked up, -0.2 per card left; best average wins).
+- `moves.ts` `chooseCard`: Hard uses `searchCard` first; falls back to the rules of thumb.
+- Setup screen: "All Hard" chip; a seat's level chip now cycles Easy -> Normal -> Hard. `MIXED_LEVELS` includes Hard. The "Hard comes in a later update" note is gone.
+- Arena (`testbed/ai_arena.ts`): new bars `hardBeatsNormalBy0_15` and `hardP95UnderMs150`, plus Hard-vs-Normal numbers.
+- Tests: `tests/ai/sample.test.ts` (hand sizes, known cards, voids), `tests/ai/search.test.ts` (legal card on my turn). `names.test.ts` updated: Mixed now draws Easy, Normal or Hard.
+- Checks: `npm run check` clean; `npm test` 210 of 210; `npm run build` OK. Browser checks not run (Hard fails the arena bar, so no phone test yet).
+
+**Arena (200 games, 4 players, 2 Hard + 2 Normal seats, 3 rounds each; lower place is better)**
+- Hard 2.81, Normal 2.19. Hard is WORSE by about 0.6 places; the bar is Hard better by 0.15. FAIL.
+- Hard decision p95 about 7 ms (bar 150 ms), so timing passes. Rollouts were cut to three tricks ahead (the plan's "current trick plus two more"); the first version took about 3.6 s per game.
+- Tried, none helped: score weights for cards left and pickups (0.2 / 1 / 3 variants); one trick ahead instead of three; rollout follow policy high or low; excluding jokers from candidates; an oracle run with the real hidden hands (still worse than Normal, so the fault is in the search model, not the sampling).
+- Diagnosis: the search picks the highest legal card far less often than Normal (25% vs 59% of decisions) and plays a joker about 3% of the time; Normal almost never does. The short rollout with a naive policy for every seat does not capture what Normal's rules of thumb capture.
+
+**Not done / open**
+- Fix the search model so Hard beats Normal by 0.15. Options: a better rollout policy for the other seats (closer to `moves.ts`), a value for jokers and for holding low cards at the cut-off, or a larger sample/horizon with a time check. Measure each change with 200-game arena runs before any full run.
+- Full 2000-game `--bars` run not done yet (about 20 minutes).
+**D2 fix (done this session, Haiku):**
+- D2.1: `handDanger` (eval.ts) replaces card count in the search score; weights `{ out: 3, pick: 0.25, danger: 4 }`. Gap (Normal minus Hard, 200 games): -0.62 before; -0.04 after.
+- D2.2: `_rolloutCard` (search.ts): imagined opponents play Normal-like rules. Gap +0.16.
+- D2.3: `hardCard` (moves.ts): Normal's card, switched only when the search beats it by `HARD_TUNING.switchMargin` = 0.3. Gap +0.36 (200 games).
+- Full `--bars` (2000 games): all 9 bars pass. Normal vs Hard average places 2.621 / 2.379 (Hard better by 0.242); Hard p95 10.86 ms; Normal beats Easy 0.536; Normal beats random 1.424.
+- Tests: `npm run check` clean; `npm test` 219 of 219.
+- Browser: `testbed/solo_check.py --slice-d` added (All Hard game, plus three Mixed games with a Hard seat): 11 of 11 on the rerun. Slice C 14 of 14, back 14 of 14, offline 20 of 20. Note: Mixed game 3 took far longer to finish than the others in both runs (no Hard seat in it, and it still finished); look at its timing on the phone.
+- Version 2.13.0 (`package.json`, history in `CODE.md`). Not committed or pushed. `node_modules` is a local symlink; remove before committing.
+- Not committed or pushed; version still 2.12.0 (bump when pushed). `node_modules` is a local symlink to `/opt/npm-tools/node_modules`; remove before committing.
+
+---
+
 ## 2026-11-13 (morning, latest) — Version 2.12: vote ballots spaced out
 
 **Done**

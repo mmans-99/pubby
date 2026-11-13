@@ -35,7 +35,9 @@ const SPEEDS: readonly { value: Speed; label: string }[] = [
   { value: 'normal', label: 'Normal' },
   { value: 'fast', label: 'Fast' },
 ];
-const LEVEL_LABEL: Record<SetupLevel, string> = { easy: 'Easy', normal: 'Normal' };
+const LEVEL_LABEL: Record<SetupLevel, string> = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+/** The order a seat's level chip cycles through when tapped. */
+const NEXT_LEVEL: Record<SetupLevel, SetupLevel> = { easy: 'normal', normal: 'hard', hard: 'easy' };
 
 /** `n` new computer players with random names (not the person's name) and Normal level. */
 function newSeats(n: number, taken: readonly string[]): SetupBot[] {
@@ -99,7 +101,7 @@ function setLevels(pick: (i: number) => SetupLevel): void {
 }
 
 function toggleLevel(i: number): void {
-  setSolo({ seats: getState().solo.seats.map((s, k) => (k === i ? { ...s, level: s.level === 'easy' ? 'normal' : 'easy' } : s)) });
+  setSolo({ seats: getState().solo.seats.map((s, k) => (k === i ? { ...s, level: NEXT_LEVEL[s.level] } : s)) });
 }
 
 /** New random names for every computer player (levels kept), avoiding the person's name. */
@@ -185,9 +187,9 @@ export function soloScreen(): HTMLElement {
       h('div', { class: 'chips center-chips' },
         levelChip('All Easy', 'easy', () => setLevels(() => 'easy')),
         levelChip('All Normal', 'normal', () => setLevels(() => 'normal')),
+        levelChip('All Hard', 'hard', () => setLevels(() => 'hard')),
         levelChip('Mixed', 'mixed', () => setLevels(() => mixedLevel(rng))),
       ),
-      h('p', { class: 'muted small' }, 'Hard comes in a later update.'),
     ),
 
     h('section', { class: 'panel' },
