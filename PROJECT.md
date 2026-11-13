@@ -703,6 +703,15 @@ From the user's Multiplayer test of 2.23:
 
 **Open questions:** should learning be on by default (plan says off until tested)? Should it apply to Normal and Hard only, or also Easy?
 
+### 12m. Scroll place, Fast forward where your cards were, buttons that fit, neater last-trick stack (PLAN, user 2026-11-13 21:33; build guide `CODE.md` 9aa; NOT BUILT)
+
+User's phone test of 2.30 (six screenshots):
+1. Results screen jumps to the top each time someone taps "I'm ready". Wanted: no screen jumps back to the top when something changes; only a new screen starts at the top.
+2. When you are out and only computer players are left, Fast forward and Skip to end of round go where your cards were, instead of only in the ☰ menu. (Read as Fast forward and Skip to end of round; End this game stays in the menu only, because it ends the whole game.)
+3. "Deal again?", "Start the round" and the "2 jokers" chip are cut off. Wanted: they fit. "Start the round" becomes "Start"; the jokers chip moves to the top bar.
+4. The "last" trick stack in the table corner looks off. Wanted: each card's number and suit shows in its own corner, lined up with the card.
+No rule changes.
+
 ## 13. Quick rules (in-game help)
 
 - **What it is:** A short, simplified rules guide inside the app.

@@ -382,6 +382,12 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 ## Phase 4k — Computer players that learn from you (plan 2026-11-13 21:25, `PROJECT.md` 12l, build guide `CODE.md` 9z; NOT BUILT; decision pending)
 
 - [!] **Decision:** user picks option 1 (within a game), 2 (across games on the phone), 3 (offline tuning), or a mix (`PROJECT.md` 12l)
-- [ ] Build the chosen option per `CODE.md` 9z (option 1 would be 2.31.0), with the fairness test (hidden-card test) and the arena check
+- [ ] Build the chosen option per `CODE.md` 9z (next free version; 2.31 is 9aa), with the fairness test (hidden-card test) and the arena check
 - [ ] Phone checklist (`CODE.md` 9z.5) and push, after the user says "Push it"
 
+
+## Phase 4l — Scroll place, Fast forward in the hand area, buttons that fit, neater last-trick stack (plan 2026-11-13 21:33, `PROJECT.md` 12m, build guide `CODE.md` 9aa; NOT BUILT)
+
+- [ ] User approves the plan
+- [ ] **2.31.0:** Part A scroll place kept on every redraw; Part B Fast forward / Skip where your cards were; Part C deal bar and round-start buttons fit, jokers chip in the top bar, target row off the "You" pill; Part D last-trick stack step and corner index; tests; checks
+- [ ] User's phone test (`CODE.md` 9aa.2); push to main after "Push it"

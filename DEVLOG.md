@@ -4,6 +4,16 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (21:40) — Plan 9aa (2.31): scroll place, Fast forward in the hand area, buttons that fit, last-trick stack (docs only)
+
+**User (21:33, phone test of 2.30 with six screenshots):** results screen jumps to the top on every "I'm ready"; wants Fast forward and Skip where the cards were; "Deal again?", "Start the round" and "2 jokers" cut off; the last-trick stack looks misaligned. Asked for a plan to code with Haiku.
+
+**Causes found:** `render()` rebuilds the page, so every scrolling box restarts at the top (only the reactions sheet was kept); action slot padding 64 px each side leaves too little width; deal bar has 3 rows in 92 px; last-trick cards step 0.5u but the corner index is about 1.4u wide with a fixed 9 px font.
+
+**Written:** `CODE.md` 9aa, `PROJECT.md` 12m, `TODO.md` Phase 4l. 9z's proposed version changed to "next free". No code changed; version unchanged (doc-only).
+
+---
+
 ## 2026-11-13 (21:25) — Plan 9z: computer players that learn from the user (docs only, pushed to main)
 
 **User (21:23 to 21:25):** asked whether the AI can learn from playing against them. Answered: not today; three options. Asked for a plan in the code, to push, and to build later.

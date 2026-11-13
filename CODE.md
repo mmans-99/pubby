@@ -2543,12 +2543,157 @@ Pause and reactions work as now during a notice.
 
 ### 9z.5 Version and process (when built)
 
-- Proposed version: 2.31.0 (option 1). Options 2 and 3 get their own version numbers when chosen.
+- Proposed version: the next free number when built (2.31 is taken by 9aa) (option 1). Options 2 and 3 get their own version numbers when chosen.
 - `npm run check`, `npm test`, `npm run build`; arena check that the learning bot does not get worse than the current bot (win rate within the arena's usual margin); update the five MD files; playable test build; phone checklist; push only after the user says "Push it".
 - **Phone checklist (option 1, when built):**
   1. Turn on "Computer players learn from me". Play one game where you slap often. Do the bots slap you back more by the end of the game than at the start?
   2. Start a new game. Do the bots go back to their normal habits?
   3. Turn the switch off. The bots play as before.
+
+## 9aa. Version 2.31: screens keep their scroll place, Fast forward buttons in your hand area, deal and round-start buttons that fit, and a neater last-trick stack (PLAN, user 2026-11-13 21:33; written for any model, Haiku included; NOT BUILT; spec `PROJECT.md` 12m)
+
+Build only after the user approves this plan (CLAUDE.md rules 1 and 2). No game rule changes; nothing new is sent between phones. Four parts; build them in order A, B, C, D and run `npm run check` and `npm test` after each part.
+
+### 9aa.0 Read first
+
+- `src/ui/app.ts` `render()` (about line 120 to 165): every redraw calls `root.replaceChildren(...)`, which throws away every element and builds new ones. A new element starts scrolled to the top. Only the reactions sheet keeps its place today (lines 158 to 162). `src/ui/netlobby.ts` line 321 keeps the window's place for the lobby only.
+- `src/ui/game.ts` `gameScreen()`: stages that are not a fixed frame (results, game over, the one-phone round-start tiles) are wrapped in `div.game-scroll`, which scrolls inside itself.
+- `src/ui/game.ts` `gameFrame()` and `styles.css` `.game-frame`, `.game-action-slot` (padding `0 64px`), `.deal-bar`.
+- `src/ui/game.ts` `lastCorner()` and `src/ui/table.ts` `lastBox()`, `lastStyle()`; CSS `.lt-corner`, `.card.tiny-card .idx .r` (fixed 9 px).
+- `src/ui/game.ts` `fastForwardMenuItems()`, `gameMenu()`, `playHandStage()`; `src/ui/netscreens.ts` line 194 (network menu: host only).
+
+### Part A — screens keep their scroll place on every redraw (all screens)
+
+**The bug (user screenshot 1):** on the results screen, each time a player taps "I'm ready" (or a computer player readies), the screen jumps back to the top. **Cause:** `render()` rebuilds the whole page; the new `div.game-scroll` starts at scrollTop 0. The same happens to every scrolling box whenever anything redraws: computer moves, reactions arriving, network messages, votes, timers.
+
+**Where it happens today (all fixed by this part):**
+
+| Scrolling box | Redraws that reset it |
+|---|---|
+| `div.game-scroll` (results, game over, one-phone round-start tiles) | ready-ups, votes, target proposals, reactions, network messages |
+| `.game-extra` (panels floating over the table) | every move during play |
+| `.rules-sheet` (? quick rules) | anything that redraws while the rules are open (bot moves, reactions) |
+| `.sound-sheet`, history `.sheet`, `.last-sheet`, pause overlay | the same |
+| The window itself (home, setup, history, lobby) | network lobby messages (already fixed in netlobby.ts only), saves |
+
+**Fix: one general rule in `render()`, replacing the reactions-sheet special case.**
+
+1. Every scrolling box gets a `data-scroll` attribute with a stable name. The name must change when it is a *different* screen, so a new screen still opens at the top:
+   - `div.game-scroll` in `gameScreen()`: `data-scroll="game-${s.phase}-${s.round}"`.
+   - `.game-extra` in `gameFrame()`: `data-scroll="extra"`.
+   - Rules sheet: `"rules"`. Sound sheet: `"sound"`. History sheet: `"history-" + sheet.title`. Last-trick sheet: `"last"`. Pause overlay's sheet: `"pause"`. Reactions sheet: `"reactions"`.
+   - Any other element whose CSS has `overflow-y: auto` (search `styles.css` for `overflow-y`, lines about 314 and 525): give it a name too.
+2. In `render()`, just before `root.replaceChildren(...)`:
+   ```ts
+   const kept = new Map<string, number>();
+   root.querySelectorAll<HTMLElement>('[data-scroll]').forEach((el) => kept.set(el.dataset.scroll!, el.scrollTop));
+   const pageKey = screenKey(st);           // see 3
+   const pageY = window.scrollY;
+   ```
+   Just after it:
+   ```ts
+   root.querySelectorAll<HTMLElement>('[data-scroll]').forEach((el) => {
+     const y = kept.get(el.dataset.scroll!);
+     if (y !== undefined) el.scrollTop = y;
+   });
+   if (pageKey === lastPageKey && window.scrollY !== pageY) window.scrollTo(0, pageY);
+   lastPageKey = pageKey;
+   ```
+   Delete the old `sheetScroll` lines (the reactions sheet is now covered by `data-scroll="reactions"`).
+3. `screenKey(st)` (pure, exported, in a new file `src/ui/scrollkeep.ts`): returns `st.screen` plus, for `'game'`, the phase and round (`game:results:1`). Moving to a new screen gives a new key, so it opens at the top as now. `lastPageKey` is a module variable in `app.ts`.
+4. Leave the netlobby.ts fix in place (it is harmless and covers its own redraw path).
+5. **Do not** scroll to the top on purpose anywhere unless the screen changes. Search for `scrollTo(` and `scrollIntoView(` (app.ts line ~212 is the rules topic jump, which is on purpose; keep it).
+
+**Tests:** `tests/ui/scrollkeep.test.ts`: `screenKey` gives the same key for two states that differ only in ready players or votes, and a different key when the phase, round or screen changes. (The DOM part is checked on the phone; tests run without a DOM.)
+
+### Part B — Fast forward and Skip in your hand area when you have no cards
+
+**User (screenshot 2):** when you are out and only computer players are left, Fast forward and Skip to end of round are hidden in the ☰ menu, and the hand area just says "No cards left." Put the buttons where the cards were.
+
+1. In `playHandStage()` (`src/ui/game.ts`), work out the items:
+   ```ts
+   const ffItems = !g.net || isHostSeat(g) ? fastForwardMenuItems(g) : [];   // 9v.5: host only in network games
+   ```
+2. If `v.myHand.length === 0 && ffItems.length > 0`, pass `hand: h('div', { class: 'hand-actions' }, ...ffItems)` to `gameFrame` instead of `handBlock(...)`. Otherwise keep `handBlock` exactly as now.
+3. Buttons: `Fast forward` and `Skip to end of round`, side by side (stacked on screens under 340 px wide), each at least 48 px tall, cream `secondary` style as in the menu. Change the class in `fastForwardMenuItems` only for this use: give it an optional `opts: { big?: boolean }` that adds `big` to the class.
+4. While Fast forward is on, the hand area shows `Stop fast forward` and `Skip to end of round` (Stop calls `stopFastForward()`); while a skip runs, it shows `Stop` only. The `fastBanner` under the top bar stays as it is.
+5. Keep the same items in the ☰ menu too (people may look there). **End this game stays only in the menu** (it ends the whole game, and needs its "tap again" safety; it should not sit where a stray tap lands).
+6. A joining phone in a network game still sees "No cards left." (9v.5: only the host can skip).
+7. CSS: `.hand-actions { height: 100%; display: flex; gap: 10px; align-items: center; justify-content: center; padding: 0 12px; } .hand-actions button { flex: 1; max-width: 220px; min-height: 48px; }` plus `@media (max-width: 339px) { .hand-actions { flex-direction: column; } }`.
+
+### Part C — Deal and round-start buttons that fit
+
+**User (screenshots 5 and 6):** "Deal again?" and "Start the round" are cut off; on the deal screen the "2 jokers" chip is cut off at the top and Manual / Auto at the bottom.
+
+**Cause, round start (`netscreens.ts` `beforeRound()`, used by vs-computer and network games):** the action slot is 52 px tall, `overflow: hidden`, with `padding: 0 64px`. On a 384 px phone that leaves 256 px for two `grow` buttons, so "Deal again?" wraps to 2 lines and "Start the round" to 3, and the extra lines are clipped.
+
+**Cause, deal screen (`dealingStage()`):** the deal bar holds three rows (chips, hint, Manual / Auto / Deal all) in 92 px; they need about 120 px.
+
+Fix:
+1. `.game-action-slot` padding: the 😂 button sits bottom-left only, so use `padding: 0 12px 0 76px` (left room for 😂, small right). Check in landscape (`@media (orientation: landscape)` block) that it still uses its own `padding: 0 4px`.
+2. Round-start buttons: shorter words and one line each:
+   - `Deal again?` stays; `Used` stays.
+   - `Start the round` becomes `Start`.
+   - CSS `.round-buttons { display: flex; gap: 8px; flex-wrap: nowrap; } .round-buttons button { white-space: nowrap; min-height: 44px; padding: 0 12px; font-size: 1rem; }`.
+   - Also the one-phone tiles (`roundstart.ts` `reshuffleStage`): check `Start · Name` doesn't wrap past the tile on 320 px; add `overflow-wrap: anywhere` to `.tile span` if it does.
+3. Jokers chip moves out of the deal bar into the top bar (this was in 9x.2 item 1 and not done in 2.29): in `gameScreen()`, during `s.phase === 'dealing'`, add after the pause button a small chip `h('span', { class: 'bar-chip' }, icon('joker'), String(s.jokerTotal))` (or `icon('joker')` + `0` styled muted when jokers are off), with `aria-label="2 jokers"`. The hidden-deck chip (2 and 3 players) moves with it, as `icon('eyeoff')` + the number, still a button that opens ? rules at "Hidden decks". Remove `chips` from both `deal-bar`s in `dealingStage()`.
+4. The deal bar then holds two rows (hint, then Manual / Auto / Deal all). Set its height with `stageLayout(false, 76)` in portrait (64 in landscape as now). Check: nothing is clipped at 320 × 568, 360 × 640, 384 × 730.
+5. While here: on the round-start screen the floating target-score row (`extra`) covers the "You · 14" pill (screenshot 5). Make `.game-extra` sit at the top of the table slot on this stage (`top: 8px; bottom: auto;`) by giving `gameFrame` an `extraAt: 'top' | 'bottom'` option (default `'bottom'`) and passing `'top'` from `beforeRound()`.
+
+**Tests:** extend `tests/ui/layout.test.ts`: for the sizes in 9w.7, `gameLayout(..., { bar: 76 })` still keeps `tableH ≥ 240` (or the documented smallest size).
+
+### Part D — the last-trick stack lines up with its cards
+
+**User (screenshots 3 and 4, circled):** the "last" stack in the table corner looks off: the numbers run together ("Q7810", "5910") and don't sit on their own cards.
+
+**Cause:** each small card is moved only `0.5u` (about 5 px) past the one under it, but its corner number and suit are about 16 px wide (`.idx` is 40 % of the card, and `.idx .r` is a fixed 9 px font). So each card covers most of the number below it, and the numbers overlap each other. The fixed 9 px font also doesn't grow or shrink with the card (card width is `3.6u`), so the number doesn't sit in the card's corner.
+
+Fix (same idea as the thrown pile in the middle: every card underneath still shows its whole corner):
+1. **Step between cards:** new pure function in `table.ts`:
+   ```ts
+   /** How far each last-trick card sits from the one under it: enough to show its whole corner (number + suit). */
+   export function lastStep(box: TableBox, n: number): number {
+     const want = 1.6 * box.u;                       // one corner index wide
+     const maxW = 0.4 * box.w;                       // stay left of the "You" pill
+     return n <= 1 ? 0 : Math.max(1.0 * box.u, Math.min(want, (maxW - 3.6 * box.u) / (n - 1)));
+   }
+   ```
+   `lastBox` uses it: `w: 3.6 * u + (n - 1) * lastStep(box, n)`. `lastCorner` sets `--step` on the button (`style="--step:Npx"`), and CSS uses `left: calc(var(--i) * var(--step))` instead of `0.5 * var(--u)`. `game.ts` needs the box: pass `lay.box` into `lastCorner` from `trickArea` (it already has `lay`).
+2. **Corner index sized from the card:** in `.lt-corner` only, `.idx { width: auto; left: 0.25u; top: 0.2u; } .idx .r { font-size: calc(1.15 * var(--u)); line-height: 1; } .idx svg { width: calc(0.9 * var(--u)); height: calc(0.9 * var(--u)); }`. The number and suit then sit in the top-left corner of each card at the same place on every card, and the step (1.6u) is wider than the index (≈1.3u), so nothing overlaps.
+3. **Label and slap mark:** keep "last" above the cards, left-aligned with the first card's left edge (both at `left: 0`). Move the slap hand icon to sit just past the right edge of the top card (`left: calc((n - 1) * step + 3.6u + 2px)`), so it never covers a number. `lastBox` width adds `1.4u` when there is a slap.
+4. **Order:** first card played at the bottom-left, last card played on top at the right (as now).
+5. Remove the old unused `.lt-card { margin-right: 8px; white-space: nowrap; }` rule (styles.css ~line 419) if nothing else uses it (search for `lt-card` first).
+
+**Tests:** in `tests/ui/layout.test.ts`:
+- `lastStep(box, n) ≥ 1.0u` for n = 2 … 8 on all sizes in 9w.7, and `= 1.6u` when n ≤ 5 on 384 × 730.
+- `lastBox(box, 8).x + lastBox(box, 8).w ≤ 0.4 × box.w + 8`.
+- `seatCollisions` with the new `lastBox`: no new collisions beyond the known tight cases in `tests/ui/seats.test.ts`.
+
+### 9aa.1 Files likely to change
+
+| File | Change |
+|---|---|
+| `src/ui/scrollkeep.ts` (new) | `screenKey(st)` |
+| `src/ui/app.ts` | `render()` saves and restores `[data-scroll]` boxes and the window place (Part A) |
+| `src/ui/game.ts` | `data-scroll` names; `playHandStage` hand actions; `fastForwardMenuItems` `big` option; jokers chip into the top bar; `gameFrame` `extraAt`; `lastCorner` step |
+| `src/ui/netscreens.ts` | `beforeRound` "Start", `extraAt: 'top'` |
+| `src/ui/roundstart.ts`, `between.ts`, `sound.ts`, `history.ts`, `app.ts` (rules sheet) | `data-scroll` names on scrolling boxes |
+| `src/ui/table.ts` | `lastStep`, `lastBox` width |
+| `src/ui/styles.css` | `.game-action-slot` padding, `.round-buttons`, `.hand-actions`, `.bar-chip`, `.lt-corner` index sizes |
+| `tests/ui/scrollkeep.test.ts` (new), `tests/ui/layout.test.ts` | tests above |
+
+### 9aa.2 Version and process
+
+- **2.31.0** in `package.json` (9z option 1 takes the next number after this when it is built).
+- `npm run check`, `npm test`, `npm run build`; update the five MD files; ask the user to test; push to main only when the user says "Push it".
+- **Phone checklist (2.31):**
+  1. vs-computer game, finish a round. On the results screen, scroll down to the ready buttons. As the computer players tap ready (and as you tap yours), the screen stays where you scrolled it.
+  2. Open ? quick rules mid-game and scroll down; the page stays put while computer players move.
+  3. Go out before the computer players. "Fast forward" and "Skip to end of round" sit where your cards were. Tap Fast forward: the buttons change to "Stop fast forward" and "Skip to end of round". Tap Skip: the round finishes. End this game is still in ☰ only.
+  4. Deal screen: the jokers chip is in the top bar; the hint and Manual / Auto / Deal all are fully visible.
+  5. After the deal: "Deal again?" and "Start" are each on one line and not cut off; the target-score row no longer covers your "You" pill.
+  6. Play a few tricks with 4 and with 8 players. The "last" stack shows each card's number and suit in its own corner, nothing overlapping; a slap shows the red hand beside the stack, not over it. Tap it: the big last-trick sheet still opens.
+  7. Network game (two phones): results screen keeps its scroll place when the other phone taps ready.
 
 ## 8a. Playable test builds (required before every commit)
 
