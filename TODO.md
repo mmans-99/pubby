@@ -283,15 +283,18 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [ ] **Slice O3: rejoin online** (version 2.19; with Nearby slice 4)
 - [ ] Slice O4 (game on the server): only if the user asks
 
-## Phase 4d — Everyone at the table before a game starts (plan written 2026-11-13, `PROJECT.md` 12e, build guide `CODE.md` 9s; not built)
+## Phase 4d — Everyone at the table before a game starts (plan 2026-11-13, `PROJECT.md` 12e, build guide `CODE.md` 9s; built as 2.19.0, not pushed)
 
 - [x] Plan written (docs only, 2026-11-13)
-- [ ] User answers the four questions in `PROJECT.md` 12e (what "at the table" means; host starting without a player who left; where "Waiting for" shows; quick rules mention)
-- [ ] Read-first checks in `CODE.md` 9s.0 (card screen stage; reconnect path), and record the answers in 9s
-- [ ] Build Option A or B (`CODE.md` 9s.2) with the messages and rules in 9s.3-9s.5
-- [ ] Unit tests (ready set), `testbed/pregame_check.py`, existing checks still pass
-- [ ] Playable test build and checklist (`PROJECT.md` 12e); user tests on phones (Nearby and Online)
-- [ ] MD files and DEVLOG updated; user approves commit and push; version number told to the user
+- [x] User answers the four questions (2026-11-13: arrival at the table; no start without a player who left; "Waiting for" in lobby and after Start; quick rules unchanged)
+- [x] Read-first checks in `CODE.md` 9s.0 (card screen is a stage inside the game; reconnect cannot enter a game before start), recorded in 9s
+- [x] Build Option A (`CODE.md` 9s.2): ready flag per seat, Start gated, "Waiting for" text on host and joining phones (2.19.0)
+- [x] Unit tests: `tests/net/pregame.test.ts` (ready set, waiting text, messages); `tests/net/lobby.test.ts` updated. 293/293 pass
+- [x] Browser checks: `lobby_check.py` 67/67, `netgame_check.py` 94/94, `online_check.py` 37/37
+- [ ] `testbed/pregame_check.py`: not written (the "Waiting for" text lasts only until the joiner's ready message, so it can't be seen in a browser run without a delay hook)
+- [ ] Known gap vs `PROJECT.md` 12e: under Option A the cards screen is inside the game, so a slow player's cards screen still does not hold others back (user chose Option A, 2026-11-13)
+- [ ] Playable test build and checklist (`PROJECT.md` 12e); user tests on phones (Nearby and Online). Needs a push to GitHub Pages, not yet approved
+- [ ] MD files and DEVLOG updated (done locally); user approves commit and push; version 2.19.0 told to the user
 
 ## Phase 5 — Polish
 

@@ -10,8 +10,8 @@
 import { jokerCount, MAX_PLAYERS, MIN_PLAYERS } from '../rules/cards.ts';
 import { readGameUpdate, type GameRefused, type GameUpdate } from './netgame.ts';
 
-/** Bumped when the messages change, so mixed phones refuse each other. 2: game messages (slice 2). 3: reactions, host adding (2.4). */
-export const LOBBY_PROTOCOL = 4;
+/** Bumped when the messages change, so mixed phones refuse each other. 2: game messages (slice 2). 3: reactions, host adding (2.4). 4: online rooms (2.18). 5: ready at the table (2.19). */
+export const LOBBY_PROTOCOL = 5;
 export const NAME_MAX = 16;
 
 export interface LobbySeat {
@@ -23,6 +23,8 @@ export interface LobbySeat {
   isHost: boolean;
   /** False when a phone lost its link after the game was set (slice 4 rejoins). */
   connected: boolean;
+  /** Phase 4d: this phone has reached the table screen (the host's phone is always ready). */
+  ready: boolean;
 }
 
 export interface Lobby {
@@ -50,7 +52,9 @@ export type ToHost =
   /** Send me the whole game again. */
   | { t: 'sync' }
   /** A reaction (2.4): -1 = the laugh, else a catch-phrase number. */
-  | { t: 'react'; r: number };
+  | { t: 'react'; r: number }
+  /** Phase 4d: this phone has reached the table screen. */
+  | { t: 'ready' };
 
 /** Host → joining phone. */
 export type ToJoiner =
@@ -78,6 +82,7 @@ export function readToHost(raw: unknown): ToHost | null {
       return isStr(raw['sessionName']) ? { t: 'rename', sessionName: raw['sessionName'] } : null;
     case 'leave': return { t: 'leave' };
     case 'ping': return { t: 'ping' };
+    case 'ready': return { t: 'ready' };
     case 'act': return { t: 'act', actions: raw['actions'] };
     case 'sync': return { t: 'sync' };
     case 'react': return Number.isInteger(raw['r']) ? { t: 'react', r: raw['r'] as number } : null;
@@ -95,7 +100,7 @@ export function readToJoiner(raw: unknown): ToJoiner | null {
       const seats: LobbySeat[] = [];
       for (const s of l['seats'] as unknown[]) {
         if (!isObj(s) || !isStr(s['id']) || !isStr(s['profileName']) || !isStr(s['sessionName'])) return null;
-        seats.push({ id: s['id'], profileName: s['profileName'], sessionName: s['sessionName'], isHost: s['isHost'] === true, connected: s['connected'] !== false });
+        seats.push({ id: s['id'], profileName: s['profileName'], sessionName: s['sessionName'], isHost: s['isHost'] === true, connected: s['connected'] !== false, ready: s['ready'] === true });
       }
       const pl = l['pauseLimit'];
       return {
@@ -132,7 +137,7 @@ export function seatName(seat: LobbySeat): string {
 
 export function newLobby(hostProfile: string): Lobby {
   return {
-    seats: [{ id: 'host', profileName: cleanName(hostProfile), sessionName: '', isHost: true, connected: true }],
+    seats: [{ id: 'host', profileName: cleanName(hostProfile), sessionName: '', isHost: true, connected: true, ready: true }],
     jokers: true,
     pauseLimit: null,
     started: false,
@@ -152,7 +157,7 @@ export function joinProblem(lobby: Lobby, hello: { protocol: number; version: st
 
 export function addSeat(lobby: Lobby, id: string, profileName: string, sessionName: string): Lobby {
   if (lobby.seats.some((s) => s.id === id)) return lobby;
-  return { ...lobby, seats: [...lobby.seats, { id, profileName: cleanName(profileName), sessionName: cleanName(sessionName), isHost: false, connected: true }] };
+  return { ...lobby, seats: [...lobby.seats, { id, profileName: cleanName(profileName), sessionName: cleanName(sessionName), isHost: false, connected: true, ready: false }] };
 }
 
 export function removeSeat(lobby: Lobby, id: string): Lobby {
@@ -174,6 +179,28 @@ export function moveSeat(lobby: Lobby, id: string, by: -1 | 1): Lobby {
 
 export function setConnected(lobby: Lobby, id: string, connected: boolean): Lobby {
   return { ...lobby, seats: lobby.seats.map((s) => (s.id === id ? { ...s, connected } : s)) };
+}
+
+/** Phase 4d: a joining phone has reached the table screen. */
+export function setReady(lobby: Lobby, id: string, ready: boolean): Lobby {
+  return { ...lobby, seats: lobby.seats.map((s) => (s.id === id && !s.isHost ? { ...s, ready } : s)) };
+}
+
+/** Phase 4d: the seats the game is still waiting for (not at the table yet, or without a link). */
+export function waitingSeats(lobby: Lobby): LobbySeat[] {
+  return lobby.seats.filter((s) => !s.isHost && (!s.ready || !s.connected));
+}
+
+/**
+ * Phase 4d: "Waiting for Fay", "Waiting for Ben and Fay", "Waiting for Ann, Ben and Fay".
+ * Null when nobody is missing. Names come from the seats, so the host's phone
+ * and every joining phone show the same text.
+ */
+export function waitingText(lobby: Lobby): string | null {
+  const names = waitingSeats(lobby).map(seatName);
+  if (names.length === 0) return null;
+  if (names.length === 1) return `Waiting for ${names[0]}`;
+  return `Waiting for ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 }
 
 /** Problems that stop the host starting. Same rules as the one-phone setup. */

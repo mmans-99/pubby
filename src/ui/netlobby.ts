@@ -28,8 +28,8 @@ import { lobbyLink } from '../net/signal.ts';
 import { canScan, startScanner, type Scanner } from '../net/scan.ts';
 import {
   addSeat, cleanName, joinProblem, jokerLine, LOBBY_PROTOCOL, lobbyProblems, moveSeat, NAME_MAX, newLobby,
-  readToHost, readToJoiner, removeSeat, renameSeat, seatName, sessionPlayers, setConnected,
-  type Lobby, type LobbySeat, type ToJoiner,
+  readToHost, readToJoiner, removeSeat, renameSeat, seatName, sessionPlayers, setConnected, setReady, waitingText,
+  type Lobby, type LobbySeat, type ToHost, type ToJoiner,
 } from '../net/lobby.ts';
 import { MAX_PLAYERS } from '../rules/cards.ts';
 import { createSession } from '../session/session.ts';
@@ -116,6 +116,8 @@ let hostHeard = 0;
 let myCode = '';
 let you = '';
 let seen: Lobby | null = null;
+/** Phase 4d: this join has sent "ready" (reset for each new connection). */
+let readySent = false;
 /** A host's code from a join link, used once this phone has picked a name. */
 let pendingCode: string | null = null;
 /** A room id from an invite link (#room=…), used once this phone has picked a name. */
@@ -512,6 +514,7 @@ function hostLobbyView(): View {
   if (l.started) return startedView(l, 'host');
   const problems = lobbyProblems(l);
   const waiting = [...links.values()].filter((x) => !x.seated).length;
+  const missing = waitingText(l);
   const full = l.seats.length >= MAX_PLAYERS;
   const me = l.seats.find((s) => s.isHost)!;
   const online = mode === 'online';
@@ -522,6 +525,7 @@ function hostLobbyView(): View {
       h('h2', null, 'Players ', h('span', { class: 'count' }, `${l.seats.length} / ${MAX_PLAYERS}`)),
       h('ol', { class: 'seats' }, l.seats.map((seat, i) => hostSeatRow(seat, i, l.seats.length))),
       waiting ? h('p', { class: 'muted small' }, 'A phone is connecting…') : null,
+      missing ? h('p', { class: 'warn' }, missing) : null,
       online && !full ? h('p', { class: 'muted small' }, `Waiting for players… ${l.seats.length} of ${MAX_PLAYERS}`) : null,
       l.seats.length > 1 ? h('p', { class: 'muted small' }, 'Seats go clockwise. Use the arrows to match where people sit.') : null,
     ),
@@ -548,8 +552,8 @@ function hostLobbyView(): View {
       ),
     ),
     problems.length && l.seats.length > 1 ? h('p', { class: 'warn' }, problems.join(' ')) : null,
-    h('button', { class: 'big sticky', disabled: problems.length > 0 || waiting > 0, onclick: startGame },
-      problems.length ? 'Start game' : `Start game · ${l.seats.length} players`),
+    h('button', { class: 'big sticky', disabled: problems.length > 0 || waiting > 0 || missing !== null, onclick: startGame },
+      problems.length ? 'Start game' : missing ? missing : `Start game · ${l.seats.length} players`),
   ];
 }
 
@@ -617,6 +621,8 @@ function broadcast(): void {
 function startGame(): void {
   const l = lobby!;
   if (lobbyProblems(l).length) return;
+  // Phase 4d: nobody starts while a player is still missing from the table.
+  if (waitingText(l) !== null) return;
   const { players, hostId, linkIds } = sessionPlayers(l);
   let session;
   try {
@@ -897,6 +903,17 @@ function hostGot(id: string, raw: unknown): void {
     else hostSync(id);
     return;
   }
+  if (m.t === 'ready') {
+    // Phase 4d: a joining phone reached the table screen. Ignored once started.
+    if (!link.seated || lobby.started) return;
+    // A repeat is ignored: answering it would send the lobby back, and that
+    // would prompt another "ready" from the phone.
+    if (lobby.seats.find((s) => s.id === id)?.ready) return;
+    lobby = setReady(lobby, id, true);
+    broadcast();
+    draw();
+    return;
+  }
   if (m.t === 'hello') {
     if (link.seated) return;
     const problem = joinProblem(lobby, m, VERSION);
@@ -997,6 +1014,7 @@ function joinLobbyView(): View {
             ...seatTags(seat, seat.id === you),
           ),
         ))),
+      waitingText(l) ? h('p', { class: 'warn' }, waitingText(l)) : null,
       settingsSummary(l),
     ),
     h('section', { class: 'panel' },
@@ -1043,6 +1061,7 @@ function wireJoin(p: Link): void {
     if (peer !== p) return;
     clearTimeout(connectTimer);
     hostHeard = performance.now();
+    readySent = false;
     // Send the name, and again every second until the host answers: a
     // message sent the moment the link opens was sometimes lost in testing
     // (2 runs in 8). The host ignores repeats once the phone has a seat.
@@ -1080,6 +1099,12 @@ function joinGot(raw: unknown): void {
     seen = m.lobby;
     you = m.you;
     if (step !== 'lobby') go('lobby'); else draw();
+    // Phase 4d: this phone is now at the table. Sent once per join: the host
+    // sends the lobby again on every change, so it must not be sent per lobby.
+    if (!readySent && !seen.started) {
+      readySent = true;
+      peer?.send({ t: 'ready' } satisfies ToHost);
+    }
     netChanged();
   } else if (m.t === 'refused') {
     endText = m.why;

@@ -551,13 +551,20 @@ How it works: a small relay server on Cloudflare's free plan passes the messages
 
 ---
 
-### 12e. Everyone at the table before a game starts (PLAN, user 2026-11-13: "Maybe have all players at table before a game begins. Have something to say waiting for x player."; build guide `CODE.md` 9s; not built, not approved)
+### 12e. Everyone at the table before a game starts (BUILT as 2.19.0 on 2026-11-13, Option A, not pushed; user: "Maybe have all players at table before a game begins. Have something to say waiting for x player."; build guide `CODE.md` 9s)
+
+- **Status:** built locally. Known gap: under Option A the cards screen is still inside the game, so a slow player's cards screen does not hold others back (the user chose Option A knowing this).
 
 - Before any game starts (Nearby, Online, or a game with computer players and people on one phone where it applies), every player must be at the table before the game begins. No phone moves into the game while another player is still on the cards screen.
 - While someone is missing, every phone says who it is waiting for, e.g. "Waiting for Fay", or "Waiting for Ben and Fay" for two.
 - The host can start only when everyone is at the table.
 - A player who leaves or loses the connection is shown as missing. When they come back, they must be at the table again before the game can start.
-- **Open (asked 2026-11-13; the plan in `CODE.md` 9s has a recommendation for each):**
+- **Decided (user 2026-11-13, answers to the four questions; build not yet approved):**
+  1. "At the table" = arriving at the table screen (automatic). Option A.
+  2. The host cannot start without a player who has left (recommended option).
+  3. "Waiting for" shows in the lobby before Start and after Start, from the same list (recommended option).
+  4. The quick rules do not mention the wait.
+- **Former open questions (answered above):**
   1. What "at the table" means: arriving at the table screen (automatic, recommended), or pressing Done on the cards screen.
   2. Can the host start without a player who has left? Recommended: no.
   3. Show "Waiting for" in the lobby before the host taps Start, or only after? Recommended: both, from the same list.
@@ -587,7 +594,7 @@ How it works: a small relay server on Cloudflare's free plan passes the messages
 Answer these in any order. Each one unblocks part of the build.
 
 - **Online play defaults (section 12d, asked 2026-11-13):** answered 2026-11-13: keep Nearby, room list, 4-digit passcode, Cloudflare. Slice O2 can start.
-- **Everyone at the table before a game starts (section 12e, asked 2026-11-13):** four decisions open (what "at the table" means; host starting without a player who left; where "Waiting for" shows; whether the quick rules mention it). Plan in `CODE.md` 9s. Nothing built.
+- **Everyone at the table before a game starts (section 12e, asked 2026-11-13):** decided 2026-11-13 (arrival at the table; no start while someone is missing; "Waiting for" in the lobby and after Start; quick rules unchanged). Built as 2.19.0 with Option A (`CODE.md` 9s), not pushed.
 
 (2026-11-07 20:38: the multiplayer questions were answered; see section 12 and Decided.)
 

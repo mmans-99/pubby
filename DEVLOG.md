@@ -4,6 +4,33 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (evening) — Version 2.19.0 built: everyone at the table before a game starts (Option A); not committed or pushed
+
+**User:** answered the four questions: (1) "at the table" = arriving at the table screen; (2) no start while a player is missing (recommended); (3) "Waiting for" in the lobby and after Start (recommended); (4) quick rules unchanged. Then "Go for it". Asked about the cards-screen gap: chose Option A as planned.
+
+**Read first (`CODE.md` 9s.0, read only)**
+- The cards screen is a stage of the game (`roundstart.ts`, `g.stage === 'hand'`), not a screen before it. So Option A's gate is on the table screen only.
+- Reconnect: `hostGot` ignores `sync` until `lobby.started`, so a joiner cannot enter a game before Start. No extra change needed there (the 9s.0 concern is covered already).
+
+**Built**
+- `src/net/lobby.ts`: `ready` on each seat (host always ready, new joiners not); `ready` message from a joining phone; `setReady`, `waitingSeats`, `waitingText` ("Waiting for Ben and Fay"). `LOBBY_PROTOCOL` 4 → 5.
+- `src/ui/netlobby.ts`: joining phone sends `ready` once on arriving at the table (`readySent`, reset per connection); host ignores repeat `ready` (a first version re-broadcast on each one and looped between phones; the lobby check caught it); host Start is greyed and `startGame` refuses while anyone is missing; the "Waiting for" text shows on the host's lobby and on joining phones.
+- `package.json` 2.18.0 → 2.19.0.
+- Tests: `tests/net/pregame.test.ts` (new, 7 tests); `tests/net/lobby.test.ts` seat shape updated for `ready`.
+
+**Results**
+- `tsc` clean; `npm run build` OK (v2.19); unit tests 293/293.
+- Browser: `lobby_check.py` 67/67, `netgame_check.py` 94/94, `online_check.py` 37/37.
+- Environment: `node_modules` is a symlink to `/opt/npm-tools/node_modules` (gitignored). Before that, 5 relay-server tests failed only because `tsx` could not be found from the repo.
+
+**Not done / known gaps**
+- `testbed/pregame_check.py` not written: joiners send `ready` at once, so "Waiting for" is visible only for a moment; a browser test needs a delay hook.
+- Pre-start, a phone that leaves or loses its link is removed from the seats (existing behaviour), so it is not shown as missing; it must reach the table again when it rejoins (automatic).
+- Option A: the cards screen is still inside the game, so a slow player's cards screen does not hold others back (`PROJECT.md` 12e rule 1 is only partly met; the user chose this).
+- Not committed or pushed. The playable test build needs a push to GitHub Pages, which is not yet approved.
+
+---
+
 ## 2026-11-13 (late afternoon) — Plan written: everyone at the table before a game starts (docs only; not committed or pushed)
 
 **User:** "Maybe have all players at table before a game begins. Have something to say waiting for x player. Do you know which bit? What can you plan for that?" Then: "Write up a detailed plan so I can continue on a different chat", and "Update to the repo. The plan."

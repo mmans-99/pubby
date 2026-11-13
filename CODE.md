@@ -1415,15 +1415,21 @@ Run `src/session/` inside the Room object instead of on the host's phone, so the
 - Don't put the API token, Account ID or any secret in the repo; the workers.dev address is public and fine.
 - Don't change `src/rules/`, `src/session/`, `src/ai/`, `lobby.ts`, `netgame.ts` or `netplay.ts` without asking.
 
-## 9s. Everyone at the table before a game starts (PLAN, 2026-11-13; spec `PROJECT.md` 12e; not built, not approved)
+## 9s. Everyone at the table before a game starts (BUILT as 2.19.0 with Option A, 2026-11-13; not committed or pushed; spec `PROJECT.md` 12e)
 
-Build guide for the user's rule: all players at the table before a game starts, and a "Waiting for X" message while anyone is missing. Plan only. Nothing here may be built until the user answers the four questions in `PROJECT.md` 12e and approves the build (CLAUDE.md rules 1 and 2).
+Build guide for the user's rule: all players at the table before a game starts, and a "Waiting for X" message while anyone is missing. The user answered the four questions and chose Option A on 2026-11-13. What was built is in the DEVLOG entry of that date and in the paragraph below.
+
+**Built:** `ready` on each seat in `src/net/lobby.ts` (`setReady`, `waitingSeats`, `waitingText`); the joining phone sends `{t:'ready'}` once when the lobby arrives (`src/ui/netlobby.ts`, `readySent`); the host ignores repeats, because answering each one re-broadcast the lobby and looped between phones; Start is greyed and `startGame` refuses while `waitingText` is not null. `LOBBY_PROTOCOL` is 5.
 
 ### 9s.0 Read first (before any code)
 
 1. `CLAUDE.md`, `PROJECT.md` 12e, `TODO.md` Phase 4d, the latest `DEVLOG.md` entry.
 2. Confirm the stage a joiner is in while looking at cards in network play: is the card screen a stage of the shared game (`roundstart.ts`, `g.stage`), or a screen before the game? This decides between Option A and Option B below. Record the answer in this section before coding.
 3. Confirm how a joiner reaches the game after a reconnect (`hostSync` and `joinGotGame` in `netplay.ts`). Any path that sets `screen: 'game'` must wait for the start signal.
+
+**Read-first answers (checked 2026-11-13 on main at 925f7bd, read only, no code changed):**
+- Step 2: the cards screen is a stage of the shared game, not a screen before it. `roundstart.ts` shows the hand screen when `g.stage === 'hand'` and `g.holder` is that player (lines 64-82). The joiner is already on the game screen when this starts. Its Done calls `update({})` for the own seat (line 365 area) and sends nothing. So Option A is the right fit; the cards screen does not need its own wait.
+- Step 3: `joinGotGame` (`netplay.ts` ~133-146) sets `screen: 'game'` on any full `GameUpdate`. `hostSync` (~111-115) answers a joiner's `sync` request with a full update, so a reconnect or a late sync enters the game with no start signal. This path must be changed in Option A: a full update may enter the game only after a start has been sent for this game (e.g. a `started` flag on the session or the link). A mid-game reconnect is the case where a start has already been sent, so it still works. A reconnect before start must stay on the table screen.
 
 ### 9s.1 Why it happens (as read at 2.18.0)
 

@@ -13,7 +13,7 @@ const hello = (name: string, version = '2.1') => ({ protocol: LOBBY_PROTOCOL, ve
 test('a new lobby has only the host, jokers on, no pause limit, not started', () => {
   const l = newLobby('  Sam ');
   assert.equal(l.seats.length, 1);
-  assert.deepEqual(l.seats[0], { id: 'host', profileName: 'Sam', sessionName: '', isHost: true, connected: true });
+  assert.deepEqual(l.seats[0], { id: 'host', profileName: 'Sam', sessionName: '', isHost: true, connected: true, ready: true });
   assert.equal(l.jokers, true);
   assert.equal(l.pauseLimit, null);
   assert.equal(l.started, false);
