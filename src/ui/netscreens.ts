@@ -108,10 +108,12 @@ function beforeRound(g: SavedGame): Child {
         }, icon('shuffle'), ' Deal again?')
         : h('button', { class: 'secondary grow', disabled: true, 'aria-label': 'Deal again: already used this round' }, icon('shuffle'), ' Used'),
       host
-        ? h('button', { class: 'big grow', onclick: () => send([{ type: 'startRound', by: s.hostId }]) }, icon('play'), ' Start the round')
+        ? h('button', { class: 'big grow', onclick: () => send([{ type: 'startRound', by: s.hostId }]) }, icon('play'), ' Start')
         : null,
     ),
+    // 2.31 (CODE.md 9aa Part C item 5): the target row sits at the top of the table, off the "You" pill.
     extra: [targetRow(s, { me }), host ? null : hostDeciding(s, 'when to start the round')],
+    extraAt: 'top',
   });
 }
 

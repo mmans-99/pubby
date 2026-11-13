@@ -237,20 +237,25 @@ function reduce(s: Session, a: SessionAction, rng: Rng, out: Out): Session {
     case 'castVote': {
       const v = s.vote ?? fail('There is no vote to answer');
       if (v.awaitingHost) fail('Voting is closed: the host is deciding');
+      // 2.32 (PROJECT.md 12n): the player who asked for a vote is already YES.
+      if (v.calledBy !== null && a.by === v.calledBy) fail('You asked for this vote, so your vote is already YES');
       const ballots = { ...v.ballots, [a.by]: a.ballot };
       out.emit(s, { type: 'voteCast', kind: v.kind, by: a.by, ballot: a.ballot });
       const s2: Session = { ...s, vote: { ...v, ballots } };
-      const tally = tallyVote(ballots, s.order.length);
+      // 2.32: nothing is decided until everyone has voted (tallyVote's `final` is true only then).
+      const everyone = Object.keys(ballots).length === s.order.length;
+      const tally = tallyVote(ballots, s.order.length, everyone);
       if (tally === 'passed') return resolveVote(s2, true, 'majority', rng, out);
       if (tally === 'failed') return resolveVote(s2, false, 'majority', rng, out);
-      if (Object.keys(ballots).length === s.order.length) return needHost(s2, out);
+      if (tally === 'hostDecides') return needHost(s2, out);
       return s2;
     }
     case 'closeVote': {
       assertHost(s, a.by, 'close a vote');
       const v = s.vote ?? fail('There is no vote to close');
       if (v.awaitingHost) return s;
-      const tally = tallyVote(v.ballots, s.order.length);
+      // 2.32: the host counts early: missing votes are not yes (PROJECT.md 12n).
+      const tally = tallyVote(v.ballots, s.order.length, true);
       if (tally === 'passed') return resolveVote(s, true, 'majority', rng, out);
       if (tally === 'failed') return resolveVote(s, false, 'majority', rng, out);
       // Two players: no host decision. Closed without both agreeing: not agreed.
@@ -502,7 +507,8 @@ function callVote(
   }
   out.emit(s, { type: 'voteCalled', kind, by, value });
   // Two players: asking counts as agreeing; only the other player answers.
-  const ballots: Record<PlayerId, Ballot> = s.order.length === 2 && by !== null ? { [by]: 'yes' } : {};
+  // 2.32 (PROJECT.md 12n): the player who asks is YES for every kind of vote (the automatic Ultimate vote has no asker).
+  const ballots: Record<PlayerId, Ballot> = by !== null ? { [by]: 'yes' } : {};
   return {
     ...s,
     reshuffleUsed: kind === 'reshuffle' ? true : s.reshuffleUsed,

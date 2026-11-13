@@ -59,7 +59,7 @@ With 2 or 3 players, some cards are dealt face down into hidden decks before the
 At the start of every round, each player can swap up to 4 of their cards for random unseen cards from the hidden decks, or keep their hand. Swapped-out cards leave the round.
 
 ## Votes
-Your vote is secret. More than half wins. A tie goes to the host. Votes happen before a round (reshuffle, once per round) or on the results screen (target score, Ultimate Round). On several phones, votes are open: every phone shows each ballot as it's cast.
+The person who asks is a YES. Nothing is decided until everyone has voted. Your vote is secret. More than half wins. A tie goes to the host, and the host can count the votes early. Votes happen before a round (reshuffle, once per round) or on the results screen (target score, Ultimate Round). On several phones, votes are open: every phone shows each ballot as it's cast.
 With 2 players there are no votes: one of you asks, and it only happens if the other agrees.
 
 **Target score** (optional): anyone can propose one before round 1 starts or on a results screen, with **Propose** on the target row. Once agreed it's fixed. When someone reaches it, the Ultimate Round vote starts.

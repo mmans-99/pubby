@@ -38,7 +38,11 @@ let fast = false;
 let skip = false;
 let note: string | null = null;
 let hostSkip = false;
+// 2.32.1: true only while Skip to end of round runs its moves in one go (no play shown).
+let instant = false;
 
+export function instantSkipping(): boolean { return instant; }
+export function setInstantSkipping(on: boolean): void { instant = on; }
 export function fastForwardOn(): boolean { return fast; }
 export function setFastForward(on: boolean): void { fast = on; }
 export function skipping(): boolean { return skip; }

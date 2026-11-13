@@ -28,7 +28,7 @@ import { thinkMs, type Persona } from '../ai/persona.ts';
 import { seenBy, type AiSeen } from '../ai/seen.ts';
 import {
   botsOnlyNow, fastForwardMs, fastForwardOn, personsOut, resetFastForward, setFastForward,
-  setSkipNote, setSkipping, skipping,
+  setInstantSkipping, setSkipNote, setSkipping, skipping,
 } from '../ai/fastforward.ts';
 import { defaultRng } from '../rules/rng.ts';
 import type { PlayerId, Session, SessionAction, SessionEvent } from '../session/types.ts';
@@ -293,26 +293,58 @@ function setSkippingNow(on: boolean): void {
   if (getState().game?.net?.role === 'host') hostSendSkipping(on);
 }
 
-/** 9v.3: Fast forward on (the menu item). It stays on until Stop or a person must act. */
+/**
+ * Fast forward (the menu item and the bottom button). 2.32.1: the visible quick play
+ * (what Skip used to show), in chunks, so the table still shows each trick. It stays on
+ * until Stop or a person must act. Stop is the one button at the bottom.
+ */
 export function startFastForward(): void {
   const g = getState().game;
   if (!g?.bots || !runsSession(g) || !botsOnlyFor(g)) return;
+  stop();
   setSkipNote(null);
   setFastForward(true);
-  update({});
+  setSkippingNow(true);
+  skipMoves = 0;
+  const token = ++skipToken;
+  skipChunk(token);
 }
 
-/** 9v.4: Skip to end of round (the menu item). */
+/**
+ * Skip to end of round (the menu item and the bottom button). 2.32.1: plays every
+ * computer move left in the round in one go, with nothing shown on the way. The
+ * round-over pop-up then names the winner (`popupsFor` in game.ts).
+ */
 export function startSkip(): void {
   const g = getState().game;
   if (!g?.bots || !runsSession(g) || !botsOnlyFor(g)) return;
   stop();
   setFastForward(false);
   setSkipNote(null);
-  setSkippingNow(true);
-  skipMoves = 0;
-  const token = ++skipToken;
-  skipChunk(token);
+  skipToken++; // any Fast forward chunk still waiting does nothing
+  setInstantSkipping(true);
+  let moves = 0;
+  try {
+    while (moves < SKIP_CAP) {
+      const cur = getState().game;
+      if (!cur?.bots || !runsSession(cur) || !botsOnlyFor(cur)) break;
+      const found = learnAndPick(cur, driverFor(cur), false);
+      if (!found) break;
+      const err = runActions(found.decision.actions);
+      if (err) {
+        console.error('Computer move refused during skip:', err);
+        break;
+      }
+      moves += 1;
+    }
+    if (moves >= SKIP_CAP) {
+      console.error('Skip to end of round stopped: too many moves');
+      setSkipNote('Stopped: too many moves');
+    }
+  } finally {
+    setInstantSkipping(false);
+  }
+  update({});
 }
 
 /** The Stop button: ends Fast forward or a skip at the next move. */

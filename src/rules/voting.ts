@@ -8,19 +8,24 @@
  */
 
 export type Ballot = 'yes' | 'no';
-export type VoteTally = 'passed' | 'failed' | 'hostDecides';
+/** 2.32 (PROJECT.md 12n): `waiting` = nothing is decided yet (not everyone has voted, and not closed early). */
+export type VoteTally = 'passed' | 'failed' | 'hostDecides' | 'waiting';
 
 /**
  * Count a vote. `ballots` maps player id to their ballot; players who have
  * not voted are simply missing. `playerCount` is everyone in the game.
  *
- * - More than half say yes: passed.
- * - More than half say no: failed.
- * - Otherwise (a tie, or not enough votes either way): the host decides.
+ * 2.32 (PROJECT.md 12n): nothing is decided until everyone has voted, unless
+ * `final` is true (the host counts the votes early). Then, in every case:
+ * - More than half of ALL players say yes: passed (missing votes are not yes).
+ * - More than half of all players say no: failed.
+ * - Otherwise (a tie, or not enough yes votes): the host decides.
+ * Before everyone has voted (and not final): waiting.
  */
 export function tallyVote(
   ballots: Readonly<Record<string, Ballot>>,
   playerCount: number,
+  final = false,
 ): VoteTally {
   if (!Number.isInteger(playerCount) || playerCount < 1) {
     throw new RangeError(`Bad player count: ${playerCount}`);
@@ -34,8 +39,9 @@ export function tallyVote(
   if (yes + no > playerCount) throw new Error('More ballots than players');
   if (playerCount === 2) {
     if (no > 0) return 'failed';
-    return yes === 2 ? 'passed' : 'hostDecides'; // 'hostDecides' here just means "still waiting"
+    return yes === 2 ? 'passed' : 'waiting';
   }
+  if (!final && yes + no < playerCount) return 'waiting';
   if (yes * 2 > playerCount) return 'passed';
   if (no * 2 > playerCount) return 'failed';
   return 'hostDecides';

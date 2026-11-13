@@ -32,7 +32,7 @@ import { lockedSeats } from '../rules/deal.ts';
 import { cardSound, eventSounds, sfx } from '../audio/sfx.ts';
 import { icon, type IconName } from './icons.ts';
 import { botsOnlyFor, botsTick, startFastForward, startSkip, stopFastForward } from './bots.ts';
-import { fastForwardOn, hostIsSkipping, skipNote, skipping } from '../ai/fastforward.ts';
+import { fastForwardOn, hostIsSkipping, instantSkipping, skipNote, skipping } from '../ai/fastforward.ts';
 import { hostBroadcast, joinSend, sendReaction } from './netplay.ts';
 import { handH, roundTable, wastePile } from './table.ts';
 import { joinNames } from '../session/names.ts';
@@ -336,23 +336,29 @@ function absorb(g: SavedGame, session: Session, events: readonly SessionEvent[],
     if (saved.ok) recordId = saved.recordId;
   }
 
-  // 9v.4: while skipping, only the round-over pop-up (and the game-over one) is shown.
-  const fresh = popupsFor(session, events).filter((p) => !skipping() || p.kind === 'lastTwo' || (p.kind === 'slap' && p.over !== undefined));
+  // 9v.4 / 2.32.1: while Fast forward or Skip runs, only the round-over pop-up (and the game-over one) is shown.
+  // The round-over one names the round's winner (1st in the finishing order).
+  const quiet = skipping() || instantSkipping();
+  const fresh = popupsFor(session, events)
+    .filter((p) => !quiet || p.kind === 'lastTwo' || (p.kind === 'slap' && p.over !== undefined))
+    .map((p) => (quiet && p.kind === 'lastTwo' && !p.shared ? { ...p, winner: p.order[0] } : p));
   const popups = [...getState().popups, ...fresh];
 
-  // Sound effects and animations for what just happened (PROJECT.md 12b).
-  if (dealt.any) sfx('deal');
-  cardSound(events);
-  if (finished) {
-    if (trickAnim?.timer) window.clearTimeout(trickAnim.timer);
-    trickAnim = {
-      plays: finished.plays, slapped: finished.slapped, step: 'hold', timer: null, flying: false, after: events,
-      slapPopup: finished.slapped ? fresh.find((p) => p.kind === 'slap') ?? null : null,
-    };
-  } else {
-    eventSounds(events, true);
+  // Sound effects and animations for what just happened (PROJECT.md 12b). 2.32.1: none for an instant Skip.
+  if (!instantSkipping()) {
+    if (dealt.any) sfx('deal');
+    cardSound(events);
+    if (finished) {
+      if (trickAnim?.timer) window.clearTimeout(trickAnim.timer);
+      trickAnim = {
+        plays: finished.plays, slapped: finished.slapped, step: 'hold', timer: null, flying: false, after: events,
+        slapPopup: finished.slapped ? fresh.find((p) => p.kind === 'slap') ?? null : null,
+      };
+    } else {
+      eventSounds(events, true);
+    }
+    if (events.some((e) => e.type === 'reshuffled' || e.type === 'roundStarted')) startShuffle();
   }
-  if (events.some((e) => e.type === 'reshuffled' || e.type === 'roundStarted')) startShuffle();
 
   // Network game: a move by another phone keeps this phone's raised card (drawn
   // only if still playable) and any "tap again" it is in the middle of.
@@ -520,12 +526,15 @@ export function gameScreen(g: SavedGame): HTMLElement {
   // Stages that are not framed (results, round start screens not yet framed) scroll inside their own
   // box, so the page itself never scrolls during a game (2.29, CODE.md 9x.2).
   const framed = hasFrame(body);
-  const content: Child = framed ? body : h('div', { class: 'game-scroll' }, body);
+  // 2.31 (CODE.md 9aa Part A): the scrolling box is named, so a redraw keeps its place (app.ts render).
+  const content: Child = framed ? body : h('div', { class: 'game-scroll', 'data-scroll': `game-${s.phase}-${s.round}` }, body);
   return h('main', { class: framed ? 'screen game fixed framed' : 'screen game fixed' },
     h('div', { class: 'game-bar' },
       h('button', { class: 'icon-btn', 'aria-label': 'Menu', 'aria-expanded': st.menuOpen ? 'true' : 'false', onclick: () => update({ menuOpen: !st.menuOpen, armed: null }) }, icon('menu')),
       h('span', { class: 'round-chip', 'aria-label': s.phase === 'gameOver' ? 'Game over' : s.ultimateRound && s.phase !== 'results' ? 'Ultimate Round' : `Round ${s.round}` }, label),
       ownSeat(g) ? netPauseButton(g) : pauseButton(s),
+      // 2.31 (CODE.md 9aa Part C item 3): the jokers and hidden-deck chips sit in the top bar while dealing.
+      s.phase === 'dealing' ? dealChips(s) : null,
       takeButton(g),
     ),
     st.menuOpen ? (g.net ? netMenu(g) : gameMenu(g)) : null,
@@ -540,10 +549,40 @@ export function gameScreen(g: SavedGame): HTMLElement {
 
 /** 9v.1: the Fast forward / Skip items, shown only while the game waits on computer players. */
 export function fastForwardMenuItems(g: SavedGame): Child[] {
-  if (!g.bots || !botsOnlyFor(g) || skipping()) return [];
+  if (!g.bots || !botsOnlyFor(g) || instantSkipping()) return [];
   return [
     fastForwardOn() ? null : h('button', { class: 'secondary', onclick: () => { update({ menuOpen: false }); startFastForward(); } }, 'Fast forward'),
     h('button', { class: 'secondary', onclick: () => { update({ menuOpen: false }); startSkip(); } }, 'Skip to end of round'),
+  ];
+}
+
+/**
+ * 2.31 (CODE.md 9aa Part B): with no cards left, Fast forward and Skip sit where the cards were.
+ * Only the host in a network game (9v.5). While Fast forward is on the first button says Stop
+ * fast forward; while a skip runs, only Stop. The ☰ menu keeps its items as before.
+ */
+function handFastItems(g: SavedGame): Child[] {
+  if (g.net && !isHostSeat(g)) return [];
+  if (instantSkipping() || fastForwardOn()) return []; // 2.32.2: while Fast forward is on, the bottom Stop button is the only control
+  if (!g.bots || !botsOnlyFor(g)) return [];
+  return [
+    h('button', { class: 'secondary', onclick: () => startFastForward() }, 'Fast forward'),
+    h('button', { class: 'secondary', onclick: () => startSkip() }, 'Skip to end of round'),
+  ];
+}
+
+/**
+ * 2.31 (CODE.md 9aa Part C item 3): the jokers chip and the hidden-deck chip, in the top bar while dealing.
+ * Both are short (a number beside the icon) so they fit on a 320 px phone.
+ */
+function dealChips(s: Session): Child {
+  return [
+    h('span', { class: s.jokerRuleEnabled ? 'chip-info bar-chip gold' : 'chip-info bar-chip', 'aria-label': s.jokerRuleEnabled ? `${s.jokerTotal} jokers` : 'No jokers' },
+      icon('joker'), s.jokerRuleEnabled ? String(s.jokerTotal) : '0'),
+    s.order.length <= 3
+      ? h('button', { class: 'chip-info bar-chip', 'aria-label': `${s.order.length === 2 ? 2 : 1} hidden ${s.order.length === 2 ? 'decks' : 'deck'}: what is this?`, onclick: () => update({ rulesOpen: true, rulesTopic: 'Hidden decks' }) },
+        icon('eyeoff'), String(s.order.length === 2 ? 2 : 1))
+      : null,
   ];
 }
 
@@ -554,8 +593,8 @@ function fastBanner(g: SavedGame): HTMLElement | null {
     return hostIsSkipping() ? h('div', { class: 'fast-banner', role: 'status' }, h('span', {}, 'Host is skipping to the end')) : null;
   }
   const note = skipNote();
-  if (skipping()) return h('div', { class: 'fast-banner', role: 'status' }, h('span', {}, 'Skipping to the end of the round…'), h('button', { class: 'secondary small', onclick: () => stopFastForward() }, 'Stop'));
-  if (fastForwardOn()) return h('div', { class: 'fast-banner', role: 'status' }, h('span', {}, 'Fast forward on'), h('button', { class: 'secondary small', onclick: () => stopFastForward() }, 'Stop'));
+  // 2.32.1: the Stop button lives only at the bottom, so the banner is text only.
+  if (fastForwardOn()) return h('div', { class: 'fast-banner', role: 'status' }, h('span', {}, 'Fast forward on'));
   return note ? h('div', { class: 'fast-banner', role: 'status' }, h('span', {}, note)) : null;
 }
 
@@ -616,6 +655,7 @@ function trickArea(s: Session, g: SavedGame, v: PlayerView, bottom: PlayerId, hi
     you: ownSeat(g) !== null,
     box: lay.box,
     last: g.lastTrick ? lastCorner(s, g.lastTrick) : null,
+    lastSlap: !!g.lastTrick?.slap,
   });
   shownTrickCount = plays.length;
   return table;
@@ -702,7 +742,11 @@ function lastLabel(s: Session, t: LastTrick): string {
   return `Last trick: ${t.plays.map((p) => `${nameOf(s, p.player)} ${p.label}`).join(', ')}${t.slap ? `. ${nameOf(s, t.slap.slapper)} slapped ${nameOf(s, t.slap.slapped)}` : ''}`;
 }
 
-/** The last trick in the table's top-left corner (2.29): tap it to see it big. The slapped player's card is ringed. */
+/**
+ * The last trick in the table's bottom-left corner (2.29): tap it to see it big. The slapped player's card is ringed.
+ * 2.31 (CODE.md 9aa Part D): each card sits `--step` further along (set by the table, table.ts lastStyle), so
+ * each card's corner number and suit show; the slap mark sits just past the top card.
+ */
 function lastCorner(s: Session, t: LastTrick): Child {
   return h('button', { class: 'lt-corner', 'aria-label': `${lastLabel(s, t)}. Tap to see it big`, onclick: () => update({ lastOpen: true }) },
     h('span', { class: 'lt-label', 'aria-hidden': 'true' }, 'last'),
@@ -712,7 +756,7 @@ function lastCorner(s: Session, t: LastTrick): Child {
       el.setAttribute('aria-hidden', 'true');
       return el;
     }),
-    t.slap ? h('span', { class: 'lt-slap', 'aria-hidden': 'true' }, icon('hand')) : null,
+    t.slap ? h('span', { class: 'lt-slap', 'aria-hidden': 'true', style: `left:calc(${t.plays.length - 1} * var(--step, 0px) + 3.6 * var(--u, 11px) + 2px)` }, icon('hand')) : null,
   );
 }
 
@@ -720,7 +764,7 @@ function lastCorner(s: Session, t: LastTrick): Child {
 function lastSheet(s: Session, t: LastTrick): HTMLElement {
   const close = (): void => update({ lastOpen: false });
   return h('div', { class: 'overlay', onclick: (e: Event) => { if (e.target === e.currentTarget) close(); } },
-    h('div', { class: 'sheet last-sheet', role: 'dialog', 'aria-label': 'Last trick' },
+    h('div', { class: 'sheet last-sheet', role: 'dialog', 'aria-label': 'Last trick', 'data-scroll': 'last' },
       h('div', { class: 'sheet-head' }, h('h2', null, 'Last trick'), h('button', { class: 'ghost', onclick: close }, 'Close')),
       h('div', { class: 'last-big' }, t.plays.map((p: TrickPlay) => h('div', { class: 'last-big-item' },
         cardFaceFromId(p.card, 'last-big-card'),
@@ -748,12 +792,16 @@ export function stageLayout(hasHand: boolean, bar: number): GameLayout {
  * bottom. `extra` panels float over the bottom of the table and scroll inside
  * themselves, so they never push the rows.
  */
-export function gameFrame(lay: GameLayout, parts: { table: Child; hand?: Child; action?: Child; extra?: Child }): HTMLElement {
+export function gameFrame(lay: GameLayout, parts: { table: Child; hand?: Child; action?: Child; extra?: Child; extraAt?: 'top' | 'bottom' }): HTMLElement {
+  // 2.31 (CODE.md 9aa Part C item 5): `extraAt: 'top'` moves the floating panels to the top of the table (round start: the target row).
   return h('div', { class: 'game-frame', style: `--hand-h:${lay.handH.toFixed(1)}px;--bar-h:${lay.barH.toFixed(1)}px;--side-w:${lay.sideW.toFixed(1)}px` },
     h('div', { class: 'game-table-slot' }, parts.table,
-      parts.extra ? h('div', { class: 'game-extra' }, parts.extra) : null),
+      parts.extra ? h('div', { class: parts.extraAt === 'top' ? 'game-extra at-top' : 'game-extra', 'data-scroll': 'extra' }, parts.extra) : null),
     h('div', { class: 'game-hand-slot' }, parts.hand ?? null),
-    h('div', { class: 'game-action-slot' }, parts.action ?? null));
+    // 2.32.2: while Fast forward is on, the one Stop button sits here on every screen (pop-ups and tricks don't hide it).
+    h('div', { class: 'game-action-slot' }, fastForwardOn()
+      ? h('button', { class: 'secondary big', onclick: () => stopFastForward() }, 'Stop fast forward')
+      : parts.action ?? null));
 }
 
 // ---------------------------------------------------------------------------
@@ -792,16 +840,9 @@ export function dealingStage(g: SavedGame): Child {
     : manual
       ? (id: PlayerId) => { pendingFly = id; send([{ type: 'manualDealCard', by: dealer, seat: id }]); }
       : undefined;
-  // D1: jokers and hidden decks as two small chips (the details are in ? rules).
-  const chips = h('div', { class: 'info-chips' },
-    h('span', { class: s.jokerRuleEnabled ? 'chip-info gold' : 'chip-info' }, icon('joker'), s.jokerRuleEnabled ? ` ${s.jokerTotal} jokers` : ' No jokers'),
-    s.order.length <= 3
-      ? h('button', { class: 'chip-info', 'aria-label': `${s.order.length === 2 ? 2 : 1} hidden ${s.order.length === 2 ? 'decks' : 'deck'}: what is this?`, onclick: () => update({ rulesOpen: true, rulesTopic: 'Hidden decks' }) },
-        icon('eyeoff'), ` ${s.order.length === 2 ? 2 : 1} hidden ${s.order.length === 2 ? 'decks' : 'deck'} `, icon('info'))
-      : null,
-  );
-  // The dealing bar is taller (two lines and the deal buttons), so the table is a little smaller here (2.29).
-  const lay = stageLayout(false, window.innerWidth > window.innerHeight ? 64 : 92);
+  // 2.31 (CODE.md 9aa Part C item 4): the jokers and hidden-deck chips moved to the top bar (dealChips),
+  // so the deal bar holds two rows: the hint and the deal buttons. Portrait: 76 px (was 92 with the chips).
+  const lay = stageLayout(false, window.innerWidth > window.innerHeight ? 64 : 76);
   if (shuffling()) {
     return gameFrame(lay, {
       table: roundTable(s, v, {
@@ -813,7 +854,7 @@ export function dealingStage(g: SavedGame): Child {
           [0, 1, 2].map((k) => h('div', { class: 'card-back r', style: `--k:${k}` })),
         ),
       }),
-      action: h('div', { class: 'deal-bar' }, chips, h('p', { class: 'hint center' }, `${nameOf(s, dealer)} shuffles`)),
+      action: h('div', { class: 'deal-bar' }, h('p', { class: 'hint center' }, `${nameOf(s, dealer)} shuffles`)),
     });
   }
   const setMode = (mode: 'auto' | 'manual'): void => { if (mode !== d.mode) send([{ type: 'setDealMode', by: dealer, mode }]); };
@@ -833,7 +874,6 @@ export function dealingStage(g: SavedGame): Child {
         h('span', { class: 'deck-count' }, String(d.remaining))),
     }),
     action: h('div', { class: 'deal-bar' },
-      chips,
       h('p', { class: 'hint center' }, hint),
       notStarted || watching ? null : h('div', { class: 'seg', role: 'group', 'aria-label': 'Deal mode' },
         h('button', { class: manual ? 'seg-btn on' : 'seg-btn', 'aria-pressed': manual ? 'true' : 'false', onclick: () => setMode('manual') }, icon('hand'), ' Manual'),
@@ -1060,6 +1100,8 @@ export function playHandStage(g: SavedGame): Child {
   const takeWaiting = ownSeat(g) ? s.takeRequests.find((r) => !r.agreed) : undefined;
   const playBlocked = !!takeWaiting;
   const lay = stageLayout(true, 52);
+  // 2.31 (CODE.md 9aa Part B): with no cards left, Fast forward and Skip take the hand area.
+  const fastItems = v.myHand.length === 0 ? handFastItems(g) : [];
   const playButton = myTurn && !playBlocked
     ? h('button', { class: 'big grow', disabled: !selCard, onclick: () => selected && play(selected) },
       selCard ? ['Play ', h('span', { class: selCard.kind === 'standard' && (selCard.suit === 'hearts' || selCard.suit === 'diamonds') ? 'play-red' : '' }, shortLabel(selCard))]
@@ -1096,7 +1138,9 @@ export function playHandStage(g: SavedGame): Child {
   ];
   return gameFrame(lay, {
     table: trickArea(s, g, v, v.me, actor ?? v.me, lay),
-    hand: handBlock(s, v, playBlocked ? null : onTap, { head: false, fit: lay.handH, width: lay.handW }),
+    hand: fastItems.length
+      ? h('div', { class: 'hand-actions' }, ...fastItems)
+      : handBlock(s, v, playBlocked ? null : onTap, { head: false, fit: lay.handH, width: lay.handW }),
     action: playButton,
     extra,
   });
@@ -1201,7 +1245,7 @@ function lastTwoBody(s: Session, p: Extract<Popup, { kind: 'lastTwo' }>): Child[
   const forfeit = p.forfeitedBy ? h('div', { class: 'popup-text small' }, `${nameOf(s, p.forfeitedBy)} forfeited`) : null;
   return [
     h('div', { class: 'popup-icon' }, icon('flag')),
-    h('div', { class: 'popup-title' }, 'Round over'),
+    h('div', { class: 'popup-title' }, p.winner ? `${nameOf(s, p.winner)} wins the round` : 'Round over'),
     h('div', { class: 'popup-text places' },
       h('span', null, placeBadge(n === 2 ? 1 : n - 1), ` ${nameOf(s, second)}`),
       h('span', null, placeBadge('last'), ` ${nameOf(s, loser)}`)),
@@ -1233,7 +1277,7 @@ export function reactionsLayer(): HTMLElement[] {
   }, open ? '✕' : '😂');
   if (!open) return [toggle];
   // A sheet above the 😂 button: every phrase in a wrapping grid, scrolling up and down (2.11).
-  const sheet = h('section', { class: opening ? 'reactions-sheet opening' : 'reactions-sheet', 'aria-label': 'Reactions' },
+  const sheet = h('section', { class: opening ? 'reactions-sheet opening' : 'reactions-sheet', 'aria-label': 'Reactions', 'data-scroll': 'reactions' },
     h('button', { class: 'phrase-chip laugh-chip', 'aria-label': 'Laugh', onclick: (e) => react(-1, e as MouseEvent) }, '😂 Laugh'),
     CATCH_PHRASES.map((ph, i) =>
       h('button', { class: 'phrase-chip', onclick: (e) => react(i, e as MouseEvent) }, ph)),

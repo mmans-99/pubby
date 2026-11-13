@@ -164,7 +164,8 @@
       const call = byLabel('Deal again? Call')[0];
       if (call) return click(call, 'call reshuffle vote');
     }
-    const startRound = byText('Start ·') || byText('Start the round');
+    // 2.31 (CODE.md 9aa Part C): the against-the-computer round-start button is now just "Start".
+    const startRound = byText('Start ·') || buttons().find((b) => b.textContent.trim() === 'Start');
     if (startRound) return click(startRound, 'start the round');
 
     // Winner picks who leads.

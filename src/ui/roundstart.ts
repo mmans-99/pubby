@@ -128,9 +128,12 @@ function waitStage(g: SavedGame, me: PlayerId, what: 'vote' | 'swap' | 'tap' | '
     : what === 'cards' ? ['hand', 'New hands']
     : ['hand', 'Reaction Tap'];
   const who = joinNames(waitingFor.map((p) => nameOf(s, p)));
+  // 2.32: the asker's YES is automatic, so they see it stated and get no YES/NO buttons.
+  const askedByMe = what === 'vote' && !!v && v.calledBy === me && !v.awaitingHost;
   return h('div', { class: 'stack' },
     h('div', { class: 'step-head' }, h('div', { class: 'step-title' }, icon(ic), ` ${title}`),
-      v?.awaitingHost ? h('div', { class: 'muted small' }, 'No majority') : h('div', { class: 'muted small' }, `Waiting for ${who}`)),
+      h('div', { class: 'muted small' }, `Waiting for ${who}`)),
+    askedByMe ? h('p', { class: 'muted small center' }, 'You asked: your vote is YES') : null,
     v?.awaitingHost ? hostLine(`${nameOf(s, s.hostId)} (host) is deciding the vote`) : null,
     what === 'vote' && v ? ballotChips(s) : null,
     seatStrip(s, publicView(s), {}),

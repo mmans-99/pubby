@@ -5,7 +5,7 @@ import { applyAction, createSession, finalStandings } from '../../src/session/se
 import type { Session } from '../../src/session/types.ts';
 import { legalCards } from '../../src/rules/play.ts';
 import { playerView } from '../../src/session/view.ts';
-import { act, dealAll, playRound, setupFor, start, step } from './helpers.ts';
+import { act, dealAll, playRound, setupFor, start, step, voteRest } from './helpers.ts';
 
 const types = (s: Session) => s.log.map((e) => e.event.type);
 
@@ -62,10 +62,12 @@ test('reshuffle vote: any player calls, majority passes, dealer deals again, onl
   const before = JSON.stringify(s.hands);
   s = act(s, { type: 'callVote', by: 'p3', kind: 'reshuffle' }, rng);
   assert.throws(() => act(s, { type: 'startRound', by: 'p1' }, rng), /vote/);
+  // 2.32 (PROJECT.md 12n): the asker (p3) is already YES; nothing is decided until everyone has voted.
+  assert.throws(() => act(s, { type: 'castVote', by: 'p3', ballot: 'yes' }, rng), /already YES/);
   s = act(s, { type: 'castVote', by: 'p1', ballot: 'yes' }, rng);
   s = act(s, { type: 'castVote', by: 'p2', ballot: 'yes' }, rng);
-  assert.equal(s.vote?.kind, 'reshuffle'); // 2 of 4 is not a majority yet
-  s = act(s, { type: 'castVote', by: 'p3', ballot: 'yes' }, rng);
+  assert.equal(s.vote?.kind, 'reshuffle'); // 3 of 4 yes, but p4 has not voted yet
+  s = act(s, { type: 'castVote', by: 'p4', ballot: 'yes' }, rng);
   assert.equal(s.vote, null);
   const resolved = [...s.log].reverse().find((e) => e.event.type === 'voteResolved')!.event;
   assert.deepEqual(resolved, { type: 'voteResolved', kind: 'reshuffle', result: true, decidedBy: 'majority', value: null });
@@ -81,7 +83,10 @@ test('reshuffle vote: majority no fails and the round goes on', () => {
   const rng = seededRng(4);
   let s = dealAll(start(4, rng), rng);
   s = act(s, { type: 'callVote', by: 'p2', kind: 'reshuffle' }, rng);
-  for (const p of ['p1', 'p2', 'p3']) s = act(s, { type: 'castVote', by: p, ballot: 'no' }, rng);
+  // The asker (p2) is YES; the three others vote no: 3 of 4 no fails it, once everyone has voted.
+  for (const p of ['p1', 'p3']) s = act(s, { type: 'castVote', by: p, ballot: 'no' }, rng);
+  assert.equal(s.vote?.kind, 'reshuffle');
+  s = act(s, { type: 'castVote', by: 'p4', ballot: 'no' }, rng);
   assert.equal(s.phase, 'playing');
   assert.throws(() => act(s, { type: 'callVote', by: 'p2', kind: 'reshuffle' }, rng));
 });
@@ -90,8 +95,8 @@ test('vote with no majority: the host decides (tie, or too few votes)', () => {
   const rng = seededRng(5);
   let s = dealAll(start(4, rng), rng);
   s = act(s, { type: 'callVote', by: 'p2', kind: 'reshuffle' }, rng);
+  // p2 (the asker) is YES; with p1 yes, p3 and p4 no, everyone has voted: 2 yes, 2 no is a tie.
   s = act(s, { type: 'castVote', by: 'p1', ballot: 'yes' }, rng);
-  s = act(s, { type: 'castVote', by: 'p2', ballot: 'yes' }, rng);
   s = act(s, { type: 'castVote', by: 'p3', ballot: 'no' }, rng);
   s = act(s, { type: 'castVote', by: 'p4', ballot: 'no' }, rng);
   assert.equal(s.vote?.awaitingHost, true);
@@ -103,8 +108,7 @@ test('vote with no majority: the host decides (tie, or too few votes)', () => {
 
   // Too few votes: host closes the vote, then decides.
   let t = dealAll(start(5, rng), rng);
-  t = act(t, { type: 'callVote', by: 'p5', kind: 'reshuffle' }, rng);
-  t = act(t, { type: 'castVote', by: 'p5', ballot: 'yes' }, rng);
+  t = act(t, { type: 'callVote', by: 'p5', kind: 'reshuffle' }, rng); // p5 is already YES
   assert.throws(() => act(t, { type: 'closeVote', by: 'p5' }, rng), /host/);
   t = act(t, { type: 'closeVote', by: 'p1' }, rng);
   assert.equal(t.vote?.awaitingHost, true);
@@ -213,7 +217,7 @@ test('target vote on the results screen sets the goal; not during a round', () =
   assert.throws(() => act(s, { type: 'callVote', by: 'p2', kind: 'target', value: 0 }, rng));
   s = act(s, { type: 'callVote', by: 'p2', kind: 'target', value: 50 }, rng);
   assert.throws(() => act(s, { type: 'advance', by: 'p1' }, rng), /vote/);
-  for (const p of ['p1', 'p2', 'p3']) s = act(s, { type: 'castVote', by: p, ballot: 'yes' }, rng);
+  s = voteRest(s, 'yes', rng);
   assert.equal(s.target, 50);
   assert.equal(s.vote, null);
 });
@@ -231,12 +235,12 @@ test('target reached: an Ultimate vote starts; if it fails the session ends, hig
   const rng = seededRng(12);
   let s = playRound(start(3, rng), rng);
   s = act(s, { type: 'callVote', by: 'p3', kind: 'target', value: 4 }, rng);
-  for (const p of ['p1', 'p2']) s = act(s, { type: 'castVote', by: p, ballot: 'yes' }, rng);
+  s = voteRest(s, 'yes', rng);
   s = toTarget(s, rng);
   assert.equal(s.vote?.kind, 'ultimate');
   assert.equal(s.vote?.calledBy, null);
   assert.ok(types(s).includes('targetReached'));
-  for (const p of ['p1', 'p2']) s = act(s, { type: 'castVote', by: p, ballot: 'no' }, rng);
+  s = voteRest(s, 'no', rng);
   assert.equal(s.phase, 'gameOver');
   assert.equal(s.ended!.reason, 'ultimateVoteFailedAtTarget');
   assert.equal(s.ended!.decidedBy, 'highestScore');
@@ -249,7 +253,7 @@ test('Ultimate Round: any player triggers it, outside the score, titles, then th
   const rng = seededRng(13);
   let s = playRound(start(4, rng), rng);
   s = act(s, { type: 'callVote', by: 'p4', kind: 'ultimate' }, rng);
-  for (const p of ['p1', 'p2', 'p3']) s = act(s, { type: 'castVote', by: p, ballot: 'yes' }, rng);
+  s = voteRest(s, 'yes', rng);
   assert.equal(s.ultimateRound, true);
   assert.throws(() => act(s, { type: 'callVote', by: 'p4', kind: 'ultimate' }, rng));
   const scores = { ...s.scores };
@@ -339,18 +343,18 @@ test('target vote before round 1 starts (during the deal or before the host star
   s = act(s, { type: 'callVote', by: 'p2', kind: 'target', value: 8 }, rng);
   // No dealing while the vote is open.
   assert.throws(() => act(s, { type: 'autoDealStart', by: 'p1', firstSeat: 'p1' }, rng), /vote/);
-  for (const p of ['p1', 'p2', 'p3']) s = act(s, { type: 'castVote', by: p, ballot: 'yes' }, rng);
+  s = voteRest(s, 'yes', rng);
   assert.equal(s.target, 8);
   assert.equal(s.phase, 'dealing');
 
   // Also in the window after the deal; a failed vote can be tried again.
   let t = dealAll(start(4, rng), rng);
   t = act(t, { type: 'callVote', by: 'p3', kind: 'target', value: 5 }, rng);
-  for (const p of ['p1', 'p2', 'p3']) t = act(t, { type: 'castVote', by: p, ballot: 'no' }, rng);
+  t = voteRest(t, 'no', rng);
   assert.equal(t.target, null);
   assert.equal(t.phase, 'reshuffle'); // a target vote does not start the round
   t = act(t, { type: 'callVote', by: 'p3', kind: 'target', value: 6 }, rng);
-  for (const p of ['p1', 'p2', 'p3']) t = act(t, { type: 'castVote', by: p, ballot: 'yes' }, rng);
+  t = voteRest(t, 'yes', rng);
   assert.equal(t.target, 6);
   assert.equal(t.phase, 'reshuffle');
 });
@@ -362,7 +366,7 @@ test('target vote: not during a round, not before later rounds, and only until o
   assert.throws(() => act(s, { type: 'callVote', by: 'p2', kind: 'target', value: 5 }, rng), /before round 1|results/);
   s = playRound(s, rng);
   s = act(s, { type: 'callVote', by: 'p2', kind: 'target', value: 50 }, rng);
-  for (const p of ['p1', 'p2', 'p3']) s = act(s, { type: 'castVote', by: p, ballot: 'yes' }, rng);
+  s = voteRest(s, 'yes', rng);
   assert.throws(() => act(s, { type: 'callVote', by: 'p2', kind: 'target', value: 60 }, rng), /already been agreed/);
   s = act(s, { type: 'advance', by: 'p1' }, rng);
   s = dealAll(s, rng);
@@ -371,7 +375,7 @@ test('target vote: not during a round, not before later rounds, and only until o
   // Once the Ultimate Round is agreed, no target vote either.
   let u = playRound(start(4, rng), rng);
   u = act(u, { type: 'callVote', by: 'p2', kind: 'ultimate' }, rng);
-  for (const p of ['p1', 'p2', 'p3']) u = act(u, { type: 'castVote', by: p, ballot: 'yes' }, rng);
+  u = voteRest(u, 'yes', rng);
   assert.throws(() => act(u, { type: 'callVote', by: 'p2', kind: 'target', value: 5 }, rng), /Ultimate/);
 });
 

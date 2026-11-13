@@ -4,6 +4,82 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (after 22:55) — Build 9ac (2.33.0): seat discs with initials, option D (not committed)
+
+**Built:** `src/ui/initials.ts` `seatInitials` (one letter, then two, then three, then letter + number; spaces ignored; empty name "?"); `tests/ui/initials.test.ts` (8 tests). `src/ui/table.ts`: `seatLayout` names centred under the disc (7u wide); `bubbleBox` covers disc (2.6u) and count badge (1.5u) as one box; `roundTable` draws `.seat-disc` with `.seat-initial` and `.disc-count`, tags from `seatInitials` over every session player. `src/ui/styles.css`: `.seat-disc` rules (turn gold ring, away red ring, out fades). `package.json` 2.33.0.
+
+**Deviations from the plan (for legibility, shown in the headless screenshots):** the count badge uses `disc-count` (plan: `seat-count`, which the seat strip also uses); it sits 1.3u out on the disc's corner (plan: 1u), so it no longer covers two-letter tags; tags are 1u for two letters and 0.8u for three (plan: 0.9u for three).
+
+**Checks:** `npm run check`; `npm test` 394 pass; `npm run build`; headless screenshots at 384 × 730 (3, 5, 8 players), 320 × 568 (8) and 844 × 390 (5), no page errors, checked by eye. Not checked: the nine-seat-style collision rules under unusual name lengths beyond the tests; the 9ac.5 phone checklist.
+
+**Open:** tags include the person, so a bot called Soo-ah shows "So" when the person is Sam. Per the plan; say if you want the person excluded.
+
+## 2026-11-13 (after 22:46) — Plan 9ac (2.33): seat discs with initials, option D (docs only)
+
+**User (22:43):** more mock-ups for the bot names at the table. Shown: D avatar discs, E edge tabs, F inward pills, G colour dots and a name bar. **User (22:46):** "D, but if the names have the same initial, put the second letter in. I want Haiku to code it."
+
+**Written:** `PROJECT.md` 12o, `CODE.md` 9ac (step-by-step build guide for Haiku: `seatInitials` in a new `src/ui/initials.ts` with tests, layout changes in `seatLayout` / `bubbleBox` / `nameBox`, drawing and CSS, checks, phone checklist), `TODO.md` Phase 4n. Defaults chosen and marked in the plan: 3 letters if 2 still clash, then letter + number; all players in the session are compared. No code changed; version unchanged (2.32.2).
+
+## 2026-11-13 (after 22:35) — Fix 2.32.2: Fast forward stays on and can be stopped; no sound while Fast forward or Skip runs (not committed)
+
+**User (22:35 phone test):** Fast forward kept switching itself off and couldn't be stopped; sound doesn't match the fast table, so mute it while it's on. Skip is assumed the same (not tested).
+
+**Cause:** `botsTick` → `mustAct` → `resetFastForward()` clears Fast forward at every phase change (round end, reshuffle, a person's turn). The bottom Stop only showed when `botsOnlyFor` held, which is false while a pop-up or trick animation is up, so the button vanished. Sounds went through `fire()` in `src/audio/sfx.ts` at normal timing.
+
+**Changed:** `src/audio/sfx.ts`: `fire()` plays nothing while `skipping()` or `instantSkipping()`. `src/ui/game.ts`: `gameFrame` shows the one "Stop fast forward" button in the bottom action slot whenever `fastForwardOn()`; the hand-area copy is removed while it's on. `package.json` 2.32.2.
+
+**Still by design:** Fast forward still ends at the round end (the host must press Next round) and when a person must act. Skip is one synchronous pass, so it can't be stopped and makes no sound.
+
+**Checks:** `npm run check`, `npm test` (386 pass), `npm run build`.
+
+## 2026-11-13 (after 22:26) — Fix 2.32.1: Fast forward / Skip, one Stop, round winner pop-up, "You" pill not cut off (not committed)
+
+**User (22:19 phone test):** the visible quick play should be called Fast forward; Skip to end of round should jump to the result with a pop-up saying who won; one Stop button, at the bottom; the "You" pill was cut off when skipping.
+
+**Changed:** `src/ui/bots.ts`: `startFastForward()` runs the visible chunked play (what Skip used to be); `startSkip()` plays every remaining computer move in one synchronous loop. `src/ai/fastforward.ts`: `instantSkipping()` flag. `src/ui/game.ts`: no sounds or trick animation during an instant Skip; the round-over pop-up says "<winner> wins the round" (`finishingOrder[0]`); the banner has no Stop; the bottom Stop is the only one. `src/ui/table.ts`: the "You" pill's top is clamped to 14px above the table's bottom edge. `src/ui/store.ts`: `Popup` lastTwo gets optional `winner`. `package.json` 2.32.1.
+
+**Checks:** `npm run check` and `npm test` (386 pass) pass; `npm run build` works; the built page loads in headless Chromium with no errors.
+
+**Not verified:** the Fast forward and Skip flows in a full bots-only game, and the "You" pill on a phone. The phone test is the check. Not committed.
+
+## 2026-11-13 (after 22:15) — Build 9ab (2.32.0): the asker's vote is YES; votes wait until everyone has voted (not committed)
+
+**Built:** `src/rules/voting.ts` `tallyVote(ballots, n, final)` returns `waiting` until everyone has voted, unless `final`. `src/session/session.ts`: `callVote` starts the asker's ballot as YES for every kind; `castVote` refuses the asker's second ballot; `closeVote` counts early with missing votes as not-yes. `src/ui/roundstart.ts`: the asker sees "You asked: your vote is YES"; the waiting line no longer shows "No majority". `src/content/quick-rules.md` Votes card. Tests: `tests/session/draw-target-two-players.test.ts` updated to the new rule; new `tests/session/vote-asker.test.ts` (3 tests); `tests/session/helpers.ts` `voteRest`. `package.json` 2.32.0. `PROJECT.md` 1.1, 2a, 12n; `CODE.md` 9ab; `TODO.md` Phase 4m.
+
+**Checks:** `npm run check` passes; `npm test` 386 pass, 0 fail; `npm run build` writes `dist/index.html`.
+
+**Not done:** `testbed/main.ts` still shows YES / NO to every player (an asker's tap gets "already YES"); needs the user's approval. Phone test (`CODE.md` 9ab.5) not yet run. Not committed.
+
+## 2026-11-13 (after 22:04) — Plan 9ab (2.32): the asker's vote is YES; votes wait until everyone has voted (docs only)
+
+**User (22:04, phone test):** the person who calls a vote should be an automatic YES; everyone should vote before a vote is decided ("it's too quick"). Asked through the question card: asker is YES on every vote (chosen); everyone votes first, host can still close early (chosen).
+
+**Written:** `PROJECT.md` 12n (decision, one open detail: host count-now with votes missing), `CODE.md` 9ab (build guide and phone checklist), `TODO.md` Phase 4m. No code changed; version unchanged (2.31.1). Rule 1.1 in `PROJECT.md` is updated when built.
+
+---
+
+## 2026-11-13 (after 21:58) — Fix 2.31.1: centring of action buttons, raised card not cut off (not committed)
+
+**User (21:55 to 21:57, phone test of 2.31.0, three screenshots):** Manual / Auto and "Pick a card to lead" were off centre; the selected card at the peak of the fan was cut off at the top.
+
+**Cause:** the action slot's padding (76 px left, 12 px right, from 9aa Part C) pushed centred controls right; `.game-hand-slot` had `overflow: hidden`, which clipped the raised card. **Fix:** symmetric 76 px padding, with `.round-buttons` extending into the right padding; `.game-hand-slot` overflow visible. `package.json` 2.31.1. `CODE.md` 9aa.3 has the note.
+
+**Checks:** `npm run check` clean; `npm test` 383 pass (run before this fix; no unit test covers CSS). `npm run build` ok. Headless 384 × 730: deal bar and Play centred (offset 0 px), raised 4♥ shown in full, round-start buttons unchanged (136 × 44 px, one line). 320 × 568 not re-measured.
+
+## 2026-11-13 (after 21:43) — Built 2.31.0 (plan 9aa, not committed)
+
+**User (21:43):** "Build CODE.md 9aa (version 2.31)".
+
+**Built:** Parts A to D of `CODE.md` 9aa. New `src/ui/scrollkeep.ts` (`screenKey`), `data-scroll` names on every scrolling box, `render()` keeps each box's place; hand-area Fast forward / Skip (`handFastItems`); jokers and hidden-deck chips in the top bar (`dealChips`); deal bar 76 px; `Start` button; `extraAt: 'top'` on round start; `lastStep` and the `--step` corner stack; slap room in `lastBox`. Differences from the plan are listed in `CODE.md` 9aa.3. `package.json` is 2.31.0.
+
+**Checks:** `npm run check` clean. `npm test` 383 pass, 0 fail (6 new: scroll keys and last-trick geometry). `npm run build` ok. Headless browser (384 × 730): against the computer 3 and 5 players finished; one phone 8 players finished; no page errors. Round-start buttons and the top-bar chips fit; the hand-area buttons shown.
+
+**Test bot:** `testbed/bot.js` now finds the round-start button by the label `Start`. It still does not tap the 2.30 missing-suit notice's OK (unmodified 2.30 has the same gap), so `playthrough.py` stops at 5 and 8 players. Not fixed: needs approval.
+
+**Open:** the target-score row at the top of the round-start table overlaps the top opponent's cards (it no longer covers "You"); "Skip to end of round" wraps at 384 px. Not committed; waiting for the user's phone test (`CODE.md` 9aa.2) and "Push it".
+
+---
+
 ## 2026-11-13 (21:40) — Plan 9aa (2.31): scroll place, Fast forward in the hand area, buttons that fit, last-trick stack (docs only)
 
 **User (21:33, phone test of 2.30 with six screenshots):** results screen jumps to the top on every "I'm ready"; wants Fast forward and Skip where the cards were; "Deal again?", "Start the round" and "2 jokers" cut off; the last-trick stack looks misaligned. Asked for a plan to code with Haiku.

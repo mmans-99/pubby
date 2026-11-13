@@ -39,25 +39,34 @@ test('scoring rejects bad input', () => {
   assert.throws(() => scoreRound(['a', 'a', 'b']));
 });
 
-test('vote: more than half yes passes', () => {
+test('vote: more than half yes passes, once everyone has voted (2.32, PROJECT.md 12n)', () => {
   assert.equal(tallyVote({ a: 'yes', b: 'yes', c: 'no' }, 3), 'passed');
-  assert.equal(tallyVote({ a: 'yes', b: 'yes', c: 'yes' }, 5), 'passed');
+  assert.equal(tallyVote({ a: 'yes', b: 'yes', c: 'yes', d: 'no', e: 'no' }, 5), 'passed');
+  // Not everyone has voted yet: nothing is decided, even with a majority.
+  assert.equal(tallyVote({ a: 'yes', b: 'yes' }, 3), 'waiting');
+  assert.equal(tallyVote({ a: 'yes', b: 'yes', c: 'yes' }, 5), 'waiting');
 });
 
-test('vote: more than half no fails', () => {
+test('vote: more than half no fails, once everyone has voted', () => {
   assert.equal(tallyVote({ a: 'no', b: 'no', c: 'yes' }, 3), 'failed');
+  assert.equal(tallyVote({ a: 'no', b: 'no' }, 3), 'waiting');
 });
 
 test('vote with 2 players: both must agree, the host never decides', () => {
   assert.equal(tallyVote({ a: 'yes', b: 'no' }, 2), 'failed');
   assert.equal(tallyVote({ a: 'no' }, 2), 'failed');
-  assert.equal(tallyVote({ a: 'yes' }, 2), 'hostDecides', 'still waiting for the other player');
+  assert.equal(tallyVote({ a: 'yes' }, 2), 'waiting', 'still waiting for the other player');
   assert.equal(tallyVote({ a: 'yes', b: 'yes' }, 2), 'passed');
 });
 
-test('vote: a tie or too few votes goes to the host', () => {
+test('vote: a tie goes to the host once everyone has voted; the host may count early', () => {
   assert.equal(tallyVote({ a: 'yes', b: 'yes', c: 'no', d: 'no' }, 4), 'hostDecides');
-  assert.equal(tallyVote({ a: 'yes' }, 4), 'hostDecides');
+  assert.equal(tallyVote({ a: 'yes' }, 4), 'waiting');
+  // Counted early (final): a missing vote is not yes, so 2 of 4 is no majority.
+  assert.equal(tallyVote({ a: 'yes', b: 'yes' }, 4, true), 'hostDecides');
+  assert.equal(tallyVote({ a: 'yes', b: 'yes', c: 'yes' }, 4, true), 'passed');
+  assert.equal(tallyVote({ a: 'no', b: 'no', c: 'no' }, 4, true), 'failed');
+  assert.equal(tallyVote({ a: 'yes' }, 4, true), 'hostDecides');
   assert.equal(resolveVote('hostDecides', true), true);
   assert.equal(resolveVote('hostDecides', false), false);
   assert.throws(() => resolveVote('hostDecides'));

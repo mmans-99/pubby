@@ -52,6 +52,8 @@ export type Popup =
       order: readonly PlayerId[];
       shared: readonly PlayerId[] | null;
       forfeitedBy: PlayerId | null;
+      /** 2.32.1: set only for the round-over pop-up of a Skip to end of round: the round's winner (1st). */
+      winner?: PlayerId;
     }
   | { kind: 'vote'; decidedBy: 'majority' | 'host' | 'both'; result: boolean; text: string }
   /** `ms`: how long it stays up (default POP_MS in game.ts). */

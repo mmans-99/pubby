@@ -386,8 +386,25 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [ ] Phone checklist (`CODE.md` 9z.5) and push, after the user says "Push it"
 
 
-## Phase 4l — Scroll place, Fast forward in the hand area, buttons that fit, neater last-trick stack (plan 2026-11-13 21:33, `PROJECT.md` 12m, build guide `CODE.md` 9aa; NOT BUILT)
+## Phase 4l — Scroll place, Fast forward in the hand area, buttons that fit, neater last-trick stack (plan 2026-11-13 21:33, `PROJECT.md` 12m, build guide `CODE.md` 9aa; BUILT 2.31.0, not committed)
 
-- [ ] User approves the plan
-- [ ] **2.31.0:** Part A scroll place kept on every redraw; Part B Fast forward / Skip where your cards were; Part C deal bar and round-start buttons fit, jokers chip in the top bar, target row off the "You" pill; Part D last-trick stack step and corner index; tests; checks
+- [x] User approves the plan ("Build CODE.md 9aa (version 2.31)", 2026-11-13)
+- [x] **2.31.0:** Part A scroll place kept on every redraw; Part B Fast forward / Skip where your cards were; Part C deal bar and round-start buttons fit, jokers chip in the top bar, target row at the top of the table; Part D last-trick stack step and corner index; tests; checks
 - [ ] User's phone test (`CODE.md` 9aa.2); push to main after "Push it"
+- [ ] Test bot gap (found 2026-11-13): `testbed/bot.js` does not tap the 2.30 missing-suit notice's OK, so the 5- and 8-player playthroughs stop there (the unmodified 2.30 build does the same). Fix needs approval (`CLAUDE.md` rule 2).
+
+## Phase 4m — The asker's vote is YES; a vote waits until everyone has voted (plan 2026-11-13 22:04, `PROJECT.md` 12n, build guide `CODE.md` 9ab; BUILT 2.32.0, not committed)
+
+- [x] User answered the two questions (asker is YES on every vote; everyone votes before a decision)
+- [x] User confirmed the open detail in `PROJECT.md` 12n ("Count early is fine": missing votes count as not-yes)
+- [x] **2.32.0:** Part A rules (`tallyVote` waiting, asker's ballot); Part B screens and quick rules; Part C tests (386 pass); `npm run check` and `npm run build` pass
+- [ ] Testbed (`testbed/main.ts`) still shows YES / NO buttons to every player, so an asker's tap gets "already YES"; change only after the user approves
+- [ ] User's phone test (`CODE.md` 9ab.5); push to main after "Push it"
+
+## Phase 4n — Seat discs with initials, option D (plan 2026-11-13 22:46, `PROJECT.md` 12o, build guide `CODE.md` 9ac; BUILT 2.33.0, not committed)
+
+- [x] User chose option D from the mock-ups; same initial → second letter (user)
+- [x] **2.33.0:** Part A `seatInitials` + tests; Part B layout; Part C drawing and CSS; Part D checks and headless screenshots
+- [ ] User's phone test (`CODE.md` 9ac.5); push to main after "Push it"
+
+Also open from this session (not committed): 2.32.1 and 2.32.2 fixes (Fast forward and Skip, one Stop, no sound while they run, "You" pill not cut off); see `DEVLOG.md`. Phone test of 2.32.2 still to do.

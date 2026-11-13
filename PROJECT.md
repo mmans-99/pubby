@@ -20,7 +20,8 @@ Pubby is a multiplayer shedding card game based on Bhabhi (also called Get Away)
 - A vote passes with a **majority**: more than half of the players.
 - If more than half vote no, the vote **fails**. The host is not asked.
 - If no majority is reached either way (a tie, or too few votes), **the host decides**.
-- **Counting:** A vote is decided the moment more than half say the same thing, without waiting for the rest. If everyone has voted and there is no majority, it goes to the host. The host can also close a vote early (for example if someone won't vote); with no majority, the host then decides.
+- **The asker is YES (2.32):** The player who calls a vote is an automatic YES on it. They are not asked to vote. The automatic Ultimate Round vote has no asker.
+- **Counting (2.32):** A vote is not decided until everyone has voted, unless the host counts it early. If everyone has voted and more than half say yes, it passes; if more than half say no, it fails; if there is a tie, it goes to the host. When the host counts early, the players who have not voted count as not-yes, so a passing vote needs more than half of all players as yes.
 - **Result pop-up:** Every vote ends with a bold pop-up on every phone showing the decision, for example:
   - "Majority says… YES!" or "Majority says… NO!"
   - "Host says… YES!" or "Host says… NO!" when the host decided.
@@ -56,7 +57,7 @@ The order of steps 3 and 4 does not matter to the players, so the order above is
 - **Players:** 2 to 8. Applies to all game sizes.
 - **Who can call it:** Any player.
 - **When:** Before every round, after everyone has looked at their cards. Once the round has begun, it can no longer be called.
-- **Passing rule:** Majority vote. If there is no majority, the host decides.
+- **Passing rule:** Majority vote, once everyone has voted (2.32). The player who calls it is an automatic YES. If there is no majority, the host decides.
 - **Closing the window:** If nobody calls a vote, the host taps "Start the round". After a vote, the round carries on by itself (after the new deal if it passed).
 - **If it passes:** The dealer of that round shuffles the cards again and deals them again. This includes the hidden decks.
 - **Once per round:** Only one reshuffle vote per round. After a vote (passed or failed), no other reshuffle vote can be called that round. After a reshuffle, players keep the new deal.
@@ -703,7 +704,7 @@ From the user's Multiplayer test of 2.23:
 
 **Open questions:** should learning be on by default (plan says off until tested)? Should it apply to Normal and Hard only, or also Easy?
 
-### 12m. Scroll place, Fast forward where your cards were, buttons that fit, neater last-trick stack (PLAN, user 2026-11-13 21:33; build guide `CODE.md` 9aa; NOT BUILT)
+### 12m. Scroll place, Fast forward where your cards were, buttons that fit, neater last-trick stack (PLAN, user 2026-11-13 21:33; build guide `CODE.md` 9aa; BUILT 2.31.0, not committed; user's phone test pending)
 
 User's phone test of 2.30 (six screenshots):
 1. Results screen jumps to the top each time someone taps "I'm ready". Wanted: no screen jumps back to the top when something changes; only a new screen starts at the top.
@@ -711,6 +712,31 @@ User's phone test of 2.30 (six screenshots):
 3. "Deal again?", "Start the round" and the "2 jokers" chip are cut off. Wanted: they fit. "Start the round" becomes "Start"; the jokers chip moves to the top bar.
 4. The "last" trick stack in the table corner looks off. Wanted: each card's number and suit shows in its own corner, lined up with the card.
 No rule changes.
+
+### 12n. Votes: the person who asks is a YES, and everyone votes before it is decided (BUILT 2.32.0, not committed; build guide `CODE.md` 9ab; rule text in section 1.1 and 2a)
+
+User's phone-test comment (2026-11-13): the person who proposes a vote should not also have to vote (otherwise why choose it), and votes end too quickly.
+
+Answers (user, 2026-11-13, through the question card):
+1. **The asker is an automatic YES** for every vote a player calls: reshuffle ("Deal again?"), target score and Ultimate Round. The two-player rule already does this and does not change. The automatic Ultimate Round vote (when a target is reached, or after a draw) has no asker, so it has no automatic YES.
+2. **Everyone votes first.** A vote is not decided until every player has voted. Then: more than half YES passes; more than half NO fails; a tie goes to the host (as now). The host can still close a vote early (as now) if someone won't vote.
+
+Confirmed by the user ("Count early is fine", 2026-11-13): when the host closes early, a vote with some votes missing is decided by the same majority rule over all players (more than half of everyone, the missing votes count as no votes). If no majority, the host decides. The host's close button stays.
+
+Not changed: two-player votes (both must agree, the asker counts as yes); computer players vote as before; the result pop-up; the target score minimum and the one-target rule.
+
+Section 1.1 (the rule text) and section 2a are updated when the change is built, not now.
+
+### 12o. Seat discs with initials (BUILT 2.33.0, not committed; user 2026-11-13 22:46; build guide `CODE.md` 9ac)
+
+User (phone test, 2026-11-13): doesn't like where the other players' names sit at the table. From the mock-ups (options A to G), the user chose **option D**:
+- Each other player's seat shows a **round disc with their initial**, beside their fan of cards (where the count bubble is now).
+- The **card count** is a small dark badge on the disc.
+- The **name** is under the disc, with the computer icon and the usual tags (host, dealer, away, place, thinking).
+- The player whose turn it is has a **gold ring** on the disc.
+- **Same initial (user):** if two or more players' names start with the same letter, those players show the **first two letters** (Mikhail and Maya → "Mi" and "Ma"). Defaults chosen in the plan (the user can change them): if two letters are still the same, three letters; if still the same, the first letter and a number (M1, M2). Every player in the game is compared, so a player's tag is the same on every phone.
+- Your own seat (the "You" pill) does not change.
+- The user asked for Haiku to build it.
 
 ## 13. Quick rules (in-game help)
 

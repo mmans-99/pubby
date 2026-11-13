@@ -11,6 +11,7 @@
  * so they are tested without a browser.
  */
 
+import { seatInitials } from './initials.ts';
 import { h, type Child } from './dom.ts';
 import { cardFaceFromId, fanLayout, ordinal, SUIT_SYMBOL } from './cards.ts';
 import { thinkingSeat } from './thinking.ts';
@@ -47,6 +48,8 @@ export interface TableOpts {
   you?: boolean;
   /** The last trick, as a small stack in the felt's top-left corner (CODE.md 9x.2 rule 3). */
   last?: Child;
+  /** The last trick had a slap: the stack's room includes the slap mark (CODE.md 9aa Part D). */
+  lastSlap?: boolean;
 }
 
 /** Where seat number `k` (0 = bottom, then clockwise) of `n` sits, in % of the table box. */
@@ -116,7 +119,7 @@ export interface SeatSpot {
   edge: Edge;
   /** Centre of the fan of card backs. */
   fan: { x: number; y: number };
-  /** Centre of the count bubble. */
+  /** Centre of the disc (9ac: the initial disc; the count badge sits on its corner). */
   bubble: { x: number; y: number };
   /** Top-left of the name line (or top-centre / top-right, see `align`). */
   name: { x: number; y: number; align: 'center' | 'left' | 'right' };
@@ -207,7 +210,7 @@ export function seatLayout(n: number, box: TableBox): SeatSpot[] {
     if (edge === 'top') {
       const x = t * w;
       const by = 0.95 * bh;
-      spot = { edge, fan: { x, y: 0 }, bubble: { x, y: by }, name: { x, y: by + 1.4 * u, align: 'center' } };
+      spot = { edge, fan: { x, y: 0 }, bubble: { x, y: by }, name: { x, y: by + 1.5 * u, align: 'center' } };
     } else {
       const y = topBand + (h - topBand - bottomBand) * t;
       const left = edge === 'left';
@@ -215,7 +218,7 @@ export function seatLayout(n: number, box: TableBox): SeatSpot[] {
         edge,
         fan: { x: left ? 0 : w, y },
         bubble: { x: left ? 0.95 * bh : w - 0.95 * bh, y },
-        name: { x: left ? 0.5 * u : w - 0.5 * u, y: y + 0.75 * bh, align: left ? 'left' : 'right' },
+        name: { x: left ? 0.95 * bh : w - 0.95 * bh, y: y + 1.5 * u, align: 'center' },
       };
     }
     out.push({ ...spot, hit: hitBox(spot, u, bh) });
@@ -227,7 +230,7 @@ export function seatLayout(n: number, box: TableBox): SeatSpot[] {
 function hitBox(s: Omit<SeatSpot, 'hit'>, u: number, bh: number): Box {
   const bw = Math.round(3.9 * u);
   const fan = { x: s.fan.x - bw / 2 - 12, y: s.fan.y - bh / 2 - 12, w: bw + 24, h: bh + 24 };
-  const bubble = { x: s.bubble.x - u, y: s.bubble.y - u, w: 2 * u, h: 2 * u };
+  const bubble = bubbleBox(s as SeatSpot, u);
   const name = nameBox({ ...s, hit: { x: 0, y: 0, w: 0, h: 0 } }, u);
   const x0 = Math.min(fan.x, bubble.x, name.x), y0 = Math.min(fan.y, bubble.y, name.y);
   const x1 = Math.max(fan.x + fan.w, bubble.x + bubble.w, name.x + name.w);
@@ -238,14 +241,23 @@ function hitBox(s: Omit<SeatSpot, 'hit'>, u: number, bh: number): Box {
   return { x: cx - w / 2, y: cy - hh / 2, w, h: hh };
 }
 
-/** The count bubble as a box (2u square, CODE.md 9w.3 rule 6). */
+/**
+ * The seat's disc and count badge as one box (CODE.md 9ac.2). The disc is 2.6u across;
+ * the badge (1.5u) sits on the disc's upper corner, its centre 1.3u out and 1.3u up (on the right edge, 1.3u left and 1.3u up).
+ */
 export function bubbleBox(s: SeatSpot, u: number): Box {
-  return { x: s.bubble.x - u, y: s.bubble.y - u, w: 2 * u, h: 2 * u };
+  const dir = s.edge === 'right' ? -1 : 1;
+  const bx = s.bubble.x + dir * 1.3 * u, by = s.bubble.y - 1.3 * u; // badge centre: on the disc's corner, outside the letter
+  const x0 = Math.min(s.bubble.x - 1.3 * u, bx - 0.75 * u);
+  const x1 = Math.max(s.bubble.x + 1.3 * u, bx + 0.75 * u);
+  const y0 = Math.min(s.bubble.y - 1.3 * u, by - 0.75 * u);
+  const y1 = Math.max(s.bubble.y + 1.3 * u, by + 0.75 * u);
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 
-/** The name as a box (9u wide, 1.4u high, CODE.md 9w.3 rule 6), placed by its alignment. */
+/** The name as a box (7u wide, 1.4u high, CODE.md 9ac.2 step 5), centred under the disc. */
 export function nameBox(s: SeatSpot, u: number): Box {
-  const w = 9 * u, hh = 1.4 * u;
+  const w = 7 * u, hh = 1.4 * u;
   const x = s.name.align === 'center' ? s.name.x - w / 2 : s.name.align === 'left' ? s.name.x : s.name.x - w;
   return { x, y: s.name.y, w, h: hh };
 }
@@ -258,15 +270,28 @@ export function ownSeatBox(n: number, box: TableBox): Box {
 }
 
 /**
+ * How far each last-trick card sits from the one under it (CODE.md 9aa Part D):
+ * far enough to show its whole corner (number and suit), and the whole stack
+ * stays left of the "You" pill (0.4 of the table's width).
+ */
+export function lastStep(box: TableBox, n: number): number {
+  const want = 1.6 * box.u; // one corner index wide
+  const maxW = 0.4 * box.w;
+  return n <= 1 ? 0 : Math.max(1.0 * box.u, Math.min(want, (maxW - 3.6 * box.u) / (n - 1)));
+}
+
+/**
  * The last trick's corner stack at the felt's bottom-left (CODE.md 9x.2 rule 3):
- * a label and up to `n` small cards, each card 0.5u further along. The room is
- * kept for `n` cards, so the stack never grows into a seat once it is drawn.
+ * a label and up to `n` small cards, each card `lastStep` further along. The room
+ * is kept for `n` cards, so the stack never grows into a seat once it is drawn.
+ * A slap adds room for the slap mark (CODE.md 9aa Part D).
  * (The bottom-left is free: the waste pile is bottom-right, your pill bottom-centre.)
  */
-export function lastBox(box: TableBox, n: number): Box {
+export function lastBox(box: TableBox, n: number, slap = false): Box {
   const { u } = box;
   const h = 6.5 * u;
-  return { x: 8, y: box.h - 8 - h, w: 3.6 * u + Math.max(0, n - 1) * 0.5 * u, h };
+  const w = 3.6 * u + Math.max(0, n - 1) * lastStep(box, n) + (slap ? 1.4 * u : 0);
+  return { x: 8, y: box.h - 8 - h, w, h };
 }
 
 /** The waste pile: 5u × 6.5u in the bottom-right corner (16 px in from the edges). */
@@ -358,6 +383,7 @@ function seatEl(o: TableOpts, id: PlayerId, cls: string, style: string, label: s
 export function roundTable(s: Session, v: PlayerView, o: TableOpts): HTMLElement {
   const seats = tableOrder(s, o.bottom);
   const n = seats.length;
+  const discTags = seatInitials(s.players.map((p) => ({ id: p.id, name: p.sessionName ?? p.profileName })));
   const box = fitBox(n, o.box ?? tableBox(typeof window === 'undefined' ? 390 : window.innerWidth, typeof window === 'undefined' ? 844 : window.innerHeight));
   const { bw, bh } = cardBackSize(box.u);
   const layout = seatLayout(n, box);
@@ -371,7 +397,7 @@ export function roundTable(s: Session, v: PlayerView, o: TableOpts): HTMLElement
       o.ledSuit ? h('span', { class: red ? 'led-mark red' : 'led-mark' }, SUIT_SYMBOL[o.ledSuit]) : null),
     h('div', { class: 'table-middle' }, o.middle ?? null),
     o.waste ?? null,
-    o.last ? h('div', { class: 'table-last', style: lastStyle(n, box) }, o.last) : null,
+    o.last ? h('div', { class: 'table-last', style: lastStyle(n, box, !!o.lastSlap) }, o.last) : null,
     plays.length ? h('div', { class: 'trick-pile' },
       plays.map((p, i) => {
         const at = spots[i]!;
@@ -397,7 +423,8 @@ export function roundTable(s: Session, v: PlayerView, o: TableOpts): HTMLElement
         // Out of the round, the place replaces the count.
         const at = seatSpot(n, 0);
         const count = out ? h('span', { class: 'place-badge' }, ordinal(p.place!)) : h('span', { class: 'pill-count' }, String(p.cardCount));
-        return seatEl(o, id, cls('me-pill'), `left:${at.x.toFixed(2)}%;top:${at.y.toFixed(2)}%`, p.sessionName,
+        // 2.32.1: the pill's centre stays at least 14px above the bottom of the table area, so it is never cut off.
+        return seatEl(o, id, cls('me-pill'), `left:${at.x.toFixed(2)}%;top:min(${at.y.toFixed(2)}%, calc(100% - 14px))`, p.sessionName,
           [h('span', { class: 'pill-label' }, ...nameKids, ' · ', count), ...seatTags(id, p, o, thinking, false)]);
       }
       const tags = seatTags(id, p, o, thinking, true);
@@ -409,7 +436,11 @@ export function roundTable(s: Session, v: PlayerView, o: TableOpts): HTMLElement
       const tx = align === 'center' ? '-50%' : align === 'left' ? '0' : '-100%';
       const kids: Child[] = [];
       if (!out && p.cardCount > 0) kids.push(edgeFan(p.cardCount, L.edge, rel(L.fan.x, L.fan.y)));
-      if (!out) kids.push(h('span', { class: 'seat-bubble', 'aria-hidden': 'true', style: `${rel(L.bubble.x, L.bubble.y)}` }, String(p.cardCount)));
+      // 9ac.3: the initial disc (always shown, fades when out); the card count is a badge on it (hidden when out).
+      const tag = discTags[id] ?? '?';
+      kids.push(h('span', { class: `seat-disc${out ? ' out-disc' : ''}`, 'aria-hidden': 'true', style: `${rel(L.bubble.x, L.bubble.y)}` },
+        h('span', { class: `seat-initial${tag.length >= 3 ? ' three' : tag.length === 2 ? ' two' : ''}` }, tag),
+        !out ? h('span', { class: `disc-count ${L.edge === 'right' ? 'at-left' : 'at-right'}` }, String(p.cardCount)) : null));
       kids.push(h('span', { class: `seat-label al-${align}`, style: `${rel(L.name.x, L.name.y)};translate:${tx} 0` }, [...nameKids, ...tags]));
       const seatCls = cls(`seat-quiet edge-${L.edge}`);
       const hitStyle = `left:${L.hit.x.toFixed(1)}px;top:${L.hit.y.toFixed(1)}px;width:${L.hit.w.toFixed(1)}px;height:${L.hit.h.toFixed(1)}px`;
@@ -418,10 +449,13 @@ export function roundTable(s: Session, v: PlayerView, o: TableOpts): HTMLElement
   );
 }
 
-/** Where the last-trick stack sits, in px (CODE.md 9x.2 rule 3). */
-function lastStyle(n: number, box: TableBox): string {
-  const b = lastBox(box, n);
-  return `left:${b.x.toFixed(1)}px;top:${b.y.toFixed(1)}px;width:${b.w.toFixed(1)}px;height:${b.h.toFixed(1)}px`;
+/**
+ * Where the last-trick stack sits, in px (CODE.md 9x.2 rule 3). `--step` is the
+ * card spacing for this table's box (CODE.md 9aa Part D); the cards inherit it.
+ */
+function lastStyle(n: number, box: TableBox, slap: boolean): string {
+  const b = lastBox(box, n, slap);
+  return `left:${b.x.toFixed(1)}px;top:${b.y.toFixed(1)}px;width:${b.w.toFixed(1)}px;height:${b.h.toFixed(1)}px;--step:${lastStep(box, n).toFixed(1)}px`;
 }
 
 /** The waste pile, in the bottom-right corner of the felt (CODE.md 9u Part E5). */

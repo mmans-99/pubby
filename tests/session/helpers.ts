@@ -93,6 +93,18 @@ export function playRound(s: Session, rng: Rng): Session {
   throw new Error('Round did not finish');
 }
 
+/**
+ * 2.32 (PROJECT.md 12n): every player who has not voted yet casts `ballot`, in seat order.
+ * The asker already has a YES ballot, so they are skipped. Stops when the vote is over.
+ */
+export function voteRest(s: Session, ballot: 'yes' | 'no', rng: Rng): Session {
+  for (const p of s.order) {
+    if (!s.vote || s.vote.ballots[p]) continue;
+    s = act(s, { type: 'castVote', by: p, ballot }, rng);
+  }
+  return s;
+}
+
 /** Host ends the game; if the top score is a draw, everyone turns down both Ultimate offers. */
 export function endGame(s: Session, rng: Rng): Session {
   s = act(s, { type: 'endSession', by: s.hostId }, rng);

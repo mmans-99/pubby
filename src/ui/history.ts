@@ -141,7 +141,7 @@ export function csvSheetLayer(): HTMLElement | null {
     }
   };
   return h('div', { class: 'overlay', onclick: (e) => { if (e.target === e.currentTarget) close(); } },
-    h('div', { class: 'sheet', role: 'dialog', 'aria-label': sheet.title },
+    h('div', { class: 'sheet', role: 'dialog', 'aria-label': sheet.title, 'data-scroll': `history-${sheet.title}` },
       h('div', { class: 'sheet-head' },
         h('h2', null, sheet.title),
         h('button', { class: 'ghost', onclick: close }, 'Close'),

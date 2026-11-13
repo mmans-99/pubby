@@ -2550,7 +2550,7 @@ Pause and reactions work as now during a notice.
   2. Start a new game. Do the bots go back to their normal habits?
   3. Turn the switch off. The bots play as before.
 
-## 9aa. Version 2.31: screens keep their scroll place, Fast forward buttons in your hand area, deal and round-start buttons that fit, and a neater last-trick stack (PLAN, user 2026-11-13 21:33; written for any model, Haiku included; NOT BUILT; spec `PROJECT.md` 12m)
+## 9aa. Version 2.31: screens keep their scroll place, Fast forward buttons in your hand area, deal and round-start buttons that fit, and a neater last-trick stack (PLAN, user 2026-11-13 21:33; written for any model, Haiku included; BUILT 2.31.0, not committed; spec `PROJECT.md` 12m)
 
 Build only after the user approves this plan (CLAUDE.md rules 1 and 2). No game rule changes; nothing new is sent between phones. Four parts; build them in order A, B, C, D and run `npm run check` and `npm test` after each part.
 
@@ -2686,7 +2686,29 @@ Fix (same idea as the thrown pile in the middle: every card underneath still sho
 
 - **2.31.0** in `package.json` (9z option 1 takes the next number after this when it is built).
 - `npm run check`, `npm test`, `npm run build`; update the five MD files; ask the user to test; push to main only when the user says "Push it".
-- **Phone checklist (2.31):**
+
+### 9aa.3 What was built (2.31.0) and where it differs from the plan
+
+Built in order A, B, C, D; `npm run check` and `npm test` (383 pass) after the build. Differences, all small:
+
+- **Part A:** `scrollkeep.ts` (`screenKey`) and `render()` in `app.ts` keep each `[data-scroll]` box's place. Named: `game-<phase>-<round>` (results, game over, round start), `extra`, `reactions`, `last`, `rules`, `sound`, `history-<title>`, `exit`. The pause overlay is not named: it has no scrolling box (no `overflow-y` rule applies to it).
+- **Part B:** the hand-area buttons come from a new `handFastItems(g)` in `game.ts`, which applies the labels of item 4 (`Stop fast forward`, `Stop`). `fastForwardMenuItems` is unchanged, so the ☰ menu keeps its items as before. The `big` option of item 3 was not needed.
+- **Part C:** the jokers and hidden-deck chips are built by `dealChips(s)` and sit after the pause button in the top bar. They show a number beside the icon (jokers: `icon` + `2`, with the aria label "2 jokers"). When jokers are off the chip shows `0`. `gameFrame` takes `extraAt: 'top'`, which `beforeRound()` uses. `testbed/bot.js` now finds the round-start button by its exact label `Start` (the bot matched the old label).
+- **Part D:** the step is computed in `roundTable` from the box it draws with (`lastStyle` sets `--step` on `.table-last`), not from `lay.box`, because `roundTable` may shrink the box with `fitBox`. The cards and the slap mark inherit `--step`. The old `.lt-card` margin rule was removed (the cards are absolutely placed now).
+- **Known, not part of 9aa:** the 2.30 missing-suit notice has an OK button that `testbed/bot.js` never taps, so `python3 testbed/playthrough.py` stops at 5 and 8 players (the unmodified 2.30 build stops at the same place). Fixing the bot needs approval (`CLAUDE.md` rule 2).
+
+Browser checks (headless Chromium, 384 × 730, scripted games; probe kept outside the repo):
+
+- Against the computer, 3 and 5 players: finished, no page errors. Round-start buttons "Deal again?" and "Start" are 44 px tall, one line, no overflow. The target row sits at the top of the table, and "You" is not covered.
+- One phone, 8 players: finished, no page errors. The top bar shows the jokers chip during the deal; the last-trick stack shows each card's number and suit.
+- Against the computer, 5 players: the hand area shows Fast forward and Skip to end of round when the player has no cards. At this width "Skip to end of round" wraps to two lines (48 px tall, not cut off).
+- Results screen: the scroll place stayed the same across three redraws (the list is short, so it sat at its maximum).
+
+Not checked: landscape phones, widths under 340 px (the stacked hand buttons), the network game on two phones, and the "Stop" states in the hand area.
+
+**2.31.1 (fix after the first phone test):** Manual / Auto, the hint and the Play button were about 32 px right of centre, because the action slot's padding was 76 px left and 12 px right. The padding is now 76 px on both sides, and `.round-buttons` reaches into the right padding (`margin-right: -64px`), so its width is unchanged. The selected card at the peak of the fan was cut off at the top, because `.game-hand-slot` had `overflow: hidden`; it is now `visible`. Checked in the headless browser at 384 × 730: the deal bar's centre offset is 0 px, Play is centred, the raised 4♥ shows in full, and "Deal again?" / "Start" are still 136 px wide and 44 px tall.
+
+#### Phone checklist (2.31)
   1. vs-computer game, finish a round. On the results screen, scroll down to the ready buttons. As the computer players tap ready (and as you tap yours), the screen stays where you scrolled it.
   2. Open ? quick rules mid-game and scroll down; the page stays put while computer players move.
   3. Go out before the computer players. "Fast forward" and "Skip to end of round" sit where your cards were. Tap Fast forward: the buttons change to "Stop fast forward" and "Skip to end of round". Tap Skip: the round finishes. End this game is still in ☰ only.
@@ -2694,6 +2716,184 @@ Fix (same idea as the thrown pile in the middle: every card underneath still sho
   5. After the deal: "Deal again?" and "Start" are each on one line and not cut off; the target-score row no longer covers your "You" pill.
   6. Play a few tricks with 4 and with 8 players. The "last" stack shows each card's number and suit in its own corner, nothing overlapping; a slap shows the red hand beside the stack, not over it. Tap it: the big last-trick sheet still opens.
   7. Network game (two phones): results screen keeps its scroll place when the other phone taps ready.
+
+## 9ab. Version 2.32: the asker's vote is YES, and a vote waits until everyone has voted (PLAN, user 2026-11-13 22:04; BUILT 2.32.0, not committed; spec `PROJECT.md` 12n)
+
+Built after the user said "Build CODE.md 9ab" (CLAUDE.md rules 1 and 2). This is a rules change: the spec in `PROJECT.md` 12n is the decision; section 1.1 and 2a are updated in the same build. Nothing new is sent between phones (the ballots already are). Status: Parts A to C done; `npm run check`, `npm test` (386 pass) and `npm run build` pass. Testbed not changed (see `TODO.md` Phase 4m).
+
+### 9ab.0 Read first
+
+- `src/rules/voting.ts` `tallyVote(ballots, playerCount)`: today it returns `passed` as soon as more than half say yes, `failed` as soon as more than half say no, else `hostDecides`. Two-player branch: `failed` on any no, `passed` on two yes, else "still waiting" (it reuses `hostDecides`).
+- `src/session/session.ts`: `callVote` (about line 476) sets the asker's ballot as yes only when `s.order.length === 2`. `castVote` (about line 237) resolves on `passed`/`failed` and does nothing on `hostDecides`. `closeVote` (about line 249) tallies, then the host decides if there is no majority. `needsHost` (about line 555) sets `awaitingHost`.
+- `src/ui/roundstart.ts`: the vote screen (about lines 41 to 171) shows YES / NO buttons to every player, "Waiting for …", the host's "Count now" (`countNowButton`), and `hostDecidesStage` (about line 273).
+- `src/content/quick-rules.md`: the Votes card.
+- Tests: `tests/rules/scoring-voting.test.ts`, `tests/session/session.test.ts`, `tests/session/draw-target-two-players.test.ts`, `tests/ai/moves.test.ts`, and `tests/ai/botgame.ts` (computer players play whole games with votes).
+- Testbed: `testbed/main.ts` and `testbed/bot.js` vote as well; check every call of `tallyVote` and every "YES" tap.
+
+### 9ab.1 Part A: the rules (`src/rules/voting.ts`, `src/session/session.ts`)
+
+1. `tallyVote(ballots, playerCount, final = false)`:
+   - Two players: unchanged.
+   - Otherwise, if `!final` and the number of ballots is less than `playerCount`, return `waiting` (a new value of `VoteTally`).
+   - Otherwise: more than half yes → `passed`; more than half no → `failed`; else `hostDecides`.
+   - Update the doc comment to match.
+2. `callVote`: when `by !== null`, the ballots start as `{ [by]: 'yes' }` for every kind (reshuffle, target, ultimate), not only for two players. When `by === null` (the automatic Ultimate vote), start empty.
+3. `castVote`:
+   - Refuse with `fail('You already voted')` if the player already has a ballot (the asker).
+   - Tally with `tallyVote(ballots, n)`. `passed` or `failed` → `resolveVote` as now. `waiting` → keep the vote open. `hostDecides` → now the everyone-has-voted tie: call `needsHost(...)` so the host decides (before, this case was only reached on a tie as well, so check the code path).
+4. `closeVote`: `tallyVote(v.ballots, n, true)`. `passed`/`failed` → resolve. `hostDecides` → `needsHost` (as now). Remove nothing else.
+5. The two-player `closeVote` line (`if (s.order.length === 2) return resolveVote(s, false, ...)`) stays.
+6. Computer players (`src/ai/decide.ts`) keep voting as now. They always cast a ballot, so the vote completes.
+
+### 9ab.2 Part B: the screens (`src/ui/roundstart.ts`, `src/content/quick-rules.md`)
+
+1. The asker's phone (the player whose id is `calledBy`, when it is not null) shows no YES / NO buttons. It shows the question and "You asked: your vote is YES". The live ballot list shows the asker as YES on every phone.
+2. Everyone else: YES / NO as now. While the vote is `waiting`, every phone shows "Waiting for <names of players with no ballot yet>" (the existing "Waiting for …" text, with the names listed). Remove the "No majority" line from `waiting`; it only belongs to `awaitingHost`.
+3. The host keeps "Count now" (`closeVote`). The host's count-now button shows once at least one ballot exists (as now).
+4. Quick rules, Votes card: "The person who asks is a YES. Nothing is decided until everyone has voted. A majority of more than half the players passes or fails the vote; a tie goes to the host. The host can count the votes early."
+5. The result pop-up is unchanged.
+
+### 9ab.3 Part C: tests
+
+- `tests/rules/scoring-voting.test.ts`:
+  - `tallyVote` with 3 players and 1 yes: `waiting`. With 3 yes: `passed`. With 2 yes and 1 no: `passed`. With 1 yes, 2 no: `failed`.
+  - 4 players, 2 yes and 2 no, all voted: `hostDecides`. With `final = true` and 2 yes of 4 (two missing): `hostDecides`; with 3 yes of 4 and `final = true`: `passed`.
+  - Two players: the existing tests still pass.
+- `tests/session/session.test.ts` (new cases):
+  - 3 players call a reshuffle: the asker's ballot is yes, the vote is open. One other votes yes: still open. The last votes yes: `passed`.
+  - 4 players: asker yes, one yes, one no: still open; the fourth votes no: `hostDecides` → `awaitingHost`, then the host's `hostDecides` resolves it.
+  - The asker's `castVote` is refused.
+  - Automatic Ultimate Round (asker `null`): no ballot from anyone at the start.
+  - `closeVote` with 3 of 5 yes (the asker plus two) and two missing: `passed` (more than half of five).
+- `tests/ai/botgame.ts` and `tests/ai/moves.test.ts`: whole games with computer players still finish (votes complete).
+- Run `npm run check`, `npm test`, `npm run build`.
+
+### 9ab.4 Version and process
+
+- **2.32.0** in `package.json`.
+- Update all five MD files: `PROJECT.md` 1.1 and 2a (the rule text), 12n status; `CODE.md` 9ab status; `TODO.md` Phase 4m; `DEVLOG.md`; `CLAUDE.md` unchanged unless the rules change.
+- Playable test build (`CLAUDE.md` rule 5): publish `dist/index.html` as the private test link; the user tests before "Push it".
+
+### 9ab.5 Phone checklist (2.32)
+
+1. Three players (one-phone or network). Player A calls "Deal again?": A's phone shows "You asked: your vote is YES" and no YES / NO buttons. The live ballots show A as YES. Player B votes YES: the vote stays open, "Waiting for C". C votes: the vote passes.
+2. Four players: A asks; B YES; C NO. The vote stays open. D votes NO: the host decides (the host sees "Count now"-style host decision screen; the others see "the host is deciding").
+3. Four players: A asks; B votes YES, C votes NO, D votes YES: passed (3 of 4 > half).
+4. Target score vote on the results screen with 3 players: the proposer's yes counts; the vote waits for the third player.
+5. Count now: with 3 players, A asks, B votes YES, the host taps "Count now" (C not voted): passed only if more than half of all 3 said yes (A and B: 2 > 1.5 → passed). Check it matches `PROJECT.md` 12n's open detail.
+6. Two players: unchanged (asking agrees; the other player answers; no host decision).
+7. Target reached: the automatic Ultimate vote has no asker; everyone votes (no automatic yes).
+
+## 9ac. Version 2.33: seat discs with initials (option D) (PLAN, user 2026-11-13 22:46; BUILT 2.33.0, not committed; spec `PROJECT.md` 12o)
+
+Built on the user's "Build CODE.md 9ac" (CLAUDE.md rules 1 and 2). Status: `seatInitials` and its tests, the layout, the discs and CSS done; `npm run check`, `npm test` (394 pass) and `npm run build` pass; headless screenshots at 384 × 730 (3, 5, 8 players), 320 × 568 (8) and 844 × 390 (5) checked by eye, no page errors. Build changes from the plan, all made for legibility: the count badge is `disc-count` (not `seat-count`, which the seat strip uses) and sits on the disc's upper corner, 1.3u out (plan said 1u), so it no longer covers two-letter tags; two-letter tags are 1u, three-letter tags 0.8u; tags compare every player in the session, the person included (so a bot named Soo-ah shows "So" when you are Sam). The user chose option D from the mock-ups of 2026-11-13 22:43: each other player's seat shows a round disc with their initial, the card count as a small badge on the disc, and the name under the disc. **Haiku builds this.** Follow the steps in order; do not change anything that is not listed. If something here does not match the code, stop and ask the user (do not guess).
+
+What stays the same: your own seat (the "You · 13" pill), the fans of card backs, the waste pile, the last-trick corner, the middle zone, the tap areas (at least 44 × 44), `fitBox` and the collision rules (9w.3 rules 5 to 7), and every seat tag (host ★, dealer D, Away, place badge, thinking dots, computer icon).
+
+### 9ac.0 Read first
+
+- `src/ui/table.ts`:
+  - `SeatSpot` (about line 116): `fan`, `bubble` (centre of the count bubble), `name` (top of the name line, with `align`), `hit`.
+  - `seatLayout(n, box)` (about line 200): where each seat's fan, bubble and name go. Top edge: `bubble = { x, y: 0.95 * bh }`, `name = { x, y: by + 1.4u, align: 'center' }`. Left / right edges: `bubble.x = 0.95 * bh` in from the edge, `name` at the edge with `align: 'left'` / `'right'`.
+  - `hitBox`, `bubbleBox` (2u square), `nameBox` (9u × 1.4u), `seatCollisions`, `fitBox`.
+  - `roundTable` (about line 373): the seat loop (about line 400). For another player it pushes `edgeFan(...)`, a `span.seat-bubble` with the count, and a `span.seat-label` with `nameKids` (computer icon + `span.table-name`) and `seatTags(...)`.
+- `src/ui/styles.css` (about line 915 to 950): `.seat-quiet`, `.seat-bubble`, `.seat-label`, `.table-name`, `.seat-quiet.turn .table-name` (gold), `.seat-quiet.away .table-name` (red), `.seat-quiet.out .seat-label` (half strength).
+- Tests: `tests/ui/seats.test.ts` (no name or bubble in the middle, none over another, all inside the felt, tap areas 44 × 44), `tests/ui/layout.test.ts`.
+
+### 9ac.1 Part A: the initials (new file `src/ui/initials.ts`, pure, no DOM)
+
+Write one exported function:
+
+```ts
+/** CODE.md 9ac.1: the short tag on each seat's disc. Same input, same output. */
+export function seatInitials(players: readonly { id: string; name: string }[]): Record<string, string>
+```
+
+Rules, in this order:
+
+1. Clean each name: trim spaces. Split it into characters with `Array.from(name)` (so an accented letter or emoji counts as one character). Drop spaces inside it for the tag only (so "Soo ah" → "Sooah" for the tag; the name shown under the disc is unchanged). If the name is empty, use `?`.
+2. Every player starts with **one character**: the first character, upper case (`toLocaleUpperCase()`).
+3. If two or more players have the same tag (compare case-insensitively), **each of those players gets the first two characters**: the first upper case, the second lower case. Example: Mikhail and Maya → "Mi" and "Ma". Players whose first letter is not shared keep one letter (Soo-ah stays "S").
+4. Still the same (for example Mikhail and Mike → "Mi" and "Mi"): those players get the first three characters ("Mik" and "Mik" is still the same, so go to rule 5). Never more than three characters.
+5. Still the same after three characters (same start, or the same name twice): keep the one-letter tag and add a number by the order in `players`: "M1", "M2".
+6. A name of one character just uses that character (it can't grow; rule 5 gives it a number if needed).
+
+Who is compared: **every player in the session** (`s.players`), not only the players on this phone's screen, so a player's tag is the same on every phone and after the phone is passed. Use `sessionName` (the name shown at the table).
+
+Tests, new file `tests/ui/initials.test.ts`:
+- Soo-ah, Mikhail, Leila → S, M, L.
+- Mikhail, Maya, Leila → Mi, Ma, L.
+- Mikhail, Mike → "Mi" / "Mi" (same), then "Mik" / "Mik" (same), so rule 5: M1, M2.
+- Mikhail, Mila → "Mi" / "Mi" (same), then "Mik" / "Mil" (different) → Mik, Mil.
+- Sam, sam (same name, different case) → S1, S2.
+- "  leila " → L. "Émile", "Eve" → É, E (different characters, so one letter each).
+- One-character names "A", "Ab" → rule 3 gives "A" and "Ab" (different) → A, Ab.
+- Empty name → "?".
+- Eight players: every tag is different.
+
+### 9ac.2 Part B: the seat layout (`src/ui/table.ts`)
+
+1. The disc replaces the count bubble, **in the bubble's place**: `SeatSpot.bubble` stays the disc's centre (rename the doc comment to "Centre of the disc"; keep the field name `bubble` so the rest of the code still compiles).
+2. Disc size: **2.6u** across (was a 2u bubble). Change `bubbleBox` to a 2.6u square around `bubble`, plus the badge (step 3): return the box that covers both (x from the disc's left to the badge's right, and so on).
+3. The count badge: a circle **1.5u** across, centred **1u right and 1u up** from the disc's centre for the top and left edges, and **1u left and 1u up** for the right edge (towards the middle of the table, as in mock-up D). Hidden when the player is out.
+4. The name goes **under the disc, centred**: in `seatLayout`, for every edge set `name = { x: bubble.x, y: bubble.y + 1.5u, align: 'center' }`.
+5. `nameBox`: the name is **7u wide** (was 9u), 1.4u high, centred on `name.x`.
+6. `hitBox` already joins the fan, the bubble box and the name box; with the new boxes it covers the disc and badge. Keep the 44 × 44 minimum.
+7. Run the existing tests in `tests/ui/seats.test.ts` and `tests/ui/layout.test.ts`. They must pass unchanged: no disc, badge or name in the middle zone, none over another, over your pill, the waste pile or the last-trick corner, and all inside the felt (after `fitBox`). If one fails for some player count, change only the numbers in steps 2 to 5 (for example the badge offset 1u → 0.9u), never the tests, and write what you changed in `DEVLOG.md`.
+
+### 9ac.3 Part C: drawing it (`src/ui/table.ts` `roundTable`, `src/ui/styles.css`)
+
+1. In `roundTable`, work out the tags once per draw: `const tags = seatInitials(s.players.map((p) => ({ id: p.id, name: p.sessionName })))` (import from `./initials.ts`).
+2. For another player (not `k === 0`), replace the `span.seat-bubble` with:
+   ```ts
+   h('span', { class: 'seat-disc', 'aria-hidden': 'true', style: rel(L.bubble.x, L.bubble.y) },
+     h('span', { class: 'seat-initial' }, tags[id] ?? '?'),
+     !out ? h('span', { class: `seat-count ${L.edge === 'right' ? 'at-left' : 'at-right'}` }, String(p.cardCount)) : null)
+   ```
+   The disc shows even when the player is out (at half strength, like the name now).
+3. The name line (`span.seat-label`) stays as it is (computer icon, name, tags such as ★, D, Away, place, thinking dots), but it is now centred under the disc: use `translate:-50% 0` for every edge (the `align` is always `center` after 9ac.2 step 4), and class `al-center`.
+4. The seat's `aria-label` keeps the full name (it already does, through `seatEl`).
+5. CSS (`src/ui/styles.css`), next to `.seat-bubble` (leave `.seat-bubble` in place; it is no longer used by the table but other screens might use it, so check with a search before removing anything; if nothing else uses it, leave it anyway and note it in `DEVLOG.md`):
+   ```css
+   .seat-disc {
+     position: absolute; translate: -50% -50%;
+     width: calc(2.6 * var(--u, 11px)); height: calc(2.6 * var(--u, 11px)); border-radius: 50%;
+     display: flex; align-items: center; justify-content: center;
+     background: var(--cream); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+   }
+   .seat-initial { font-weight: 800; line-height: 1; font-size: calc(1.2 * var(--u, 11px)); }
+   .seat-disc .seat-count {
+     position: absolute; top: calc(-0.35 * var(--u, 11px));
+     min-width: calc(1.5 * var(--u, 11px)); height: calc(1.5 * var(--u, 11px)); padding: 0 0.2em; box-sizing: border-box;
+     display: flex; align-items: center; justify-content: center; border-radius: 999px;
+     background: var(--ink); color: var(--cream); font-size: calc(0.85 * var(--u, 11px)); font-weight: 800; line-height: 1;
+   }
+   .seat-disc .seat-count.at-right { right: calc(-0.35 * var(--u, 11px)); }
+   .seat-disc .seat-count.at-left { left: calc(-0.35 * var(--u, 11px)); }
+   .seat-quiet.turn .seat-disc { box-shadow: 0 0 0 3px var(--gold), 0 0 10px 2px rgba(242, 193, 78, 0.55); }
+   .seat-quiet.away .seat-disc { box-shadow: 0 0 0 3px var(--danger); }
+   .seat-quiet.out .seat-disc { opacity: 0.5; }
+   ```
+   Check the class name `seat-count` is not already used inside `.seat-quiet` for something else (it is used by the seat strip, `.seat-count` at about line 372 and 785 of `styles.css`). Because the new rules are scoped with `.seat-disc .seat-count`, the seat strip is not affected; check it still looks the same on the vote and swap screens (they use `seatStrip`).
+6. A three-character tag ("Mik") must fit the disc: if it doesn't (in the headless check, 9ac.4), make `.seat-initial` smaller only when the tag has 3 characters (add class `three` and `font-size: calc(0.9 * var(--u, 11px))`).
+
+### 9ac.4 Part D: checks and version
+
+- `npm run check`, `npm test` (the new `tests/ui/initials.test.ts` plus all old tests), `npm run build`.
+- Headless browser (Playwright, as in 9aa): a single-player game with 3, 5 and 8 players at 384 × 730 and 320 × 568, and one landscape 844 × 390. Screenshot each. Check by eye: every disc, badge and name visible and inside the felt; nothing over the trick in the middle, the waste pile, the last-trick corner or the "You" pill; the turn ring shows on the player whose turn it is.
+- Version **2.33.0** in `package.json`.
+- Update all five MD files: `PROJECT.md` 12o status; `CODE.md` 9ac status; `TODO.md` Phase 4n; `DEVLOG.md`; `CLAUDE.md` unchanged.
+- Publish the test build to the usual private test link (`CLAUDE.md` rule 5). Do not commit or push until the user says "Push it".
+
+### 9ac.5 Phone checklist (2.33)
+
+1. Single player, 4 players (you + 3 computer players with different first letters): each other seat shows a disc with one letter, a dark count badge on the disc, and the name with the computer icon under it.
+2. Rename two computer players so they start with the same letter (for example Mikhail and Maya): their discs show "Mi" and "Ma"; the others keep one letter.
+3. The player whose turn it is has a gold ring on the disc.
+4. A player who goes out: no badge, the disc and name fade, the place badge shows after the name.
+5. 8 players: nothing overlaps; the trick in the middle is clear.
+6. Network game: the same tags on every phone.
+7. Landscape: the discs and names fit.
 
 ## 8a. Playable test builds (required before every commit)
 

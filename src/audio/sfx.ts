@@ -8,6 +8,7 @@
 
 import { bell, brass, ctx, drive, duckMusic, env, filter, gain, hz, kick, noise, osc, reverb, sfxOut, sfxReady, snare } from './engine.ts';
 import type { SessionEvent } from '../session/types.ts';
+import { instantSkipping, skipping } from '../ai/fastforward.ts';
 
 export type Sfx =
   | 'tap' | 'shuffle' | 'deal' | 'play' | 'slap' | 'pickUp' | 'trickDone' | 'joker' | 'gotAway' | 'lastPlace'
@@ -171,6 +172,8 @@ export const sfxLog: Sfx[] = [];
 export const sfxSeen = new Set<Sfx>();
 
 function fire(name: Sfx): void {
+  // 2.32.2: no sound while Fast forward or Skip to end of round runs (the table moves too fast to match it).
+  if (skipping() || instantSkipping()) return;
   if (!sfxReady()) return;
   try {
     if (DUCK.has(name)) duckMusic((ctx as AudioContext).currentTime, DUR[name]);

@@ -87,7 +87,7 @@ export function soundOverlay(): HTMLElement {
     );
   };
   return h('div', { class: 'overlay sound-overlay', onclick: (e) => { if (e.target === e.currentTarget) close(); } },
-    h('div', { class: 'sheet sound-sheet', role: 'dialog', 'aria-label': 'Sound' },
+    h('div', { class: 'sheet sound-sheet', role: 'dialog', 'aria-label': 'Sound', 'data-scroll': 'sound' },
       h('div', { class: 'sheet-head' },
         h('h2', null, 'Sound'),
         h('button', { class: 'ghost', onclick: close }, 'Close'),

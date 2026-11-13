@@ -24,6 +24,7 @@ import { afterRender, gameScreen, popupLayer, reactionsLayer, shuffling, startSh
 import { csvSheetLayer, pastGamesScreen, profileDetails } from './history.ts';
 import { renderMarkdown } from './markdown.ts';
 import { joinLobbyFromLink, joinRoomFromLink, netLobbyScreen, stopNetLobby } from './netlobby.ts';
+import { screenKey } from './scrollkeep.ts';
 import { addProfile, deleteProfile, findProfile, loadGame, loadProfiles, loadRecords, loadVsProfiles, saveProfiles, saveVsProfiles } from './storage.ts';
 import { getState, initState, say, update, type SetupSeat, type SetupState, type State } from './store.ts';
 import { soloScreen, soloSetupFresh } from './solosetup.ts';
@@ -155,18 +156,26 @@ function render(): void {
     st.exitAsk ? exitOverlay() : null,
     st.message ? h('div', { class: 'toast', role: 'status' }, st.message) : null,
   ];
-  // The reactions sheet is rebuilt on every redraw; keep how far it was scrolled (it should not jump back to the top after a move).
-  const sheetScroll = root.querySelector<HTMLElement>('.reactions-sheet')?.scrollTop ?? 0;
+  // 2.31 (CODE.md 9aa Part A): every redraw rebuilds the page, so each scrolling box would start at the top.
+  // Keep how far each named box (data-scroll) was scrolled, and the window's place, unless the screen itself changed.
+  const kept = new Map<string, number>();
+  root.querySelectorAll<HTMLElement>('[data-scroll]').forEach((el) => kept.set(el.dataset.scroll!, el.scrollTop));
+  const pageKey = screenKey(st);
+  const pageY = window.scrollY;
   root.replaceChildren(...parts.filter((p): p is HTMLElement => p !== null));
-  const sheetNow = root.querySelector<HTMLElement>('.reactions-sheet');
-  if (sheetNow) sheetNow.scrollTop = sheetScroll;
+  root.querySelectorAll<HTMLElement>('[data-scroll]').forEach((el) => {
+    const y = kept.get(el.dataset.scroll!);
+    if (y !== undefined) el.scrollTop = y;
+  });
+  if (pageKey === lastPageKey && window.scrollY !== pageY) window.scrollTo(0, pageY);
+  lastPageKey = pageKey;
   afterRender();
   syncSound();
 }
 
 function exitOverlay(): HTMLElement {
   return h('div', { class: 'overlay', onclick: (e) => { if (e.target === e.currentTarget) keepPubbyOpen(); } },
-    h('div', { class: 'sheet exit-sheet', role: 'dialog', 'aria-label': 'Exit Pubby?' },
+    h('div', { class: 'sheet exit-sheet', role: 'dialog', 'aria-label': 'Exit Pubby?', 'data-scroll': 'exit' },
       h('h2', null, 'Exit Pubby?'),
       getState().game ? h('p', { class: 'muted small' }, 'Your game is saved. Carry on from the main menu next time.') : null,
       h('div', { class: 'row' },
@@ -201,6 +210,8 @@ function rulesTopicFor(st: State): string | null {
 }
 
 let rulesScrolledFor: string | null = null;
+/** The screen key of the last redraw (scrollkeep.ts): the window keeps its place while it stays the same. */
+let lastPageKey = '';
 
 function rulesOverlay(): HTMLElement {
   const close = (): void => { rulesScrolledFor = null; update({ rulesOpen: false, rulesTopic: null }); };
@@ -213,7 +224,7 @@ function rulesOverlay(): HTMLElement {
     });
   }
   return h('div', { class: 'overlay', onclick: (e) => { if (e.target === e.currentTarget) close(); } },
-    h('div', { class: 'sheet rules-sheet', role: 'dialog', 'aria-label': 'Quick rules' },
+    h('div', { class: 'sheet rules-sheet', role: 'dialog', 'aria-label': 'Quick rules', 'data-scroll': 'rules' },
       h('div', { class: 'sheet-head' },
         h('h2', null, 'Quick rules'),
         h('button', { class: 'ghost', onclick: close }, 'Close'),

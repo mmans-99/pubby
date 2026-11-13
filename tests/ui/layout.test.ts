@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fanLayout } from '../../src/ui/cards.ts';
 import { CHROME_PORTRAIT, gameLayout, MIN_TABLE_H } from '../../src/ui/layout.ts';
-import { fitBox, seatCollisions, tableBoxFor, lastBox } from '../../src/ui/table.ts';
+import { fitBox, seatCollisions, tableBoxFor, lastBox, lastStep } from '../../src/ui/table.ts';
 
 /** The 16 screen sizes from CODE.md 9w.7, plus the test phone (384 × 730, CODE.md 9x.5). */
 const SIZES: [number, number][] = [
@@ -111,4 +111,26 @@ test('lastBox: at the bottom-left, room for n cards grows with n', () => {
   assert.ok(eight.w > one.w);
   assert.equal(one.x, 8);
   assert.equal(one.y + one.h, box.h - 8);
+});
+
+// 2.31 (CODE.md 9aa Part D): the last-trick cards are spaced so each corner number and suit shows.
+test('lastStep: each card is at least one card-u further along, on every size', () => {
+  for (const [w, h] of SIZES) {
+    const box = gameLayout(w, h).box;
+    for (let n = 2; n <= 8; n++) {
+      assert.ok(lastStep(box, n) >= box.u - 1e-9, `${w}x${h} with ${n} players`);
+    }
+  }
+});
+
+test('lastStep: 1.6u (one corner index wide) when up to 5 players, on a 384 × 730 phone', () => {
+  const box = gameLayout(384, 730).box;
+  for (let n = 2; n <= 5; n++) assert.equal(lastStep(box, n), 1.6 * box.u, `${n} players`);
+});
+
+test('lastBox: 8 cards stay left of the You pill, and a slap adds room for its mark', () => {
+  const box = gameLayout(384, 730).box;
+  const eight = lastBox(box, 8);
+  assert.ok(eight.x + eight.w <= 0.4 * box.w + 8);
+  assert.ok(Math.abs(lastBox(box, 8, true).w - eight.w - 1.4 * box.u) < 1e-9);
 });

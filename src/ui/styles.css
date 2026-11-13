@@ -416,7 +416,6 @@ button.seat-chip .seat-host { color: #b8860b; }
 .card.small-card { width: 46px; aspect-ratio: 5 / 7; animation: none; }
 @keyframes drop-in { from { opacity: 0; transform: translateY(-24px) rotate(-8deg) scale(1.1); } }
 .last-trick { font-size: 0.85rem; border-top: 1px dashed var(--line); padding-top: 6px; line-height: 1.6; }
-.lt-card { margin-right: 8px; white-space: nowrap; }
 .lt-result { color: var(--gold); }
 
 /* Hand */
@@ -933,6 +932,27 @@ button.table-seat { cursor: pointer; }
   font-size: calc(1.05 * var(--u, 11px)); font-weight: 800; line-height: 1;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
+/* 9ac.3 (2.33): the seat's initial disc, with the card count as a badge on its corner. */
+.seat-disc {
+  position: absolute; translate: -50% -50%; box-sizing: border-box;
+  width: calc(2.6 * var(--u, 11px)); height: calc(2.6 * var(--u, 11px)); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--cream); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.seat-initial { font-weight: 800; line-height: 1; font-size: calc(1.2 * var(--u, 11px)); white-space: nowrap; }
+.seat-initial.two { font-size: calc(1 * var(--u, 11px)); }
+.seat-initial.three { font-size: calc(0.8 * var(--u, 11px)); }
+.seat-disc .disc-count {
+  position: absolute; top: calc(-0.75 * var(--u, 11px));
+  min-width: calc(1.5 * var(--u, 11px)); height: calc(1.5 * var(--u, 11px)); padding: 0 0.2em; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center; border-radius: 999px;
+  background: var(--ink); color: var(--cream); font-size: calc(0.85 * var(--u, 11px)); font-weight: 800; line-height: 1;
+}
+.seat-disc .disc-count.at-right { right: calc(-0.75 * var(--u, 11px)); }
+.seat-disc .disc-count.at-left { left: calc(-0.75 * var(--u, 11px)); }
+.seat-quiet.turn .seat-disc { box-shadow: 0 0 0 3px var(--gold), 0 0 10px 2px rgba(242, 193, 78, 0.55); }
+.seat-quiet.away .seat-disc { box-shadow: 0 0 0 3px var(--danger); }
+.seat-quiet.out .seat-disc { opacity: 0.5; }
 .seat-label {
   position: absolute; display: inline-flex; align-items: center; gap: 0.25em;
   max-width: calc(9 * var(--u, 11px)); white-space: nowrap;
@@ -1042,7 +1062,9 @@ button.me-pill { background: var(--cream); color: var(--ink); }
 .screen.game.fixed .game-bar .icon-btn, .screen.game.fixed .game-bar .round-chip { width: 40px; height: 40px; min-width: 40px; min-height: 40px; }
 /* Stages that are not framed scroll inside this box; the page itself never scrolls in a game (2.29). */
 .game-scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
-.round-buttons { width: 100%; }
+/* 2.31 (CODE.md 9aa Part C): the round-start buttons sit on one line each ("Deal again?", "Start"). */
+.round-buttons { width: 100%; display: flex; gap: 8px; flex-wrap: nowrap; }
+.round-buttons button { white-space: nowrap; min-height: 44px; padding: 0 12px; font-size: 1rem; }
 /* 2.30 (CODE.md 9y.3): the notice card sits over the table and waits for OK. */
 .notice-overlay { position: absolute; inset: 0; z-index: 7; display: flex; align-items: center; justify-content: center; padding: 12px; background: rgba(0, 0, 0, 0.28); }
 .notice-card { width: min(100%, 340px); display: flex; flex-direction: column; align-items: stretch; gap: 10px; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45); }
@@ -1052,18 +1074,32 @@ button.me-pill { background: var(--cream); color: var(--ink); }
 .round-buttons .big, .round-buttons .secondary { min-height: 44px; }
 .game-frame { flex: 1; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) var(--hand-h, 0px) var(--bar-h, 0px); row-gap: 6px; }
 .game-table-slot { position: relative; min-height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-.game-hand-slot { position: relative; min-height: 0; overflow: hidden; }
+/* 2.31.1: visible overflow, so a raised (selected) card at the top of the fan is not cut off. */
+.game-hand-slot { position: relative; min-height: 0; overflow: visible; }
 .game-hand-slot > .hand-section { height: 100%; justify-content: center; }
 .game-hand-slot .handoff.compact { min-height: 0; height: 100%; justify-content: center; padding: 0; }
 .game-hand-slot .handoff.compact .handoff-icon { font-size: 1.6rem; }
 .game-hand-slot .handoff.compact .handoff-name { font-size: 1.7rem; }
 .game-hand-slot .handoff.compact .big { margin-top: 8px; }
-.game-action-slot { min-height: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0 64px; }
+/* 2.31 (CODE.md 9aa Part C): the 😂 button sits bottom-left only, so the left padding is for it and the right is small. */
+.game-action-slot { min-height: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0 76px; }
+/* 2.31.1: the padding is symmetric, so centred controls (Manual / Auto, Play) sit in the middle. The round-start
+   row reaches into the right padding (its width is the same as in 2.31.0), so "Deal again?" and "Start" still fit. */
+.game-action-slot > .round-buttons { width: calc(100% + 64px); margin-right: -64px; }
+/* 2.31 (CODE.md 9aa Part B): with no cards left, Fast forward and Skip sit where the cards were. */
+.hand-actions { height: 100%; display: flex; gap: 10px; align-items: center; justify-content: center; padding: 0 12px; }
+.hand-actions button { flex: 1; max-width: 220px; min-height: 48px; }
+@media (max-width: 339px) { .hand-actions { flex-direction: column; } }
 .game-action-slot .play-bar { position: static; margin: 0; width: 100%; }
 .game-action-slot h2 { font-size: 1rem; }
 /* Panels over the bottom of the table: they scroll inside themselves and never push the rows. */
 .game-extra { position: absolute; left: 8px; right: 8px; bottom: 8px; max-height: 70%; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; z-index: 6; }
 .game-extra > .panel, .game-extra > .note { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35); }
+/* 2.31 (CODE.md 9aa Part C item 5): on the round-start screen the panels sit at the top of the table. */
+.game-extra.at-top { top: 8px; bottom: auto; }
+/* 2.31 (CODE.md 9aa Part C): the top-bar chips (jokers, hidden decks) during the deal. */
+.game-bar .bar-chip { min-height: 36px; padding: 0 9px; font-size: 0.9rem; }
+.tile span { overflow-wrap: anywhere; }
 .frame-col { width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
 .frame-col .big { width: min(100%, 360px); }
 .deal-bar { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; }
@@ -1072,8 +1108,13 @@ button.me-pill { background: var(--cream); color: var(--ink); }
 .table-last { position: absolute; z-index: 3; }
 .lt-corner { position: relative; width: 100%; height: 100%; padding: 0; border: 0; background: none; color: var(--cream); cursor: pointer; text-align: left; }
 .lt-corner .lt-label { position: absolute; left: 0; top: 0; color: var(--cream); opacity: 0.85; font-size: calc(1 * var(--u, 11px)); line-height: 1.2; }
-.lt-corner .lt-card { position: absolute; top: calc(1.3 * var(--u, 11px)); left: calc(var(--i, 0) * 0.5 * var(--u, 11px)); width: calc(3.6 * var(--u, 11px)); }
-.lt-corner .lt-slap { position: absolute; right: 0; top: 0; color: var(--danger); }
+/* 2.31 (CODE.md 9aa Part D): each card sits --step further along (set by the table), so its corner shows. */
+.lt-corner .lt-card { position: absolute; top: calc(1.3 * var(--u, 11px)); left: calc(var(--i, 0) * var(--step, 17.6px)); width: calc(3.6 * var(--u, 11px)); }
+/* The corner number and suit are sized from the card, so they sit in the same corner of every card. */
+.lt-corner .lt-card.tiny-card .idx { width: auto; left: calc(0.25 * var(--u, 11px)); top: calc(0.2 * var(--u, 11px)); }
+.lt-corner .lt-card.tiny-card .idx .r { font-size: calc(1.15 * var(--u, 11px)); line-height: 1; }
+.lt-corner .lt-card.tiny-card .idx svg { width: calc(0.9 * var(--u, 11px)); height: calc(0.9 * var(--u, 11px)); margin-top: 0; }
+.lt-corner .lt-slap { position: absolute; top: calc(1.3 * var(--u, 11px)); color: var(--danger); }
 .card.tiny-card.lt-card.slapped { box-shadow: 0 0 0 2px var(--danger); }
 .last-sheet .last-big { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; padding: 8px 0 4px; }
 .last-big-item { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 0.85rem; }
@@ -1090,6 +1131,7 @@ button.me-pill { background: var(--cream); color: var(--ink); }
   .game-table-slot { grid-column: 1 / -1; grid-row: 1; }
   .game-hand-slot { grid-column: 1; grid-row: 2; }
   .game-action-slot { grid-column: 2; grid-row: 2; padding: 0 4px; }
+  .game-action-slot > .round-buttons { width: 100%; margin-right: 0; }
   .game-action-slot .play-bar { position: static; }
 }
 .center-row { justify-content: center; align-items: center; }
