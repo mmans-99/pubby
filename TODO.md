@@ -258,6 +258,29 @@ Built before network slice 4 (user 2026-11-12). One slice at a time; each needs 
 - [ ] **Slice F: computer players in network games**
 - [ ] **Slice G: tuning from the user's games**
 
+## Phase 4c — Online play: rooms over the internet (plan written 2026-11-13, `PROJECT.md` 12d, build guide `CODE.md` 9r; not started)
+
+Order against Phase 4b slice E is the user's call. One slice at a time; each needs checks, a test build and the user's "push".
+
+- [x] Plan written and pushed (docs only, 2026-11-13)
+- [ ] User confirms the four defaults (`PROJECT.md` Open questions): keep Nearby, room list, 4-digit passcode, Cloudflare
+- [ ] User's one-time Cloudflare setup: account, workers.dev name, Account ID, API token, two GitHub secrets (`CODE.md` 9r.4)
+- [ ] **Slice O1: the server** (version 2.17; `CODE.md` 9r.8)
+  - [ ] `src/net/relayproto.ts` + tests
+  - [ ] `RoomCore`, `DirectoryCore`, ids + tests (`tests/server/`)
+  - [ ] Cloudflare wrappers, `wrangler.toml`, `server/package.json`, `server/tsconfig.json`
+  - [ ] `testbed/relay_server.ts` + its test
+  - [ ] `.github/workflows/server.yml`; deploy works; `/health` opens on the user's phone
+  - [ ] Free plan: open-WebSocket limit checked and written in 9r.1
+- [ ] **Slice O2: online rooms in the app** (version 2.18)
+  - [ ] `Link` interface and `chunk.ts`; Nearby checks unchanged
+  - [ ] `server.ts`, `online.ts` (createRoom, joinRoom, watchRooms, HostRoom, OnlineLink)
+  - [ ] Screens: Online/Nearby, room form, room list, passcode, Share invite, `#room=` links
+  - [ ] `testbed/online_check.py`, `run_checks.py` row
+  - [ ] User's phone test on two different networks (9r.8 checklist)
+- [ ] **Slice O3: rejoin online** (version 2.19; with Nearby slice 4)
+- [ ] Slice O4 (game on the server): only if the user asks
+
 ## Phase 5 — Polish
 
 - [ ] Animations for slap and trick resolution

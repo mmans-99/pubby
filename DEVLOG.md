@@ -4,6 +4,21 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (afternoon) — Online play plan written (`CODE.md` 9r, `PROJECT.md` 12d); docs only
+
+**User:** asked how to play online rather than WebRTC on the same network, preferably free: "click multiplayer, then host makes a room with a name and code, other people click join, find the room and pass and then start together." Then asked how the Cloudflare free plan works (games, connections), and: "write up a detailed plan for every step in getting this done, including the cloud flare part etc so I can code it with haiku. Push and commit it once done."
+
+**Done (docs only, no version change)**
+- `CODE.md` 9r: full build guide. A relay on Cloudflare Workers + Durable Objects (free plan, SQLite backend) carries the existing messages; the host's phone still runs the game, so `lobby.ts`, `netgame.ts`, `netplay.ts` and the rules don't change. Frame format, HTTP API, `RoomCore`/`DirectoryCore` as pure tested code, thin Cloudflare wrappers, deploy workflow, the user's step-by-step Cloudflare setup, the app's `Link` interface and `online.ts`, screens, messages, a local relay for browser checks (`ws` is on this machine), and slices O1 to O3 (O4 only if asked). Message budget: about 380 hour-long 8-player games a day inside the free 100,000 requests.
+- `CODE.md` 4: note that online play is planned alongside Nearby.
+- `PROJECT.md` 12d: what players see; 12: pointer; Open questions: the four defaults (keep Nearby, room list, 4-digit passcode, Cloudflare), asked and not answered yet, so the plan uses them.
+- `TODO.md`: Phase 4c.
+- `CLAUDE.md`: checked, no change.
+
+**Free plan facts (Cloudflare docs, 2026-11-13):** Workers Free 100,000 requests/day (00:00 UTC reset), 10 ms CPU per request; Durable Objects free with SQLite storage; incoming WebSocket messages billed 20:1, outgoing free; over a limit, operations fail (no bill). A free-plan cap on open WebSockets wasn't found; slice O1 checks it.
+
+---
+
 ## 2026-11-13 (afternoon, after 9q) — run_checks: network checks only for network changes; test-only
 
 **User:** a change to the look of cards (or the computer players' reaction rate) should not run a whole network game. Asked for the mapping to change.

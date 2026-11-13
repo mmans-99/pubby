@@ -56,6 +56,8 @@ Joining must work with no internet. The options that were considered:
 | B. WebRTC with QR handshake | Phones connect directly. Each join exchanges connection info through a QR code scanned between devices. | No server needed, works on phones alone | Harder to build, fragile with many players, manual handshake steps |
 | C. Pass-and-play only at first | No networking yet | Lowest risk, lets rules be finished first | No online-ish play until a later phase |
 
+**Online play (planned 2026-11-13, section 9r):** a relay server on Cloudflare's free plan carries the same messages between phones over the internet, for an "Online" mode with named rooms and passcodes. It does not replace B: Nearby (WebRTC with QR codes, no internet) stays as its own mode, and the host's phone still runs the game.
+
 **Recommended path:** Build **C** first (Phase 2 in `TODO.md`) to finish the rules. Then add **B** (WebRTC with a phone as host, star layout) so phones can play with no extra hardware. Keep **A** as a fallback if B is too fragile with 8 players. (Superseded: the user chose B only.)
 
 ## 4a. Phase 4 plan: WebRTC over QR (approved 2026-11-07 20:39)
@@ -920,6 +922,479 @@ Acceptance: run `playthrough.py` and `solo_check.py --slice-d` before and after,
 **Not in this plan (ask the user first):** fake clock for netgame/netvotes (risky with WebRTC); a test-only `?seed=` link option so games are the same every run (app code); running light checks side by side.
 
 ---
+
+## 9r. Online play (rooms over the internet): build guide (PLAN, user 2026-11-13: "write up a detailed plan for every step ... so I can code it with haiku"; NOT BUILT)
+
+Written for any model, Haiku included. Read the whole section once before starting a slice. The spec (what the player sees) is `PROJECT.md` 12d. Do one slice at a time. Every slice follows `CLAUDE.md` (checks, a test build, the user's phone test and "push" before committing).
+
+### 9r.0 The idea in one paragraph
+
+Today a network game is a star: the host's phone runs the game and talks to each other phone over its own WebRTC link (`src/net/peer.ts`). Online play keeps that exactly. The only new thing is **how the messages travel**: instead of a direct WebRTC link, each phone opens one WebSocket to a small **relay server** on Cloudflare, and the relay passes messages between the host's phone and each other phone. The relay never reads the game. It only knows rooms, passcodes and who is connected. So `src/net/lobby.ts`, `src/net/netgame.ts`, `src/ui/netplay.ts` and the rules do not change. Nearby play (the QR codes) stays as it is.
+
+```
+   Joining phone ──wss──┐
+   Joining phone ──wss──┤   Cloudflare Worker "pubby-rooms"
+   Joining phone ──wss──┼── Room (one Durable Object per room) ──wss── Host's phone (runs the game, as now)
+                        │
+   Join screen ───wss── Directory (one Durable Object: the list of open rooms)
+```
+
+Words used below:
+- **Worker:** a small program that runs on Cloudflare's servers when a request arrives. Ours is called `pubby-rooms`.
+- **Durable Object (DO):** a named, single instance of a class that Cloudflare keeps alive somewhere, with its own storage. One `Room` object per room, one `Directory` object for the list. Every request for room `k7m2xq9p` goes to the same object, so it can hold that room's sockets.
+- **WebSocket:** a connection that stays open so both sides can send messages at any time. `wss://` is the encrypted form (needed because GitHub Pages is `https://`).
+- **Hibernation:** a Room with open sockets but no messages can be "put to sleep" by Cloudflare and woken by the next message. Sleeping costs nothing. We use Cloudflare's WebSocket Hibernation API so this happens.
+- **Relay:** the server passes text through without reading it.
+- **Token:** a long random secret the server gives a phone, which proves "I'm the host of this room" or "I'm the phone in seat o3". Never shown on screen.
+
+### 9r.1 Free plan facts (check them on the build day; they change)
+
+Checked 2026-11-13 on developers.cloudflare.com (Workers and Durable Objects pricing and limits pages):
+- Workers Free plan: 100,000 requests a day (resets 00:00 UTC), 10 ms CPU per request, burst limit 1,000 requests a minute.
+- Durable Objects are on the Free plan **only with the SQLite storage backend** (so `new_sqlite_classes` in the config, never `new_classes`). 100,000 DO requests a day; about 13,000 GB-s of awake time a day; 5 GB storage.
+- WebSocket messages **into** a DO count 20 messages = 1 request. Messages **out** of a DO are free.
+- Over a free limit, the extra operations fail with an error. **No bill.** The app must show a plain message (9r.6) and point to Nearby.
+- A Cloudflare free account needs no card.
+
+Not found on 2026-11-13: a published cap on open WebSockets at once on the free plan. Slice O1's last step checks this on the dashboard and in the docs; write the answer here.
+
+**Message budget (estimate, keep it true while building):**
+- Each phone sends the text `ping` every 25 seconds. The relay answers `pong` with Cloudflare's auto-response, which does not wake the room. 8 phones for an hour ≈ 1,150 pings ≈ 58 billed requests (if auto-response pings are billed at all; check).
+- Each move: the host sends one message per other phone (each phone gets its own copy with only its own cards), so a move at 8 players ≈ 7 messages in + 1 from the player who moved. A game of about 500 moves ≈ 4,000 messages ≈ 200 billed requests.
+- So an hour-long 8-player game ≈ 260 billed requests, about **380 such games a day** inside 100,000. Smaller tables cost less.
+- Rules that keep it this way (do not break them):
+  1. No app-level pings over online links (the `{t:'ping'}` every 2 s in `netlobby.ts` is for Nearby only).
+  2. The room list is **pushed** by the Directory when it changes. The Join screen never polls.
+  3. The relay never wakes on a timer while players are connected, except the one idle-cleanup alarm (9r.3.6).
+  4. Storage is written only when the room's membership changes (create, join, leave, start, close), never per relayed message.
+
+### 9r.2 Files
+
+New:
+
+| File | What it is |
+|---|---|
+| `src/net/relayproto.ts` | The relay's message format, shared by the app and the server (pure TypeScript, no DOM, no Cloudflare) |
+| `src/net/link.ts` | The `Link` interface both `Peer` (Nearby) and `OnlineLink` (online) implement |
+| `src/net/chunk.ts` | Sending long messages in parts, moved out of `peer.ts` unchanged |
+| `src/net/online.ts` | App side of online play: `createRoom`, `joinRoom`, `watchRooms`, `HostRoom`, `OnlineLink`, `joinSocket` |
+| `src/net/server.ts` | The relay's address (`ROOM_SERVER`) and the localhost override for checks |
+| `src/ui/online.ts` | The online screens (choose Online/Nearby, room form, room list, passcode) as view functions; state stays in `netlobby.ts` |
+| `server/package.json` | The server's own packages: `wrangler`, `@cloudflare/workers-types`, `typescript` |
+| `server/wrangler.toml` | Cloudflare settings: name, entry file, the two Durable Object classes |
+| `server/tsconfig.json` | Type check for the server (Cloudflare types) |
+| `server/src/index.ts` | The Worker: reads the address, CORS, sends each request to the right object |
+| `server/src/room.ts` | `Room` Durable Object: a thin wrapper that feeds sockets and requests to `RoomCore` |
+| `server/src/directory.ts` | `Directory` Durable Object: thin wrapper around `DirectoryCore` |
+| `server/src/core/room.ts` | `RoomCore`: all room logic, pure (no Cloudflare types), unit tested |
+| `server/src/core/directory.ts` | `DirectoryCore`: the room list and the rate limits, pure, unit tested |
+| `server/src/core/ids.ts` | Room ids and tokens from `crypto.getRandomValues` |
+| `.github/workflows/server.yml` | Deploys the server to Cloudflare on every push that changes it |
+| `tests/server/room.test.ts`, `tests/server/directory.test.ts`, `tests/net/relayproto.test.ts`, `tests/net/chunk.test.ts` | Unit tests (run by `npm test`, already matches `tests/**/*.test.ts`) |
+| `testbed/relay_server.ts` | A local stand-in for Cloudflare: Node `http` + the `ws` package, using the **same** `RoomCore` and `DirectoryCore`, so browser checks test the real logic |
+| `testbed/online_check.py` | Browser check: rooms, list, passcodes and whole games on several pages through the local relay |
+
+Changed: `src/net/peer.ts` (uses `chunk.ts`, implements `Link`), `src/ui/netlobby.ts` (Link type, online mode), `src/ui/app.ts` (`#room=` invite links), `src/ui/styles.css` (room list, passcode box), `build.mjs` (define `__PUBBY_SERVER__`), `package.json` (version; `ws` as a dev dependency), `testbed/run_checks.py` (map the new files), `src/content/quick-rules.md` (one line on online play).
+
+Not changed: `src/rules/`, `src/session/`, `src/ai/`, `src/net/lobby.ts`, `src/net/netgame.ts`, `src/ui/netplay.ts` (if one of these seems to need a change, stop and ask).
+
+### 9r.3 The relay protocol (`src/net/relayproto.ts`)
+
+#### 9r.3.1 Frames
+
+Every WebSocket message (a **frame**) is text: a short JSON **header**, a newline, then the **payload** (may be empty).
+
+```
+{"c":"to","to":"o3"}
+{"t":"game", ...the existing message, already JSON...}
+```
+
+The relay parses only the header (`text.slice(0, text.indexOf('\n'))`) and passes the payload on **without parsing it**. This keeps each request inside the free plan's 10 ms CPU limit even for a whole-game message.
+
+```ts
+export const RELAY_PROTOCOL = 1;
+export const FRAME_MAX = 262_144;          // characters; bigger frames are refused (socket closed with code 1009)
+export const ONLINE_CHUNK_CHARS = 200_000;  // OnlineLink splits payloads longer than this (chunk.ts)
+export const PING_TEXT = 'ping';            // exact text, no header: auto-answered
+export const PONG_TEXT = 'pong';
+export const PING_EVERY_MS = 25_000;
+export const LOST_AFTER_MS = 60_000;        // nothing heard (not even pong) for this long = lost
+
+// Host's phone -> relay
+export type HostOut =
+  | { c: 'to'; to: string }                            // payload goes to that link
+  | { c: 'update'; seats: number; started: boolean }   // for the room list; no payload
+  | { c: 'kick'; link: string }                        // host removed that player
+  | { c: 'close' };                                    // host closed the game
+// Relay -> host's phone
+export type HostIn =
+  | { c: 'ready'; roomId: string }                     // socket accepted
+  | { c: 'joined'; link: string }                      // a phone connected (link id like "o3")
+  | { c: 'from'; from: string }                        // payload came from that link
+  | { c: 'left'; link: string };                       // that phone's socket closed or was lost
+// Joining phone -> relay
+export type JoinOut = { c: 'up' };                     // payload goes to the host
+// Relay -> joining phone
+export type JoinIn =
+  | { c: 'ready'; link: string }
+  | { c: 'down' }                                      // payload came from the host
+  | { c: 'host-gone' }                                 // host's socket closed
+  | { c: 'closed' }                                    // host closed the game, or the room expired
+  | { c: 'kicked' };
+
+export function frame(header: object, payload = ''): string;   // JSON.stringify(header) + '\n' + payload
+export function readFrame(text: string): { header: Record<string, unknown>; payload: string } | null;
+// readFrame: null if no newline, header not an object, header has no string "c", or text.length > FRAME_MAX.
+```
+
+Unit tests (`tests/net/relayproto.test.ts`): round trip; a payload containing newlines survives (only the **first** newline splits); `ping`/`pong` are not frames; bad headers and too-long text give null.
+
+#### 9r.3.2 HTTP API (all JSON, all on the Worker)
+
+| Request | Body | Answer |
+|---|---|---|
+| `GET /health` | | `200 {"ok":true,"protocol":1}` |
+| `POST /rooms` | `{name, passcode, hostName, version, protocol}` | `200 {roomId, hostToken}`; `400 {error:"bad-name"|"bad-passcode"|"protocol"}`; `429 {error:"too-many-rooms"}` |
+| `POST /rooms/<roomId>/join` | `{passcode, version, protocol}` | `200 {joinToken}`; `403 {error:"wrong-passcode"}`; `404 {error:"no-room"}`; `409 {error:"started"|"full"}`; `409 {error:"version", need:"2.18"}`; `429 {error:"too-many-tries"}` |
+| `GET /rooms` with `Upgrade: websocket` | | The room list socket (Directory) |
+| `GET /rooms/<roomId>/socket?token=<t>` with `Upgrade: websocket` | | A room socket (host or joiner, decided by the token) |
+
+Any Cloudflare "limit reached" error (the Worker or a DO call throws or returns 5xx) is answered `503 {error:"busy"}`; the app shows the busy message (9r.6).
+
+Rules the Worker checks before calling an object:
+- **Origin:** the request's `Origin` header must be in `ALLOWED_ORIGINS` (`https://mmans-99.github.io` and, for checks, `http://127.0.0.1` / `http://localhost` with any port). Otherwise `403`. Answer `OPTIONS` (the browser's "preflight" check before a JSON POST) with `204` and the `Access-Control-Allow-Origin` / `-Methods: GET, POST, OPTIONS` / `-Headers: content-type` headers for allowed origins; add `Access-Control-Allow-Origin` to every answer.
+- **Room name:** trimmed, control characters removed, 1 to 20 characters (`ROOM_NAME_MAX = 20`). `hostName`: same cleaning, 1 to 16 (`NAME_MAX` in `lobby.ts`).
+- **Passcode:** exactly 4 digits (`/^\d{4}$/`).
+- **protocol** must equal `RELAY_PROTOCOL`.
+- The phone's address for rate limits is the `CF-Connecting-IP` header (the stand-in uses the socket's address).
+
+#### 9r.3.3 Ids and tokens (`server/src/core/ids.ts`)
+
+- Room id: 8 characters from `23456789abcdefghjkmnpqrstuvwxyz` (no 0/o, 1/l/i), from `crypto.getRandomValues`. The Worker makes it and asks the Directory whether it's free (try again up to 5 times).
+- Tokens: 16 random bytes as base64url (22 characters). Host token and one join token per seat.
+- Link ids: `o1`, `o2`, … in join order, never reused inside a room. (Nearby links are `c1`, `c2`…; a room has only online links.)
+
+#### 9r.3.4 RoomCore (`server/src/core/room.ts`): pure, the heart of the server
+
+No Cloudflare types. The Room object gives it the time and carries out what it returns. This is what makes it testable here and reusable by `testbed/relay_server.ts`.
+
+```ts
+export interface RoomSettings { roomId: string; name: string; hostName: string; version: string; passHash: string; createdAt: number }
+export type Effect =
+  | { send: string; text: string }        // send text to the socket with this id
+  | { close: string; code: number; reason: string }
+  | { list: ListEntry | null }            // tell the Directory: update this room, or remove it (null)
+  | { save: true }                        // write toJSON() to storage
+  | { alarm: number }                     // set the wake-up alarm at this time (ms)
+  | { forget: true };                     // delete storage: the room is gone
+
+export class RoomCore {
+  static create(s: RoomSettings, hostToken: string, now: number): { core: RoomCore; effects: Effect[] };
+  static fromJSON(j: unknown): RoomCore;            // after the object wakes up
+  toJSON(): unknown;                                // settings, tokens -> link ids, kicked tokens, started, seats, lastActive
+
+  tryPasscode(ip: string, passHash: string, version: string, now: number):
+    { ok: true; joinToken: string; effects: Effect[] } | { ok: false; error: 'wrong-passcode' | 'started' | 'full' | 'version' | 'too-many-tries'; need?: string };
+  /** A socket opened with a token. socketId is the wrapper's name for it. */
+  connect(token: string, socketId: string, now: number): { ok: true; effects: Effect[] } | { ok: false; code: number; reason: string };
+  frame(socketId: string, text: string, now: number): Effect[];   // a message arrived
+  closed(socketId: string, now: number): Effect[];                // that socket closed or errored
+  alarm(now: number): Effect[];                                    // the wake-up alarm went off
+}
+```
+
+What it does:
+1. **Passcode:** the Worker hashes the passcode with SHA-256 (`roomId + ':' + passcode`, hex) before it reaches the core; the core compares hashes. Wrong tries: at most 5 per address per 5 minutes, and 20 per room per 10 minutes; past either one, answer `too-many-tries` (even for the right passcode) until the window passes. A 4-digit code has 10,000 values, so this keeps guessing slow.
+2. **Seats:** host + at most 7 others (`MAX_PLAYERS` = 8 in `src/rules/cards.ts`; copy the number, don't import the rules into the server). A join token is given only if there is a free seat and the room hasn't started. Tokens not used to connect within 2 minutes are dropped.
+3. **Version:** a join from a different `version` (the `MAJOR.MINOR` shown in the app) gets `version` with `need` = the room's version. The lobby also checks this on `hello` (`joinProblem`), but answering here gives a clearer message before the passcode is spent.
+4. **connect:** the host token makes `socketId` the host socket (an older host socket is closed with `4000 "replaced"`), effect `send ready`. A join token gets its link id (a new one the first time, the same one when the same token connects again), closes an older socket with the same token, sends the joiner `ready` and the host `joined`. A kicked or unknown token gets `close 4003 "not-allowed"`.
+5. **frame from the host:** `to` → `send` the payload to that link's socket as `{c:'down'}` + payload (dropped quietly if that link isn't connected). `update` → remember seats and started, `list` effect (or `list: null` once started), `save`. `kick` → close that link's socket `4001 "kicked"` after sending `{c:'kicked'}`, mark its token kicked, `save`. `close` → send every joiner `{c:'closed'}`, close every socket `1000`, `list: null`, `forget`.
+6. **frame from a joiner:** `up` → `send` to the host socket as `{c:'from', from: link}` + payload. If the host isn't connected, drop it.
+7. **Anything else** (bad frame, a joiner sending `to`, wrong side): close that socket `4002 "bad-frame"`. Too-long frames: `1009`.
+8. **closed:** a joiner's socket → host gets `{c:'left', link}`. The host's socket → every joiner gets `{c:'host-gone'}`; the room is kept for `HOST_GRACE_MS = 120_000` (alarm) so the host can come back with the host token (slice O3 uses this); `list: null` straight away.
+9. **Idle and age:** `lastActive` is updated on every frame (in memory; saved at most once a minute with other saves). The alarm is set to the earliest of: `lastActive + 30 min` (no messages at all), `createdAt + 12 h`, host grace end. When it fires and the time has really passed: send everyone `{c:'closed'}`, close all, `list: null`, `forget`. Otherwise set the next alarm.
+
+Unit tests (`tests/server/room.test.ts`), each with a fake clock: create; right and wrong passcode; the two try limits and their windows; full at 8; started; version; token expiry; connect host and joiners; replace an older socket; relay both ways (payload passed through byte for byte, including a 200,000-character payload with newlines); `to` an absent link dropped; kick (socket closed, token refused afterwards); close; host gone then back inside the grace time; grace time running out; idle and 12-hour expiry; bad frames; `toJSON`/`fromJSON` round trip in the middle of a game keeps link ids and tokens.
+
+#### 9r.3.5 DirectoryCore (`server/src/core/directory.ts`): the room list and rate limits
+
+```ts
+export interface ListEntry { roomId: string; name: string; hostName: string; seats: number; maxSeats: 8; version: string; createdAt: number }
+export class DirectoryCore {
+  reserve(roomId: string, ip: string, now: number): 'ok' | 'taken' | 'too-many-rooms';  // max 10 rooms per address per hour
+  upsert(e: ListEntry, now: number): void;
+  remove(roomId: string): void;
+  list(now: number): ListEntry[];      // not started, seats < 8, newest first, at most 50, entries older than 12 h dropped
+  changed(): boolean;                  // true once after upsert/remove changed the list
+  toJSON(): unknown; static fromJSON(j: unknown): DirectoryCore;
+}
+```
+
+The Directory object holds the list sockets (tag `list`). After any change it waits 500 ms (so several changes go out as one), then sends every list socket `{"c":"rooms"}` + `JSON.stringify(list(now))`. A new list socket gets the list straight away. It saves to storage on change (at most once a second). Room objects call it with RPC (`await env.DIRECTORY.get(env.DIRECTORY.idFromName('main')).upsert(entry)`; DO RPC needs a `compatibility_date` of 2024-04-03 or later).
+
+Unit tests: reserve and its hourly limit; list filtering, order and the 50 cap; changed(); JSON round trip.
+
+#### 9r.3.6 The Cloudflare wrappers (`server/src/room.ts`, `directory.ts`, `index.ts`)
+
+Keep these thin; anything that can be wrong belongs in the cores.
+
+- `Room extends DurableObject`. In the constructor: `this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'))`, and load `RoomCore.fromJSON(await this.ctx.storage.get('room'))` inside `this.ctx.blockConcurrencyWhile(...)`.
+  - Socket upgrade: `const pair = new WebSocketPair()`; `this.ctx.acceptWebSocket(pair[1], [socketId])` (the tag is the socket id, a fresh random string); `pair[1].serializeAttachment({ socketId })`; run `core.connect`; return `new Response(null, { status: 101, webSocket: pair[0] })`. **Use `ctx.acceptWebSocket`, never `ws.accept()`**: only the first lets the room hibernate.
+  - `webSocketMessage(ws, msg)`: ignore non-strings; `core.frame(ws.deserializeAttachment().socketId, msg, Date.now())`; run the effects.
+  - `webSocketClose` and `webSocketError`: `core.closed(...)`.
+  - `alarm()`: `core.alarm(Date.now())`.
+  - Running effects: `send` → `this.ctx.getWebSockets(id)[0]?.send(text)` (wrapped in try/catch); `close` → `.close(code, reason)`; `list` → Directory RPC (`upsert` or `remove`); `save` → `this.ctx.storage.put('room', core.toJSON())`; `alarm` → `this.ctx.storage.setAlarm(t)`; `forget` → `this.ctx.storage.deleteAll()`.
+  - RPC methods for the Worker: `create(settings, hostToken)`, `tryPasscode(ip, passHash, version)`.
+- `Directory extends DurableObject`: the same pattern, sockets tagged `list`; RPC methods `reserve`, `upsert`, `remove`.
+- `index.ts` (`export default { fetch(request, env) }` plus `export { Room, Directory }`): the routes in 9r.3.2, the origin and input checks, hashing, then the RPC call or `stub.fetch(request)` for socket upgrades. Wrap everything in try/catch: an unexpected error → `503 busy` (and `console.error`, which shows in the Cloudflare dashboard logs).
+
+`server/wrangler.toml`:
+
+```toml
+name = "pubby-rooms"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"   # use the build day's date
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Room"
+
+[[durable_objects.bindings]]
+name = "DIRECTORY"
+class_name = "Directory"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room", "Directory"]   # SQLite backend: the only one on the free plan
+
+[vars]
+ALLOWED_ORIGINS = "https://mmans-99.github.io"
+```
+
+(Check on the build day whether Cloudflare now prefers `wrangler.jsonc`; either works, use the one their current docs show.)
+
+`server/package.json`: `"private": true`, `"type": "module"`, scripts `"check": "tsc --noEmit -p tsconfig.json"`, `"deploy": "wrangler deploy"`; devDependencies `wrangler`, `@cloudflare/workers-types`, `typescript` (latest at build time). `server/tsconfig.json`: like the root one but `"types": ["@cloudflare/workers-types"]`, `"lib": ["ES2022"]` (no DOM), include `src/**/*.ts` and `../src/net/relayproto.ts`.
+
+**This workspace can't install packages**, so the server wrappers can't be type checked or run here. The cores and `relayproto.ts` are plain TypeScript and are fully tested here. GitHub Actions installs the packages and type checks the wrappers before deploying (9r.3.7). If the deploy fails, its log is in the repo's Actions tab.
+
+#### 9r.3.7 Deploying (`.github/workflows/server.yml`)
+
+```yaml
+# Deploys the online-play relay (server/) to Cloudflare Workers.
+# Needs two repo secrets: CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID (CODE.md 9r.4).
+name: Deploy the room server
+on:
+  push:
+    branches: [main]
+    paths: ['server/**', 'src/net/relayproto.ts', '.github/workflows/server.yml']
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install --no-audit --no-fund
+        working-directory: server
+      - run: npm run check
+        working-directory: server
+      - uses: cloudflare/wrangler-action@v3     # check the latest major version on the build day
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: server
+```
+
+The app (`pages.yml`) and the server deploy separately. A push that changes both deploys both. The server must accept the previous app version's frames for as long as phones may still run it; with `RELAY_PROTOCOL` unchanged, that's automatic. If the protocol ever has to change, bump `RELAY_PROTOCOL` and have the server answer the old one with `protocol` so the app says "Update Pubby".
+
+### 9r.4 The user's one-time Cloudflare setup (do this before slice O1 is pushed)
+
+Give the user these steps when slice O1 is ready to push. They're written for a phone or a computer browser. About 10 minutes.
+
+1. **Make a Cloudflare account.** Go to `dash.cloudflare.com/sign-up`, enter an email and a password, and confirm the email Cloudflare sends. The free plan is the default; no card is asked for.
+2. **Pick your workers.dev name.** In the dashboard's left menu tap **Compute (Workers)** (on some layouts **Workers & Pages**). The first time, Cloudflare asks you to choose a **subdomain**: a name that becomes part of the server's address, `pubby-rooms.<your-name>.workers.dev`. Pick something short (for example your GitHub name). Tell Claude the name: it goes into the app (9r.5.1).
+3. **Copy your Account ID.** On the same Workers page the right side (or the bottom on a phone) shows **Account ID**: a 32-character code. It tells the deploy which account to use. It's not a secret on its own, but keep it with the token. Copy it.
+4. **Make an API token.** An API token is a password-like key that lets GitHub upload the server to your account, and nothing else. Tap your profile icon (top right) → **Profile** → **API Tokens** → **Create Token** → next to **Edit Cloudflare Workers** tap **Use template**. Leave the permissions as they are; under **Account Resources** pick your account; under **Zone Resources** pick **All zones** (you have none, which is fine). Tap **Continue to summary** → **Create Token**. Copy the token straight away: Cloudflare shows it **only once**. If you lose it, delete it and make a new one.
+5. **Put both into GitHub as secrets.** A secret is a value stored privately in the repo: workflows can use it, but nobody (including Claude) can read it back. On github.com open `mmans-99/pubby` → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**. Name `CLOUDFLARE_API_TOKEN`, paste the token, **Add secret**. Again: name `CLOUDFLARE_ACCOUNT_ID`, paste the Account ID, **Add secret**.
+6. **After the push, check the deploy.** In the repo tap **Actions** → **Deploy the room server**: a green tick means it worked; a red cross means open it and send Claude the error lines. Then open `https://pubby-rooms.<your-name>.workers.dev/health` on your phone: it should show `{"ok":true,"protocol":1}`.
+7. **Where to watch usage later.** Cloudflare dashboard → Compute (Workers) → `pubby-rooms` → **Metrics** shows requests and errors; the **Durable Objects** part of the dashboard shows rooms and storage. Free limits reset at midnight UTC (midnight UK time in winter, 1 am in summer).
+
+Never paste the API token into a chat, a file or a commit. If it leaks: Cloudflare → API Tokens → roll or delete it, then update the GitHub secret.
+
+### 9r.5 App side
+
+#### 9r.5.1 Server address (`src/net/server.ts`, `build.mjs`)
+
+- `build.mjs`: add `__PUBBY_SERVER__: JSON.stringify(process.env.PUBBY_SERVER ?? 'https://pubby-rooms.<name>.workers.dev')` to `define` (fill in the user's workers.dev name from 9r.4 step 2). Declare `__PUBBY_SERVER__` next to `__PUBBY_VERSION__` (see how `version.ts` declares it).
+- `src/net/server.ts`: `export function roomServer(): string`. It returns `__PUBBY_SERVER__`, except **only when the page itself is on `localhost` or `127.0.0.1`**, a `?server=http://127.0.0.1:<port>` query parameter overrides it (for the checks). On GitHub Pages the override is ignored, so no link can point a player's app at another server. `wsUrl(path)` turns `https:` into `wss:` (and `http:` into `ws:` for the checks).
+
+#### 9r.5.2 `Link` and chunking (do this first in slice O2; no behaviour change)
+
+`src/net/link.ts`:
+
+```ts
+export interface Link {
+  readonly kind: 'nearby' | 'online';
+  /** true: the link notices a lost phone itself (online); netlobby sends no app pings over it. */
+  readonly keepsAlive: boolean;
+  readonly isOpen: boolean;
+  send(msg: unknown): boolean;
+  close(): void;               // on purpose: no onClose
+  onOpen: () => void;
+  onMessage: (msg: unknown) => void;
+  onClose: (why: string) => void;
+}
+```
+
+- Move `CHUNK_CHARS`, the `~part` sending and `whole()` from `peer.ts` into `src/net/chunk.ts` as `splitText(text, max): string[]` and `class Rejoin { take(raw: unknown): unknown | null }`. `peer.ts` uses them with `max = CHUNK_CHARS` (16,000), so Nearby behaves exactly as before; add `kind = 'nearby'`, `keepsAlive = false`, `implements Link`.
+- `tests/net/chunk.test.ts`: split and rejoin at both sizes; out-of-order part resets; non-part messages pass through.
+- In `netlobby.ts` change the types `Peer` → `Link` where a link is stored (`Link.peer`, the joiner's `peer`, `closeSoon`); `Adding` keeps `Peer` (only Nearby adds players by scanning). `startPings()` skips links with `keepsAlive`, and the joiner skips its pings when `peer.keepsAlive`.
+- Run `npm run check`, `npm test` and `python3 testbed/run_checks.py --since origin/main` (it runs lobby, netgame and netvotes): Nearby must pass unchanged before going on.
+
+#### 9r.5.3 `src/net/online.ts`
+
+```ts
+export class OnlineError extends Error {}   // message = the text to show (9r.6)
+export interface RoomInfo extends ListEntry {}   // re-export the shape from relayproto or the core
+
+export async function createRoom(o: { name: string; passcode: string; hostName: string }): Promise<{ roomId: string; hostToken: string }>;
+export async function joinRoom(roomId: string, passcode: string): Promise<{ joinToken: string }>;
+/** Live room list. Returns stop(). onList gets the whole list each time it changes. */
+export function watchRooms(onList: (rooms: RoomInfo[]) => void, onProblem: (text: string) => void): () => void;
+
+/** Host's phone: one socket to the room; each joining phone appears as an OnlineLink. */
+export class HostRoom {
+  constructor(roomId: string, hostToken: string);
+  onReady: () => void;
+  onJoined: (link: OnlineLink) => void;    // a new phone, or the same link id coming back (slice O3)
+  onLost: (why: string) => void;           // the host's own socket is gone
+  update(seats: number, started: boolean): void;
+  kick(linkId: string): void;
+  close(): void;                           // sends {c:'close'} then closes
+}
+/** Joining phone: its link to the host. */
+export function joinSocket(roomId: string, joinToken: string): OnlineLink;
+
+export class OnlineLink implements Link {
+  readonly kind = 'online'; readonly keepsAlive = true;
+  readonly id: string;     // link id ("o3") on the host's side; "host" on a joining phone
+  // send(msg): JSON.stringify, splitText at ONLINE_CHUNK_CHARS, each part as frame({c:'to', to:id}) (host side) or frame({c:'up'}) (joiner)
+}
+```
+
+How it works:
+- **fetch** calls: `POST` JSON with a 10-second timeout (`AbortController`). Map answers to `OnlineError` texts (9r.6). A network failure (fetch throws) = "Couldn't reach the Pubby server…".
+- **One socket class** inside the file (`RoomSocket`) used by HostRoom, joinSocket and watchRooms: opens `new WebSocket(wsUrl(...))`; sends `ping` every `PING_EVERY_MS`; any message (including `pong`) updates `lastHeard`; nothing for `LOST_AFTER_MS` → close it and report lost. Uses `visibilitychange`: when the page becomes visible again, send a `ping` at once and check `lastHeard` (phones freeze timers in the background).
+- **HostRoom** reads frames: `ready` → `onReady`; `joined` → make (or reuse, for the same id) an `OnlineLink` with `isOpen = true`, call `onJoined(link)` and then that link's `onOpen()`; `from` → rejoin parts (`Rejoin` per link) and call that link's `onMessage`; `left` → that link's `isOpen = false`, `onClose('left')`. The host socket closing → every link `onClose('lost')` and `onLost`.
+- **joinSocket**: `ready` → `onOpen()`; `down` → rejoin and `onMessage`; `host-gone` → `onClose('host-gone')`; `closed` → `onMessage({ t: 'closed' })` (the lobby already handles that message) then close quietly; `kicked` → `onMessage({ t: 'removed' })` then close quietly; socket lost → `onClose('lost')`.
+- **watchRooms**: socket to `/rooms`; on `{c:'rooms'}` parse the payload and call `onList`. If the socket is lost, try again after 3 s, then 10 s, then show `onProblem("The room list isn't updating. Check your internet.")` and keep trying every 30 s while the Join screen is open. `stop()` closes everything.
+
+#### 9r.5.4 Screens and `netlobby.ts` changes
+
+Screens are in `PROJECT.md` 12d. Code shape:
+
+- `src/ui/online.ts` exports view functions that take what they show and callbacks, in the style of `netscreens.ts`: `modeView`, `roomFormView`, `roomListView`, `passcodeView`, `busyView`. They use `h()` and existing classes (`big`, `secondary`, `panel`, `note warn`); new styles go in `styles.css` with a `room-` prefix. Line icons from `icons.ts`, no emoji.
+- `netlobby.ts` keeps all state. Add `let mode: 'nearby' | 'online' = 'nearby'`, `let hostRoom: HostRoom | null`, `let stopList: (() => void) | null`, `let rooms: RoomInfo[]`, `let roomPick: RoomInfo | null`, `let roomName`, `let passcode`. New steps: `'mode'` (first screen), `'room-form'`, `'room-list'`, `'room-pass'`, `'room-wait'` (making or joining). Online flow: `mode` → Host/Join (`pick`) → `name` (as now) → host: `room-form` → `room-wait` → `lobby`; join: `room-list` → `room-pass` → `room-wait` → `lobby`.
+- **Host:** after `createRoom` → `hostRoom = new HostRoom(...)`; `hostRoom.onJoined = (link) => addOnlineLink(link)`. `addOnlineLink` does what `promote()` does for a scanned phone: `links.set(link.id, { peer: link, lastHeard: now, seated: false })`, wire `onMessage` to `hostGot(link.id, m)` and `onClose` to `linkLost(link.id)`, and start the hello timeout. Share the existing code rather than copying it: pull the body of `promote()` into `addLink(id, link)` used by both.
+  - In `broadcast()`: also `hostRoom?.update(lobby.seats.length + 1 /* host */, lobby.started)`. (Check how the host's own seat is counted in `lobby.seats` and keep `seats` = people in the room.)
+  - Removing a player: `hostRoom?.kick(id)` as well as what it does now.
+  - "Close the game" and `reset()`: `hostRoom?.close()`.
+  - The lobby view shows the room line and **Share invite** (online) instead of **Add player** (Nearby).
+- **Joiner:** after `joinRoom` → `peer = joinSocket(roomId, joinToken)`, then wire it with the same code as `newJoinPeer()`'s handlers: pull them into `wireJoin(p: Link)` used by both, so hello resends, `joinGot`, `lost()` and the version check all stay shared.
+- **Lost connections in slices O1 to O2** behave exactly like Nearby today: a joiner losing the host, or the host losing a joiner, shows the same messages, and during a game the host closes it. Rejoining is slice O3.
+- `app.ts`: an invite link `<Pubby address>#room=<roomId>` opens `netlobby` in online join mode at `room-pass` for that room (after "Who's on this phone?" if no profile is picked yet). Copy how `#lobby=` is handled, including the `hashchange` listener and removing the hash with `history.replaceState`. If the room isn't in the list (started, full, gone), `joinRoom` answers and the screen shows why.
+- `stopNetLobby()` (leaving the screen, back gesture) also stops `watchRooms` and closes the room socket.
+- **Share invite:** `navigator.share({ text })` where available, else copy to the clipboard and flash "Invite copied". Text: `Join my Pubby game "<room name>": <link>  Passcode: <1234>`.
+- **Offline phone:** if `navigator.onLine === false` when Online is tapped, show "You're offline. Play Nearby, or connect to the internet." and stay on the mode screen.
+
+### 9r.6 Messages the app shows (exact text, keep them short)
+
+| Case | Text |
+|---|---|
+| fetch failed / timeout | "Couldn't reach the Pubby server. Check your internet, or play Nearby." |
+| `busy` (503) | "Online play is busy right now. Try again later, or play Nearby." |
+| `too-many-rooms` | "Too many rooms made from this connection. Try again in an hour." |
+| `wrong-passcode` | "Wrong passcode." |
+| `too-many-tries` | "Too many wrong tries. Wait a few minutes." |
+| `no-room` | "That room has closed." |
+| `started` | "That game has already started." |
+| `full` | "That room is full." |
+| `version` | "This room needs Pubby <need>. You have <VERSION>. Close Pubby and open it again to update." |
+| `protocol` | "Update Pubby to play online: close it and open it again." |
+| room list lost | "The room list isn't updating. Check your internet." |
+| host-gone (lobby) | the existing "lost the host" screen |
+| kicked | the existing "removed" screen |
+
+### 9r.7 Local relay and browser check
+
+- **`ws` package:** add `"ws": "^8"` to the root `devDependencies` (only `testbed/` uses it; CI's `npm install` gets it). In this workspace link it like esbuild: `ln -s /opt/npm-tools/node_modules/ws node_modules/ws` (it's on the machine; checked 2026-11-13).
+- **`testbed/relay_server.ts`** (`npx tsx testbed/relay_server.ts --port 8787`): Node `http` server with the HTTP API of 9r.3.2 and a `ws` `WebSocketServer({ noServer: true })` for the two socket paths. It keeps `RoomCore`s and one `DirectoryCore` in a `Map`, runs their effects (alarms with `setTimeout`, storage as a JSON copy so `fromJSON` is exercised), answers the text `ping` with `pong`, and allows any `127.0.0.1`/`localhost` origin. Options: `--fast-idle` (idle 5 s, grace 3 s) for the expiry checks. It prints one line per request with `--verbose`.
+- **`testbed/online_check.py`** (needs a built `dist/`): starts the relay and the static server (like `lobby_check.py`), opens pages with `?server=http://127.0.0.1:8787`. Checks:
+  1. Mode screen shows Online and Nearby; Nearby opens the existing scan flow.
+  2. Host makes a room ("Cat's table", passcode shown, 4 digits). It shows on two other pages' Join lists within 2 s, with host name and 1/8.
+  3. Wrong passcode refused; 5 wrong tries → too-many-tries; right passcode afterwards still refused until the window ends (use `--fast-idle`-style short windows, or a relay flag `--fast-limits`).
+  4. Three phones join; the host's lobby and every phone show the same seats; the list shows 4/8.
+  5. The host removes one; that page shows "removed"; it can join again with the passcode.
+  6. Start: the room leaves the list; a new join gets "already started".
+  7. A whole 4-player game with `bot.js` on every page (reuse `netgame_check.py`'s helpers), ending on the results/podium on every page.
+  8. Invite link `#room=<id>` opens the passcode screen for that room.
+  9. Host closes: every page shows the closed screen; the room is gone from the list.
+  10. Version mismatch (start one page with a test-only `?fakeversion=` honoured only on localhost, or call `joinRoom` with a changed version from the page): the version message.
+  11. Relay stopped mid-lobby: every page shows a lost message within `LOST_AFTER_MS` (use a short value via a localhost-only query flag) and nothing hangs.
+  12. Idle expiry with `--fast-idle`: an empty room disappears from the list.
+  13. A frame over `FRAME_MAX` closes that socket (relay-side unit test is enough; skip in the browser if awkward).
+- **`run_checks.py`:** add a row: `src/net/online.ts`, `src/net/relayproto.ts`, `src/net/link.ts`, `src/net/chunk.ts`, `src/net/server.ts`, `src/ui/online.ts`, `server/`, `testbed/relay_server.ts` → `online_check` (and lobby, netgame for `link.ts`/`chunk.ts`). `src/ui/netlobby.ts` → add `online_check` to its list. Add `online_check` to `ALL_ORDER`. Update the table in the script's header.
+
+### 9r.8 Slices
+
+#### Slice O1: the server (version 2.17)
+
+1. `src/net/relayproto.ts` + tests.
+2. `server/src/core/ids.ts`, `room.ts`, `directory.ts` + tests (`tests/server/`). Put `RoomCore` and `DirectoryCore` constants at the top of each file.
+3. `server/src/index.ts`, `room.ts`, `directory.ts`, `wrangler.toml`, `package.json`, `tsconfig.json`.
+4. `testbed/relay_server.ts`, and a small Node script check (`tests/server/relay_server.test.ts` starting it on a random port and using Node 22's built-in `WebSocket` client): create, list socket gets the room, join, frames both ways, close.
+5. `.github/workflows/server.yml`.
+6. `package.json` version 2.17.0 (rule 8; no screen changes yet).
+7. Docs: this section's status, `TODO.md`, `DEVLOG.md` (results), `PROJECT.md` 12d status.
+8. **Test for the user (doc rule 5: nothing to play yet, say so):** after the user does 9r.4 and says "push", push; check the Actions tab with the user; the user opens `/health` on their phone. Also check the free-plan WebSocket question in 9r.1 and write the answer there.
+
+#### Slice O2: online rooms in the app (version 2.18)
+
+1. `link.ts` and `chunk.ts`, Peer changes, netlobby types (9r.5.2). Nearby checks pass unchanged.
+2. `server.ts`, `build.mjs` define, `online.ts`.
+3. Screens (`online.ts` UI) and netlobby online mode (9r.5.4), invite links in `app.ts`, quick rules line.
+4. `online_check.py` and `run_checks.py` row (9r.7). Run `npm run check`, `npm test`, `python3 testbed/run_checks.py --since origin/main`.
+5. Version 2.18.0, docs.
+6. **Phone checklist for the user** (on GitHub Pages after "push", since it needs the real server):
+   - Two phones on **different networks** (one on home Wi-Fi, one on mobile data with Wi-Fi off). Phone A: Play on several phones → Online → Host a room. Room name and a 4-digit passcode show.
+   - Phone B: Online → Join a room: the room appears by itself with A's name and 1/8.
+   - Wrong passcode is refused; the right one joins; both lobbies show both players.
+   - Share invite on A sends a link; opening it on a third phone (or B after leaving) goes straight to the passcode screen.
+   - Start and play a whole game to the podium. Reactions, votes, take-cards and pause work as on Nearby.
+   - Close the game on A: B shows the closed screen.
+   - Nearby still works with the QR codes.
+
+#### Slice O3: rejoin online (version 2.19; this is Phase 4 slice 4 for online games)
+
+Do this together with, or right after, Nearby slice 4 (`PROJECT.md` 12: dropped phone pauses the game and rejoins its seat; the host can remove a player who doesn't come back; the host's phone carries on). Online makes rejoining automatic, since the token is the seat:
+1. `OnlineLink` (joiner) keeps `roomId` and `joinToken` in `sessionStorage` (survives a reload of the tab, not a new tab). When its socket is lost it tries to reconnect: after 1 s, 2 s, 4 s, then every 5 s, for up to 2 minutes, showing "Reconnecting…". The relay gives back the same link id; the host sees `joined` for an id it knows and treats it as the same seat (`setConnected(true)`, `hostSync(linkId)` so the phone gets the whole game).
+2. The host's `HostRoom` does the same with the host token inside `HOST_GRACE_MS`; joiners see "Waiting for the host…" instead of the lost screen while the relay says `host-gone`.
+3. Game rules for a phone that doesn't come back follow Nearby slice 4 (pause for everyone, host can remove). Write the details in this section when slice 4's plan is written; don't invent them here.
+
+#### Slice O4 (not planned yet, only if wanted): the game on the server
+
+Run `src/session/` inside the Room object instead of on the host's phone, so the game survives the host's phone. Bigger change (CPU limits, per-move storage writes against the free plan's write limit). Only plan it if the user asks.
+
+### 9r.9 Things not to do
+
+- Don't use `ws.accept()` in the Durable Objects (it stops hibernation and costs awake time).
+- Don't add app-level pings, room-list polling or a per-message storage write (9r.1 budget).
+- Don't send any game information the relay doesn't need in headers. Payloads are the existing messages; each phone already only gets its own cards (`redactSession`).
+- Don't log payloads on the server (`console.log` only for errors, with the room id and the error, never message text).
+- Don't mix Nearby and online links in one game (not in this plan).
+- Don't put the API token, Account ID or any secret in the repo; the workers.dev address is public and fine.
+- Don't change `src/rules/`, `src/session/`, `src/ai/`, `lobby.ts`, `netgame.ts` or `netplay.ts` without asking.
 
 ## 8a. Playable test builds (required before every commit)
 

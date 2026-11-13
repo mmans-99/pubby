@@ -362,6 +362,7 @@ The trivia shows on the results screen after every round. It has no effect on sc
 - **Multiplayer:** Players join from their own phones on the same local network (Wi-Fi or a phone hotspot). No internet is needed.
 - **Joining:** Phones connect directly (WebRTC), with no server and no internet (decided 2026-11-07: phones only). For each player: the host's phone shows a QR code, the joining phone scans it and shows its own QR code, and the host's phone scans that back (two scans per player). See `CODE.md` section 4a.
 - **Pass-and-play** stays as its own mode on one phone.
+- **Online play (planned 2026-11-13):** rooms with a name and passcode over the internet, through a free relay server; Nearby stays. See section 12d.
 - **Connection test (versions 1.3 to 2.1, removed in 2.2 at the user's request 2026-11-08):** a "Connection test (two phones)" link on the home screen that linked two phones with the two scans and showed the round trip time. It proved the WebRTC plan (user's test 2026-11-07: worked flawlessly Android + Android and Android + iPhone on a phone hotspot, mobile data on and off). The lobby now does the same job.
 - **No zoom (version 1.5):** pinch zoom is blocked on every part of the screen. If Samsung Internet's "Manual zoom" setting (Settings › Accessibility) is on, the browser allows zoom on every site and Pubby can't stop it.
 - **Network lobby (version 2.1, Phase 4 slice 1):** "Play on several phones" on the main menu (the one-phone game is now "New game · one phone"). Host a game or Join a game, then "Who's on this phone?" (a saved profile or a new name). The host taps "Add player" for each phone and the two phones scan each other (the host's code is also a link for a Camera app). Every phone sees the same seat list and settings, with Host and You tags. Each player can set a name for this game on their own phone. The host orders the seats, removes a player (asks first), sets the joker rule and pause limit, and starts. Start needs at least 2 players and no two players with the same name. Phones on different Pubby versions can't join each other. Leaving or closing asks first. **Quiet phone (user confirmed 2026-11-08 13:30):** a phone the host hasn't heard from for 20 seconds (screen locked, switched app, out of Wi-Fi range, Pubby closed) loses its lobby seat and is added again with two scans; rejoining a seat during a game is slice 4. **Still to confirm:** the hosting phone is always the host (no "Make host" in a network game; asked again 2026-11-08, no answer yet, so it stays this way). Start begins the game on every phone (version 2.3).
@@ -519,6 +520,37 @@ Built after single player works (`CODE.md` 9m slices E and F):
 6. Order: single player (this whole section) is built **before** network slice 4 and the multiplayer release.
 7. Version numbers: the user doesn't mind which number; every pushed code change gets a new version and the user is told the new number (`CLAUDE.md` rule 8).
 
+## 12d. Online play: rooms over the internet (PLAN, user 2026-11-13; build guide `CODE.md` 9r; not built)
+
+**User 2026-11-13:** wants to play with people who aren't on the same network, free to run if possible, and "something like: click multiplayer, then host makes a room with a name and code, other people click join, find the room and pass and then start together."
+
+How it works: a small relay server on Cloudflare's free plan passes the messages between phones. The host's phone still runs the game, exactly as in Nearby play; each phone still only receives its own cards. Nothing about the rules changes.
+
+### What the player sees
+
+1. **Main menu → Play on several phones** now asks: **Online** ("Anywhere, needs internet") or **Nearby (no internet)** ("Same room, scan QR codes"). Nearby is today's QR-code flow, unchanged.
+2. **Online → Host a room or Join a room**, then "Who's on this phone?" as now.
+3. **Host a room:** a room name (up to 20 characters; starts as "<name>'s table") and a 4-digit passcode (Pubby picks one; "New code" picks another; it can be typed over). **Make the room** → the lobby. The top of the lobby shows the room name and passcode, and **Share invite** (sends a link plus the passcode, e.g. by WhatsApp). There is no Add player button: phones appear in the seat list as they join ("Waiting for players… 3 of 8"). Everything else in the lobby is as now (seat order, remove a player, joker rule, pause limit, Start).
+4. **Join a room:** a list of open rooms that updates by itself: room name, host's name, players (3/8), newest first. Rooms that have started or are full aren't listed. A room made on a different Pubby version shows greyed with how to update. Tap a room → type the passcode → the lobby.
+5. **Invite link:** opens Pubby straight at that room's passcode screen.
+6. **Start** plays the game exactly as a Nearby network game (section 12). The room leaves the list.
+7. **Messages:** no internet ("Couldn't reach the Pubby server…"), wrong passcode, too many wrong tries (wait a few minutes), room closed, already started, full, busy (the free daily limit is used up: "Online play is busy right now. Try again later, or play Nearby"). Full list in `CODE.md` 9r.6.
+
+### Rules for rooms
+- Up to 8 people per room (the host plus 7), as in every game.
+- Passcode: 4 digits. Wrong tries are limited (5 per phone per 5 minutes, 20 per room per 10 minutes).
+- A room with no activity for 30 minutes, or older than 12 hours, closes by itself.
+- If the host's phone loses its connection, the others see it straight away; until slice O3 the game ends as in Nearby. Slice O3 (rejoin) brings phones back to their seats automatically, following the Nearby slice 4 rules (section 12: a dropped phone pauses the game for everyone; the host can remove a player who doesn't come back).
+- Online and Nearby players can't be mixed in one game.
+
+### Defaults used in the plan (user to confirm or change before slice O2; asked 2026-11-13, not answered yet)
+- Nearby (no internet) is kept alongside Online.
+- Joining phones see a list of open rooms (rather than typing the room name).
+- The passcode is 4 digits.
+- The server is Cloudflare Workers with Durable Objects on the free plan (rather than the user's Chromebox).
+
+---
+
 ## 13. Quick rules (in-game help)
 
 - **What it is:** A short, simplified rules guide inside the app.
@@ -542,7 +574,9 @@ Built after single player works (`CODE.md` 9m slices E and F):
 
 Answer these in any order. Each one unblocks part of the build.
 
-None. (2026-11-07 20:38: the multiplayer questions were answered; see section 12 and Decided.)
+- **Online play defaults (section 12d, asked 2026-11-13):** keep Nearby alongside Online? Room list or type the room name? 4-digit passcode? Cloudflare or the Chromebox? The plan uses: yes, list, 4 digits, Cloudflare. Needed before slice O2.
+
+(2026-11-07 20:38: the multiplayer questions were answered; see section 12 and Decided.)
 
 ### Decided (for reference)
 - 2026-11-13: missing suits are secret: no one is told which suit a player is missing until they find out during play (a slap). The leader pop-up shows who leads and "Missing a suit", not the suit (section 5).
