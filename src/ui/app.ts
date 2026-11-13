@@ -91,6 +91,10 @@ export function startApp(target: HTMLElement): void {
     window.clearTimeout(resizeTimer);
     resizeTimer = window.setTimeout(() => {
       if (trickAnimating() || shuffling()) return;
+      // 2.28.1: opening the keyboard also resizes the window. Redrawing then would replace the
+      // text box being typed in and close the keyboard, so wait until no text field has focus.
+      const active = document.activeElement;
+      if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement || active instanceof HTMLSelectElement) return;
       update({});
     }, 150);
   });

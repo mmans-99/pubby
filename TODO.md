@@ -319,7 +319,7 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [x] Pushed (469d086, user "Push it and commit" 2026-11-13)
 - [ ] Phone test of 2.27.0 (one-phone game with 3 computer players, you out; then a network game)
 
-## Phase 4h — Quiet seats (Option C) and a table that fits any screen (plan 2026-11-13 20:16, `PROJECT.md` 12i, build guide `CODE.md` 9w; 2.28.0 built, not pushed)
+## Phase 4h — Quiet seats (Option C) and a table that fits any screen (plan 2026-11-13 20:16, `PROJECT.md` 12i, build guide `CODE.md` 9w; 2.28.0 pushed as ebb7c74; 2.28.1 keyboard fix pushed; phone test to do)
 
 - [x] Mockup with four options; user chose C
 - [x] Plan written for Haiku (docs only)

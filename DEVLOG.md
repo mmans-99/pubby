@@ -4,6 +4,12 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (evening, 20:45) — Version 2.28.1: keyboard closes on name entry (fix, pushed)
+
+**Bug (user, 20:40):** the keyboard came up and went away at once when typing a name. **Cause:** the 2.28.0 resize hook (`app.ts`) redraws the screen 150 ms after the window resizes; opening the keyboard resizes the window, so the redraw replaced the text box being typed in.
+
+**Fix:** the resize redraw is skipped while a text field, text area or select has focus. Turning the phone and closing the keyboard still re-fit the screen. **Checks:** unit tests 352 pass (same 5 `ws` failures as before); `tsc` clean. **Pushed** as 2.28.1; phone test to do.
+
 ## 2026-11-13 (evening, 20:30) — Version 2.28.0: quiet seats and any-screen table (built, not pushed)
 
 **Built:** `CODE.md` 9w, spec `PROJECT.md` 12i. Changes in `src/ui/table.ts` (pure geometry, Option C markup), `src/ui/styles.css` (quiet seats, pill, bubble, landscape), `src/ui/cards.ts` (`fanLayout` maxCardW and minCardW), `src/ui/game.ts` (hand width, landscape card cap, `you` flag), `src/ui/netscreens.ts` (`you`), `src/ui/app.ts` (debounced resize redraw), `src/pwa/manifest.webmanifest` (orientation any), `package.json` 2.28.0. New tests `tests/ui/seats.test.ts`.

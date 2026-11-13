@@ -2205,6 +2205,7 @@ It also takes `personOut`: true when every person's seat on this phone is out of
 - `fanLayout` takes an optional fourth argument `minCardW` (default 64) so landscape can use 48 px; the third argument is `maxCardW` as planned.
 - The own seat says "You" when `you` is passed (trick, leader and network screens). The dealing screen does not pass it yet.
 - Side-edge fans with 13 backs are not checked for overlapping each other or the names; a phone check is needed.
+- 2.28.1: the resize redraw is skipped while a text field has focus (the keyboard opening resizes the window and closed it on name entry).
 - Not run: `npm run build` (esbuild is not installed in this session, and the network is off, so the bundle was not made), browser checks (`testbed/table_check.py` not written), and the phone checklist below.
 
 Build only this plan (CLAUDE.md rules 1 and 2: the user approved it at 20:16 by asking for it to be written and pushed for Haiku). It changes how the table looks and how the game screen sizes itself. It changes no game rule and nothing sent between phones.
