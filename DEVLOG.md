@@ -4,7 +4,16 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
-## 2026-11-13 (morning, latest) — Version 2.11: reactions as a sheet; top bar items never shrink
+## 2026-11-13 (morning, latest) — Version 2.12: vote ballots spaced out
+
+**Done**
+- **User (screenshot of "Play to 2?"):** the ballot line ran together ("askedHaruto waitingMusa"). The chips in `ballotChips()` (`roundstart.ts`) had no layout rules. Added `.ballots` (wrapping flex, gap between players) and `.ballot` (block) in `styles.css`; the words after each name keep their space. Checked on a test page with the real stylesheet at 390 px.
+- **Version 2.12.0** (`package.json`, `CLAUDE.md` rule 8). The app shows major.minor, so it reads 2.12.
+
+**Open**
+- Pushing waits for the user's approval; test link republished.
+
+## 2026-11-13 (morning) — Version 2.11: reactions as a sheet; top bar items never shrink
 
 **Done**
 - **User:** "Yes, pick your choice for the reactions." Chose option 1 from the list: the reactions open as a grid sheet above the 😂 button, every phrase visible, scrolling up and down. The sideways strip is gone (`reactionsLayer()` in `game.ts`, `.reactions-sheet` in `styles.css`). Scroll is kept across redraws (`render()` in `app.ts`).

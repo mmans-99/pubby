@@ -948,3 +948,7 @@ button.ultimate-btn { align-self: center; white-space: nowrap; flex: none; min-h
 
 /* Top bar (2.10): the menu button and the round chip keep their round shape; they never shrink in the row. */
 .game-bar > .icon-btn, .game-bar > .round-chip { flex: none; }
+
+/* Vote ballots (2.11.1): one chip per player, with room between them; the word after each name keeps its space. */
+.ballots { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 6px 0; }
+.ballot { display: block; }
