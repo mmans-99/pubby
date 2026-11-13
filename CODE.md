@@ -2352,6 +2352,150 @@ Browser check `testbed/table_check.py` (new; written, not run unless the user as
   8. Tablet or a desktop browser window, if one is handy: resize the window: the table re-fits.
   9. Pinch zoom and pull-to-refresh are still blocked.
 
+## 9x. Version 2.29: the whole game fits on one screen (no scrolling), the full version number, and an "updated" notice (PLAN, user 2026-11-13 20:48; written for any model, Haiku included; NOT BUILT; spec `PROJECT.md` 12j)
+
+Build only after the user approves this plan (CLAUDE.md rules 1 and 2). No game rule changes; nothing new is sent between phones.
+
+### 9x.0 Why it scrolls today (measured with `tableBox` and `fanLayout`, 2.28.1)
+
+Play screen on the user's phone (Samsung, 1080 × 2340, Samsung Internet: about 384 × 730 CSS px visible):
+
+| Part | px |
+|---|---|
+| Top padding + top bar | 54 |
+| Table (`0.52 × viewH`) | 380 |
+| "last" trick row | 34 |
+| "Haruto's turn" line | 22 |
+| Hand heading (name + count) | 30 |
+| Hand, 13 cards (two rows) | 183 |
+| Play button | 56 |
+| Bottom padding (room for the sticky button and 😂) | 84 |
+| Gaps (14 px × 6) | 84 |
+| **Total** | **≈ 927 (197 px too tall)** |
+
+Also: the hand is 183 px with 13+ cards (two rows) and 129 px with 12 or fewer (one row). When the hand drops from 13 to 12 cards, everything below it moves about 54 px. On a scrolled page this looks like the screen zooming. This is the likely cause of the "zoom" the user reported (20:24); the frame-by-frame recording showed no real zoom.
+
+### 9x.1 Part A: version you can see (2.29)
+
+1. `build.mjs`: `__PUBBY_VERSION__` gets the full `pkg.version` (e.g. `2.29.0`), not just `MAJOR.MINOR`. Home screen and quick rules show it as is. CLAUDE.md rule 8 wording: "shows in the app as `MAJOR.MINOR.PATCH`" (needs the user's OK, as it is a rules file).
+2. "Updated" notice: in `src/main.ts` (or wherever the service worker is registered), listen for `navigator.serviceWorker` `controllerchange`. If the page was already controlled before (so this is an update, not the first install), show a toast: "Pubby updated. Tap to reload." Tapping reloads. A game in progress is safe: it is in localStorage.
+3. Also on every open: call `registration.update()` once, so a new build is looked for straight away (today the phone only finds it after a full close and reopen).
+
+### 9x.2 Part B: the game screen is one fixed screen (portrait)
+
+Rule: the game screen (`.screen.game`, every stage: deal, look at hands, play, choose who leads, final two) is exactly the window height (`100dvh`, `100vh` fallback) and never scrolls. Pop-ups, the menu, pause and the reactions sheet stay on top as overlays and may scroll inside themselves. Results and scoreboard screens: see open question 1.
+
+Layout, top to bottom, one column (CSS grid `grid-template-rows: auto 1fr auto auto`):
+1. **Top bar** (44 px): menu, round chip, pause, take-cards, sound, ? (as now). The "2 jokers" chip moves out of the deal stage's body and into the top bar as a small icon chip (`icon('joker')` + number), or into quick rules (open question 2).
+2. **Table**: takes all the height that is left (`1fr`). `tableBox` gets the real space: `roundTable` is drawn with `box = tableBox(width, availableH)` where `availableH = innerHeight − topBar − handArea − actionBar − gaps − safe areas`, computed in one pure function `gameLayout(viewW, viewH): { tableH, handH, barH }` (tested). Minimum table height 240 px; if the window is smaller, the hand shrinks first (see 4), then `u` (the table already shrinks with `u`).
+3. **Inside the table** (so they cost no height):
+   - The **last trick** goes into the felt's top-left corner as a small overlapping stack (4 small card corners, `5u` wide each, overlapped like the trick pile), with "last" in small text above it. Tap it to see it bigger (pop-up). It must stay clear of the seats and the middle zone (add it as a box to `seatCollisions`, like the waste pile).
+   - **Whose turn**: the gold fan and gold name already show it, so the "Haruto's turn" line is removed during play. Lines that say something only text can say ("pick up or forfeit", "X is dealing", "Tap a name to deal") move into the action bar (5).
+4. **Hand area**: fixed height for the whole round, so it never jumps:
+   - The hand heading (name + count) is removed: the "You · 12" pill on the felt shows it.
+   - One row up to 15 cards (on a 372 px hand, 15 cards still give each card a 20 px strip, the tap minimum); two rows only above 15.
+   - `fanLayout` gets a `maxH` argument: card size is chosen so the hand fits `maxH` both with one row and with two. The hand area's height is fixed from the window (`handH = clamp(0.2 × viewH, 120, 190)` in portrait), not from the card count. With two rows the cards get smaller instead of the area getting taller.
+5. **Action bar** (52 px, fixed at the bottom, inside the layout, not sticky over the page): 😂 on the left, the main button in the middle ("Pick a card", "Play", "Deal all"…), or the one-line hint when there is no button. The 84 px bottom padding goes (the bar is now part of the layout). Deal stage: Manual / Auto / Deal all sit in this bar.
+6. Safe areas: top, bottom, left, right with `env(safe-area-inset-*)`.
+
+Height budget after the change on 384 × 730: bar 44 + table ≈ 450 + hand 146 + action bar 52 + gaps and padding ≈ 38 = 730. On 360 × 640: table ≈ 380. On 320 × 568: table ≈ 330, hand 120.
+
+### 9x.3 Part C: landscape uses the same layout
+
+Landscape already has no page scroll (2.28). It uses the same `gameLayout` so the action bar and hand are the same parts. In landscape the action bar may sit to the right of the hand (one row: hand left, button right) to save height; `gameLayout` decides.
+
+### 9x.4 Files likely to change
+
+| File | Change |
+|---|---|
+| `build.mjs` | full version string |
+| `src/main.ts` (service worker registration) | `update()` on open, `controllerchange` toast |
+| `src/ui/layout.ts` (new) | pure `gameLayout(viewW, viewH)` |
+| `src/ui/game.ts` | stages render into the fixed grid; last trick into the table; hand heading and turn line removed; action bar |
+| `src/ui/table.ts` | last-trick corner stack; `lastBox` in `seatCollisions` |
+| `src/ui/cards.ts` | `fanLayout` `maxH`, one row up to 15 |
+| `src/ui/styles.css` | `.screen.game` grid at `100dvh`, `.action-bar`, remove `.game` 84 px padding and the sticky play bar |
+| `src/ui/netscreens.ts` | same grid for network stages |
+| `tests/ui/layout.test.ts` (new) | 9x.5 |
+
+### 9x.5 Tests
+
+For the 16 sizes in 9w.7 (and 384 × 730):
+1. `gameLayout`: `topBar + tableH + handH + barH + gaps ≤ viewH`; `tableH ≥ 240` (or the documented smallest size); `handH ≥ 120` in portrait.
+2. `fanLayout(n, width, maxCardW, minCardW, maxH)`: height ≤ `maxH` for every n from 1 to 27; the same `maxH` for 12 and 13 cards (no jump).
+3. `seatCollisions` with the last-trick box: same known tight cases as 2.28, no new ones.
+4. Existing tests keep passing.
+
+### 9x.6 Version and process
+
+- **2.29.0.** Build order: Part A (version + notice) → `gameLayout` with tests → `fanLayout maxH` with tests → play stage → deal, look and choose-leader stages → network stages → landscape.
+- `npm run check`, `npm test`, `npm run build`; update the five MD files; ask the user to test, then push.
+- **Phone checklist (2.29):**
+  1. Home screen shows **2.29.0**. After the next push, "Pubby updated. Tap to reload" appears without closing the app.
+  2. One-phone game vs 7 computer players, portrait: the deal, playing and choose-who-leads screens all fit; no scrolling at any point.
+  3. Play until your hand drops from 13 to 12 cards: nothing moves or jumps.
+  4. The last trick shows in the table's top-left corner; tap it to see it big.
+  5. 😂 and the main button sit in the bottom bar; the button is not covered.
+  6. Turn to landscape and back: still no scrolling.
+  7. Type a name on the setup screen: the keyboard stays open (2.28.1 fix).
+
+## 9y. Version 2.30: missing-suit notices that stay until everyone has tapped OK (PLAN, user 2026-11-13 20:54; written for any model, Haiku included; NOT BUILT; spec `PROJECT.md` 12k)
+
+Build only after the user approves this plan. Changes only what is shown and when play starts; no game rule changes. Network games send one new action (`seenNotice`), like `seenHand` (2.20).
+
+### 9y.0 Today
+
+`decideLeaderStep` (`src/session/session.ts` ~line 590), after everyone pressed Done on their cards: one player missing a suit → `beginPlay(..., 'missingSuit')`, and the UI shows "Bilal leads · Missing a suit" for 6 s (`LEAD_MS`, `game.ts`); two or more → phase `reactionTap` straight away. Users miss the 6 s pop-up.
+
+### 9y.1 What the user sees
+
+All notices are big centred cards (not toasts), with one button **OK**. They stay until this phone taps OK, then leave this phone's screen. If others still have to tap, this phone shows the small "Waiting for Rohan" line (the 2.20 wait line) until they do. Play (or Reaction Tap) starts only when everyone has tapped.
+
+1. **One player missing a suit:** "**Bilal is missing a suit**" / "Bilal leads first." → OK.
+2. **Two or more:** first notice "**Bilal and Rohan are missing a suit**" → OK. Then a second notice "**Reaction Tap**" / "Bilal and Rohan play Reaction Tap. Tap when the screen turns green. The slowest leads first." → OK. Then Reaction Tap runs as now.
+3. **After Reaction Tap:** "**Rohan leads first**" / "Slowest in Reaction Tap" (with the times, e.g. "Rohan 412 ms · Bilal 288 ms"; a false start says "tapped too soon") → OK. A tie still shows "Bilal and Rohan tap again" (same wait for OK), then Reaction Tap again.
+4. The suit is **never named** (PROJECT.md section 5, secret suits). The notice says "missing a suit", not which.
+
+Who must tap OK: every person on their own phone (Multiplayer). Computer players count as tapped at once. A shared phone (one-phone game, pass-and-play, or you vs computer players) needs **one** tap. The host cannot skip a phone that has not tapped (same as 9t); an Away phone is waited for, as for the cards-seen wait.
+
+Pause and reactions work as now during a notice.
+
+### 9y.2 Session (`src/session/session.ts`, `types.ts`, `view.ts`)
+
+- New phase `leadNotice`, with `notice: { kind: 'missingOne' | 'missingMany' | 'tapIntro' | 'tapResult' | 'tapTie'; players: PlayerId[]; leader?: PlayerId; times?: Record<PlayerId, { ms: number; falseStart: boolean }> } | null` and `noticeSeen: PlayerId[]`.
+- New action `seenNotice { by }` (like `seenHand`): adds `by`; when every **person** in `order` has seen it (computer players skipped; with `waitForAll` false one tap is enough), move on:
+  - `missingOne` → `beginPlay(leader, 'missingSuit')`.
+  - `missingMany` → notice `tapIntro` (same players).
+  - `tapIntro` → phase `reactionTap` (as today).
+  - `tapTie` → phase `reactionTap` with the tied players.
+  - `tapResult` → `beginPlay(leader, 'reactionTap')`.
+- `decideLeaderStep` and the `reactionTap` result branch go to `leadNotice` instead of straight on. Round 1 "Host leads" and "winner picks" are unchanged (no notice).
+- `view.ts`: `notice` and `noticeSeen` are public (no hidden information in them).
+- Old saved games in `reactionTap` or `playing` load as before (`notice` defaults to `null`).
+
+### 9y.3 Screens (`src/ui/game.ts`, `roundstart.ts`, `netscreens.ts`)
+
+- New stage view `leadNoticeStage`: the table (as now) with the notice card on top, OK button sends `seenNotice` for this phone's player (shared phone: the holder, then the session treats it as everyone's).
+- After this phone tapped: the card goes; the wait line shows who is left.
+- The 6 s "X leads" pop-up for `missingSuit` and `reactionTap` is removed (the notice replaces it). `LEAD_MS` stays for any other use.
+- Computer players (`src/ui/bots.ts`): never send `seenNotice` (they are skipped in the count).
+
+### 9y.4 Tests
+
+- `tests/session/notice.test.ts` (new): one missing → notice → all seen → playing with that leader; two missing → `missingMany` → `tapIntro` → `reactionTap` → `tapResult` → playing; tie → `tapTie` → `reactionTap`; computer players never block; `waitForAll` false needs one `seenNotice`; repeat `seenNotice` is harmless; `seenNotice` in the wrong phase fails.
+- Network: `tests/net/netgame` style check that two phones both have to send `seenNotice`.
+- Existing session tests that expect play to start straight after the card check with a missing suit are updated (list them in DEVLOG).
+
+### 9y.5 Version and process
+
+- **2.30.0** (after 2.29, or alone if the user wants it first).
+- `npm run check`, `npm test`, `npm run build`; update the five MD files; phone test; push.
+- **Phone checklist (2.30):**
+  1. Game vs computer players until someone is missing a suit: the notice stays until you tap OK.
+  2. Two players missing a suit (try several deals, or 7 players): two notices, then Reaction Tap, then "X leads first" with the times.
+  3. Multiplayer on two phones: tap OK on one; it shows "Waiting for …" until the other taps; play starts only then.
+  4. The suit is never named.
+
 ## 8a. Playable test builds (required before every commit)
 
 `CLAUDE.md` rule 5: the user tests every change on their phone before approving a commit.

@@ -369,3 +369,12 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [x] **2.24.0 (built, not pushed):** Part B see-through reactions sheet; Part D classic card faces and fanned hand; Part E table (edge fans, thrown pile, waste pile in the corner); checks; user's phone test; push
 - [x] **2.25.0 (built, not pushed):** Part A away seats (10 minutes), host and joiner reconnect online, room kept on the list, server change and deploy; checks; phone test on two networks; push
 - [x] **2.26.0 (built, not pushed):** Part C computer players in Multiplayer (replaces Phase 4b slice F); checks; phone test; push
+
+## Phase 4i — The game fits on one screen, full version number (plan 2026-11-13 20:48, `PROJECT.md` 12j, build guide `CODE.md` 9x; not built)
+
+- [ ] Answer the three open questions in `PROJECT.md` 12j (or accept the defaults)
+- [ ] **2.29.0:** full version and "updated" notice (9x.1); `gameLayout` with tests; `fanLayout maxH`; fixed game grid for every stage (9x.2); landscape (9x.3); checks; user's phone test; push
+
+## Phase 4j — Missing-suit notices that stay until everyone taps OK (plan 2026-11-13 20:54, `PROJECT.md` 12k, build guide `CODE.md` 9y; not built)
+
+- [ ] **2.30.0:** `leadNotice` phase and `seenNotice` action with tests (9y.2); notice screens (9y.3); checks; user's phone test; push

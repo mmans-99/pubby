@@ -654,6 +654,40 @@ From the user's Multiplayer test of 2.23:
 
 **Version:** 2.28.0. Phone checklist in `CODE.md` 9w.8.
 
+### 12j. The game fits on one screen, and the full version number (PLAN, user 2026-11-13 20:48; build guide `CODE.md` 9x; NOT BUILT)
+
+**Request (user 2026-11-13 20:48):** "can't it all fit on the screen in game, I don't want to have to scroll." Also could not tell whether 2.28.1 had arrived: the app shows only "2.28".
+
+**What changes:**
+- The game screen is exactly one screen high at every stage of a round. Nothing scrolls; pop-ups and panels sit on top.
+- Top bar, then the table (as big as it can be), then your hand (fixed height, never jumps when it goes from two rows to one), then a bottom bar with 😂 and the main button.
+- The last trick moves into a corner of the table (tap to see it big). The "X's turn" line goes (the gold fan shows it). The hand heading goes (the "You · 12" pill shows it). The jokers chip moves into the top bar.
+- The home screen shows the full version (2.29.0). When a new version arrives, Pubby says "Pubby updated. Tap to reload."
+
+**Rules that do not change:** no game rule changes; nothing new is sent between phones; hidden cards stay hidden.
+
+**Open questions (defaults in brackets):**
+1. Results and scoreboard screens: may they scroll if there are many players? [yes: only the in-round screens are fixed]
+2. The jokers chip: top bar or quick rules only? [top bar, small]
+3. Last trick: corner of the table, or remove it and show it only on tap from the menu? [corner of the table]
+
+**Version:** 2.29.0. Phone checklist in `CODE.md` 9x.6.
+
+### 12k. Missing-suit notices that stay until everyone taps OK (PLAN, user 2026-11-13 20:54; build guide `CODE.md` 9y; NOT BUILT)
+
+**Request (user 20:52 to 20:54):** it's hard to tell who is missing a suit because the pop-up goes too quickly. At the start of the round the pop-up should say the player is missing a suit and will go first, and stay until everyone has tapped it (then it leaves each phone). With more than one player, show that pop-up, then another saying they will play Reaction Tap.
+
+**What changes:**
+- One missing: "Bilal is missing a suit · Bilal leads first", OK.
+- Several missing: "Bilal and Rohan are missing a suit", OK; then "Reaction Tap: Bilal and Rohan play. The slowest leads first.", OK; then after the tap "Rohan leads first · Slowest in Reaction Tap" with the times, OK.
+- Each notice stays until that phone taps OK; play waits for every person. Computer players don't hold it up. A shared phone needs one tap.
+
+**Rules that do not change:** which suit is missing stays secret (section 5); who leads is decided exactly as now.
+
+**Assumptions (say if any is wrong):** the Reaction Tap result also gets a notice; a shared phone needs one tap, not one per person; the host can't skip a phone that hasn't tapped.
+
+**Version:** 2.30.0. Phone checklist in `CODE.md` 9y.5.
+
 ## 13. Quick rules (in-game help)
 
 - **What it is:** A short, simplified rules guide inside the app.

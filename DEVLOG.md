@@ -4,6 +4,20 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (evening, 21:00) — Plan 9y (2.30): missing-suit notices stay until everyone taps OK (docs only, not committed)
+
+**User (20:52, 20:54):** the missing-suit pop-up goes too fast; wants it to say who is missing a suit and leads first, and to stay until everyone taps it; with several players, a second notice about Reaction Tap. Turned down the other ideas (seat marks, longer slap).
+
+**Written:** `CODE.md` 9y, `PROJECT.md` 12k, `TODO.md` Phase 4j. Target 2.30.0. Not built, not committed.
+
+## 2026-11-13 (evening, 20:55) — Plan 9x (2.29): the game fits on one screen; full version number (docs only, not committed)
+
+**User (20:48):** can't tell whether 2.28.1 arrived (the app shows only "2.28"); the keyboard may still close; wants the game to fit on screen with no scrolling. Both deploys (2.28.0, 2.28.1) succeeded on GitHub Actions.
+
+**Measured:** on 384 × 730 the play screen needs ≈ 927 px (197 too tall). The hand changes height by 54 px between two rows (13+ cards) and one row, which is the likely cause of the "zoom" report.
+
+**Written:** `CODE.md` 9x, `PROJECT.md` 12j (three open questions with defaults), `TODO.md` Phase 4i. Target 2.29.0. Not built, not committed.
+
 ## 2026-11-13 (evening, 20:45) — Version 2.28.1: keyboard closes on name entry (fix, pushed)
 
 **Bug (user, 20:40):** the keyboard came up and went away at once when typing a name. **Cause:** the 2.28.0 resize hook (`app.ts`) redraws the screen 150 ms after the window resizes; opening the keyboard resizes the window, so the redraw replaced the text box being typed in.
