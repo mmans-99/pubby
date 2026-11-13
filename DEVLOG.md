@@ -4,7 +4,7 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
-## 2026-11-13 — Phase 4b slice D (Hard), fixed (D2) and built as 2.13.0, not pushed; all arena bars pass
+## 2026-11-13 — Phase 4b slice D (Hard), fixed (D2), pushed as 2.13.0 (b878519); all arena bars pass
 
 **Done**
 - New `src/ai/sample.ts` (`sampleDeals`: imagined deals from memory only; keeps hand sizes and known cards; respects voids where it can, else falls back for that sample) and `src/ai/search.ts` (`searchCard`: for each legal card, play it in 40 imagined deals, play three tricks on with a simple rule for everyone, score +3 out, -1 per card picked up, -0.2 per card left; best average wins).
@@ -30,7 +30,7 @@ Newest entries at the top. One entry per session, added before each commit.
 - Full `--bars` (2000 games): all 9 bars pass. Normal vs Hard average places 2.621 / 2.379 (Hard better by 0.242); Hard p95 10.86 ms; Normal beats Easy 0.536; Normal beats random 1.424.
 - Tests: `npm run check` clean; `npm test` 219 of 219.
 - Browser: `testbed/solo_check.py --slice-d` added (All Hard game, plus three Mixed games with a Hard seat): 11 of 11 on the rerun. Slice C 14 of 14, back 14 of 14, offline 20 of 20. Note: Mixed game 3 took far longer to finish than the others in both runs (no Hard seat in it, and it still finished); look at its timing on the phone.
-- Version 2.13.0 (`package.json`, history in `CODE.md`). Not committed or pushed. `node_modules` is a local symlink; remove before committing.
+- Version 2.13.0 (`package.json`, history in `CODE.md`). Pushed to main as b878519 at the user's request ("Push it"). Working copy: /home/claude/pubby.
 - Not committed or pushed; version still 2.12.0 (bump when pushed). `node_modules` is a local symlink to `/opt/npm-tools/node_modules`; remove before committing.
 
 ---
