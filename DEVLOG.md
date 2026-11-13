@@ -4,7 +4,23 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
-## 2026-11-12 (late, latest) — Version 2.10: drawer scroll, one-phone menu hidden, phrases, Ultimate layout
+## 2026-11-13 (morning, latest) — Version 2.11: reactions as a sheet; top bar items never shrink
+
+**Done**
+- **User:** "Yes, pick your choice for the reactions." Chose option 1 from the list: the reactions open as a grid sheet above the 😂 button, every phrase visible, scrolling up and down. The sideways strip is gone (`reactionsLayer()` in `game.ts`, `.reactions-sheet` in `styles.css`). Scroll is kept across redraws (`render()` in `app.ts`).
+- **User (phone screenshot, top bar with 3+ players):** the top bar was squashed. The screenshot is from the pre-2.10 build (it still shows the word "Ultimate" in the chip), so the phone is on an old cached copy; a reload picks up 2.10 and 2.11. Also all top-bar items are now `flex: none` (`.game-bar > *`), so the buttons keep their shape when the bar is full.
+- **Version 2.11.0** (`package.json`, `CLAUDE.md` rule 8).
+
+**Checks**
+- `testbed/drawer_check.py` 8 of 8: every phrase plus the laugh listed; sheet scrolls vertically, not sideways; scroll kept through the computer players' moves.
+- Top bar measured with the real stylesheet at 360 px and 390 px with menu, round chip, Pause and Take: nothing shrinks.
+- `npm test` 207 of 207.
+- Not rerun in full after this change: back, offline, lobby, netgame, playthrough, sound, solo slice C (they use the same screens; the sheet replaces only the reactions strip).
+
+**Open**
+- The vote spacing complaint still needs the exact sentence or screen.
+
+## 2026-11-12 (late) — Version 2.10: drawer scroll, one-phone menu hidden, phrases, Ultimate layout
 
 **Done**
 - **User (22:04–22:38):** reactions drawer jumped back to 😂 after each move: now keeps its scroll position across redraws (`render()` in `app.ts`). `testbed/drawer_check.py` 6 of 6; fails without the fix.

@@ -133,11 +133,11 @@ function render(): void {
     st.exitAsk ? exitOverlay() : null,
     st.message ? h('div', { class: 'toast', role: 'status' }, st.message) : null,
   ];
-  // The reactions drawer is rebuilt on every redraw; keep how far it was scrolled (it should not jump back to the 😂 after a move).
-  const drawerScroll = root.querySelector<HTMLElement>('.reactions-drawer')?.scrollLeft ?? 0;
+  // The reactions sheet is rebuilt on every redraw; keep how far it was scrolled (it should not jump back to the top after a move).
+  const sheetScroll = root.querySelector<HTMLElement>('.reactions-sheet')?.scrollTop ?? 0;
   root.replaceChildren(...parts.filter((p): p is HTMLElement => p !== null));
-  const drawerNow = root.querySelector<HTMLElement>('.reactions-drawer');
-  if (drawerNow) drawerNow.scrollLeft = drawerScroll;
+  const sheetNow = root.querySelector<HTMLElement>('.reactions-sheet');
+  if (sheetNow) sheetNow.scrollTop = sheetScroll;
   afterRender();
   syncSound();
 }

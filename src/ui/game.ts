@@ -1029,7 +1029,7 @@ function lastTwoBody(s: Session, p: Extract<Popup, { kind: 'lastTwo' }>): Child[
 
 /**
  * Reactions: anyone can spam 😂 and the catch-phrases at any time in a game.
- * A button slides the drawer open; it stays open until it's put away, and it
+ * A button opens the sheet of reactions; it stays open until it's put away, and it
  * sits above pop-ups so people can react while the SLAP! is on screen. Each
  * tap floats up from where it was tapped and fades out.
  * Multiplayer (Phase 4): each reaction will show who sent it and come from
@@ -1050,12 +1050,13 @@ export function reactionsLayer(): HTMLElement[] {
     onclick: () => update({ reactionsOpen: !open }),
   }, open ? '✕' : '😂');
   if (!open) return [toggle];
-  const drawer = h('section', { class: opening ? 'reactions-drawer opening' : 'reactions-drawer', 'aria-label': 'Reactions' },
-    h('button', { class: 'emoji-btn', 'aria-label': 'Laugh', onclick: (e) => react(-1, e as MouseEvent) }, '😂'),
-    h('div', { class: 'phrase-chips' }, CATCH_PHRASES.map((ph, i) =>
-      h('button', { class: 'phrase-chip', onclick: (e) => react(i, e as MouseEvent) }, ph))),
+  // A sheet above the 😂 button: every phrase in a wrapping grid, scrolling up and down (2.11).
+  const sheet = h('section', { class: opening ? 'reactions-sheet opening' : 'reactions-sheet', 'aria-label': 'Reactions' },
+    h('button', { class: 'phrase-chip laugh-chip', 'aria-label': 'Laugh', onclick: (e) => react(-1, e as MouseEvent) }, '😂 Laugh'),
+    CATCH_PHRASES.map((ph, i) =>
+      h('button', { class: 'phrase-chip', onclick: (e) => react(i, e as MouseEvent) }, ph)),
   );
-  return [drawer, toggle];
+  return [sheet, toggle];
 }
 
 /** -1 = the laugh, else a catch-phrase number (the same list on every phone). */

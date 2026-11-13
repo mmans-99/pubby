@@ -489,28 +489,27 @@ table.results { width: 100%; border-collapse: collapse; }
   z-index: 38;
 }
 .reactions-toggle.on { background: var(--ink); color: var(--cream); font-size: 1.2rem; border-color: var(--cream); }
-.reactions-drawer {
+/* Reactions sheet (2.11): every phrase in a grid, above the 😂 button; scrolls up and down. */
+.reactions-sheet {
   position: fixed;
-  left: max(76px, calc(50% - 250px + 64px));
-  right: max(10px, calc(50% - 270px));
-  bottom: calc(14px + env(safe-area-inset-bottom));
-  height: 54px;
-  display: flex; align-items: center; gap: 6px;
-  padding: 0 8px;
-  overflow-x: auto; overflow-y: hidden;
-  scrollbar-width: none;
+  left: 10px; right: 10px;
+  bottom: calc(74px + env(safe-area-inset-bottom));
+  max-height: 55vh;
+  overflow-y: auto; overflow-x: hidden;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px;
+  padding: 12px;
   background: rgba(20, 30, 20, 0.96);
   border: 2px solid var(--gold);
-  border-radius: 999px;
+  border-radius: 18px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
   z-index: 37;
 }
-.reactions-drawer::-webkit-scrollbar { display: none; }
-.reactions-drawer.opening { animation: drawer-up 0.22s ease-out; }
-@keyframes drawer-up { from { transform: translateX(-12px); opacity: 0; } }
-.phrase-chips { display: flex; flex-wrap: nowrap; gap: 6px; }
-.phrase-chip { flex: none; white-space: nowrap; min-height: 36px; padding: 2px 10px; border-radius: 999px; background: var(--ink); color: var(--gold); border: 1px solid rgba(242, 193, 78, 0.4); font-size: 0.82rem; font-style: italic; text-align: left; }
-.reactions-drawer .emoji-btn { flex: none; width: 40px; height: 40px; min-height: 40px; font-size: 1.4rem; padding: 0; }
+.reactions-sheet.opening { animation: sheet-up 0.22s ease-out; }
+@keyframes sheet-up { from { transform: translateY(12px); opacity: 0; } }
+.phrase-chip { min-height: 44px; padding: 6px 10px; border-radius: 14px; background: var(--ink); color: var(--gold); border: 1px solid rgba(242, 193, 78, 0.4); font-size: 0.9rem; font-style: italic; text-align: left; line-height: 1.25; }
+.phrase-chip.laugh-chip { font-style: normal; font-size: 1.1rem; font-weight: 800; text-align: center; }
+/* Top bar (2.11): nothing in the bar shrinks, so the buttons keep their shape when the bar is full. */
+.game-bar > * { flex: none; }
 
 /* SLAP! countdown */
 .slap-timer { width: 70%; height: 6px; border-radius: 3px; background: rgba(29, 29, 27, 0.25); overflow: hidden; margin-top: 4px; }

@@ -1,7 +1,7 @@
 """Reactions drawer and menu check (version 2.10).
 
-- The drawer keeps how far it was scrolled while the game redraws (the computer
-  players' moves redraw the screen), so it does not jump back to the 😂.
+- The reactions sheet lists every phrase in a grid and keeps how far it was scrolled
+  while the game redraws (the computer players' moves redraw the screen).
 - The home menu has no "New game · one phone" button (kept in the code, hidden).
 
 Usage: npm run build && python3 testbed/drawer_check.py
@@ -24,12 +24,14 @@ def main():
               'the home menu still has "Play against the computer"')
         start_solo(page)
 
+        phrases = sum(1 for line in pathlib.Path('/home/claude/pubby/src/content/catch-phrases.md').read_text().splitlines() if line.startswith('- '))
         page.get_by_role('button', name='Open reactions').click()
-        drawer = page.locator('.reactions-drawer')
-        drawer.wait_for()
-        scrollable = drawer.evaluate('d => d.scrollWidth > d.clientWidth')
-        check(scrollable, 'the reactions drawer scrolls sideways (more phrases than fit)')
-        drawer.evaluate('d => { d.scrollLeft = 200; }')
+        sheet = page.locator('.reactions-sheet')
+        sheet.wait_for()
+        check(page.locator('.phrase-chip').count() == phrases + 1, f'the sheet lists every phrase and the laugh ({phrases} + 1)')
+        check(sheet.evaluate('d => d.scrollHeight > d.clientHeight'), 'the sheet scrolls up and down (more phrases than fit)')
+        check(sheet.evaluate('d => d.scrollWidth <= d.clientWidth'), 'the sheet does not scroll sideways')
+        sheet.evaluate('d => { d.scrollTop = 150; }')
         # bot.js taps the person's own seat (as solo_check does); the computer players play on their own.
         page.evaluate(BOT)
         cfg = {'players': 4, 'rounds': 1, 'manualDeal': False, 'swap': False, 'reshuffle': False,
@@ -40,10 +42,10 @@ def main():
             page.wait_for_timeout(100)
             if log_len(page) > before + 15:
                 break
-        check(log_len(page) > before, 'the game moved on while the drawer was open')
-        check(page.locator('.reactions-drawer').count() == 1, 'the drawer is still open after the moves')
-        left = page.locator('.reactions-drawer').evaluate('d => d.scrollLeft')
-        check(left >= 150, f'the drawer stays scrolled after a redraw (scrollLeft {left:.0f}, was 200)')
+        check(log_len(page) > before, 'the game moved on while the sheet was open')
+        check(page.locator('.reactions-sheet').count() == 1, 'the sheet is still open after the moves')
+        top = page.locator('.reactions-sheet').evaluate('d => d.scrollTop')
+        check(top >= 100, f'the sheet stays scrolled after a redraw (scrollTop {top:.0f}, was 150)')
         ctx.close()
         browser.close()
     report()
