@@ -535,6 +535,9 @@ table.results { width: 100%; border-collapse: collapse; }
 .phrase-chip.laugh-chip { font-style: normal; font-size: 1.1rem; font-weight: 800; text-align: center; }
 /* Top bar (2.11): nothing in the bar shrinks, so the buttons keep their shape when the bar is full. */
 .game-bar > * { flex: none; }
+/* 2.27 (CODE.md 9v.1): Fast forward / Skip banner under the top bar. */
+.fast-banner { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; padding: 6px 10px; border-radius: 10px; background: rgba(0, 0, 0, 0.25); font-size: 0.9rem; }
+.fast-banner button.small { padding: 4px 10px; font-size: 0.85rem; }
 
 /* SLAP! countdown */
 .slap-timer { width: 70%; height: 6px; border-radius: 3px; background: rgba(29, 29, 27, 0.25); overflow: hidden; margin-top: 4px; }

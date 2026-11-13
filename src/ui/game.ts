@@ -31,7 +31,8 @@ import { reshuffleStage, resetTap, roundStartHolder, roundStartScreen, voteOutco
 import { lockedSeats } from '../rules/deal.ts';
 import { cardSound, eventSounds, sfx } from '../audio/sfx.ts';
 import { icon, type IconName } from './icons.ts';
-import { botsTick } from './bots.ts';
+import { botsOnlyFor, botsTick, startFastForward, startSkip, stopFastForward } from './bots.ts';
+import { fastForwardOn, hostIsSkipping, skipNote, skipping } from '../ai/fastforward.ts';
 import { hostBroadcast, joinSend, sendReaction } from './netplay.ts';
 import { roundTable, wastePile } from './table.ts';
 import { netGameBody, netMenu } from './netscreens.ts';
@@ -65,6 +66,10 @@ const LEAD_MS = 6000;
 const TRICK_HOLD_MS = 700;
 /** Cards sliding to the waste pile or into the slapped player's seat. */
 const TRICK_FLY_MS = 480;
+/** 9v.3: with Fast forward on, the end-of-trick animation runs at half its normal time (steps unchanged). */
+function trickMs(ms: number): number {
+  return fastForwardOn() ? ms / 2 : ms;
+}
 /** Shuffle animation before the deal (two riffles). */
 const SHUFFLE_MS = 1700;
 
@@ -146,7 +151,7 @@ export function nextClockwise(s: Session, id: PlayerId): PlayerId {
 }
 
 /** Who must hold the phone during play: the player choosing in the final two, or whose turn it is. */
-function actorOf(s: Session): PlayerId | null {
+export function actorOf(s: Session): PlayerId | null {
   if (s.phase !== 'playing' || !s.play) return null;
   return s.play.pendingFinalTwo ?? s.play.turn;
 }
@@ -329,7 +334,8 @@ function absorb(g: SavedGame, session: Session, events: readonly SessionEvent[],
     if (saved.ok) recordId = saved.recordId;
   }
 
-  const fresh = popupsFor(session, events);
+  // 9v.4: while skipping, only the round-over pop-up (and the game-over one) is shown.
+  const fresh = popupsFor(session, events).filter((p) => !skipping() || p.kind === 'lastTwo' || (p.kind === 'slap' && p.over !== undefined));
   const popups = [...getState().popups, ...fresh];
 
   // Sound effects and animations for what just happened (PROJECT.md 12b).
@@ -517,7 +523,8 @@ export function gameScreen(g: SavedGame): HTMLElement {
       ownSeat(g) ? netPauseButton(g) : pauseButton(s),
       takeButton(g),
     ),
-    st.menuOpen ? (g.net ? netMenu(g) : gameMenu()) : null,
+    st.menuOpen ? (g.net ? netMenu(g) : gameMenu(g)) : null,
+    fastBanner(g),
     pausePanel(g),
     askPausePanel(g),
     pauseRequestsBanner(g),
@@ -525,9 +532,31 @@ export function gameScreen(g: SavedGame): HTMLElement {
   );
 }
 
-function gameMenu(): HTMLElement {
+/** 9v.1: the Fast forward / Skip items, shown only while the game waits on computer players. */
+export function fastForwardMenuItems(g: SavedGame): Child[] {
+  if (!g.bots || !botsOnlyFor(g) || skipping()) return [];
+  return [
+    fastForwardOn() ? null : h('button', { class: 'secondary', onclick: () => { update({ menuOpen: false }); startFastForward(); } }, 'Fast forward'),
+    h('button', { class: 'secondary', onclick: () => { update({ menuOpen: false }); startSkip(); } }, 'Skip to end of round'),
+  ];
+}
+
+/** 9v.1: the banner under the top bar while Fast forward or a skip runs, with Stop. */
+function fastBanner(g: SavedGame): HTMLElement | null {
+  if (g.net && g.net.role === 'join') {
+    // 9v.5: a joining phone sees one line while the host's phone is skipping.
+    return hostIsSkipping() ? h('div', { class: 'fast-banner', role: 'status' }, h('span', {}, 'Host is skipping to the end')) : null;
+  }
+  const note = skipNote();
+  if (skipping()) return h('div', { class: 'fast-banner', role: 'status' }, h('span', {}, 'Skipping to the end of the round…'), h('button', { class: 'secondary small', onclick: () => stopFastForward() }, 'Stop'));
+  if (fastForwardOn()) return h('div', { class: 'fast-banner', role: 'status' }, h('span', {}, 'Fast forward on'), h('button', { class: 'secondary small', onclick: () => stopFastForward() }, 'Stop'));
+  return note ? h('div', { class: 'fast-banner', role: 'status' }, h('span', {}, note)) : null;
+}
+
+function gameMenu(g: SavedGame): HTMLElement {
   const armed = getState().armed === 'endgame';
   return h('div', { class: 'panel menu' },
+    ...fastForwardMenuItems(g),
     h('button', { class: 'secondary', onclick: () => update({ screen: 'home', menuOpen: false }) }, 'Home (game is kept)'),
     h('button', {
       class: armed ? 'danger' : 'secondary',
@@ -617,10 +646,10 @@ function flyTrick(a: TrickAnim, done: () => void): void {
         { transform: `translate(${dx * 0.25}px, ${dy * 0.25 - 12}px) scale(0.9)`, opacity: 1, offset: 0.3 },
         { transform: `translate(${dx}px, ${dy}px) scale(0.35)`, opacity: 0.15 },
       ],
-      { duration: TRICK_FLY_MS, delay: i * 45, easing: 'cubic-bezier(.4,0,.6,1)', fill: 'forwards' },
+      { duration: trickMs(TRICK_FLY_MS), delay: i * 45, easing: 'cubic-bezier(.4,0,.6,1)', fill: 'forwards' },
     );
   });
-  window.setTimeout(done, TRICK_FLY_MS + cards.length * 45 + 60);
+  window.setTimeout(done, trickMs(TRICK_FLY_MS) + cards.length * 45 + 60);
 }
 
 /** Moves the end-of-trick animation on; called after every draw. */
@@ -634,7 +663,7 @@ function driveTrickAnim(): void {
       if (a.slapped && a.slapPopup && getState().popups.includes(a.slapPopup)) { a.step = 'wait'; sfx('slap'); }
       else { a.step = 'fly'; if (a.slapped) sfx('slap'); }
       update({});
-    }, TRICK_HOLD_MS);
+    }, trickMs(TRICK_HOLD_MS));
   } else if (a.step === 'wait' && !(a.slapPopup && getState().popups.includes(a.slapPopup))) {
     a.step = 'fly';
     window.setTimeout(() => { if (trickAnim === a) update({}); }, 0);

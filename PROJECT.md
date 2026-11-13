@@ -611,7 +611,7 @@ From the user's Multiplayer test of 2.23:
 - **Table (user 19:18 to 19:26, table mockup https://claude.ai/artifact/1EPeaQaijP1bwD1oPQjoyC, approved):** other players hold a fan of card backs at the edge of the felt (top and sides), sized by their card count, with the number on their name. The trick is thrown into the middle as a messy pile, each card at a random tilt, newest on top with a gold edge; every card underneath still shows its top-left corner. No names on trick cards (the order tells who played what). The waste pile sits in the bottom-right corner.
 - Open questions (defaults used in the plan unless the user says otherwise): 10 minutes away limit; host + only computer players allowed in Multiplayer; computer players added only before Start.
 
-### 12h. Fast forward and skip to end of round when only computer players are left (PLAN, user 2026-11-13 19:58; answers 19:59; build guide `CODE.md` 9v; NOT BUILT)
+### 12h. Fast forward and skip to end of round when only computer players are left (PLAN, user 2026-11-13 19:58; answers 19:59; build guide `CODE.md` 9v; BUILT as 2.27.0 on 2026-11-13, not yet pushed)
 
 **Request (user 2026-11-13 19:58):** "When there's only computer bots playing, there should be an option to fast forward or skip to end."
 

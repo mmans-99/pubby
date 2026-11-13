@@ -4,6 +4,23 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (evening, 20:10) — Version 2.27.0: Fast forward and Skip to end of round (built, not pushed)
+
+**Built:** `CODE.md` 9v.2 to 9v.5, spec `PROJECT.md` 12h.
+- `src/ai/fastforward.ts` (new): `botsOnlyNow`, `personsOut` (rules engine `play.finished`), `FAST_FORWARD_FACTOR` 0.25, `fastForwardMs`, shared on/off and note state.
+- `src/ui/bots.ts`: driver split into `learnAndPick` (learns and picks, no timer); `startFastForward`, `startSkip` (chunks of 20 moves, 30 ms apart, token-guarded, 2000-move cap), `stopFastForward`; `botsOnlyFor(g)`. Reactions off while skipping, shorter reaction delay with fast forward.
+- `src/ui/game.ts`: menu items "Fast forward" and "Skip to end of round" (only when the game waits on computer players and the person is out); banner with Stop; pop-ups during a skip limited to the round-over one; trick animation at half time with fast forward; `actorOf` exported.
+- `src/ui/netscreens.ts`: host sees the same items in a network game. `src/net/lobby.ts`, `src/ui/netplay.ts`, `src/ui/netlobby.ts`: new host frame `skipping`, joiners see "Host is skipping to the end".
+- `src/ui/styles.css`: banner. `package.json`: 2.27.0.
+
+**Checks:** `npm run check` clean; unit tests 349 pass (337 before, 12 new in `tests/ai/fastforward.test.ts`); `npm run build` gives v2.27.
+
+**Not done:** `tests/ui/skip.test.ts` and `testbed/skip_check.py` (see `CODE.md` 9v built notes). Browser checks not run. Phone checklist in `CODE.md` 9v.9.
+
+**Not committed or pushed.** Waiting for the user's phone test and "Push it".
+
+**Side note:** the user asked for a mock-up of the table names (smaller, nearer the rim). It was shown as a mock-up only; `table.ts` is unchanged, and the user will come back to it.
+
 ## 2026-11-13 (evening, 19:58) — Plan 9v: fast forward and skip to end of round when only computer players are left (docs only, not built)
 
 **User request:** "When there's only computer bots playing, there should be an option to fast forward or skip to end."

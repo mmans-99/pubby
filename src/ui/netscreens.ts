@@ -16,7 +16,7 @@ import type { SavedGame } from './storage.ts';
 import type { PlayerId, Session, SessionAction } from '../session/types.ts';
 import { joinNames } from '../session/names.ts';
 import { getState, update } from './store.ts';
-import { chooseLeaderStage, dealingStage, handBlock, isHostSeat, nameOf, ownSeat, playHandStage, publicView, send } from './game.ts';
+import { chooseLeaderStage, dealingStage, fastForwardMenuItems, handBlock, isHostSeat, nameOf, ownSeat, playHandStage, publicView, send } from './game.ts';
 import { netRoundStart } from './roundstart.ts';
 import { awardsRow, gameOverStage, podium, targetRow } from './between.ts';
 import { playerView } from '../session/view.ts';
@@ -188,6 +188,8 @@ export function netMenu(g: SavedGame): HTMLElement {
   const host = g.net!.role === 'host';
   const armed = getState().armed === 'leavenet';
   return h('div', { class: 'panel menu' },
+    // 9v.5: only the host's phone runs the computer players, so only the host sees these items.
+    ...(host ? fastForwardMenuItems(g) : []),
     h('button', {
       class: armed ? 'danger' : 'secondary',
       onclick: () => {

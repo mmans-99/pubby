@@ -17,6 +17,7 @@ import { h } from './dom.ts';
 import { icon } from './icons.ts';
 import { VERSION } from './version.ts';
 import { getState, update } from './store.ts';
+import { setHostSkipping } from '../ai/fastforward.ts';
 import { addProfile, findProfile, saveProfiles } from './storage.ts';
 import { makeQr, qrSvg } from '../net/qr.ts';
 import { Peer } from '../net/peer.ts';
@@ -1330,6 +1331,10 @@ function joinGot(raw: unknown): void {
   } else if (m.t === 'hostBack') {
     if (joinAway === 'host') joinAway = null;
     draw();
+  } else if (m.t === 'skipping') {
+    // 2.27 (CODE.md 9v.5): the host's phone is skipping to the end of the round; this phone shows one line.
+    setHostSkipping(m.on);
+    update({});
   } else if (m.t === 'refused') {
     endText = m.why;
     endJoin('refused');

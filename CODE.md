@@ -2105,7 +2105,7 @@ export function pileSpots(cardIds: readonly string[], salt: string): { x: number
 - 2.24.0 (B + D + E), 2.25.0 (A, app and server), 2.26.0 (C). Each: update all five MD files, DEVLOG entry, checks in that part, then ask the user to push (CLAUDE.md rule 5; the user says "Push it"). Tell the user the version number each time.
 - Don't start the next version until the user has pushed the last one (or says to go on).
 
-## 9v. Version 2.27: fast forward and skip to end of round when only computer players are left to act (PLAN, user 2026-11-13 19:58; answers recorded 19:59; NOT BUILT; spec `PROJECT.md` 12h)
+## 9v. Version 2.27: fast forward and skip to end of round when only computer players are left to act (PLAN, user 2026-11-13 19:58; answers recorded 19:59; BUILT as 2.27.0 on 2026-11-13, not yet pushed; spec `PROJECT.md` 12h)
 
 Nothing here may be built until the user approves this plan and answers the open questions in `PROJECT.md` 12h (CLAUDE.md rules 1 and 2). It is written so that any model can build it.
 
@@ -2147,7 +2147,7 @@ It also takes `personOut`: true when every person's seat on this phone is out of
 4. Trick animation: `trickAnimating()` in `src/ui/game.ts` waits for the trick-end animation before the next move. When fast forward is on, the animation may run at half its normal time. Look at the animation code first and change only the duration, not the order of steps.
 5. Every move still goes through `runActions()`, so the log, the table and the history are the same as a normal game.
 
-### 9v.4 Skip to end of game (plays the rest in chunks)
+### 9v.4 Skip to end of round (plays the rest of the round in chunks)
 
 1. Add `skipping: boolean` in `src/ui/bots.ts`, with `startSkip()`, `stopSkip()` and `skipping()`.
 2. `startSkip()` sets the flag, then calls `skipChunk()`. `skipChunk()` plays up to 20 computer moves, each by calling the same decision and `runActions()` used by `fire()`, then returns to the browser with `setTimeout(skipChunk, 30)`. Chunks keep the screen responsive so the **Stop** button still works.
@@ -2193,6 +2193,7 @@ It also takes `personOut`: true when every person's seat on this phone is out of
 
 - This is **2.27.0** (the number after 2.26.0; `CLAUDE.md` rule 8).
 - Build order: 9v.2 first (with its tests), then 9v.3, then 9v.4, then 9v.5. Run `npm run check` and `npm test` after each step (the unit tests only, not the browser checks).
+- **Built notes (2.27.0):** shared on/off state lives in `src/ai/fastforward.ts` (not `bots.ts`, to avoid a new import cycle). `personOut` is the rules engine's `play.finished` (every person out). Fast forward is cleared when a person must act; a pop-up alone does not clear it. A skip shows only the round-over pop-up (`lastTwo`, or a slap that ends the round). Joining phones get a new host frame `{ t: 'skipping', on }` (`src/net/lobby.ts`; relay unchanged, `LOBBY_PROTOCOL` not bumped). Not done: `tests/ui/skip.test.ts` and `testbed/skip_check.py` (the skip result is not checked against a same-seed normal game, because reactions and fast-forward timing use the shared random draws; the phone test is the check). Browser checks not run (no long tests requested).
 - Then: `npm run build` (playable build), update all five MD files (CLAUDE.md rule 4) and `DEVLOG.md`, then ask the user to test on a phone and approve the push (CLAUDE.md rules 3 and 5).
 - Phone checklist (2.27): one-phone game with 3 computer players, you out of the round: Fast forward speeds the moves up; Skip to end of round stops at the round-over pop-up; Stop works during both; the menu items are hidden while you are still in the round. Network game: only the host sees the items.
 

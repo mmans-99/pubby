@@ -94,6 +94,11 @@ function sendUpdate(p: PlayerId, s: Session, events: readonly SessionEvent[], fu
   if (transport.sendTo(link, msg)) sentLog.set(link, s.log.length);
 }
 
+/** 2.27 (CODE.md 9v.5): tells every joining phone the host is skipping to the end of the round (or has stopped). */
+export function hostSendSkipping(on: boolean): void {
+  for (const link of Object.values(linkOf)) transport?.sendTo(link, { t: 'skipping', on });
+}
+
 /** CODE.md 9u C4: a computer player's reaction goes to every other phone too (the host shows it as well). */
 export function hostSendReaction(from: PlayerId, r: number): void {
   for (const link of Object.values(linkOf)) transport?.sendTo(link, { t: 'react', from, r });

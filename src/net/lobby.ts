@@ -81,7 +81,9 @@ export type ToJoiner =
   | { t: 'react'; from: string; r: number }
   /** CODE.md 9u A5: the host's phone left the screen, and is back. */
   | { t: 'hostAway' }
-  | { t: 'hostBack' };
+  | { t: 'hostBack' }
+  /** 2.27 (CODE.md 9v.5): the host's phone is skipping to the end of the round, or has stopped. */
+  | { t: 'skipping'; on: boolean };
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null;
 const isStr = (x: unknown): x is string => typeof x === 'string';
@@ -142,6 +144,7 @@ export function readToJoiner(raw: unknown): ToJoiner | null {
     case 'react': return isStr(raw['from']) && Number.isInteger(raw['r']) ? { t: 'react', from: raw['from'], r: raw['r'] as number } : null;
     case 'hostAway': return { t: 'hostAway' };
     case 'hostBack': return { t: 'hostBack' };
+    case 'skipping': return typeof raw['on'] === 'boolean' ? { t: 'skipping', on: raw['on'] } : null;
   }
   return null;
 }
