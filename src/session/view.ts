@@ -11,7 +11,7 @@ import type { DealMode } from '../rules/deal.ts';
 import { legalCards } from '../rules/play.ts';
 import { swapAllowed } from '../rules/round.ts';
 import { handOf, targetVoteAllowed } from './session.ts';
-import type { PlayerId, RoundRecord, Session, SessionEnd, SessionPhase, UltimateLabels, VoteKind } from './types.ts';
+import type { LeadNotice, PlayerId, RoundRecord, Session, SessionEnd, SessionPhase, UltimateLabels, VoteKind } from './types.ts';
 
 export interface PlayerSummary {
   readonly id: PlayerId;
@@ -27,6 +27,9 @@ export interface PlayerSummary {
 
 export interface PlayerView {
   readonly me: PlayerId;
+  /** 2.30: the notice on screen (phase leadNotice) and who has tapped OK on it. Public. */
+  readonly notice: LeadNotice | null;
+  readonly noticeSeen: readonly PlayerId[];
   readonly isHost: boolean;
   readonly phase: SessionPhase;
   readonly round: number;
@@ -115,6 +118,8 @@ export function playerView(s: Session, me: PlayerId): PlayerView {
     reactionTap:
       s.phase === 'reactionTap' && s.tap ? { players: s.tap.players, tapped: Object.keys(s.tap.results) } : null,
     chooser: s.phase === 'chooseLeader' ? (s.previous?.winner ?? null) : null,
+    notice: s.phase === 'leadNotice' ? s.notice : null,
+    noticeSeen: s.phase === 'leadNotice' ? s.noticeSeen : [],
     turn: play?.turn ?? null,
     legalCardIds: play && !s.paused ? legalCards(play, me).map((c) => c.id) : [],
     ledSuit: play?.trick.ledSuit ?? null,

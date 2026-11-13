@@ -17,9 +17,10 @@ const root = dirname(fileURLToPath(import.meta.url));
 const dist = join(root, 'dist');
 const pwa = join(root, 'src/pwa');
 
-// Version shown in the app: MAJOR.MINOR from package.json ("1.2.0" -> "1.2").
+// Full version from package.json ("2.29.0"). The app shows it whole (CODE.md 9x.1);
+// online rooms still compare MAJOR.MINOR (src/ui/version.ts).
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
-const appVersion = pkg.version.split('.').slice(0, 2).join('.');
+const appVersion = pkg.version;
 
 const result = await build({
   entryPoints: [join(root, 'src/main.ts')],

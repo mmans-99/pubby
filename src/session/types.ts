@@ -42,6 +42,7 @@ export type SessionPhase =
   | 'reshuffle' // after the deal: anyone may call the reshuffle vote
   | 'swap' // hidden swap (2 and 3 players)
   | 'cardCheck' // 2.20: after the swap, until every player has seen their new hand
+  | 'leadNotice' // 2.30: the missing-suit and Reaction Tap notices, until every person has tapped OK
   | 'reactionTap' // two or more players missing a suit
   | 'chooseLeader' // last round's winner picks who leads
   | 'playing'
@@ -95,6 +96,20 @@ export interface SessionEnd {
   readonly reason: 'ultimatePlayed' | 'ultimateVoteFailedAtTarget' | 'hostEnded' | 'drawDeclined';
 }
 
+/**
+ * 2.30 (CODE.md 9y.2): a notice about who leads. `missingOne`: one player is
+ * missing a suit and leads. `missingMany`: two or more are (Reaction Tap next).
+ * `tapIntro`: the Reaction Tap is about to start. `tapResult`: the slowest leads
+ * (`times` shows each time). `tapTie`: a tie, so Reaction Tap runs again. The
+ * suit is never named (PROJECT.md section 5).
+ */
+export interface LeadNotice {
+  readonly kind: 'missingOne' | 'missingMany' | 'tapIntro' | 'tapResult' | 'tapTie';
+  readonly players: readonly PlayerId[];
+  readonly leader?: PlayerId;
+  readonly times?: Readonly<Record<PlayerId, TapEntry>>;
+}
+
 export interface TapEntry {
   readonly ms: number;
   readonly falseStart: boolean;
@@ -138,6 +153,10 @@ export interface Session {
   /** 2.20: wait for every player (see SessionSetup.waitForAll). */
   readonly waitForAll: boolean;
   readonly tap: { readonly players: readonly PlayerId[]; readonly results: Readonly<Record<PlayerId, TapEntry>> } | null;
+  /** 2.30 (CODE.md 9y.2): the notice on screen (phase 'leadNotice'), else null. */
+  readonly notice: LeadNotice | null;
+  /** 2.30: the people who have tapped OK on the current notice. */
+  readonly noticeSeen: readonly PlayerId[];
   readonly play: PlayState | null;
   /** Take-cards requests this round, oldest first (PROJECT.md section 4.2). */
   readonly takeRequests: readonly TakeRequest[];
@@ -180,6 +199,7 @@ export type SessionAction =
   | { type: 'startRound'; by: PlayerId } // host: close the reshuffle window
   | { type: 'swap'; by: PlayerId; cardIds: readonly string[] }
   | { type: 'seenHand'; by: PlayerId } // 2.20: Done on the new hand
+  | { type: 'seenNotice'; by: PlayerId } // 2.30: OK on a leadNotice
   | { type: 'reactionTap'; by: PlayerId; ms: number; falseStart: boolean }
   | { type: 'chooseLeader'; by: PlayerId; leader: PlayerId }
   // Play

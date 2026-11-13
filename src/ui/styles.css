@@ -326,6 +326,9 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 @keyframes fade { from { opacity: 0; } }
 @keyframes slide-up { from { transform: translateY(40px); opacity: 0; } }
 
+/* 2.29 (CODE.md 9x.1): the "updated" notice is a button; a tap reloads Pubby. */
+.toast.update-toast { border: 0; text-align: center; cursor: pointer; font-weight: 700; color: var(--cream); background: var(--felt-dark); }
+
 .toast {
   position: fixed;
   left: 50%; bottom: calc(90px + env(safe-area-inset-bottom));
@@ -1024,6 +1027,70 @@ button.me-pill { background: var(--cream); color: var(--ink); }
   .screen.game .game-bar { height: 48px; flex: none; }
   .screen.game .game-bar .icon-btn, .screen.game .game-bar .round-chip { width: 40px; height: 40px; min-width: 40px; min-height: 40px; }
   .screen.game .round-table { flex: none; }
+}
+/* 2.29 (CODE.md 9x.2, 9x.3): the game screen is one fixed screen; nothing scrolls.
+   Rows: the table (takes what is left), the hand (fixed height), the action bar. */
+.screen.game.fixed {
+  height: 100vh; height: 100dvh; box-sizing: border-box; overflow: hidden;
+  gap: 6px;
+  padding-top: calc(4px + env(safe-area-inset-top));
+  padding-bottom: calc(4px + env(safe-area-inset-bottom));
+  padding-left: calc(8px + env(safe-area-inset-left));
+  padding-right: calc(8px + env(safe-area-inset-right));
+}
+.screen.game.fixed .game-bar { height: 48px; flex: none; }
+.screen.game.fixed .game-bar .icon-btn, .screen.game.fixed .game-bar .round-chip { width: 40px; height: 40px; min-width: 40px; min-height: 40px; }
+/* Stages that are not framed scroll inside this box; the page itself never scrolls in a game (2.29). */
+.game-scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.round-buttons { width: 100%; }
+/* 2.30 (CODE.md 9y.3): the notice card sits over the table and waits for OK. */
+.notice-overlay { position: absolute; inset: 0; z-index: 7; display: flex; align-items: center; justify-content: center; padding: 12px; background: rgba(0, 0, 0, 0.28); }
+.notice-card { width: min(100%, 340px); display: flex; flex-direction: column; align-items: stretch; gap: 10px; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45); }
+.notice-title { font-size: 1.3rem; line-height: 1.2; }
+.notice-card .big { width: 100%; }
+
+.round-buttons .big, .round-buttons .secondary { min-height: 44px; }
+.game-frame { flex: 1; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) var(--hand-h, 0px) var(--bar-h, 0px); row-gap: 6px; }
+.game-table-slot { position: relative; min-height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.game-hand-slot { position: relative; min-height: 0; overflow: hidden; }
+.game-hand-slot > .hand-section { height: 100%; justify-content: center; }
+.game-hand-slot .handoff.compact { min-height: 0; height: 100%; justify-content: center; padding: 0; }
+.game-hand-slot .handoff.compact .handoff-icon { font-size: 1.6rem; }
+.game-hand-slot .handoff.compact .handoff-name { font-size: 1.7rem; }
+.game-hand-slot .handoff.compact .big { margin-top: 8px; }
+.game-action-slot { min-height: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0 64px; }
+.game-action-slot .play-bar { position: static; margin: 0; width: 100%; }
+.game-action-slot h2 { font-size: 1rem; }
+/* Panels over the bottom of the table: they scroll inside themselves and never push the rows. */
+.game-extra { position: absolute; left: 8px; right: 8px; bottom: 8px; max-height: 70%; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; z-index: 6; }
+.game-extra > .panel, .game-extra > .note { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35); }
+.frame-col { width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+.frame-col .big { width: min(100%, 360px); }
+.deal-bar { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.deal-bar .seg-btn { padding: 0 6px; font-size: 0.9rem; }
+/* The last trick, in the felt's top-left corner (CODE.md 9x.2 rule 3). Sized by --u, like the table. */
+.table-last { position: absolute; z-index: 3; }
+.lt-corner { position: relative; width: 100%; height: 100%; padding: 0; border: 0; background: none; color: var(--cream); cursor: pointer; text-align: left; }
+.lt-corner .lt-label { position: absolute; left: 0; top: 0; color: var(--cream); opacity: 0.85; font-size: calc(1 * var(--u, 11px)); line-height: 1.2; }
+.lt-corner .lt-card { position: absolute; top: calc(1.3 * var(--u, 11px)); left: calc(var(--i, 0) * 0.5 * var(--u, 11px)); width: calc(3.6 * var(--u, 11px)); }
+.lt-corner .lt-slap { position: absolute; right: 0; top: 0; color: var(--danger); }
+.card.tiny-card.lt-card.slapped { box-shadow: 0 0 0 2px var(--danger); }
+.last-sheet .last-big { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; padding: 8px 0 4px; }
+.last-big-item { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 0.85rem; }
+.last-big-card { width: 96px; }
+.slapped-name { color: var(--danger); font-weight: 700; }
+/* The game screen used to pad its bottom for a sticky button; the bar is in the layout now. */
+.screen.game.fixed.game { padding-bottom: calc(4px + env(safe-area-inset-bottom)); }
+@media (orientation: landscape) {
+  .screen.game.fixed { gap: 4px; padding-top: calc(4px + env(safe-area-inset-top)); padding-bottom: calc(4px + env(safe-area-inset-bottom)); }
+  .screen.game.fixed .game-bar { height: 40px; }
+  .screen.game.fixed .game-bar .icon-btn, .screen.game.fixed .game-bar .round-chip { width: 36px; height: 36px; min-width: 36px; min-height: 36px; }
+  /* 2.29 landscape (CODE.md 9x.3): the action bar is a column at the right of the hand. */
+  .game-frame { row-gap: 4px; grid-template-columns: minmax(0, 1fr) var(--side-w, 0px); grid-template-rows: minmax(0, 1fr) var(--hand-h, 0px); }
+  .game-table-slot { grid-column: 1 / -1; grid-row: 1; }
+  .game-hand-slot { grid-column: 1; grid-row: 2; }
+  .game-action-slot { grid-column: 2; grid-row: 2; padding: 0 4px; }
+  .game-action-slot .play-bar { position: static; }
 }
 .center-row { justify-content: center; align-items: center; }
 .center-row .grow { text-align: center; }

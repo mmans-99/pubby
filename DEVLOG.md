@@ -4,6 +4,20 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-13 (night) — Built 2.29 and 2.30 (not committed)
+
+**Built:** 2.29 (full version shown, "Pubby updated" notice, one-screen game layout, see `CODE.md` 9x) and 2.30 (missing-suit notices stay until everyone taps OK, see `CODE.md` 9y). `package.json` is 2.30.0; the 2.29 behaviour is included in that build. One `dist/index.html`, so 2.29 is not a separate test build.
+
+**Checks:** `npm run check` clean. `npm test` 377 pass, 0 fail (includes 9 new notice tests and 11 new layout tests). Headless probe at 384 x 730: a full solo game with no page overflow; game frame rows fit (table 454, hand 146, action 52).
+
+**Not yet seen in a browser:** the notice overlay itself (one missing, two missing, Reaction Tap). The probe run did not hit a missing suit. Landscape on tiny screens (568 x 320, 844 x 390): round-start screens without the frame still scroll inside their own box.
+
+**Open:** results may scroll; last-trick box sits bottom-left of the table; jokers chip stays in the deal bar (spec said top bar). `CLAUDE.md` rule 8 still says MAJOR.MINOR and was not changed without the user's OK.
+
+**Next:** user phone test of the 2.30 build against `CODE.md` 9x.6 and 9y.5 checklists. No commit until the user says "Push it".
+
+---
+
 ## 2026-11-13 (evening, 21:00) — Plan 9y (2.30): missing-suit notices stay until everyone taps OK (docs only, not committed)
 
 **User (20:52, 20:54):** the missing-suit pop-up goes too fast; wants it to say who is missing a suit and leads first, and to stay until everyone taps it; with several players, a second notice about Reaction Tap. Turned down the other ideas (seat marks, longer slap).

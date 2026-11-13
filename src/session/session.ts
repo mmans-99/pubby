@@ -35,6 +35,7 @@ import { addScores, scoreRound } from '../rules/scoring.ts';
 import { tallyVote, type Ballot } from '../rules/voting.ts';
 import type {
   ActionResult,
+  LeadNotice,
   LogEntry,
   PlayerId,
   Session,
@@ -47,7 +48,7 @@ import type {
 } from './types.ts';
 
 /** Phases that are part of a round. The host can pause during these. */
-const ROUND_PHASES: readonly SessionPhase[] = ['dealing', 'reshuffle', 'swap', 'cardCheck', 'reactionTap', 'chooseLeader', 'playing'];
+const ROUND_PHASES: readonly SessionPhase[] = ['dealing', 'reshuffle', 'swap', 'cardCheck', 'leadNotice', 'reactionTap', 'chooseLeader', 'playing'];
 
 /** Collects events, stamped with the round they happened in. */
 class Out {
@@ -131,6 +132,8 @@ export function createSession(setup: SessionSetup, rng: Rng): ActionResult {
     handSeen: [],
     waitForAll: setup.waitForAll ?? false,
     tap: null,
+    notice: null,
+    noticeSeen: [],
     play: null,
     takeRequests: [],
     vote: null,
@@ -169,6 +172,8 @@ function startNextRound(prev: Session, rng: Rng, out: Out): Session {
     swapDone: [],
     handSeen: [],
     tap: null,
+    notice: null,
+    noticeSeen: [],
     play: null,
     takeRequests: [],
     vote: null,
@@ -292,6 +297,17 @@ function reduce(s: Session, a: SessionAction, rng: Rng, out: Out): Session {
       if (s2.order.every((p) => s2.handSeen.includes(p))) return decideLeaderStep(s2, out);
       return s2;
     }
+    case 'seenNotice': {
+      // 2.30 (CODE.md 9y.2): OK on a notice. Every person must tap (waitForAll), or one tap is enough (shared phone).
+      assertPhase(s, 'leadNotice');
+      if (isComputer(s, a.by)) fail(`${nameOf(s, a.by)} is a computer player and never taps a notice`);
+      if (s.noticeSeen.includes(a.by)) return s; // a repeat is harmless
+      const seen = [...s.noticeSeen, a.by];
+      const persons = s.order.filter((p) => !isComputer(s, p));
+      const allSeen = s.waitForAll ? persons.every((p) => seen.includes(p)) : true;
+      if (!allSeen) return { ...s, noticeSeen: seen };
+      return advanceNotice({ ...s, noticeSeen: [] }, out);
+    }
     case 'reactionTap': {
       assertPhase(s, 'reactionTap');
       const tap = s.tap!;
@@ -306,8 +322,10 @@ function reduce(s: Session, a: SessionAction, rng: Rng, out: Out): Session {
       );
       if (outcome.kind === 'replay') {
         out.emit(s, { type: 'reactionTapReplay', players: outcome.players });
+        if (showsNotice(s)) return noticeAt({ ...s, tap: null }, { kind: 'tapTie', players: outcome.players, times: results }, out);
         return { ...s, tap: { players: outcome.players, results: {} } };
       }
+      if (showsNotice(s)) return noticeAt({ ...s, tap: null }, { kind: 'tapResult', players: tap.players, leader: outcome.slowest, times: results }, out);
       return beginPlay({ ...s, tap: null }, outcome.slowest, 'reactionTap', out);
     }
     case 'chooseLeader': {
@@ -593,12 +611,57 @@ function decideLeaderStep(s: Session, out: Out): Session {
     out.emit(s, { type: 'missingSuitDeclared', player: m.player });
   }
   const d = decideLeader(roundSetup(s), s.hands);
-  if (d.kind === 'leader') return beginPlay(s, d.leader, d.reason, out);
+  if (d.kind === 'leader') {
+    // 2.30: one player missing a suit gets a notice that stays until OK (CODE.md 9y.2).
+    if (d.reason === 'missingSuit' && showsNotice(s)) return noticeAt(s, { kind: 'missingOne', players: [d.leader], leader: d.leader }, out);
+    return beginPlay(s, d.leader, d.reason, out);
+  }
   if (d.kind === 'reactionTap') {
-    out.emit(s, { type: 'reactionTapStarted', players: d.players });
-    return { ...s, phase: 'reactionTap', tap: { players: d.players, results: {} } };
+    if (showsNotice(s)) return noticeAt(s, { kind: 'missingMany', players: d.players }, out);
+    return startReactionTap(s, d.players, out);
   }
   return { ...s, phase: 'chooseLeader' };
+}
+
+/** 2.30: the Reaction Tap begins (after its notice, if any). */
+function startReactionTap(s: Session, players: readonly PlayerId[], out: Out): Session {
+  out.emit(s, { type: 'reactionTapStarted', players });
+  return { ...s, phase: 'reactionTap', notice: null, noticeSeen: [], tap: { players, results: {} } };
+}
+
+/** 2.30: a computer player is never a person who must tap (CODE.md 9y.1). */
+function isComputer(s: Session, id: PlayerId): boolean {
+  return s.players.find((p) => p.id === id)?.computer === true;
+}
+
+/**
+ * 2.30: notices show only when a person is playing. With computer players only
+ * (fast forward, or a game of computer players), nothing waits for a tap.
+ */
+function showsNotice(s: Session): boolean {
+  return s.order.some((p) => !isComputer(s, p));
+}
+
+/** 2.30: show a notice; it stays until every person has tapped OK. */
+function noticeAt(s: Session, notice: LeadNotice, out: Out): Session {
+  return { ...s, phase: 'leadNotice', notice, noticeSeen: [] };
+}
+
+/** 2.30: everyone has tapped OK: the next step of the notice sequence (CODE.md 9y.2). */
+function advanceNotice(s: Session, out: Out): Session {
+  const n = s.notice;
+  if (!n) return s;
+  switch (n.kind) {
+    case 'missingOne':
+      return beginPlay({ ...s, notice: null }, n.leader!, 'missingSuit', out);
+    case 'missingMany':
+      return noticeAt(s, { kind: 'tapIntro', players: n.players }, out);
+    case 'tapIntro':
+    case 'tapTie':
+      return startReactionTap(s, n.players, out);
+    case 'tapResult':
+      return beginPlay({ ...s, notice: null }, n.leader!, 'reactionTap', out);
+  }
 }
 
 function beginPlay(

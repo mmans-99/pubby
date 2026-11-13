@@ -79,6 +79,8 @@ export interface State {
   selected: string | null;
   /** Reactions drawer (😂 and catch-phrases) is slid open. */
   reactionsOpen: boolean;
+  /** The last trick is open big on the game screen (2.29, CODE.md 9x.2 rule 3). */
+  lastOpen?: boolean;
   /** Profile opened on the profiles screen (details and share). */
   openProfile: string | null;
   /** Game opened on the past games screen. */

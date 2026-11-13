@@ -76,14 +76,20 @@ export function cardFace(c: Card, extraClass = ''): HTMLElement {
 export interface FanSpot { x: number; y: number; rot: number; z: number }
 
 /**
- * Places n cards in one fanned row, or two rows when there are more than 12 (so
- * every visible strip stays at least 20 px wide on a 320 px phone: the tap target).
+ * Places n cards in one fanned row, or two rows when there are more than 15
+ * (CODE.md 9x.2 rule 4, 2.29; was 12). Every visible strip stays at least 20 px
+ * wide on a 320 px phone: the tap target. `maxH` (2.29) limits the height: the
+ * card size is chosen so the fan fits, one row or two, and the card size does not
+ * depend on the card count while there is one row (so 12 and 13 cards look the same).
  */
-export function fanLayout(n: number, width: number, maxCardW?: number, minCardW = 64): { cardW: number; height: number; spots: FanSpot[] } {
+export function fanLayout(n: number, width: number, maxCardW?: number, minCardW = 64, maxH?: number): { cardW: number; height: number; spots: FanSpot[] } {
   // CODE.md 9w.5: landscape passes a smaller maxCardW (the hand is shorter) and a 48 px minimum.
-  const cardW = Math.min(maxCardW ?? 96, 96, Math.max(minCardW, width * 0.19));
+  let cardW = Math.min(maxCardW ?? 96, 96, Math.max(minCardW, width * 0.19));
+  const twoRows = n > 15;
+  // Height = card height (1.4 × width), plus 0.55 card heights for a second row, plus 30 px of room.
+  if (maxH !== undefined) cardW = Math.min(cardW, (maxH - 30) / (twoRows ? 1.4 * 1.55 : 1.4));
   const cardH = cardW * 1.4;
-  const rows = n > 12 ? [Math.ceil(n / 2), n - Math.ceil(n / 2)] : [n];
+  const rows = twoRows ? [Math.ceil(n / 2), n - Math.ceil(n / 2)] : [n];
   const spots: FanSpot[] = [];
   rows.forEach((m, ri) => {
     const usable = width - 16;

@@ -45,6 +45,8 @@ export interface TableOpts {
   box?: TableBox;
   /** This phone's own seat, shown as "You" (CODE.md 9w.1). */
   you?: boolean;
+  /** The last trick, as a small stack in the felt's top-left corner (CODE.md 9x.2 rule 3). */
+  last?: Child;
 }
 
 /** Where seat number `k` (0 = bottom, then clockwise) of `n` sits, in % of the table box. */
@@ -122,7 +124,7 @@ export interface SeatSpot {
   hit: Box;
 }
 
-function clamp(v: number, lo: number, hi: number): number {
+export function clamp(v: number, lo: number, hi: number): number {
   return Math.min(Math.max(v, lo), hi);
 }
 
@@ -147,6 +149,11 @@ export function tableBox(viewW: number, viewH: number): TableBox {
     // 160 (not 200) so a 568 × 320 phone still fits the top bar, table and hand (9w.7 test 1).
     h = Math.max(160, viewH - TOP_BAR - handH(viewW, viewH) - 12);
   }
+  return tableBoxFor(w, h, landscape);
+}
+
+/** A table box of w × h px: the scale `u` is the smaller of the width and 1.3 × the height, over 34 (CODE.md 9w.2). */
+export function tableBoxFor(w: number, h: number, landscape: boolean): TableBox {
   const u = clamp(Math.min(w, h * 1.3) / 34, 8, 16);
   return { w, h, u, landscape };
 }
@@ -170,7 +177,7 @@ export function seatCollisions(n: number, box: TableBox): string[] {
   const layout = seatLayout(n, box);
   const boxes: [string, Box][] = [];
   layout.forEach((s, i) => { boxes.push([`bubble ${i}`, bubbleBox(s, box.u)], [`name ${i}`, nameBox(s, box.u)]); });
-  boxes.push(['your seat', ownSeatBox(n, box)], ['waste pile', wasteBox(box)]);
+  boxes.push(['your seat', ownSeatBox(n, box)], ['waste pile', wasteBox(box)], ['last trick', lastBox(box, n)]);
   const bad: string[] = [];
   for (const [name, b] of boxes) if (overlaps(b, middleBox(box))) bad.push(`${name} in the middle`);
   for (let a = 0; a < boxes.length; a++) {
@@ -248,6 +255,18 @@ export function ownSeatBox(n: number, box: TableBox): Box {
   const c = seatSpot(n, 0);
   const cx = (c.x / 100) * box.w, cy = (c.y / 100) * box.h;
   return { x: cx - 4.5 * box.u, y: cy - 1.1 * box.u, w: 9 * box.u, h: 2.2 * box.u };
+}
+
+/**
+ * The last trick's corner stack at the felt's bottom-left (CODE.md 9x.2 rule 3):
+ * a label and up to `n` small cards, each card 0.5u further along. The room is
+ * kept for `n` cards, so the stack never grows into a seat once it is drawn.
+ * (The bottom-left is free: the waste pile is bottom-right, your pill bottom-centre.)
+ */
+export function lastBox(box: TableBox, n: number): Box {
+  const { u } = box;
+  const h = 6.5 * u;
+  return { x: 8, y: box.h - 8 - h, w: 3.6 * u + Math.max(0, n - 1) * 0.5 * u, h };
 }
 
 /** The waste pile: 5u × 6.5u in the bottom-right corner (16 px in from the edges). */
@@ -352,6 +371,7 @@ export function roundTable(s: Session, v: PlayerView, o: TableOpts): HTMLElement
       o.ledSuit ? h('span', { class: red ? 'led-mark red' : 'led-mark' }, SUIT_SYMBOL[o.ledSuit]) : null),
     h('div', { class: 'table-middle' }, o.middle ?? null),
     o.waste ?? null,
+    o.last ? h('div', { class: 'table-last', style: lastStyle(n, box) }, o.last) : null,
     plays.length ? h('div', { class: 'trick-pile' },
       plays.map((p, i) => {
         const at = spots[i]!;
@@ -396,6 +416,12 @@ export function roundTable(s: Session, v: PlayerView, o: TableOpts): HTMLElement
       return seatEl(o, id, seatCls, hitStyle, p.sessionName, kids);
     }),
   );
+}
+
+/** Where the last-trick stack sits, in px (CODE.md 9x.2 rule 3). */
+function lastStyle(n: number, box: TableBox): string {
+  const b = lastBox(box, n);
+  return `left:${b.x.toFixed(1)}px;top:${b.y.toFixed(1)}px;width:${b.w.toFixed(1)}px;height:${b.h.toFixed(1)}px`;
 }
 
 /** The waste pile, in the bottom-right corner of the felt (CODE.md 9u Part E5). */

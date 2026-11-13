@@ -20,7 +20,7 @@ import catchPhrasesMd from '../content/catch-phrases.md';
 import type { Card } from '../rules/cards.ts';
 import { defaultRng } from '../rules/rng.ts';
 import { applyAction, handOf } from '../session/session.ts';
-import type { PlayerId, Session, SessionAction, SessionEvent } from '../session/types.ts';
+import type { LeadNotice, PlayerId, Session, SessionAction, SessionEvent } from '../session/types.ts';
 import { playerView, type PlayerView } from '../session/view.ts';
 import { cardFace, cardFaceFromId, fanLayout, ordinal, shortLabel, sortHand, SUIT_NAME, SUIT_SYMBOL } from './cards.ts';
 import { h, type Child } from './dom.ts';
@@ -35,6 +35,8 @@ import { botsOnlyFor, botsTick, startFastForward, startSkip, stopFastForward } f
 import { fastForwardOn, hostIsSkipping, skipNote, skipping } from '../ai/fastforward.ts';
 import { hostBroadcast, joinSend, sendReaction } from './netplay.ts';
 import { handH, roundTable, wastePile } from './table.ts';
+import { joinNames } from '../session/names.ts';
+import { gameLayout, type GameLayout } from './layout.ts';
 import { netGameBody, netMenu } from './netscreens.ts';
 import {
   askPausePanel, askToTake, gameOverStage, netPauseButton, notesPanel, passOnButton, pauseButton, pausePanel, pauseRequestsBanner,
@@ -468,16 +470,14 @@ function popupsFor(s: Session, events: readonly SessionEvent[]): Popup[] {
         if (e.reason === 'timeLimit') out.push({ kind: 'info', icon: 'play', title: 'Pause over', text: 'Time limit reached' });
         break;
       case 'reactionTapReplay':
-        out.push({ kind: 'info', icon: 'repeat', title: 'Tie', text: `${e.players.map((x) => nameOf(s, x)).join(' and ')} tap again` });
+        // 2.30: the tie is a notice now (CODE.md 9y.3), so no pop-up for a shown notice.
         break;
       case 'leaderChosen': {
+        // 2.30: "X leads" for a missing suit or Reaction Tap is a notice now, so no six-second pop-up.
+        if (e.reason === 'missingSuit' || e.reason === 'reactionTap') break;
         const who = nameOf(s, e.leader);
-        // Secret suits (2026-11-13): the pop-up says why, never which suit is missing.
-        const why =
-          e.reason === 'missingSuit' ? 'Missing a suit'
-          : e.reason === 'reactionTap' ? 'Slowest in Reaction Tap'
-          : e.reason === 'host' ? 'Host leads round 1'
-          : '';
+        // Secret suits (2026-11-13): the pop-up never says which suit is missing.
+        const why = e.reason === 'host' ? 'Host leads round 1' : '';
         out.push({ kind: 'info', icon: 'play', title: `${who} leads`, text: why, ms: LEAD_MS });
         break;
       }
@@ -516,7 +516,12 @@ export function gameScreen(g: SavedGame): HTMLElement {
   const label: Child = s.phase === 'gameOver' ? 'End'
     : s.ultimateRound && s.phase !== 'results' ? icon('bolt')  // the word would widen the chip and squeeze the bar (2.10)
     : `R${s.round}`;
-  return h('main', { class: 'screen game' },
+  // 2.29: a fixed game screen (no scrolling) when the stage is framed; results and game over still scroll.
+  // Stages that are not framed (results, round start screens not yet framed) scroll inside their own
+  // box, so the page itself never scrolls during a game (2.29, CODE.md 9x.2).
+  const framed = hasFrame(body);
+  const content: Child = framed ? body : h('div', { class: 'game-scroll' }, body);
+  return h('main', { class: framed ? 'screen game fixed framed' : 'screen game fixed' },
     h('div', { class: 'game-bar' },
       h('button', { class: 'icon-btn', 'aria-label': 'Menu', 'aria-expanded': st.menuOpen ? 'true' : 'false', onclick: () => update({ menuOpen: !st.menuOpen, armed: null }) }, icon('menu')),
       h('span', { class: 'round-chip', 'aria-label': s.phase === 'gameOver' ? 'Game over' : s.ultimateRound && s.phase !== 'results' ? 'Ultimate Round' : `Round ${s.round}` }, label),
@@ -524,11 +529,12 @@ export function gameScreen(g: SavedGame): HTMLElement {
       takeButton(g),
     ),
     st.menuOpen ? (g.net ? netMenu(g) : gameMenu(g)) : null,
+    st.lastOpen && s.phase !== 'gameOver' && g.lastTrick ? lastSheet(s, g.lastTrick) : null,
     fastBanner(g),
     pausePanel(g),
     askPausePanel(g),
     pauseRequestsBanner(g),
-    body,
+    content,
   );
 }
 
@@ -594,8 +600,11 @@ function bottomSeat(g: SavedGame, holder: PlayerId): PlayerId {
   return ownSeat(g) ?? holder;
 }
 
-/** The table during play: players around it, this trick's cards in front of them, the last trick below. */
-function trickArea(s: Session, g: SavedGame, v: PlayerView, bottom: PlayerId, highlight: PlayerId | null): Child {
+/**
+ * The table during play: players around it and this trick's cards in front of
+ * them. The last trick is a small stack in the felt's corner (CODE.md 9x.2 rule 3).
+ */
+function trickArea(s: Session, g: SavedGame, v: PlayerView, bottom: PlayerId, highlight: PlayerId | null, lay: GameLayout): Child {
   const plays = g.trickLog;
   const table = roundTable(s, v, {
     bottom: bottomSeat(g, bottom),
@@ -605,9 +614,11 @@ function trickArea(s: Session, g: SavedGame, v: PlayerView, bottom: PlayerId, hi
     waste: wastePile(v.wastePileCount),
     ledSuit: v.ledSuit,
     you: ownSeat(g) !== null,
+    box: lay.box,
+    last: g.lastTrick ? lastCorner(s, g.lastTrick) : null,
   });
   shownTrickCount = plays.length;
-  return [table, g.lastTrick ? lastTrickRow(s, g.lastTrick) : null];
+  return table;
 }
 
 /** The finished trick on the felt while its cards move (see TrickAnim). */
@@ -618,17 +629,21 @@ function trickFinishStage(g: SavedGame, a: TrickAnim): Child {
   const last = a.plays.length - 1;
   const firstDraw = shownTrickCount !== -1;
   shownTrickCount = -1;
-  return h('div', { class: 'stack' },
-    roundTable(s, v, {
+  const lay = stageLayout(true, 52);
+  const who = ownSeat(g) ?? g.holder;
+  return gameFrame(lay, {
+    table: roundTable(s, v, {
       bottom: bottomSeat(g, g.holder),
       highlight: a.slapped,
       plays: a.plays,
       newFrom: firstDraw ? last : a.plays.length,
       waste: wastePile(waste),
       you: ownSeat(g) !== null,
+      box: lay.box,
     }),
-    h('div', { class: 'anim-block', 'aria-hidden': 'true' }),
-  );
+    hand: handBlock(s, playerView(s, who), null, { head: false, fit: lay.handH, width: lay.handW }),
+    extra: h('div', { class: 'anim-block', 'aria-hidden': 'true' }),
+  });
 }
 
 /** Slide the trick's cards to the waste pile, or into the slapped player's seat. */
@@ -682,18 +697,63 @@ function driveTrickAnim(): void {
   }
 }
 
-/** The last trick as a row of tiny cards; the slapped player's card is ringed. */
-function lastTrickRow(s: Session, t: LastTrick): HTMLElement {
-  const label = `Last trick: ${t.plays.map((p) => `${nameOf(s, p.player)} ${p.label}`).join(', ')}${t.slap ? `. ${nameOf(s, t.slap.slapper)} slapped ${nameOf(s, t.slap.slapped)}` : ''}`;
-  return h('div', { class: 'last-trick', 'aria-label': label },
+/** Words for who played what in the last trick (for screen readers). */
+function lastLabel(s: Session, t: LastTrick): string {
+  return `Last trick: ${t.plays.map((p) => `${nameOf(s, p.player)} ${p.label}`).join(', ')}${t.slap ? `. ${nameOf(s, t.slap.slapper)} slapped ${nameOf(s, t.slap.slapped)}` : ''}`;
+}
+
+/** The last trick in the table's top-left corner (2.29): tap it to see it big. The slapped player's card is ringed. */
+function lastCorner(s: Session, t: LastTrick): Child {
+  return h('button', { class: 'lt-corner', 'aria-label': `${lastLabel(s, t)}. Tap to see it big`, onclick: () => update({ lastOpen: true }) },
     h('span', { class: 'lt-label', 'aria-hidden': 'true' }, 'last'),
-    t.plays.map((p: TrickPlay) => {
-      const el = cardFaceFromId(p.card, `tiny-card${t.slap?.slapped === p.player ? ' slapped' : ''}`);
+    t.plays.map((p: TrickPlay, i) => {
+      const el = cardFaceFromId(p.card, `tiny-card lt-card${t.slap?.slapped === p.player ? ' slapped' : ''}`);
+      el.style.setProperty('--i', String(i));
       el.setAttribute('aria-hidden', 'true');
       return el;
     }),
     t.slap ? h('span', { class: 'lt-slap', 'aria-hidden': 'true' }, icon('hand')) : null,
   );
+}
+
+/** The last trick, big, on a sheet (2.29): from the corner of the table. */
+function lastSheet(s: Session, t: LastTrick): HTMLElement {
+  const close = (): void => update({ lastOpen: false });
+  return h('div', { class: 'overlay', onclick: (e: Event) => { if (e.target === e.currentTarget) close(); } },
+    h('div', { class: 'sheet last-sheet', role: 'dialog', 'aria-label': 'Last trick' },
+      h('div', { class: 'sheet-head' }, h('h2', null, 'Last trick'), h('button', { class: 'ghost', onclick: close }, 'Close')),
+      h('div', { class: 'last-big' }, t.plays.map((p: TrickPlay) => h('div', { class: 'last-big-item' },
+        cardFaceFromId(p.card, 'last-big-card'),
+        h('span', { class: t.slap?.slapped === p.player ? 'slapped-name' : '' }, nameOf(s, p.player))))),
+      t.slap ? h('p', { class: 'muted small center' }, `${nameOf(s, t.slap.slapper)} slapped ${nameOf(s, t.slap.slapped)}`) : null,
+    ),
+  );
+}
+
+/** True when a body is (or holds) a fixed game frame, so the screen must not scroll (2.29). */
+function hasFrame(c: Child): boolean {
+  if (c instanceof HTMLElement) return c.classList.contains('game-frame');
+  if (Array.isArray(c)) return (c as readonly Child[]).some(hasFrame);
+  return false;
+}
+
+/** The sizes of a stage's rows for this window (layout.ts). `bar` is the action bar's height (CODE.md 9x.2). */
+export function stageLayout(hasHand: boolean, bar: number): GameLayout {
+  return gameLayout(window.innerWidth, window.innerHeight, { hand: hasHand, bar });
+}
+
+/**
+ * One fixed game screen (CODE.md 9x.2, 2.29): the table row takes what is left,
+ * the hand row has the height `lay` gives it, and the action bar sits at the
+ * bottom. `extra` panels float over the bottom of the table and scroll inside
+ * themselves, so they never push the rows.
+ */
+export function gameFrame(lay: GameLayout, parts: { table: Child; hand?: Child; action?: Child; extra?: Child }): HTMLElement {
+  return h('div', { class: 'game-frame', style: `--hand-h:${lay.handH.toFixed(1)}px;--bar-h:${lay.barH.toFixed(1)}px;--side-w:${lay.sideW.toFixed(1)}px` },
+    h('div', { class: 'game-table-slot' }, parts.table,
+      parts.extra ? h('div', { class: 'game-extra' }, parts.extra) : null),
+    h('div', { class: 'game-hand-slot' }, parts.hand ?? null),
+    h('div', { class: 'game-action-slot' }, parts.action ?? null));
 }
 
 // ---------------------------------------------------------------------------
@@ -708,6 +768,7 @@ function tableStage(g: SavedGame): Child {
     case 'swap':
     case 'cardCheck': // 2.20: the wait and new-hand screens come from netRoundStart
     case 'reactionTap': return roundStartScreen(g) ?? h('p', null, 'Waiting…');
+    case 'leadNotice': return noticeStage(g);
     case 'chooseLeader': return chooseLeaderStage(g);
     case 'results': return resultsStage(g);
     case 'gameOver': return gameOverStage(g);
@@ -739,41 +800,109 @@ export function dealingStage(g: SavedGame): Child {
         icon('eyeoff'), ` ${s.order.length === 2 ? 2 : 1} hidden ${s.order.length === 2 ? 'decks' : 'deck'} `, icon('info'))
       : null,
   );
+  // The dealing bar is taller (two lines and the deal buttons), so the table is a little smaller here (2.29).
+  const lay = stageLayout(false, window.innerWidth > window.innerHeight ? 64 : 92);
   if (shuffling()) {
-    return h('div', { class: 'stack' },
-      chips,
-      roundTable(s, v, {
+    return gameFrame(lay, {
+      table: roundTable(s, v, {
         bottom: bottomSeat(g, dealer),
         dealer,
+        box: lay.box,
         middle: h('div', { class: 'deck shuffling', 'aria-label': 'Shuffling' },
           [0, 1, 2].map((k) => h('div', { class: 'card-back l', style: `--k:${k}` })),
           [0, 1, 2].map((k) => h('div', { class: 'card-back r', style: `--k:${k}` })),
         ),
       }),
-      h('p', { class: 'hint center' }, `${nameOf(s, dealer)} shuffles`),
-    );
+      action: h('div', { class: 'deal-bar' }, chips, h('p', { class: 'hint center' }, `${nameOf(s, dealer)} shuffles`)),
+    });
   }
   const setMode = (mode: 'auto' | 'manual'): void => { if (mode !== d.mode) send([{ type: 'setDealMode', by: dealer, mode }]); };
-  return h('div', { class: 'stack' },
-    chips,
-    roundTable(s, v, {
+  const hint = watching ? (notStarted || manual ? `${nameOf(s, dealer)} is dealing` : 'Dealing…')
+    : notStarted ? `${seat ? 'You' : nameOf(s, dealer)}: tap who gets the first card` : manual ? 'Tap a name to deal' : 'Dealing…';
+  return gameFrame(lay, {
+    table: roundTable(s, v, {
       bottom: bottomSeat(g, dealer),
       dealer,
       highlight: manual || notStarted ? null : d.nextSeat,
       onTap: tap,
       tapLabel: notStarted ? 'First card to' : 'Deal a card to',
       disabled: manual && s.deal ? lockedSeats(s.deal) : [],
+      box: lay.box,
       middle: h('div', { class: 'deck', id: 'deck', 'aria-label': `${d.remaining} of ${total} cards left to deal` },
         h('div', { class: 'card-back' }), h('div', { class: 'card-back' }), h('div', { class: 'card-back top' }),
         h('span', { class: 'deck-count' }, String(d.remaining))),
     }),
-    h('p', { class: 'hint center' }, watching ? (notStarted || manual ? `${nameOf(s, dealer)} is dealing` : 'Dealing…')
-      : notStarted ? `${seat ? 'You' : nameOf(s, dealer)}: tap who gets the first card` : manual ? 'Tap a name to deal' : 'Dealing…'),
-    notStarted || watching ? null : h('div', { class: 'seg', role: 'group', 'aria-label': 'Deal mode' },
-      h('button', { class: manual ? 'seg-btn on' : 'seg-btn', 'aria-pressed': manual ? 'true' : 'false', onclick: () => setMode('manual') }, icon('hand'), ' Manual'),
-      h('button', { class: manual ? 'seg-btn' : 'seg-btn on', 'aria-pressed': manual ? 'false' : 'true', onclick: () => setMode('auto') }, icon('play'), ' Auto'),
-      !manual ? h('button', { class: 'seg-btn', onclick: () => send([{ type: 'autoDealAll', by: dealer }]) }, 'Deal all') : null,
-    ),
+    action: h('div', { class: 'deal-bar' },
+      chips,
+      h('p', { class: 'hint center' }, hint),
+      notStarted || watching ? null : h('div', { class: 'seg', role: 'group', 'aria-label': 'Deal mode' },
+        h('button', { class: manual ? 'seg-btn on' : 'seg-btn', 'aria-pressed': manual ? 'true' : 'false', onclick: () => setMode('manual') }, icon('hand'), ' Manual'),
+        h('button', { class: manual ? 'seg-btn' : 'seg-btn on', 'aria-pressed': manual ? 'false' : 'true', onclick: () => setMode('auto') }, icon('play'), ' Auto'),
+        !manual ? h('button', { class: 'seg-btn', onclick: () => send([{ type: 'autoDealAll', by: dealer }]) }, 'Deal all') : null,
+      )),
+  });
+}
+
+/**
+ * 2.30 (CODE.md 9y.3): a notice about who leads, over the table. It stays until
+ * this phone's person taps OK. Play waits for every person (CODE.md 9y.1).
+ */
+export function noticeStage(g: SavedGame): Child {
+  const s = g.session;
+  const v = publicView(s);
+  const notice = s.notice!;
+  const seat = ownSeat(g);
+  const me = seat ?? g.holder; // a one-phone game: whoever holds the phone taps
+  const seenByMe = s.noticeSeen.includes(me);
+  // Persons who still have to tap OK (waitForAll only; a shared phone needs one tap).
+  const waiting = s.waitForAll ? s.order.filter((p) => !s.players.find((x) => x.id === p)?.computer && !s.noticeSeen.includes(p)) : [];
+  const lay = stageLayout(false, 52);
+  return gameFrame(lay, {
+    table: [
+      roundTable(s, v, { bottom: bottomSeat(g, me), you: seat !== null, box: lay.box }),
+      seenByMe ? null : h('div', { class: 'notice-overlay' }, noticeCard(s, notice, () => send([{ type: 'seenNotice', by: me }]))),
+    ],
+    action: seenByMe && waiting.length ? h('p', { class: 'hint center wait-line' }, `Waiting for ${joinNames(waiting.map((p) => nameOf(s, p)))}`) : null,
+  });
+}
+
+/** The notice card's words and its OK button (CODE.md 9y.1). The suit is never named. */
+function noticeCard(s: Session, n: LeadNotice, onOk: () => void): HTMLElement {
+  const who = (ids: readonly PlayerId[]): string => joinNames(ids.map((id) => nameOf(s, id)));
+  let title: string;
+  let text: string;
+  let times: HTMLElement | null = null;
+  switch (n.kind) {
+    case 'missingOne':
+      title = `${who(n.players)} is missing a suit`;
+      text = `${who(n.players)} leads first.`;
+      break;
+    case 'missingMany':
+      title = `${who(n.players)} are missing a suit`;
+      text = 'Reaction Tap comes next.';
+      break;
+    case 'tapIntro':
+      title = 'Reaction Tap';
+      text = `${who(n.players)} play Reaction Tap. Tap when the screen turns green. The slowest leads first.`;
+      break;
+    case 'tapResult':
+      title = `${who(n.leader ? [n.leader] : [])} leads first`;
+      text = 'Slowest in Reaction Tap';
+      times = h('p', { class: 'small center' }, n.players.map((id) => {
+        const t = n.times?.[id];
+        return `${nameOf(s, id)} ${t?.falseStart ? 'tapped too soon' : `${t?.ms ?? '?'} ms`}`;
+      }).join(' · '));
+      break;
+    case 'tapTie':
+      title = `${who(n.players)} tap again`;
+      text = 'A tie in Reaction Tap.';
+      break;
+  }
+  return h('section', { class: 'panel notice-card', role: 'dialog', 'aria-label': title },
+    h('h2', { class: 'center notice-title' }, title),
+    h('p', { class: 'center' }, text),
+    times,
+    h('button', { class: 'big', onclick: onOk }, 'OK'),
   );
 }
 
@@ -781,10 +910,11 @@ export function chooseLeaderStage(g: SavedGame): Child {
   const s = g.session;
   const v = publicView(s);
   const winner = s.previous!.winner;
-  return h('div', { class: 'stack' },
-    h('h2', { class: 'center' }, `${ownSeat(g) ? 'You' : nameOf(s, winner)}: who leads?`),
-    roundTable(s, v, { bottom: bottomSeat(g, winner), you: ownSeat(g) !== null, onTap: (id) => send([{ type: 'chooseLeader', by: winner, leader: id }]), tapLabel: 'Leads:' }),
-  );
+  const lay = stageLayout(false, 52);
+  return gameFrame(lay, {
+    table: roundTable(s, v, { bottom: bottomSeat(g, winner), you: ownSeat(g) !== null, onTap: (id) => send([{ type: 'chooseLeader', by: winner, leader: id }]), tapLabel: 'Leads:', box: lay.box }),
+    action: h('h2', { class: 'center' }, `${ownSeat(g) ? 'You' : nameOf(s, winner)}: who leads?`),
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -804,22 +934,26 @@ export function handoffBlock(name: string, onGo: () => void, opts: { compact?: b
 function lookHandoffStage(g: SavedGame): Child {
   const s = g.session;
   const who = nameOf(s, g.holder);
-  return h('div', { class: 'stack' },
-    handoffBlock(who, () => update({ game: { ...g, stage: 'hand' } })),
-    h('button', { class: 'ghost', onclick: () => update({ game: { ...g, stage: 'table' } }) }, 'Back to the table'),
-  );
+  return gameFrame(stageLayout(false, 0), {
+    table: h('div', { class: 'frame-col' },
+      handoffBlock(who, () => update({ game: { ...g, stage: 'hand' } })),
+      h('button', { class: 'ghost', onclick: () => update({ game: { ...g, stage: 'table' } }) }, 'Back to the table')),
+  });
 }
 
 function lookHandStage(g: SavedGame): Child {
   const s = g.session;
   const v = playerView(s, g.holder);
   const next = nextClockwise(s, g.holder);
-  return h('div', { class: 'stack' },
-    handBlock(s, v, null),
-    h('button', { class: 'big', onclick: () => update({ game: { ...g, stage: 'handoff', holder: next } }) },
-      `Hide · pass to ${nameOf(s, next)}`),
-    h('button', { class: 'ghost', onclick: () => update({ game: { ...g, stage: 'table' } }) }, 'Hide · back to the table'),
-  );
+  const lay = stageLayout(true, 0);
+  return gameFrame(lay, {
+    table: h('div', { class: 'frame-col' },
+      h('h2', { class: 'center' }, `${nameOf(s, v.me)}'s cards`),
+      h('button', { class: 'big', onclick: () => update({ game: { ...g, stage: 'handoff', holder: next } }) },
+        `Hide · pass to ${nameOf(s, next)}`),
+      h('button', { class: 'ghost', onclick: () => update({ game: { ...g, stage: 'table' } }) }, 'Hide · back to the table')),
+    hand: handBlock(s, v, null, { head: false, fit: lay.handH, width: lay.handW }),
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -833,13 +967,13 @@ function playHandoffStage(g: SavedGame): Child {
   const actor = asked ?? actorOf(s) ?? g.holder;
   const who = nameOf(s, actor);
   const choosing = !asked && v.pendingFinalTwo === actor;
-  return h('div', { class: 'stack' },
-    trickArea(s, g, v, actor, actor),
-    handoffBlock(who, () => update({ game: { ...g, stage: 'hand', holder: actor } }), {
-      compact: true, note: choosing ? 'Pick up or forfeit' : asked ? `For ${who} only` : null,
-    }),
-    askToTake(g),
-  );
+  const lay = stageLayout(true, 52);
+  return gameFrame(lay, {
+    table: trickArea(s, g, v, actor, actor, lay),
+    hand: handoffBlock(who, () => update({ game: { ...g, stage: 'hand', holder: actor } }), { compact: true }),
+    action: choosing || asked ? h('p', { class: 'hint center' }, choosing ? 'Pick up or forfeit' : `For ${who} only`) : null,
+    extra: askToTake(g),
+  });
 }
 
 /**
@@ -851,15 +985,17 @@ export function handBlock(
   s: Session,
   v: PlayerView,
   onTap: ((c: Card) => void) | null,
-  opts: { picked?: ReadonlySet<string>; all?: boolean; mark?: boolean; head?: boolean } = {},
+  opts: { picked?: ReadonlySet<string>; all?: boolean; mark?: boolean; head?: boolean; fit?: number; width?: number } = {},
 ): HTMLElement {
   const hand = sortHand(v.myHand);
   // The fanned hand (CODE.md 9u Part D): card size and place from the phone's width (portrait only).
   // CODE.md 9w.5: the hand uses the window's width (not the 520 px menu column); in landscape the cards fit the shorter hand area.
   const landscape = window.innerWidth > window.innerHeight;
+  // 2.29: the hand fits its fixed row (`fit`), one row up to 15 cards; its width comes from the stage's layout.
+  const width = opts.width ?? Math.min(window.innerWidth, 1100) - 12;
   const fan = landscape
-    ? fanLayout(hand.length, Math.min(window.innerWidth, 1100) - 12, (handH(window.innerWidth, window.innerHeight) - 30) / (hand.length > 12 ? 1.55 : 1.4), 48)
-    : fanLayout(hand.length, Math.min(window.innerWidth, 1100) - 12);
+    ? fanLayout(hand.length, width, ((opts.fit ?? handH(window.innerWidth, window.innerHeight)) - 30) / (hand.length > 15 ? 1.55 : 1.4), 48)
+    : fanLayout(hand.length, width, undefined, 64, opts.fit);
   const legal = new Set(opts.all ? v.myHand.map((c) => c.id) : v.legalCardIds);
   const selected = getState().selected;
   const raised = (id: string): boolean => (opts.picked ? opts.picked.has(id) && !opts.mark : selected === id);
@@ -918,17 +1054,19 @@ export function playHandStage(g: SavedGame): Child {
     }, forfeitArmed ? 'Tap again to forfeit (last place)' : 'Forfeit')
     : null;
 
-  // Network game: the glowing seat is whoever must act; a line says who when it isn't this phone.
-  const actor = actorOf(s);
-  const waitLine = ownSeat(g) && actor && actor !== v.me
-    ? h('p', { class: 'hint center wait-line' }, v.pendingFinalTwo === actor ? `${nameOf(s, actor)}: pick up or forfeit` : `${nameOf(s, actor)}’s turn`)
-    : null;
   // Network game (2.5): the leader can't play while a take-cards request waits; the trick waits for the answer.
+  // 2.29: the "X's turn" line is gone: the gold seat on the table shows whose turn it is.
+  const actor = actorOf(s);
   const takeWaiting = ownSeat(g) ? s.takeRequests.find((r) => !r.agreed) : undefined;
   const playBlocked = !!takeWaiting;
-  return h('div', { class: 'stack' },
-    trickArea(s, g, v, v.me, actor ?? v.me),
-    waitLine,
+  const lay = stageLayout(true, 52);
+  const playButton = myTurn && !playBlocked
+    ? h('button', { class: 'big grow', disabled: !selCard, onclick: () => selected && play(selected) },
+      selCard ? ['Play ', h('span', { class: selCard.kind === 'standard' && (selCard.suit === 'hearts' || selCard.suit === 'diamonds') ? 'play-red' : '' }, shortLabel(selCard))]
+        : v.trick.length || jokerLed(s) ? 'Pick a card' : 'Pick a card to lead')
+    : null;
+  // Panels that come and go float over the table (2.29), so the rows never move.
+  const extra: Child[] = [
     ownSeat(g) ? takeStatus(s, v.me) : null,
     notesPanel(g, v.me),
     takePrompts(s, v.me),
@@ -943,16 +1081,8 @@ export function playHandStage(g: SavedGame): Child {
     myTurn && jokerLed(s) && s.play
       ? h('p', { class: 'note center' }, icon('joker'), ` Joker lead by ${nameOf(s, s.play.trick.acted[0] as string)}: same trick, play any card`)
       : null,
-    handBlock(s, v, playBlocked ? null : onTap, { head: false }),
     myTurn && playBlocked && takeWaiting
       ? h('p', { class: 'note center' }, `Waiting for ${nameOf(s, takeWaiting.target)} to answer ${nameOf(s, takeWaiting.requester)}`)
-      : null,
-    myTurn && !playBlocked
-      ? h('div', { class: 'play-bar' },
-        h('button', { class: 'big grow', disabled: !selCard, onclick: () => selected && play(selected) },
-          selCard ? ['Play ', h('span', { class: selCard.kind === 'standard' && (selCard.suit === 'hearts' || selCard.suit === 'diamonds') ? 'play-red' : '' }, shortLabel(selCard))]
-            : v.trick.length || jokerLed(s) ? 'Pick a card' : 'Pick a card to lead'),
-      )
       : null,
     myTurn && selCard?.kind === 'joker' && jokerGivesWin(s, v.me)
       ? h('p', { class: 'note warn' }, `Careful: if you play this joker, ${nameOf(s, jokerGivesWin(s, v.me))} ${
@@ -963,7 +1093,13 @@ export function playHandStage(g: SavedGame): Child {
     !ownSeat(g) && !myTurn && !choosing && !s.takeRequests.some((r) => r.target === v.me && !r.agreed)
       ? passOnButton(g)
       : null,
-  );
+  ];
+  return gameFrame(lay, {
+    table: trickArea(s, g, v, v.me, actor ?? v.me, lay),
+    hand: handBlock(s, v, playBlocked ? null : onTap, { head: false, fit: lay.handH, width: lay.handW }),
+    action: playButton,
+    extra,
+  });
 }
 
 // ---------------------------------------------------------------------------

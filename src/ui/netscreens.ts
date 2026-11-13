@@ -16,7 +16,7 @@ import type { SavedGame } from './storage.ts';
 import type { PlayerId, Session, SessionAction } from '../session/types.ts';
 import { joinNames } from '../session/names.ts';
 import { getState, update } from './store.ts';
-import { chooseLeaderStage, dealingStage, fastForwardMenuItems, handBlock, isHostSeat, nameOf, ownSeat, playHandStage, publicView, send } from './game.ts';
+import { chooseLeaderStage, dealingStage, fastForwardMenuItems, gameFrame, handBlock, isHostSeat, nameOf, noticeStage, ownSeat, playHandStage, publicView, send, stageLayout } from './game.ts';
 import { netRoundStart } from './roundstart.ts';
 import { awardsRow, gameOverStage, podium, targetRow } from './between.ts';
 import { playerView } from '../session/view.ts';
@@ -39,6 +39,7 @@ export function netGameBody(g: SavedGame): Child {
       case 'dealing': body = dealingStage(g); break;
       case 'reshuffle': body = beforeRound(g); break;
       case 'chooseLeader': body = s.previous?.winner === me ? chooseLeaderStage(g) : waitingFor(g, `${nameOf(s, s.previous?.winner)} picks who leads`); break;
+      case 'leadNotice': body = noticeStage(g); break;
       case 'playing': body = playHandStage(g); break;
       case 'results': body = results(g); break;
       case 'gameOver': body = gameOverStage(g); break;
@@ -93,11 +94,12 @@ function beforeRound(g: SavedGame): Child {
   const me = ownSeat(g)!;
   const host = isHostSeat(g);
   const v = publicView(s);
-  return h('div', { class: 'stack' },
-    roundTable(s, v, { bottom: me, waste: wastePile(0), you: true }),
-    handBlock(s, playerView(s, me), null, { head: false }),
-    targetRow(s, { me }),
-    h('div', { class: 'row' },
+  // 2.29: a fixed game screen: the table, your hand, the buttons; the target row floats over the table.
+  const lay = stageLayout(true, 52);
+  return gameFrame(lay, {
+    table: roundTable(s, v, { bottom: me, waste: wastePile(0), you: true, box: lay.box }),
+    hand: handBlock(s, playerView(s, me), null, { head: false, fit: lay.handH, width: lay.handW }),
+    action: h('div', { class: 'row round-buttons' },
       v.canCallReshuffle
         ? h('button', {
           class: 'secondary grow',
@@ -109,8 +111,8 @@ function beforeRound(g: SavedGame): Child {
         ? h('button', { class: 'big grow', onclick: () => send([{ type: 'startRound', by: s.hostId }]) }, icon('play'), ' Start the round')
         : null,
     ),
-    host ? null : hostDeciding(s, 'when to start the round'),
-  );
+    extra: [targetRow(s, { me }), host ? null : hostDeciding(s, 'when to start the round')],
+  });
 }
 
 /** Ready-up (2.5): who is ready, on every phone; each phone readies only its own player. */

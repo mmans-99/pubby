@@ -13,7 +13,7 @@
  */
 
 import quickRulesMd from '../content/quick-rules.md';
-import { VERSION } from './version.ts';
+import { VERSION_FULL } from './version.ts';
 import { comeBack, isApplePhone, keepPubbyOpen, leavePubby, setupBack } from './back.ts';
 import { jokerCount, MAX_PLAYERS, MIN_PLAYERS } from '../rules/cards.ts';
 import { defaultRng } from '../rules/rng.ts';
@@ -187,6 +187,7 @@ function rulesTopicFor(st: State): string | null {
     case 'reshuffle': return 'Dealing';
     case 'swap':
     case 'cardCheck': return 'Hidden decks';
+    case 'leadNotice': return 'Missing a suit';
     case 'reactionTap': return 'Missing a suit';
     case 'chooseLeader': return 'How to win';
     case 'results': return 'Scoring';
@@ -219,7 +220,7 @@ function rulesOverlay(): HTMLElement {
       ),
       h('p', { class: 'muted small' }, 'Only on this phone. The game carries on underneath.'),
       renderMarkdown(quickRulesMd, true),
-      h('p', { class: 'muted small center version' }, `Pubby version ${VERSION}`),
+      h('p', { class: 'muted small center version' }, `Pubby version ${VERSION_FULL}`),
     ),
   );
 }
@@ -255,7 +256,7 @@ function homeScreen(): HTMLElement {
     ),
     h('button', { class: 'big secondary', onclick: () => update({ exitAsk: true }) }, 'Exit Pubby'),
     h('p', { class: 'muted small center' }, 'Test build: on several phones you can deal and play; votes, pause, take-cards and rejoining come next.'),
-    h('p', { class: 'muted small center version' }, `Version ${VERSION}`),
+    h('p', { class: 'muted small center version' }, `Version ${VERSION_FULL}`),
   );
 }
 
