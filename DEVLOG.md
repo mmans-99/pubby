@@ -4,6 +4,16 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-14 (00:09) — Plan 9ad (2.34): points table, typed messages, away notice, seats over fans, cards on "who leads?" (docs only)
+
+**User (network test of 2.33, screenshots):** results need a points table; wants to type own messages in game; the "is away" note pushes the screen down and cuts off the board; names and card counts are covered by the fans; at "who leads?" the winner's cards weren't shown until after picking. Asked for a plan to code with Haiku.
+
+**Found:** `netGameBody` puts `connectionNotice` before the fixed-size game frame; `.edge-fan` has z-index 1 and the disc and name none; `chooseLeaderStage` uses `stageLayout(false, …)` with no hand; `resultsTable` in `between.ts` is unused; `render()` rebuilds the page, so a message box must live outside the app root.
+
+**User (00:11):** profiles shouldn't reset with each version; wants stats export and import. **Found:** storage keys are fixed and nothing clears them on update; the loss comes from the browser (iPhone 7-day rule, separate storage per address/browser/Home Screen app). Added Part F (9ad.5b): `navigator.storage.persist()`, JSON backup and restore with a merge, old-profile normalising.
+
+**Written:** `CODE.md` 9ad, `PROJECT.md` 12p, `TODO.md` Phase 4o. No code changed; version unchanged (2.33.0).
+
 ## 2026-11-13 (after 22:55) — Build 9ac (2.33.0): seat discs with initials, option D (not committed)
 
 **Built:** `src/ui/initials.ts` `seatInitials` (one letter, then two, then three, then letter + number; spaces ignored; empty name "?"); `tests/ui/initials.test.ts` (8 tests). `src/ui/table.ts`: `seatLayout` names centred under the disc (7u wide); `bubbleBox` covers disc (2.6u) and count badge (1.5u) as one box; `roundTable` draws `.seat-disc` with `.seat-initial` and `.disc-count`, tags from `seatInitials` over every session player. `src/ui/styles.css`: `.seat-disc` rules (turn gold ring, away red ring, out fades). `package.json` 2.33.0.

@@ -2895,6 +2895,215 @@ Tests, new file `tests/ui/initials.test.ts`:
 6. Network game: the same tags on every phone.
 7. Landscape: the discs and names fit.
 
+## 9ad. Version 2.34: points table, typed messages, away notice that doesn't push the table, seats not hidden by fans, your cards on "who leads?", backup and restore (PLAN, user 2026-11-14 00:09 and 00:11; written for Haiku; NOT BUILT; spec `PROJECT.md` 12p)
+
+From the user's network game test of 2.33 (three screenshots). **Haiku builds this, one part at a time, in the order below.** Do not change anything that is not listed. If something here does not match the code, stop and ask the user (do not guess). Run `npm run check` and `npm test` after every part.
+
+The problems:
+1. The results screen has no table of points.
+2. People can only send the fixed catch-phrases; they want to type their own messages during the game.
+3. When someone is away, the red "X is away. The game waits for them to come back." note pushes the whole game screen down and cuts off the bottom (your hand, the "You" pill, the waste pile).
+4. Other players' names, discs and card counts are covered by their fans of card backs (top seat: the count badge is hidden; left and right seats: the name runs under the fan).
+5. Picking who leads (last round's winner): your cards are not shown until you have picked, so you can't use them to decide.
+6. (00:11) Profiles seem to reset when the version updates; wants to export stats and import them again (Part F).
+
+### 9ad.0 Read first
+
+- `src/ui/netscreens.ts`: `netGameBody` (about line 31) returns `[connectionNotice(g), body]`; `connectionNotice` (about line 52); `results` (about line 142).
+- `src/ui/game.ts`: `gameFrame` (about line 795); `chooseLeaderStage` (about line 949); `handBlock` (about line 1024); `reactionsLayer`, `react`, `showReaction`, `floatText` (about line 1257 to 1345).
+- `src/ui/between.ts`: `resultsTable` (about line 67, **not used anywhere now**), `podium`, `resultsStage` (about line 259), `gameOverStage` (about line 305).
+- `src/ui/table.ts`: `roundTable` seat loop (about line 425): kids are pushed in this order: `edgeFan`, `seat-disc`, `seat-label`.
+- `src/ui/styles.css`: `.edge-fan` (z-index 1, about line 902), `.seat-disc`, `.seat-label` (about line 936 to 960), `.game-table-slot` (about line 1076, already `position: relative`), `.float-react` (about line 995).
+- `src/net/lobby.ts`: `LOBBY_PROTOCOL` (line 16), message types `FromJoiner` / `ToJoiner` (about line 55 to 90), readers (about line 107 and 144).
+- `src/ui/netplay.ts`: `sendReaction`, `hostGotReact`, `joinGotReact`, the burst limit (`REACT_BURST`, `REACT_WINDOW_MS`).
+- `src/ui/netlobby.ts`: where `react` messages are routed (about line 1093 and 1311).
+- `src/ui/app.ts` `render()` (about line 133): **every redraw rebuilds the page with `root.replaceChildren`**. This matters for Part B.
+
+### 9ad.1 Part A: seats are never hidden by fans (`src/ui/styles.css` only)
+
+Cause: inside a seat, `.edge-fan` has `z-index: 1`; `.seat-disc` and `.seat-label` have no z-index, so the fan is drawn over them.
+
+1. Add `z-index: 2;` to `.seat-disc` and to `.seat-label`.
+2. So a name stays readable on top of red card backs, give `.seat-label` a soft dark backing: `background: rgba(0, 0, 0, 0.45); padding: 1px 6px; border-radius: 999px;`. Keep the existing text-shadow and the 0.7 opacity rule; change `.seat-quiet .seat-label` opacity only if the name becomes hard to read in the headless screenshots (then use `opacity: 0.85`).
+3. Do not move any seat. The layout tests (`tests/ui/seats.test.ts`, `tests/ui/layout.test.ts`) must pass unchanged.
+
+Check: headless screenshots (as in 9ac.4) at 384 × 730 with 4, 5 and 8 players, mid-trick: every disc, count badge and name is fully visible on top of the fans.
+
+### 9ad.2 Part B: the away notice floats over the table (`src/ui/netscreens.ts`, `src/ui/styles.css`)
+
+Today `netGameBody` returns the notice **before** the game screen, so the fixed-size game screen (sized to the whole window by `gameLayout`) is pushed down by the notice's height and its bottom is cut off.
+
+1. Shorter text in `connectionNotice`:
+   - one away: `"<name> is away · waiting for them"`; several: `"<a>, <b> are away · waiting for them"`.
+   - lost (the `gone` case): keep the current words.
+   - Give it the classes `note warn net-lost table-notice`.
+2. In `netGameBody`, build `body` first, then the notice. If the notice is not null **and** the body is a game screen, put the notice inside the table area instead of before it:
+   ```ts
+   const notice = connectionNotice(g);
+   const frame = body instanceof HTMLElement && body.classList.contains('game-frame') ? body : null;
+   const slot = frame?.querySelector('.game-table-slot');
+   if (notice && slot) { slot.appendChild(notice); return body; }
+   return [notice, body]; // screens that scroll (results, waiting) keep it on top, as now
+   ```
+   (`dealingStage`, `beforeRound`, `chooseLeaderStage`, `noticeStage`, `playHandStage` all return `gameFrame(...)`; check each one in the code. If one returns an array or wrapper, find the `.game-frame` with `querySelector` on it instead.)
+3. CSS, new rule:
+   ```css
+   /* 9ad.2: the away notice floats in the empty band above the "You" pill; it never moves the rows. */
+   .game-table-slot > .table-notice {
+     position: absolute; left: 50%; bottom: 22%; translate: -50% 0; z-index: 6;
+     max-width: 80%; margin: 0; padding: 6px 12px; border-radius: 12px;
+     font-size: 0.85rem; line-height: 1.25; text-align: center;
+     background: rgba(60, 22, 16, 0.88); border: 1px solid var(--danger); border-left-width: 1px;
+     pointer-events: none; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+   }
+   ```
+4. The away seat already shows a red ring and "Away" (2.33), so the notice is a reminder, not the only sign.
+
+Check: headless, network game is hard to fake, so add a test hook only if one exists already; otherwise check by eye on the phone (9ad.7). At minimum, in a headless single-player game, inject a fake `.table-notice` into `.game-table-slot` with the browser console and screenshot it: the table, hand and buttons do not move.
+
+### 9ad.3 Part C: your cards on the "who leads?" screen (`src/ui/game.ts` `chooseLeaderStage`)
+
+Today: `stageLayout(false, 52)` (no hand row) and no `hand`. 
+
+1. Work out whose cards to show: `const mine = ownSeat(g) === winner;` (network game and single player: this phone's player is the winner).
+2. If `mine`: use `stageLayout(true, 52)` and pass
+   `hand: handBlock(s, playerView(s, winner), null, { head: false, fit: lay.handH, width: lay.handW })`
+   to `gameFrame` (same call as `beforeRound` in `netscreens.ts`). The cards are not tappable (`onTap` null).
+3. One-phone game (`ownSeat(g) === null`): everyone can see the screen, so the hand is hidden by default. **Default (user can change):** a button `Show my cards` in the action bar beside the question; tapping it shows `winner`'s hand (store a flag in module state `leaderPeek = s.round`; clear it when the phase changes). The question line then reads `<winner>: who leads?`.
+4. The screen's text stays `You: who leads?` / `<winner>: who leads?`.
+5. `netscreens.ts` already calls `chooseLeaderStage(g)` for the winner's phone; other phones keep `waitingFor(...)`, which already shows their own hand. No change there.
+
+Check: unit tests unchanged; headless single-player game where you win round 1 (use the existing playthrough bot or Fast forward): the "who leads?" screen shows your cards in the hand row and tapping a seat still picks the leader.
+
+### 9ad.4 Part D: a points table on the results screen (`src/ui/between.ts`, `src/ui/netscreens.ts`, `src/ui/styles.css`)
+
+Replace the unused `resultsTable` with a full score sheet. Keep the podium.
+
+1. New exported function in `between.ts`:
+   ```ts
+   /** CODE.md 9ad.4: every player's points for each round, and the total. */
+   export function scoreSheet(s: Session, opts: { me?: PlayerId } = {}): HTMLElement | null
+   ```
+   - Rounds: `s.rounds.filter((r) => !r.ultimate)`. If there are none, return `null`.
+   - Rows: every player in `s.order`, sorted by the latest `totals` (highest first; ties keep `s.order`).
+   - Columns: `#` (place by total, shared place for equal totals: "1st", "=2nd"), `Player`, one column per round headed `R1`, `R2`, … with that round's `points` signed (`+2`, `−1`, `0`), then `Total` in bold.
+   - The player's own row (`opts.me`) gets class `me-row` (gold text). The loser of the latest round keeps the existing `loser-row` look on their cell for that round only (class `lost` on the cell).
+   - More than 6 rounds: the table scrolls sideways inside the panel; `Player` (left) and `Total` (right) stay put (`position: sticky`).
+   - Ultimate Round: not a column (it is outside the score). If `s.ultimateLabels` exists, show a small `Ultimate Winner` / `Ultimate Loser` tag after the name, as in the game-over screen.
+   - Wrap it: `h('section', { class: 'panel score-sheet', 'aria-label': 'Points table', 'data-scroll': 'scores' }, h('table', { class: 'results' }, …))`. The `data-scroll` keeps its sideways place between redraws (2.31): also keep `scrollLeft`, not just `scrollTop`; see step 5.
+2. Delete `resultsTable` (it is not used; search first to be sure).
+3. Put it on the screens, right **under the podium**:
+   - one phone: `resultsStage` in `between.ts`;
+   - network and single player: `results` in `netscreens.ts` (pass `{ me }`);
+   - game over: `gameOverStage` in `between.ts`, under the final standings (check what it already shows; if it already has a per-round table, leave it and tell the user).
+4. CSS:
+   ```css
+   .score-sheet { overflow-x: auto; padding: 8px; }
+   .score-sheet table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 0.9rem; }
+   .score-sheet th, .score-sheet td { padding: 4px 6px; text-align: center; white-space: nowrap; }
+   .score-sheet th:nth-child(2), .score-sheet td:nth-child(2) { text-align: left; position: sticky; left: 0; background: var(--panel, #1f3b2a); }
+   .score-sheet th:last-child, .score-sheet td:last-child { position: sticky; right: 0; background: var(--panel, #1f3b2a); font-weight: 800; }
+   .score-sheet tr.me-row td { color: var(--gold); }
+   .score-sheet td.lost { color: var(--danger); }
+   ```
+   Use the real panel colour variable from `styles.css` (search `.panel {`), not the fallback.
+5. `src/ui/app.ts` `render()`: where it saves and restores `scrollTop` for `[data-scroll]`, also save and restore `scrollLeft` (same map, store `{ top, left }`). Update `tests/ui/scrollkeep.test.ts` only if it tests that shape.
+6. Tests, new file `tests/ui/scoresheet.test.ts` — test a **pure** helper, not the DOM: move the row and place logic into `export function scoreRows(s: Session): { id: PlayerId; place: string; points: number[]; total: number }[]` in `between.ts` (or a new pure file `src/ui/scores.ts` if `between.ts` imports DOM code that breaks under `tsx --test`; check how `initials.test.ts` imports). Cases: sorted by total; equal totals share a place ("=2nd"); Ultimate rounds are not columns; a player with no points in a round shows 0.
+
+### 9ad.5 Part E: type your own message (`src/ui/game.ts`, `src/net/lobby.ts`, `src/ui/netplay.ts`, `src/ui/netlobby.ts`, `src/ui/styles.css`)
+
+What the user sees: the 😂 sheet gets a text box at the top: `Say something…` and a `Send` button. A sent message floats up from the sender's seat with their name, on every phone, the same way a catch-phrase does (but stays a little longer: 4 s). Under the box, the phone's last 5 sent messages show as chips to send again with one tap.
+
+**Defaults chosen (user can change):** 60 characters at most; works in every game type (on one phone it simply floats on that phone); messages are not saved in the game record or stats; no word filter; computer players don't answer typed messages; the same flood limit as reactions (6 in 3 s per phone).
+
+1. **The text box must survive redraws.** `render()` rebuilds the whole page on every update (network moves, votes, other people's reactions), which would wipe what you've typed and close the keyboard. So the message bar is **not** built in `reactionsLayer`. Instead:
+   - In `game.ts`, create it **once** (module-level, lazily on first use): `const msgBar = h('form', { class: 'msg-bar' }, input, sendBtn)`, with `input = h('input', { type: 'text', maxlength: 60, placeholder: 'Say something…', 'aria-label': 'Your message', autocomplete: 'off', enterkeyhint: 'send' })`.
+   - Append it to `document.body` (not to the app root) the first time, and from then on only toggle a class: `msgBar.classList.toggle('open', open)` from `reactionsLayer` every render (open = `getState().reactionsOpen` and the game is on show and not `gameOver`). Because it lives outside the root, `replaceChildren` never touches it.
+   - The `resize` handler in `app.ts` already skips redraws while an input has focus (2.28.1); keep that.
+   - `onsubmit`: `preventDefault()`; text = `input.value.trim()` with runs of spaces squashed to one; if empty, do nothing; else `sendMessage(text)`, clear the input, keep focus (so the keyboard stays up for the next one).
+2. **Recent messages:** keep the last 5 distinct sent texts in `localStorage` key `pubby.recentMessages` (wrap reads and writes in try/catch, as `storage.ts` does). Show them as `phrase-chip` buttons at the top of the reactions sheet (inside `reactionsLayer`, which is fine to rebuild: they are just buttons). Tapping one sends it.
+3. **Showing a message:** generalise the reaction float. Add `export function showMessage(from: PlayerId, text: string): boolean` next to `showReaction`; it reuses the same seat lookup and `.float-react` element with an extra class `msg` (longer animation, 4 s, wraps to two lines, max-width 70vw). This phone's own message floats from its own seat (the "You" pill), not from the finger, so it reads as "you said". Plays the `reaction` sound.
+4. **Network messages** (`src/net/lobby.ts`):
+   - Bump `LOBBY_PROTOCOL` to **9** and add to the comment: `9: typed messages (2.34)`.
+   - `FromJoiner`: `| { t: 'say'; text: string }`. `ToJoiner`: `| { t: 'say'; from: string; text: string }`.
+   - Readers: accept only a string; trim it; reject empty; cut to 60 characters with `Array.from(text).slice(0, 60).join('')` (so an emoji is not cut in half). Same in both readers.
+   - Tests in `tests/net/lobby.test.ts`: a good `say` reads; empty, non-string and missing text are refused; 80 characters come back as 60.
+5. **Passing it round** (`src/ui/netplay.ts`): copy the reaction functions:
+   - `sendMessage(text)` (export): shows it here with `showMessage(me, text)`, then joining phone → `transport.sendHost({ t: 'say', text })`; host → every link `{ t: 'say', from: me, text }`. On a one-phone game (no `g.net`), just `showMessage` on this phone with the current player's id (one-phone: use the host's id, `s.hostId`, since nobody is "this phone's player").
+   - `hostGotSay(linkId, text)`: same burst check as `hostGotReact` (share the `reactTimes` map so reactions and messages count together), `showMessage(p, text)`, then send to every other link.
+   - `joinGotSay(from, text)`: `showMessage(from, text)`.
+   - Route them in `src/ui/netlobby.ts` next to the two `react` branches (about line 1093 and 1311).
+6. **Online rooms (Cloudflare relay):** the relay passes messages through without reading them (checked: nothing in `server/` looks at `t`), so no server change.
+7. CSS:
+   ```css
+   .msg-bar { position: fixed; left: 8px; right: 8px; bottom: calc(env(safe-area-inset-bottom, 0px) + 84px); z-index: 60; display: none; gap: 6px; }
+   .msg-bar.open { display: flex; }
+   .msg-bar input { flex: 1; min-width: 0; font-size: 16px; /* 16px stops iPhone zooming in on focus */ padding: 10px 12px; border-radius: 999px; border: 1px solid var(--cream); background: rgba(0, 0, 0, 0.55); color: var(--cream); }
+   .msg-bar button { border-radius: 999px; padding: 0 16px; }
+   .float-react.msg { max-width: 70vw; white-space: normal; animation-duration: 4s; }
+   ```
+   Then place the reactions sheet just above the bar: find `.reactions-sheet` and raise its `bottom` by the bar's height (about 48px). Check by eye that the bar sits above the 😂 button and the sheet sits above the bar, and nothing covers the bar when the keyboard is open (iPhone and Android move fixed elements with the keyboard differently: test both, 9ad.7).
+8. The quick rules: add one line to the Reactions card in `src/content/quick-rules.md`: "Type your own message in the box at the top of the reactions."
+
+### 9ad.5b Part F: profiles survive updates; back up and restore stats (`src/ui/storage.ts`, new `src/ui/backup.ts`, `src/ui/app.ts` profiles screen, `src/ui/history.ts`)
+
+User (2026-11-14 00:11): "each time the version updates, it shouldn't reset profile", and wants to export stats and import them again.
+
+**What the code does today (checked):** nothing in Pubby clears profiles on a new version. They live in `localStorage` under fixed keys (`pubby.profiles`, `pubby.profiles.vsComputer`, `pubby.gameRecords`, `pubby.currentGame`); `sw.js` deletes only old *caches*, not storage. So when profiles vanish, the phone or browser threw the storage away. Likely causes, most likely first:
+- **iPhone Safari deletes a website's storage after 7 days without a visit**, unless the site is added to the Home Screen.
+- **Different address = different storage.** The private test links (claude.ai) and GitHub Pages (`mmans-99.github.io/pubby`) each have their own profiles; so do the Home Screen app and the same page in the browser on iPhone; and Chrome vs Samsung Internet on Android.
+- The browser cleared "site data" when storage was low.
+
+So the fix is (1) ask the browser to keep the storage, (2) a backup file to save and restore, (3) a test that old saved profiles still load.
+
+1. **Ask to keep storage.** In `src/ui/storage.ts` add `export async function keepStorage(): Promise<boolean>`: if `navigator.storage?.persist` exists and `await navigator.storage.persisted()` is false, call `navigator.storage.persist()`; return the result; wrap in try/catch (return false). Call it once at start-up in `app.ts` (not awaited), and again right after a profile is created or a game record is saved (some browsers only grant it after the user has done something).
+2. **Backup file** — new file `src/ui/backup.ts`. Split it so the logic is pure and testable:
+   - Pure part (no DOM, no storage), e.g. in `src/session/backup.ts`:
+     ```ts
+     export interface Backup { app: 'pubby'; backup: 1; version: string; savedAt: number; profiles: Profiles; vsProfiles: Profiles; records: GameRecord[] }
+     export function makeBackup(p: Profiles, vs: Profiles, recs: GameRecord[], version: string, now: number): Backup
+     export function readBackup(raw: unknown): Backup | null   // checks app, backup === 1, objects/arrays and each profile's number fields; null if anything is wrong
+     export function mergeBackup(local: { profiles: Profiles; vsProfiles: Profiles; records: GameRecord[] }, b: Backup): { profiles: Profiles; vsProfiles: Profiles; records: GameRecord[]; kept: string[]; replaced: string[]; added: string[] }
+     ```
+     (Move the `Profiles` type out of `storage.ts` into this file and re-export it from `storage.ts`, so the pure file doesn't import browser code.)
+   - **Merge rules** (default; user can change):
+     - Game records: join both lists by `id` (no doubles), newest first.
+     - A profile only in the backup: added (`added`).
+     - A profile in both (names compared ignoring case, as `findProfile` does): compare their `games` lists (the record ids already counted). If one list holds every id of the other, keep the one with more (`replaced` if the backup's wins, `kept` if this phone's wins). If each has games the other doesn't (played on two phones), keep the one with more `gamesPlayed` and list it in `kept`/`replaced`; the stats can't be added without counting shared games twice. Same for `vsProfiles`.
+     - The game in progress (`pubby.currentGame`) is **not** in the backup and is never touched.
+   - Tests `tests/session/backup.test.ts`: make → JSON → read gives the same data; a wrong `app`, a missing field, a text where a number should be → null; merge: a new profile is added; a smaller copy of the same profile is kept as the bigger one; records with the same id are not doubled; a name in a different case counts as the same profile.
+3. **Saving the file** (`src/ui/backup.ts`, DOM): `saveBackupFile()`: `JSON.stringify(makeBackup(...), null, 1)` → `File` named `pubby-backup-YYYY-MM-DD.json`, type `application/json`. Share it with `navigator.share({ files })` when `navigator.canShare({ files })` (same pattern as `shareCsv` in `history.ts`); otherwise download it with a temporary `<a download>` link. If both fail, show the existing sheet (`csvSheetLayer`) with the JSON text and Copy (reuse `CsvSheet` with the JSON as `csv` and the `.json` filename).
+4. **Restoring** (`src/ui/backup.ts`): a hidden `<input type="file" accept=".json,application/json">` created on tap (not kept in the page, so redraws don't matter). On pick: read with `file.text()`, `JSON.parse` in try/catch, `readBackup`. Bad file → toast "That isn't a Pubby backup." Good file → a confirm panel: "This backup has N profiles and M games (saved <date>, version X). Add it to this phone?" with **Add to this phone** (merge) and **Cancel**. After merging: save all three keys, then a toast like "Added 2 profiles, updated 1, 14 games." Block restoring while a game is in progress only if it would change a profile in that game (reuse the 2.2 rule that blocks deleting such a profile): say "Finish or close the current game first."
+5. **Where the buttons go:** the Profiles screen (`profilesScreen` in `app.ts`), at the bottom: `Back up stats` and `Restore from backup` (line icons, no emoji). Keep the existing CSV share buttons as they are (CSV is for spreadsheets; the backup file is the one that can be read back in).
+6. **Old saved data still loads (the "update" check).** In `storage.ts` `loadProfiles` / `loadVsProfiles`: fill in any missing field from `emptyProfile(name)` (`{ ...emptyProfile(k), ...v }` for each entry), and skip entries that aren't objects instead of failing. Test in `tests/session/backup.test.ts` (pure helper `normaliseProfiles(raw: unknown): Profiles`): a profile saved by an old build without `slapped`/`games` loads with them empty; junk entries are dropped; the rest stays.
+7. **Quick rules:** one line in the Profiles card of `src/content/quick-rules.md`: "Your phone can delete saved data. Use Back up stats now and then; Restore puts it back. Add Pubby to your Home Screen so iPhone keeps it."
+
+Phone checks (add to 9ad.7):
+8. Profiles → Back up stats: the share sheet (or a download) gives a `pubby-backup-….json` file. Save it to Files / Drive.
+9. Delete a test profile, then Restore from backup with that file: it comes back with its stats; nothing doubles if you restore twice.
+10. Open the backup on the other phone (or GitHub Pages vs Home Screen app): Restore adds the profiles there.
+11. Next version after 2.34: profiles are still there (on GitHub Pages, same browser).
+
+### 9ad.6 Files likely to change
+
+`src/ui/styles.css`, `src/ui/netscreens.ts`, `src/ui/game.ts`, `src/ui/between.ts` (or new `src/ui/scores.ts`), `src/ui/app.ts` (scrollLeft), `src/net/lobby.ts`, `src/ui/netplay.ts`, `src/ui/netlobby.ts`, `src/content/quick-rules.md`, `package.json`; Part F: `src/ui/storage.ts`, new `src/session/backup.ts` and `src/ui/backup.ts`, `src/ui/history.ts`, `src/ui/app.ts` profiles screen; tests `tests/ui/scoresheet.test.ts` (new), `tests/net/lobby.test.ts`, `tests/session/backup.test.ts` (new).
+
+### 9ad.7 Version, checks and process
+
+- Version **2.34.0** in `package.json`. Protocol 9 means phones on 2.33 can't join phones on 2.34 (they get the usual "update Pubby" refusal): tell the user everyone must reload.
+- `npm run check`, `npm test`, `npm run build`; headless screenshots for Parts A, C and D (384 × 730 and 320 × 568, one landscape 844 × 390).
+- Update all five MD files (`PROJECT.md` 12p status, `CODE.md` 9ad status, `TODO.md` Phase 4o, `DEVLOG.md`; `CLAUDE.md` unchanged).
+- Do not commit or push until the user says "Push it" (push straight to main).
+
+Phone checklist (2.34):
+1. Results screen: a points table under the podium, one column per round, Total on the right, your row in gold, sorted by total. After 7+ rounds it scrolls sideways with names and totals staying put.
+2. Open 😂: a text box at the top. Type a message and Send: it floats up from your seat on your phone and from your seat on every other phone, with your name. The keyboard stays up. Your last messages show as chips; tap one to send it again.
+3. Type slowly while others are playing: what you've typed is not wiped by their moves.
+4. Have one phone leave the app: the "is away" note shows as a small box over the table; the table, your hand and the buttons don't move or get cut off.
+5. Top, left and right seats mid-trick: every name, initial and card count is fully visible over the fans.
+6. Win a round, then at "who leads?": your cards show in the hand row before you pick.
+7. One-phone game, the winner at "who leads?": cards hidden until "Show my cards" is tapped.
+
 ## 8a. Playable test builds (required before every commit)
 
 `CLAUDE.md` rule 5: the user tests every change on their phone before approving a commit.

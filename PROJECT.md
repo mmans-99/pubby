@@ -738,6 +738,17 @@ User (phone test, 2026-11-13): doesn't like where the other players' names sit a
 - Your own seat (the "You" pill) does not change.
 - The user asked for Haiku to build it.
 
+### 12p. Points table, typed messages, away notice, seats over fans, cards on "who leads?" (PLAN, user 2026-11-14 00:09; build guide `CODE.md` 9ad; NOT BUILT)
+
+User (network game test of 2.33, three screenshots) asked for:
+- **Points table** on the results screen: every player's points for each round and the total (kept with the podium). Also on the game-over screen if it has none.
+- **Typed messages** during the game, as well as the 😂 and catch-phrases. Defaults chosen in the plan (user can change): 60 characters; float from the sender's seat on every phone like a catch-phrase; last 5 sent kept on the phone as quick chips; not saved in the game record; no word filter; computer players don't answer.
+- **Away notice** must not push the game screen down or cut off the board: it becomes a small box floating over the table.
+- **Names, initials and card counts** must not be covered by the fans of card backs.
+- **"Who leads?"** (last round's winner picks): the winner sees their own cards while choosing. Default for one-phone games: hidden until "Show my cards" is tapped, since everyone can see the screen.
+- **Profiles must survive updates, and stats can be backed up and restored** (00:11). Pubby never clears profiles on a new version (fixed storage keys); the phone or browser does (iPhone Safari after 7 days unvisited unless on the Home Screen; each address, test link, browser and Home Screen app has its own storage). Plan: ask the browser to keep storage, a backup file (profiles, vs-computer profiles, game records; not the game in progress) to save and restore on the Profiles screen, merged without doubling games; old saved profiles fill in missing fields. CSV export stays for spreadsheets.
+- The user asked for a plan to code with Haiku.
+
 ## 13. Quick rules (in-game help)
 
 - **What it is:** A short, simplified rules guide inside the app.

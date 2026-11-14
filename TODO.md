@@ -408,3 +408,13 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [ ] User's phone test (`CODE.md` 9ac.5); push to main after "Push it"
 
 Also open from this session (not committed): 2.32.1 and 2.32.2 fixes (Fast forward and Skip, one Stop, no sound while they run, "You" pill not cut off); see `DEVLOG.md`. Phone test of 2.32.2 still to do.
+
+## Phase 4o — Points table, typed messages, away notice, seats over fans, cards on "who leads?" (plan 2026-11-14 00:09, `PROJECT.md` 12p, build guide `CODE.md` 9ad; NOT BUILT)
+
+- [ ] Part A: seat discs and names drawn over the fans
+- [ ] Part B: away notice floats over the table
+- [ ] Part C: your cards on "who leads?" (one phone: "Show my cards")
+- [ ] Part D: points table on results and game over
+- [ ] Part E: typed messages (protocol 9)
+- [ ] Part F: keep storage, back up and restore stats, old profiles load
+- [ ] Version 2.34.0, checks, user's phone test (`CODE.md` 9ad.7), push to main after "Push it"
