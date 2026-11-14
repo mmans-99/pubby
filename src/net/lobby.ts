@@ -12,8 +12,8 @@ import { readGameUpdate, type GameRefused, type GameUpdate } from './netgame.ts'
 import { joinNames } from '../session/names.ts';
 import type { Level, Speed } from '../ai/persona.ts';
 
-/** Bumped when the messages change, so mixed phones refuse each other. 2: game messages (slice 2). 3: reactions, host adding (2.4). 4: online rooms (2.18). 5: ready at the table (2.19). 6: cards seen after the swap (2.20). 7: away seats and the away/back messages (2.25). 8: computer players in the lobby (2.26). */
-export const LOBBY_PROTOCOL = 8; // 8: computer players in the lobby (2.26).
+/** Bumped when the messages change, so mixed phones refuse each other. 2: game messages (slice 2). 3: reactions, host adding (2.4). 4: online rooms (2.18). 5: ready at the table (2.19). 6: cards seen after the swap (2.20). 7: away seats and the away/back messages (2.25). 8: computer players in the lobby (2.26). 9: typed messages (2.34). */
+export const LOBBY_PROTOCOL = 9; // 9: typed messages (2.34).
 export const NAME_MAX = 16;
 
 export interface LobbySeat {
@@ -62,6 +62,8 @@ export type ToHost =
   | { t: 'sync' }
   /** A reaction (2.4): -1 = the laugh, else a catch-phrase number. */
   | { t: 'react'; r: number }
+  /** 9ad.5 (2.34): a message the player typed (cleaned by `cleanMessage`). */
+  | { t: 'say'; text: string }
   /** Phase 4d: this phone has reached the table screen. */
   | { t: 'ready' }
   /** CODE.md 9u A5: this phone left the screen, and is back. */
@@ -79,6 +81,8 @@ export type ToJoiner =
   | GameRefused
   /** Someone's reaction, for every other phone (2.4). */
   | { t: 'react'; from: string; r: number }
+  /** 9ad.5 (2.34): someone's typed message, for every other phone. */
+  | { t: 'say'; from: string; text: string }
   /** CODE.md 9u A5: the host's phone left the screen, and is back. */
   | { t: 'hostAway' }
   | { t: 'hostBack' }
@@ -87,6 +91,21 @@ export type ToJoiner =
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null;
 const isStr = (x: unknown): x is string => typeof x === 'string';
+
+/** 9ad.5 (2.34): a typed message is at most this many characters. */
+export const MESSAGE_MAX = 60;
+
+/**
+ * 9ad.5 (2.34): cleans a typed message: must be text; trimmed; runs of spaces squashed
+ * to one; at most MESSAGE_MAX characters (counted as characters, so an emoji is never
+ * cut in half). Returns null when nothing is left.
+ */
+export function cleanMessage(raw: unknown): string | null {
+  if (!isStr(raw)) return null;
+  const text = raw.trim().replace(/ +/g, ' ');
+  if (!text) return null;
+  return Array.from(text).slice(0, MESSAGE_MAX).join('');
+}
 
 /** A message from a joining phone, or null if it isn't one. */
 export function readToHost(raw: unknown): ToHost | null {
@@ -105,6 +124,7 @@ export function readToHost(raw: unknown): ToHost | null {
     case 'act': return { t: 'act', actions: raw['actions'] };
     case 'sync': return { t: 'sync' };
     case 'react': return Number.isInteger(raw['r']) ? { t: 'react', r: raw['r'] as number } : null;
+    case 'say': { const text = cleanMessage(raw['text']); return text ? { t: 'say', text } : null; }
   }
   return null;
 }
@@ -142,6 +162,7 @@ export function readToJoiner(raw: unknown): ToJoiner | null {
     case 'game': return readGameUpdate(raw);
     case 'nope': return { t: 'nope', why: isStr(raw['why']) ? raw['why'] : 'Not allowed.' };
     case 'react': return isStr(raw['from']) && Number.isInteger(raw['r']) ? { t: 'react', from: raw['from'], r: raw['r'] as number } : null;
+    case 'say': { const text = cleanMessage(raw['text']); return isStr(raw['from']) && text ? { t: 'say', from: raw['from'], text } : null; }
     case 'hostAway': return { t: 'hostAway' };
     case 'hostBack': return { t: 'hostBack' };
     case 'skipping': return typeof raw['on'] === 'boolean' ? { t: 'skipping', on: raw['on'] } : null;

@@ -90,9 +90,9 @@ function dateTag(iso: string): string {
 }
 
 /** Open the share sheet with the CSV as a file, or show the CSV sheet instead. */
-export async function shareCsv(sheet: CsvSheet): Promise<void> {
+export async function shareCsv(sheet: CsvSheet, mime = 'text/csv'): Promise<void> {
   try {
-    const file = new File([sheet.csv], sheet.filename, { type: 'text/csv' });
+    const file = new File([sheet.csv], sheet.filename, { type: mime });
     if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
       await navigator.share({ files: [file], title: sheet.title });
       return;
@@ -130,7 +130,7 @@ export function csvSheetLayer(): HTMLElement | null {
   };
   const download = (): void => {
     try {
-      const url = URL.createObjectURL(new Blob([sheet.csv], { type: 'text/csv' }));
+      const url = URL.createObjectURL(new Blob([sheet.csv], { type: sheet.filename.endsWith('.json') ? 'application/json' : 'text/csv' }));
       const a = h('a', { href: url, download: sheet.filename }) as HTMLAnchorElement;
       document.body.appendChild(a);
       a.click();
@@ -146,11 +146,12 @@ export function csvSheetLayer(): HTMLElement | null {
         h('h2', null, sheet.title),
         h('button', { class: 'ghost', onclick: close }, 'Close'),
       ),
-      h('p', { class: 'muted small' }, 'This phone can’t send the file straight to the share sheet, so here it is as text. It opens in a spreadsheet as a .csv file.'),
+      h('p', { class: 'muted small' }, 'This phone can’t send the file straight to the share sheet, so here it is as text.',
+        sheet.filename.endsWith('.json') ? ' Save it as a .json file; Restore from backup reads it back.' : ' It opens in a spreadsheet as a .csv file.'),
       box,
       h('div', { class: 'row' },
         h('button', { class: 'grow', onclick: () => { void copy(); } }, 'Copy'),
-        h('button', { class: 'grow secondary', onclick: download }, 'Download .csv'),
+        h('button', { class: 'grow secondary', onclick: download }, `Download ${sheet.filename.endsWith('.json') ? '.json' : '.csv'}`),
       ),
     ),
   );

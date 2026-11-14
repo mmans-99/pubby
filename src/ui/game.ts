@@ -33,7 +33,8 @@ import { cardSound, eventSounds, sfx } from '../audio/sfx.ts';
 import { icon, type IconName } from './icons.ts';
 import { botsOnlyFor, botsTick, startFastForward, startSkip, stopFastForward } from './bots.ts';
 import { fastForwardOn, hostIsSkipping, instantSkipping, skipNote, skipping } from '../ai/fastforward.ts';
-import { hostBroadcast, joinSend, sendReaction } from './netplay.ts';
+import { hostBroadcast, joinSend, sendMessage, sendReaction } from './netplay.ts';
+import { cleanMessage } from '../net/lobby.ts';
 import { handH, roundTable, wastePile } from './table.ts';
 import { joinNames } from '../session/names.ts';
 import { gameLayout, type GameLayout } from './layout.ts';
@@ -842,7 +843,8 @@ export function dealingStage(g: SavedGame): Child {
       : undefined;
   // 2.31 (CODE.md 9aa Part C item 4): the jokers and hidden-deck chips moved to the top bar (dealChips),
   // so the deal bar holds two rows: the hint and the deal buttons. Portrait: 76 px (was 92 with the chips).
-  const lay = stageLayout(false, window.innerWidth > window.innerHeight ? 64 : 76);
+  // 2.34 fix: on a phone the deal bar (hint + Manual/Auto/Deal all) needs about 88px to stay whole.
+  const lay = stageLayout(false, window.innerWidth > window.innerHeight ? 64 : 88);
   if (shuffling()) {
     return gameFrame(lay, {
       table: roundTable(s, v, {
@@ -946,14 +948,30 @@ function noticeCard(s: Session, n: LeadNotice, onOk: () => void): HTMLElement {
   );
 }
 
+/**
+ * 9ad.3 (2.34): one-phone game only: the round (its previous-round record) whose winner tapped
+ * "Show my cards". Keyed to that record, so a new round or a new game starts hidden again.
+ */
+let leaderPeek: object | null = null;
+
 export function chooseLeaderStage(g: SavedGame): Child {
   const s = g.session;
   const v = publicView(s);
   const winner = s.previous!.winner;
-  const lay = stageLayout(false, 52);
+  // 9ad.3 (2.34): the winner sees their own cards before picking who leads.
+  // One-phone game: everyone can see the screen, so the cards stay hidden until "Show my cards".
+  const mine = ownSeat(g) === winner;
+  const oneOwnPhone = ownSeat(g) === null;
+  const showHand = mine || (oneOwnPhone && leaderPeek === s.previous);
+  const lay = stageLayout(showHand, 52);
+  const question = h('h2', { class: 'center' }, `${ownSeat(g) ? 'You' : nameOf(s, winner)}: who leads?`);
   return gameFrame(lay, {
     table: roundTable(s, v, { bottom: bottomSeat(g, winner), you: ownSeat(g) !== null, onTap: (id) => send([{ type: 'chooseLeader', by: winner, leader: id }]), tapLabel: 'Leads:', box: lay.box }),
-    action: h('h2', { class: 'center' }, `${ownSeat(g) ? 'You' : nameOf(s, winner)}: who leads?`),
+    hand: showHand ? handBlock(s, playerView(s, winner), null, { head: false, fit: lay.handH, width: lay.handW }) : undefined,
+    action: oneOwnPhone && !showHand
+      ? h('div', { class: 'row round-buttons' }, question,
+        h('button', { class: 'secondary', onclick: () => { leaderPeek = s.previous ?? null; update({}); } }, 'Show my cards'))
+      : question,
   });
 }
 
@@ -1265,7 +1283,7 @@ let drawerWasOpen = false;
 
 export function reactionsLayer(): HTMLElement[] {
   // Reactions show from the start of the game to the end (user, 2.4).
-  if (getState().game?.session.phase === 'gameOver') return [];
+  if (getState().game?.session.phase === 'gameOver') { hideMessageBar(); return []; }
   const open = getState().reactionsOpen;
   const opening = open && !drawerWasOpen;
   drawerWasOpen = open;
@@ -1275,14 +1293,69 @@ export function reactionsLayer(): HTMLElement[] {
     'aria-expanded': open ? 'true' : 'false',
     onclick: () => update({ reactionsOpen: !open }),
   }, open ? '✕' : '😂');
-  if (!open) return [toggle];
+  if (!open) { hideMessageBar(); return [toggle]; }
+  // 9ad.5 (2.34): the typing bar lives outside the page, so redraws never wipe what's typed.
+  ensureMessageBar().classList.add('open');
   // A sheet above the 😂 button: every phrase in a wrapping grid, scrolling up and down (2.11).
+  // 9ad.5: the last 5 typed messages come first, as chips to send again with one tap.
   const sheet = h('section', { class: opening ? 'reactions-sheet opening' : 'reactions-sheet', 'aria-label': 'Reactions', 'data-scroll': 'reactions' },
+    recentMessages().map((text) => h('button', { class: 'phrase-chip', onclick: () => sendRecent(text) }, text)),
     h('button', { class: 'phrase-chip laugh-chip', 'aria-label': 'Laugh', onclick: (e) => react(-1, e as MouseEvent) }, '😂 Laugh'),
     CATCH_PHRASES.map((ph, i) =>
       h('button', { class: 'phrase-chip', onclick: (e) => react(i, e as MouseEvent) }, ph)),
   );
   return [sheet, toggle];
+}
+
+// ---------------------------------------------------------------------------
+// Typed messages (CODE.md 9ad.5, 2.34)
+// ---------------------------------------------------------------------------
+
+const RECENT_KEY = 'pubby.recentMessages';
+
+/** The last 5 distinct messages this phone sent (wrapped in try/catch, as storage.ts does). */
+function recentMessages(): string[] {
+  try {
+    const raw: unknown = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]');
+    return Array.isArray(raw) ? raw.filter((t): t is string => typeof t === 'string').slice(0, 5) : [];
+  } catch { return []; }
+}
+
+function rememberMessage(text: string): void {
+  const list = [text, ...recentMessages().filter((t) => t !== text)].slice(0, 5);
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(list)); } catch { /* storage full or blocked: skip */ }
+}
+
+function sendRecent(text: string): void {
+  rememberMessage(text);
+  sendMessage(text);
+}
+
+/** Built once, on first use, and kept on document.body: it survives every redraw. */
+let messageBar: HTMLFormElement | null = null;
+
+function ensureMessageBar(): HTMLFormElement {
+  if (messageBar) return messageBar;
+  const input = h('input', { type: 'text', maxlength: 60, placeholder: 'Say something…', 'aria-label': 'Your message', autocomplete: 'off', enterkeyhint: 'send' });
+  messageBar = h('form', {
+    class: 'msg-bar',
+    onsubmit: (e: Event) => {
+      e.preventDefault();
+      const text = cleanMessage(input.value);
+      if (!text) return;
+      rememberMessage(text);
+      sendMessage(text);
+      input.value = '';
+      input.focus(); // keeps the keyboard up for the next one
+    },
+  }, input, h('button', { class: 'secondary', type: 'submit' }, 'Send'));
+  document.body.appendChild(messageBar);
+  return messageBar;
+}
+
+/** Hides the typing bar (the sheet is closed, or the game is over or left). */
+export function hideMessageBar(): void {
+  messageBar?.classList.remove('open');
 }
 
 /** -1 = the laugh, else a catch-phrase number (the same list on every phone). */
@@ -1308,10 +1381,29 @@ export function showReaction(from: PlayerId, r: number): boolean {
   const s = st.game?.session;
   if (!text || !s || st.screen !== 'game' || s.phase === 'gameOver') return false;
   sfx('reaction');
+  riseFromSeat(from, s, text, r === -1 ? 'float-react emoji' : 'float-react', 3200);
+  return true;
+}
+
+/**
+ * 9ad.5 (2.34): a typed message rises from the sender's seat with their name, like a
+ * reaction, but it stays longer (4 s) and wraps to two lines. Returns false if it isn't shown now.
+ */
+export function showMessage(from: PlayerId, text: string): boolean {
+  const st = getState();
+  const s = st.game?.session;
+  if (!s || st.screen !== 'game' || s.phase === 'gameOver') return false;
+  sfx('reaction');
+  riseFromSeat(from, s, text, 'float-react msg', 4200);
+  return true;
+}
+
+/** Shows `text` above `from`'s seat, with their name under it, for `ms` milliseconds. */
+function riseFromSeat(from: PlayerId, s: Session, text: string, className: string, ms: number): void {
   const seat = document.querySelector(`.round-table [data-seat="${from}"]`) ?? document.querySelector(`[data-seat="${from}"]`);
   const box = seat?.getBoundingClientRect();
   const el = document.createElement('div');
-  el.className = r === -1 ? 'float-react emoji' : 'float-react';
+  el.className = className;
   const t = document.createElement('span');
   t.className = 'float-react-text';
   t.textContent = text;
@@ -1325,8 +1417,7 @@ export function showReaction(from: PlayerId, r: number): boolean {
   el.style.top = `${y}px`;
   document.body.appendChild(el);
   el.addEventListener('animationend', () => el.remove());
-  window.setTimeout(() => el.remove(), 3200);
-  return true;
+  window.setTimeout(() => el.remove(), ms);
 }
 
 function floatText(text: string, e: MouseEvent, emoji: boolean): void {

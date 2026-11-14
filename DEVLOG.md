@@ -4,6 +4,16 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-14 (09:40) — Build 9ad (2.34): points table, typed messages, away notice, seats over fans, cards on "who leads?", profiles backup and restore
+
+**Built** all six parts of `CODE.md` 9ad (A seats over fans, B away notice floats over the table, C your cards on "who leads?" with "Show my cards" on one phone, D points table, E typed messages with protocol 9, F keep storage, backup and restore, old profiles load). Version 2.34.0.
+
+**User (09:36, phone photo):** on the manual-deal screen in Auto, the "Deal all" button is cut off at the bottom. **Fix:** the deal bar now spans the whole action area (`.game-action-slot > .deal-bar`), and the dealing screen reserves 88px on portrait phones. Checked at 360×780: Manual, Auto and Deal all fit on one row.
+
+**Checks:** `npm run check` and `npm test` (409 pass). Points table and seats screenshot-checked at 384×730. Playthrough: 2 and 3 players pass when the bot does not stall. Known gap, already present before 9ad: `testbed/bot.js` never taps OK on the missing-suit notice (2.30), so some games stall. Browser checks that fail the same way on the untouched baseline: netvotes, lobby, netgame, online; solo is flaky on the baseline too.
+
+**Not yet done:** phone test of 9ad.7 by the user.
+
 ## 2026-11-14 (00:09) — Plan 9ad (2.34): points table, typed messages, away notice, seats over fans, cards on "who leads?" (docs only)
 
 **User (network test of 2.33, screenshots):** results need a points table; wants to type own messages in game; the "is away" note pushes the screen down and cuts off the board; names and card counts are covered by the fans; at "who leads?" the winner's cards weren't shown until after picking. Asked for a plan to code with Haiku.

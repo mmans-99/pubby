@@ -70,9 +70,14 @@ A target can't be lower than the highest score. Picking the highest score means 
 
 Any player can call a vote from their own phone. The host pauses straight away; anyone else asks the host, who says yes or no. Only the host can resume the game or set a pause time limit. On the results screen, tap **I'm ready** on your own phone; the host moves on when they're ready.
 
+Type your own message in the box at the top of the reactions (tap 😂).
+
 ## {bolt} Ultimate Round
 One final round for glory, worth no points. The winner beats every score; the loser ranks below every score. The game ends after it.
 Draw for the top score when the game ends? Everyone votes on an Ultimate Round to settle it. Say no and you're called cowards and get one more chance. Say no again and you share the top score.
+
+## Saved stats
+Your phone can delete saved data. On the Profiles screen, use **Back up stats** now and then; **Restore from backup** puts it back. Add Pubby to your Home Screen so iPhone keeps it.
 
 ## Scoring
 | Players | 1st | 2nd | 3rd | 4th | 5th | 6th | 7th | 8th |

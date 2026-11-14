@@ -156,8 +156,25 @@ test('away: the host seat cannot go away, and an away seat counts as missing (St
   assert.equal(setAway(l, 'host', 1).seats[0]!.awaySince, undefined);
 });
 
+test('typed messages (9ad.5, 2.34): good ones are read, cut to 60 characters, the rest refused; the protocol is 9', () => {
+  assert.equal(LOBBY_PROTOCOL, 9);
+  assert.deepEqual(readToHost({ t: 'say', text: '  hi there  ' }), { t: 'say', text: 'hi there' });
+  assert.deepEqual(readToHost({ t: 'say', text: 'a   b' }), { t: 'say', text: 'a b' });
+  assert.equal(readToHost({ t: 'say', text: '   ' }), null);
+  assert.equal(readToHost({ t: 'say', text: 42 }), null);
+  assert.equal(readToHost({ t: 'say' }), null);
+  const long = readToHost({ t: 'say', text: 'x'.repeat(80) });
+  assert.equal(long?.t === 'say' ? long.text.length : -1, 60);
+  assert.deepEqual(readToJoiner({ t: 'say', from: 'p2', text: 'yo' }), { t: 'say', from: 'p2', text: 'yo' });
+  assert.equal(readToJoiner({ t: 'say', text: 'yo' }), null);
+  assert.equal(readToJoiner({ t: 'say', from: 'p2', text: '' }), null);
+  // An emoji is counted as one character, so it is never cut in half.
+  const emoji = readToHost({ t: 'say', text: '😂'.repeat(70) });
+  assert.equal(emoji?.t === 'say' ? Array.from(emoji.text).length : -1, 60);
+});
+
 test('away messages are read both ways; the protocol is 7', () => {
-  assert.equal(LOBBY_PROTOCOL, 8);
+  assert.equal(LOBBY_PROTOCOL, 9);
   assert.deepEqual(readToHost({ t: 'away' }), { t: 'away' });
   assert.deepEqual(readToHost({ t: 'back' }), { t: 'back' });
   assert.deepEqual(readToJoiner({ t: 'hostAway' }), { t: 'hostAway' });

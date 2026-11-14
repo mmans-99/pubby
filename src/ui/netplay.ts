@@ -17,7 +17,7 @@ import type { PlayerId, Session, SessionAction, SessionEvent } from '../session/
 import { eventFor, logFor, phoneActions, redactSession, stampHostTime, type GameUpdate, type NetInfo } from '../net/netgame.ts';
 import type { ToJoiner } from '../net/lobby.ts';
 import { getState, say, update } from './store.ts';
-import { receive, runActions, showReaction, startShuffle } from './game.ts';
+import { receive, runActions, showMessage, showReaction, startShuffle } from './game.ts';
 import { sfx } from '../audio/sfx.ts';
 import { clearSwapReveal } from './roundstart.ts';
 import type { BotsInfo, SavedGame } from './storage.ts';
@@ -199,6 +199,41 @@ export function hostGotReact(linkId: string, r: number): void {
 
 export function joinGotReact(from: PlayerId, r: number): void {
   if (getState().game?.net?.role === 'join') showReaction(from, r);
+}
+
+// ---------------------------------------------------------------------------
+// Typed messages (CODE.md 9ad.5, 2.34): the same routes and flood limit as reactions
+// ---------------------------------------------------------------------------
+
+/** This phone sent a typed message (already cleaned): show it here and pass it on. */
+export function sendMessage(text: string): void {
+  const g = getState().game;
+  if (!g) return;
+  // One phone (or single player against the computer): nobody is "this phone's player", so use the host's seat (or the human's).
+  if (!g.net) { showMessage(g.bots?.me ?? g.session.hostId, text); return; }
+  const me = g.net.me;
+  showMessage(me, text);
+  if (!transport) return;
+  if (g.net.role === 'join') { transport.sendHost({ t: 'say', text }); return; }
+  for (const link of Object.values(linkOf)) transport.sendTo(link, { t: 'say', from: me, text });
+}
+
+/** Host: a typed message from another phone: show it, and pass it to the rest. */
+export function hostGotSay(linkId: string, text: string): void {
+  const g = getState().game;
+  const p = playerOfLink(linkId);
+  if (!g?.net || g.net.role !== 'host' || !p) return;
+  const now = Date.now();
+  const recent = (reactTimes.get(linkId) ?? []).filter((t) => now - t < REACT_WINDOW_MS);
+  if (recent.length >= REACT_BURST) return;
+  recent.push(now);
+  reactTimes.set(linkId, recent);
+  if (!showMessage(p, text)) return;
+  for (const [q, link] of Object.entries(linkOf)) if (q !== p) transport?.sendTo(link, { t: 'say', from: p, text });
+}
+
+export function joinGotSay(from: PlayerId, text: string): void {
+  if (getState().game?.net?.role === 'join') showMessage(from, text);
 }
 
 // ---------------------------------------------------------------------------

@@ -2895,7 +2895,7 @@ Tests, new file `tests/ui/initials.test.ts`:
 6. Network game: the same tags on every phone.
 7. Landscape: the discs and names fit.
 
-## 9ad. Version 2.34: points table, typed messages, away notice that doesn't push the table, seats not hidden by fans, your cards on "who leads?", backup and restore (PLAN, user 2026-11-14 00:09 and 00:11; written for Haiku; NOT BUILT; spec `PROJECT.md` 12p)
+## 9ad. Version 2.34: points table, typed messages, away notice that doesn't push the table, seats not hidden by fans, your cards on "who leads?", backup and restore (PLAN, user 2026-11-14 00:09 and 00:11; written for Haiku; BUILT 2.34.0 and pushed, 2026-11-14; spec `PROJECT.md` 12p; dealing-screen fix after the phone photo: see DEVLOG)
 
 From the user's network game test of 2.33 (three screenshots). **Haiku builds this, one part at a time, in the order below.** Do not change anything that is not listed. If something here does not match the code, stop and ask the user (do not guess). Run `npm run check` and `npm test` after every part.
 

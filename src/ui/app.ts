@@ -20,12 +20,13 @@ import { defaultRng } from '../rules/rng.ts';
 import { createSession } from '../session/session.ts';
 import { h } from './dom.ts';
 import { pauseLayer } from './between.ts';
-import { afterRender, gameScreen, popupLayer, reactionsLayer, shuffling, startShuffle, trickAnimating } from './game.ts';
+import { afterRender, gameScreen, hideMessageBar, popupLayer, reactionsLayer, shuffling, startShuffle, trickAnimating } from './game.ts';
 import { csvSheetLayer, pastGamesScreen, profileDetails } from './history.ts';
 import { renderMarkdown } from './markdown.ts';
 import { joinLobbyFromLink, joinRoomFromLink, netLobbyScreen, stopNetLobby } from './netlobby.ts';
 import { screenKey } from './scrollkeep.ts';
-import { addProfile, deleteProfile, findProfile, loadGame, loadProfiles, loadRecords, loadVsProfiles, saveProfiles, saveVsProfiles } from './storage.ts';
+import { addProfile, deleteProfile, findProfile, keepStorage, loadGame, loadProfiles, loadRecords, loadVsProfiles, saveProfiles, saveVsProfiles } from './storage.ts';
+import { backUpStats, restoreFromBackup } from './backup.ts';
 import { getState, initState, say, update, type SetupSeat, type SetupState, type State } from './store.ts';
 import { soloScreen, soloSetupFresh } from './solosetup.ts';
 import { setupSound, soundButton, soundOverlay, syncSound } from './sound.ts';
@@ -52,6 +53,7 @@ let root: HTMLElement;
 
 export function startApp(target: HTMLElement): void {
   root = target;
+  void keepStorage(); // 9ad.5b (2.34): ask the browser to keep this site's saved data (not awaited)
   const initial: State = {
     screen: 'home',
     profiles: loadProfiles(),
@@ -149,7 +151,7 @@ function render(): void {
     st.screen === 'bye' ? null : soundButton(),
     st.screen === 'game' ? popupLayer() : null,
     st.screen === 'game' ? pauseLayer() : null,
-    ...(st.screen === 'game' && st.game ? reactionsLayer() : []),
+    ...(st.screen === 'game' && st.game ? reactionsLayer() : (hideMessageBar(), [])),
     st.rulesOpen ? rulesOverlay() : null,
     st.soundOpen ? soundOverlay() : null,
     csvSheetLayer(),
@@ -158,14 +160,15 @@ function render(): void {
   ];
   // 2.31 (CODE.md 9aa Part A): every redraw rebuilds the page, so each scrolling box would start at the top.
   // Keep how far each named box (data-scroll) was scrolled, and the window's place, unless the screen itself changed.
-  const kept = new Map<string, number>();
-  root.querySelectorAll<HTMLElement>('[data-scroll]').forEach((el) => kept.set(el.dataset.scroll!, el.scrollTop));
+  // 9ad.4 (2.34): also keep the sideways place (the points table scrolls left and right).
+  const kept = new Map<string, { top: number; left: number }>();
+  root.querySelectorAll<HTMLElement>('[data-scroll]').forEach((el) => kept.set(el.dataset.scroll!, { top: el.scrollTop, left: el.scrollLeft }));
   const pageKey = screenKey(st);
   const pageY = window.scrollY;
   root.replaceChildren(...parts.filter((p): p is HTMLElement => p !== null));
   root.querySelectorAll<HTMLElement>('[data-scroll]').forEach((el) => {
-    const y = kept.get(el.dataset.scroll!);
-    if (y !== undefined) el.scrollTop = y;
+    const place = kept.get(el.dataset.scroll!);
+    if (place) { el.scrollTop = place.top; el.scrollLeft = place.left; }
   });
   if (pageKey === lastPageKey && window.scrollY !== pageY) window.scrollTo(0, pageY);
   lastPageKey = pageKey;
@@ -350,6 +353,7 @@ function createProfile(name: string): string | null {
   if (problem) { say(problem); return null; }
   const profiles = addProfile(getState().profiles, name);
   if (!saveProfiles(profiles)) say('Could not save to this phone. Profiles will be lost when the page closes.');
+  void keepStorage(); // 9ad.5b (2.34): asked again after a profile is made, as some browsers only allow it after use
   update({ profiles }, false);
   return name.trim();
 }
@@ -400,6 +404,11 @@ function profilesScreen(): HTMLElement {
           open ? profileDetails(p, loadVsProfiles()[n]) : null,
         );
       })),
+    // 9ad.5b (2.34): back up the stats to a file, and restore them from one.
+    h('div', { class: 'row' },
+      h('button', { class: 'secondary grow', onclick: () => { void backUpStats(); } }, icon('share'), ' Back up stats'),
+      h('button', { class: 'secondary grow', onclick: () => restoreFromBackup(inSavedGame) }, 'Restore from backup'),
+    ),
   );
 }
 

@@ -22,6 +22,7 @@ import { computeTrivia, type Top } from '../session/trivia.ts';
 import type { PlayerId, RoundRecord, Session, SessionPhase } from '../session/types.ts';
 import { ordinal } from './cards.ts';
 import { h, type Child } from './dom.ts';
+import { scoreRows } from './scores.ts';
 import { nameOf, ownSeat, placeBadge, runsSession, send } from './game.ts';
 import { icon, type IconName } from './icons.ts';
 import { gameOverSaved } from './history.ts';
@@ -64,26 +65,29 @@ function nameChips(
 // Results table and trivia
 // ---------------------------------------------------------------------------
 
-export function resultsTable(s: Session, rec: RoundRecord): HTMLElement {
-  const n = rec.finishingOrder.length;
-  return h('section', { class: 'panel' },
+/**
+ * CODE.md 9ad.4 (2.34): every player's points for each round, and the total.
+ * Returns null when no normal round has been played yet.
+ */
+export function scoreSheet(s: Session, opts: { me?: PlayerId } = {}): HTMLElement | null {
+  const rounds = s.rounds.filter((r) => !r.ultimate);
+  if (!rounds.length) return null;
+  const lastIndex = rounds.length - 1;
+  const last = rounds[lastIndex]!;
+  const lostLast = (id: PlayerId): boolean => !last.sharedSecondLast && last.finishingOrder[last.finishingOrder.length - 1] === id;
+  return h('section', { class: 'panel score-sheet', 'aria-label': 'Points table', 'data-scroll': 'scores' },
     h('table', { class: 'results' },
       h('thead', null, h('tr', null,
-        h('th', null, ''), h('th', null, 'Player'),
-        rec.ultimate ? null : h('th', null, 'Round'),
+        h('th', null, '#'), h('th', null, 'Player'),
+        rounds.map((r) => h('th', null, `R${r.round}`)),
         h('th', null, 'Total'))),
-      h('tbody', null, rec.finishingOrder.map((id, i) => {
-        const shared = rec.sharedSecondLast?.includes(id);
-        const place = shared ? n - 1 : i + 1;
-        const isLoser = !rec.sharedSecondLast && i === n - 1;
-        return h('tr', { class: isLoser || (shared && rec.ultimate) ? 'loser-row' : '' },
-          h('td', null, ordinal(place)),
-          h('td', null, nameOf(s, id),
-            isLoser ? h('span', { class: 'tag' }, 'loser') : null,
-            rec.forfeitedBy === id ? h('span', { class: 'tag' }, 'forfeit') : null),
-          rec.ultimate ? null : h('td', null, signed(rec.points[id] ?? 0)),
-          h('td', null, h('b', null, String(rec.totals[id] ?? 0))));
-      })),
+      h('tbody', null, scoreRows(s).map((row) => h('tr', { class: row.id === opts.me ? 'me-row' : '' },
+        h('td', null, row.place),
+        h('td', null, nameOf(s, row.id),
+          s.ultimateLabels?.winner === row.id ? h('span', { class: 'tag gold' }, 'Ultimate Winner') : null,
+          s.ultimateLabels?.losers.includes(row.id) ? h('span', { class: 'tag' }, 'Ultimate Loser') : null),
+        row.points.map((p, i) => h('td', { class: i === lastIndex && lostLast(row.id) ? 'lost' : '' }, signed(p))),
+        h('td', null, h('b', null, String(row.total)))))),
     ),
   );
 }
@@ -270,6 +274,7 @@ export function resultsStage(g: SavedGame): Child {
     h('h2', { class: 'center results-head' }, icon('trophy'), ` ${nameOf(s, rec.finishingOrder[0])} wins ${rec.ultimate ? 'the Ultimate Round' : `round ${rec.round}`}`),
     s.ultimateRound ? h('p', { class: 'center' }, h('span', { class: 'chip-info gold' }, icon('bolt'), ' Next: Ultimate Round')) : null,
     podium(s, rec),
+    scoreSheet(s),
     awardsRow(s),
     targetRow(s),
     h('div', { class: 'ready-row', 'aria-label': 'Ready' }, h('span', { class: 'muted small' }, 'Ready'), nameChips(s, ready, { on: s.ready, label: 'Ready:' })),
@@ -334,6 +339,7 @@ export function gameOverStage(g: SavedGame): Child {
             labels?.losers.includes(id) ? h('span', { class: 'tag' }, 'Ultimate Loser') : null),
           h('b', null, `${s.scores[id] ?? 0} pts`)))),
     ),
+    scoreSheet(s),
     last?.ultimate ? [h('h2', { class: 'center' }, 'Ultimate Round'), podium(s, last)] : null,
     awardsRow(s),
     h('p', { class: 'muted small center' }, `${s.rounds.length} ${s.rounds.length === 1 ? 'round' : 'rounds'} played.`),

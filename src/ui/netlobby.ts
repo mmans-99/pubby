@@ -41,7 +41,7 @@ import { MAX_PLAYERS } from '../rules/cards.ts';
 import { createSession } from '../session/session.ts';
 import { defaultRng } from '../rules/rng.ts';
 import { hostLine } from './netscreens.ts';
-import { hostGotAct, hostGotReact, hostStart, hostSync, inNetGame, joinEnded, joinGotGame, joinGotReact, joinNope, netChanged, setTransport } from './netplay.ts';
+import { hostGotAct, hostGotReact, hostGotSay, hostStart, hostSync, inNetGame, joinEnded, joinGotGame, joinGotReact, joinGotSay, joinNope, netChanged, setTransport } from './netplay.ts';
 
 type Role = 'host' | 'join';
 type Step =
@@ -1090,10 +1090,11 @@ function hostGot(id: string, raw: unknown): void {
     netChanged();
     return;
   }
-  if (m.t === 'act' || m.t === 'sync' || m.t === 'react') {
+  if (m.t === 'act' || m.t === 'sync' || m.t === 'react' || m.t === 'say') {
     if (!link.seated || !lobby.started) return;
     if (m.t === 'act') hostGotAct(id, m.actions);
     else if (m.t === 'react') hostGotReact(id, m.r);
+    else if (m.t === 'say') hostGotSay(id, m.text); // 9ad.5 (2.34)
     else hostSync(id);
     return;
   }
@@ -1310,6 +1311,8 @@ function joinGot(raw: unknown): void {
     joinGotGame(m);
   } else if (m.t === 'react') {
     joinGotReact(m.from, m.r);
+  } else if (m.t === 'say') {
+    joinGotSay(m.from, m.text); // 9ad.5 (2.34)
   } else if (m.t === 'nope') {
     joinNope(m.why);
   } else if (m.t === 'lobby') {

@@ -431,6 +431,14 @@ button.seat-chip .seat-host { color: #b8860b; }
 
 /* Results */
 table.results { width: 100%; border-collapse: collapse; }
+/* 9ad.4 (2.34): the points table. Sticky cells need an opaque colour (the panel is see-through). */
+.score-sheet { overflow-x: auto; padding: 8px; }
+.score-sheet table.results { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 0.9rem; }
+.score-sheet table.results th, .score-sheet table.results td { padding: 4px 6px; text-align: center; white-space: nowrap; }
+.score-sheet table.results th:nth-child(2), .score-sheet table.results td:nth-child(2) { text-align: left; position: sticky; left: 0; background: #17461f; }
+.score-sheet table.results th:last-child, .score-sheet table.results td:last-child { position: sticky; right: 0; background: #17461f; font-weight: 800; }
+.score-sheet table.results tr.me-row td { color: var(--gold); }
+.score-sheet table.results td.lost { color: var(--danger); }
 .results th { text-align: left; font-size: 0.8rem; color: var(--muted); font-weight: 600; padding: 4px 6px; }
 .results td { padding: 8px 6px; border-top: 1px solid var(--line); }
 .results td:nth-child(3), .results td:nth-child(4), .results th:nth-child(3), .results th:nth-child(4) { text-align: right; }
@@ -519,7 +527,7 @@ table.results { width: 100%; border-collapse: collapse; }
 .reactions-sheet {
   position: fixed;
   left: 10px; right: 10px;
-  bottom: calc(74px + env(safe-area-inset-bottom));
+  bottom: calc(122px + env(safe-area-inset-bottom)); /* 9ad.5 (2.34): raised above the typing bar */
   max-height: 42vh;
   overflow-y: auto; overflow-x: hidden;
   display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px;
@@ -938,6 +946,7 @@ button.table-seat { cursor: pointer; }
   width: calc(2.6 * var(--u, 11px)); height: calc(2.6 * var(--u, 11px)); border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   background: var(--cream); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  z-index: 2; /* 9ad.1 (2.34): drawn over the edge fan of card backs */
 }
 .seat-initial { font-weight: 800; line-height: 1; font-size: calc(1.2 * var(--u, 11px)); white-space: nowrap; }
 .seat-initial.two { font-size: calc(1 * var(--u, 11px)); }
@@ -958,6 +967,8 @@ button.table-seat { cursor: pointer; }
   max-width: calc(9 * var(--u, 11px)); white-space: nowrap;
   font-size: max(10px, var(--u, 11px)); font-weight: 600; line-height: 1.2;
   color: var(--cream); opacity: 0.7; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+  /* 9ad.1 (2.34): stays readable on top of red card backs */
+  z-index: 2; background: rgba(0, 0, 0, 0.45); padding: 1px 6px; border-radius: 999px;
 }
 .table-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .seat-label .seat-host { position: static; font-size: 0.85em; color: var(--gold); }
@@ -1003,6 +1014,12 @@ button.me-pill { background: var(--cream); color: var(--ink); }
   animation: react-rise 2.6s ease-out forwards;
 }
 .float-react.emoji .float-react-text { font-size: 2rem; line-height: 1; }
+/* 9ad.5 (2.34): the typing bar, above the reactions button; hidden until the sheet is open. */
+.msg-bar { position: fixed; left: 8px; right: 8px; bottom: calc(env(safe-area-inset-bottom, 0px) + 84px); z-index: 60; display: none; gap: 6px; }
+.msg-bar.open { display: flex; }
+.msg-bar input { flex: 1; min-width: 0; font-size: 16px; /* 16px stops iPhone zooming in on focus */ padding: 10px 12px; border-radius: 999px; border: 1px solid var(--cream); background: rgba(0, 0, 0, 0.55); color: var(--cream); }
+.msg-bar button { border-radius: 999px; padding: 0 16px; }
+.float-react.msg { max-width: 70vw; white-space: normal; animation-duration: 4s; }
 .float-react-name { font-size: 0.72rem; font-weight: 700; opacity: 0.7; }
 @keyframes react-rise {
   0% { transform: translateY(10px) scale(0.6); opacity: 0; }
@@ -1074,6 +1091,14 @@ button.me-pill { background: var(--cream); color: var(--ink); }
 .round-buttons .big, .round-buttons .secondary { min-height: 44px; }
 .game-frame { flex: 1; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) var(--hand-h, 0px) var(--bar-h, 0px); row-gap: 6px; }
 .game-table-slot { position: relative; min-height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+/* 9ad.2 (2.34): the away notice floats in the empty band above the "You" pill; it never moves the rows. */
+.game-table-slot > .table-notice {
+  position: absolute; left: 50%; bottom: 22%; translate: -50% 0; z-index: 6;
+  max-width: 80%; margin: 0; padding: 6px 12px; border-radius: 12px;
+  font-size: 0.85rem; line-height: 1.25; text-align: center;
+  background: rgba(60, 22, 16, 0.88); border: 1px solid var(--danger);
+  pointer-events: none; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
 /* 2.31.1: visible overflow, so a raised (selected) card at the top of the fan is not cut off. */
 .game-hand-slot { position: relative; min-height: 0; overflow: visible; }
 .game-hand-slot > .hand-section { height: 100%; justify-content: center; }
@@ -1103,6 +1128,8 @@ button.me-pill { background: var(--cream); color: var(--ink); }
 .frame-col { width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
 .frame-col .big { width: min(100%, 360px); }
 .deal-bar { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+/* 2.34 fix: the deal bar spans the whole action area, so Manual, Auto and Deal all fit on one row on a phone. */
+.game-action-slot > .deal-bar { width: calc(100% + 152px); margin: 0 -76px; }
 .deal-bar .seg-btn { padding: 0 6px; font-size: 0.9rem; }
 /* The last trick, in the felt's top-left corner (CODE.md 9x.2 rule 3). Sized by --u, like the table. */
 .table-last { position: absolute; z-index: 3; }

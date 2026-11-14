@@ -5,6 +5,7 @@
  */
 
 import { emptyProfile, isVsComputer, type GameRecord, type ProfileStats } from '../session/record.ts';
+import { normaliseProfiles, type Profiles } from '../session/backup.ts';
 import type { NetInfo } from '../net/netgame.ts';
 import type { PlayerId, Session } from '../session/types.ts';
 import type { Level, Personality, Speed } from '../ai/persona.ts';
@@ -33,12 +34,24 @@ function write(key: string, value: unknown): boolean {
   }
 }
 
+/** 9ad.5b (2.34): asks the browser to keep this site's saved data (iPhone and Android may clear it otherwise). */
+export async function keepStorage(): Promise<boolean> {
+  try {
+    if (!navigator.storage?.persist) return false;
+    if (await navigator.storage.persisted()) return true;
+    return await navigator.storage.persist();
+  } catch {
+    return false;
+  }
+}
+
+export type { Profiles };
+
 // ----- Profiles (keyed by profile name) -----
 
-export type Profiles = Record<string, ProfileStats>;
-
+/** 9ad.5b (2.34): old saved profiles get any newer fields filled in (normaliseProfiles). */
 export function loadProfiles(): Profiles {
-  return read<Profiles>(PROFILES_KEY, {});
+  return normaliseProfiles(read<unknown>(PROFILES_KEY, {}));
 }
 
 export function saveProfiles(p: Profiles): boolean {
@@ -47,7 +60,7 @@ export function saveProfiles(p: Profiles): boolean {
 
 /** Games against the computer, kept apart from the normal profile history (CODE.md 9m.8). */
 export function loadVsProfiles(): Profiles {
-  return read<Profiles>(VS_PROFILES_KEY, {});
+  return normaliseProfiles(read<unknown>(VS_PROFILES_KEY, {}));
 }
 
 export function saveVsProfiles(p: Profiles): boolean {
@@ -140,7 +153,13 @@ export function loadRecords(): GameRecord[] {
 export function saveRecord(rec: GameRecord): boolean {
   const all = loadRecords();
   if (all.some((r) => r.id === rec.id)) return true;
+  void keepStorage(); // 9ad.5b: asked again after each finished game, as some browsers only allow it after use
   return write(RECORDS_KEY, [rec, ...all]);
+}
+
+/** Replaces every saved game record (used by Restore from backup, 9ad.5b). */
+export function saveRecords(recs: GameRecord[]): boolean {
+  return write(RECORDS_KEY, recs);
 }
 
 export function deleteRecord(id: string): boolean {

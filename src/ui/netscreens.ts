@@ -18,7 +18,7 @@ import { joinNames } from '../session/names.ts';
 import { getState, update } from './store.ts';
 import { chooseLeaderStage, dealingStage, fastForwardMenuItems, gameFrame, handBlock, isHostSeat, nameOf, noticeStage, ownSeat, playHandStage, publicView, send, stageLayout } from './game.ts';
 import { netRoundStart } from './roundstart.ts';
-import { awardsRow, gameOverStage, podium, targetRow } from './between.ts';
+import { awardsRow, gameOverStage, podium, scoreSheet, targetRow } from './between.ts';
 import { playerView } from '../session/view.ts';
 import { netSeats } from './netlobby.ts';
 import { roundTable, wastePile } from './table.ts';
@@ -46,19 +46,25 @@ export function netGameBody(g: SavedGame): Child {
       default: body = waitingFor(g, 'Waiting…');
     }
   }
-  return [connectionNotice(g), body];
+  // 9ad.2 (2.34): on a game screen the notice floats inside the table area, so it never pushes the rows.
+  const notice = connectionNotice(g);
+  const frame = body instanceof HTMLElement && body.classList.contains('game-frame') ? body : null;
+  const slot = frame?.querySelector('.game-table-slot');
+  if (notice && slot) { slot.appendChild(notice); return body; }
+  return [notice, body]; // screens that scroll (results, waiting) keep it on top
 }
 
 /** A phone lost its link: the game can't go on until rejoining exists (slice 4). */
 function connectionNotice(g: SavedGame): HTMLElement | null {
   if (!g.net || g.session.ended) return null;
   // CODE.md 9u A5: an away phone is kept for 10 minutes; the game waits for it (no auto-play).
+  // 9ad.2 (2.34): shorter text; `table-notice` floats it over the table.
   const away = (netSeats() ?? []).filter((x) => x.awaySince !== undefined && !x.isHost);
-  if (away.length) return h('p', { class: 'note warn net-lost', role: 'status' }, `${away.map(seatName).join(', ')} ${away.length === 1 ? 'is' : 'are'} away. The game waits for ${away.length === 1 ? 'them' : 'them all'} to come back.`);
+  if (away.length) return h('p', { class: 'note warn net-lost table-notice', role: 'status' }, `${away.map(seatName).join(', ')} ${away.length === 1 ? 'is' : 'are'} away · waiting for them`);
   const gone = (netSeats() ?? []).filter((x) => !x.connected);
   if (!gone.length) return null;
   const who = gone.map(seatName).join(', ');
-  return h('p', { class: 'note warn net-lost', role: 'status' },
+  return h('p', { class: 'note warn net-lost table-notice', role: 'status' },
     `${who} lost connection. Rejoining comes in a later update: `,
     g.net.role === 'host' ? 'close the game from the menu and start again.' : 'the host can close the game.');
 }
@@ -152,6 +158,7 @@ function results(g: SavedGame): Child {
     h('h2', { class: 'center results-head' }, icon('trophy'), ` ${nameOf(s, rec.finishingOrder[0])} wins ${rec.ultimate ? 'the Ultimate Round' : `round ${rec.round}`}`),
     s.ultimateRound ? h('p', { class: 'center' }, h('span', { class: 'chip-info gold' }, icon('bolt'), ' Next: Ultimate Round')) : null,
     podium(s, rec),
+    scoreSheet(s, { me }),
     awardsRow(s),
     targetRow(s, { me }),
     readyRow(s, me),
