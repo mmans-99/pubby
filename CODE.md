@@ -3104,6 +3104,40 @@ Phone checklist (2.34):
 6. Win a round, then at "who leads?": your cards show in the hand row before you pick.
 7. One-phone game, the winner at "who leads?": cards hidden until "Show my cards" is tapped.
 
+## 9ae. Android app for Google Play (FUTURE PLAN, user 2026-11-14 10:15; spec `PROJECT.md` 12q; TODO Phase 7; NOT STARTED, needs approval before any code)
+
+### 9ae.0 Read first
+- Don't start until the user says so; the "before the Play Store" list in `PROJECT.md` 12q comes first.
+- One codebase: the web app stays as it is on GitHub Pages; the Android app is a wrapper around the same `npm run build` output. Nothing game-related forks.
+- No Android Studio needed on the user's laptop: the app file is built by GitHub Actions.
+
+### 9ae.1 Wrapper (suggested: Capacitor)
+- Add `@capacitor/core`, `@capacitor/cli`, `@capacitor/android` as dev dependencies; `capacitor.config.ts` with app id (e.g. `io.github.mmans99.pubby`, final id chosen with the user; it can never change once on Play), app name `Pubby`, web dir = the build output folder.
+- `npx cap add android` once; commit the `android/` folder.
+- Service worker: inside the app the files are already local; turn the service worker off when running in Capacitor (`Capacitor.isNativePlatform()`), so an old cached copy never hides an app update.
+- Plugins (only what's needed): `@capacitor/app` (back button, exit), `@capacitor-community/keep-awake` (screen on in a game), `@capacitor/haptics` (optional SLAP! buzz), a camera permission for the in-app QR reader (WebView `getUserMedia` needs `CAMERA` in the manifest and a runtime prompt).
+- WebRTC (Nearby) works in the Android WebView; check it on two phones in the closed test.
+- Alternative if chosen instead: Trusted Web Activity via PWABuilder or Bubblewrap; needs `/.well-known/assetlinks.json` at `https://mmans-99.github.io/` (a new `mmans-99.github.io` repo), and the app always loads the live site.
+
+### 9ae.2 Changes in Pubby's code
+- **Server origin:** add the app's origin (`https://localhost` for Capacitor on Android) to `ALLOWED_ORIGINS` in `server/wrangler.toml`; redeploy.
+- **Join links and QR:** links that point at the GitHub Pages address open the website, not the app. Either add Android App Links (intent filter + `assetlinks.json`, as for TWA) or, simpler, in the app show only the in-app scanner and keep links for the web version.
+- **Back button:** `src/ui/back.ts` uses `popstate`; in the app, listen to Capacitor's `backButton` event and send it through the same handling (leave-game prompt included).
+- **Exit Pubby:** in the app, `App.exitApp()` after confirming (the goodbye screen stays on the web).
+- **Keep awake:** on from the deal until the game ends or is paused (also covers network slice 4's "screen kept awake").
+- **Storage:** profiles and stats live in the app's own storage, separate from the website's; the 2.34 backup and restore (9ad Part F) is how a player moves them across.
+
+### 9ae.3 Build and release
+- GitHub Actions job: `npm ci`, `npm run build`, `npx cap sync android`, Gradle `bundleRelease`, sign with the upload key from GitHub secrets, upload the `.aab` as a build artifact. The user creates the upload key once (steps to be written for them, explaining each step) and keeps a safe copy; Play App Signing holds the real key.
+- Version: `versionName` = `package.json` version; `versionCode` goes up by one on every Play upload.
+- Target the Android API level Play requires at the time of release.
+
+### 9ae.4 Play Console steps (for the user, written in full when the time comes)
+Developer account; create the app; store listing (icon 512×512, feature graphic 1024×500, screenshots, short and full description using Bhabhi, Thulla, Get Away); privacy policy page (can be a page on GitHub Pages); Data safety (no data collected or shared); content rating; internal test for a quick check; closed test with 15 to 20 testers for 14 days in a row; apply for production; release.
+
+### 9ae.5 Phone checklist (closed test)
+Install from Play; first open with no internet (game plays offline); Nearby game across 2 to 8 phones by QR; online room on two different networks; back button on every screen; Exit Pubby closes the app; screen stays on during a game; sounds and the iPhone/Android silent switch; profiles kept after an app update; backup from the website and restore in the app.
+
 ## 8a. Playable test builds (required before every commit)
 
 `CLAUDE.md` rule 5: the user tests every change on their phone before approving a commit.

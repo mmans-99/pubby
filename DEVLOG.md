@@ -4,6 +4,16 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-14 (10:15) — Future plan: Android app on Google Play (docs only)
+
+**User:** asked how best to build Pubby as an Android app, how to market it and whether it's ready; then "put it in the plan for the future".
+
+**Written:** `PROJECT.md` 12q (goal, when, Capacitor suggested over Trusted Web Activity, Play Store needs incl. the 12-tester 14-day closed test, marketing ideas, open questions), `CODE.md` 9ae (wrapper, code changes, build, Play Console steps, checklist), `TODO.md` Phase 7. Verdict given: not ready yet; finish slice 4, online rooms, slice E, accessibility and pending phone tests first.
+
+**Not changed:** no code, no version change. Not committed or pushed.
+
+---
+
 ## 2026-11-14 (10:08) — 2.34.2: podium removed on every screen
 
 **User:** "I don't need this top part, the table is good enough" (circled the podium, the "Last" row and the "Round · total" caption). Confirmed: remove all screens, offline and network play.

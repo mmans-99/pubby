@@ -749,6 +749,29 @@ User (network game test of 2.33, three screenshots) asked for:
 - **Profiles must survive updates, and stats can be backed up and restored** (00:11). Pubby never clears profiles on a new version (fixed storage keys); the phone or browser does (iPhone Safari after 7 days unvisited unless on the Home Screen; each address, test link, browser and Home Screen app has its own storage). Plan: ask the browser to keep storage, a backup file (profiles, vs-computer profiles, game records; not the game in progress) to save and restore on the Profiles screen, merged without doubling games; old saved profiles fill in missing fields. CSV export stays for spreadsheets.
 - The user asked for a plan to code with Haiku.
 
+### 12q. Android app on the Google Play Store (FUTURE PLAN, user 2026-11-14 10:15: "put it in the plan for the future"; build guide `CODE.md` 9ae; TODO Phase 7; NOT STARTED)
+
+**Goal:** Pubby as a free Android app on Google Play, the same game as the web app (one codebase), with no ads and no account.
+
+**When:** only after the game is finished and solid. Before any Play Store work, these must be done and phone-tested: network slice 4 (drops, rejoining, screen kept awake), online rooms (Phase 4c, after the Cloudflare setup), slice E (people and computer players on one phone), the accessibility pass, every pending phone test in `TODO.md`, and the "solid red or white box" card glitch explained or gone.
+
+**How (suggested, to confirm when the time comes):** wrap the existing web app in **Capacitor**. The app's files go inside the Android app, so it works offline from the first open and doesn't depend on GitHub Pages. The other option is a **Trusted Web Activity** (PWABuilder): quicker, updates reach players straight away, but it is the website running in Chrome and needs a separate `mmans-99.github.io` repo for the verification file. Not a rewrite in another language.
+
+**What changes in the app (in the build guide):** the online-rooms server also accepts the app's address; QR and join links open the app (or players use the in-app scanner only); the Android back button works with Pubby's back handling; Exit Pubby really closes the app; the screen stays awake in a game; optional small vibration on SLAP!.
+
+**Play Store needs:** a Google Play developer account ($25 once, ID check). New personal accounts must run a **closed test with at least 12 testers, opted in for 14 days in a row**, before the app can go public (sign up 15 to 20 people, since one dropping out restarts the 14 days). Also: a privacy policy page (Pubby collects nothing, but the page is still needed), the Data safety form (no data collected or shared), the content rating questions, an app icon (512×512), a feature graphic (1024×500), phone screenshots, a short and a full description. Check that no other Play app is already called "Pubby".
+
+**Marketing (ideas, user to choose later):**
+- **Audience:** people who already know the game as Bhabhi, Thulla or Get Away: South Asian families, the diaspora, students. Use all three names in the store title and description so searches find it.
+- **Selling points:** no ads, no account, works offline, phones link by QR with no internet, computer players that never cheat.
+- **Short videos:** SLAP!, HAHAHA! and "No one's a winner! Coward!" moments, real people round a table, on TikTok, Reels and Shorts.
+- **First fans:** the 12+ closed testers are family and friends who will really play; ask them for honest reviews at launch.
+- **Where to share:** Pakistani and Indian university societies, Reddit (r/ABCDesis, r/cardgames).
+- **Launch timing:** just before a family get-together season (Eid, Diwali, Christmas).
+- **Price:** free; an optional tip later, never ads.
+
+**Open questions for later:** Capacitor or Trusted Web Activity; store name and title (Pubby alone or "Pubby: Bhabhi card game"); is the name free on Play; tip button or nothing; an iPhone App Store version later (Capacitor can also build iOS, needs a Mac or a cloud build and $99 a year).
+
 ## 13. Quick rules (in-game help)
 
 - **What it is:** A short, simplified rules guide inside the app.
@@ -775,6 +798,8 @@ Answer these in any order. Each one unblocks part of the build.
 - **Online play defaults (section 12d, asked 2026-11-13):** answered 2026-11-13: keep Nearby, room list, 4-digit passcode, Cloudflare. Slice O2 can start.
 - **Everyone at the table before a game starts (section 12e, asked 2026-11-13):** decided 2026-11-13 (arrival at the table; no start while someone is missing; "Waiting for" in the lobby and after Start; quick rules unchanged). Built and pushed as 2.19.0 with Option A (`CODE.md` 9s).
 - **Lobby scroll and cards seen before play (section 12f, asked 2026-11-13):** decided: host can't skip a slow player; no quick-rules line. Decided: the results screen's Next round waits for everyone to be ready (Multiplayer and against the computer). Plan in `CODE.md` 9t (version 2.20). Nothing built.
+
+- **Android app on Google Play (section 12q, future, 2026-11-14):** not urgent; decide when the game is finished: Capacitor or Trusted Web Activity, store name, tip button or nothing, iPhone later.
 
 (2026-11-07 20:38: the multiplayer questions were answered; see section 12 and Decided.)
 

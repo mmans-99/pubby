@@ -358,6 +358,21 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [ ] Decide between local profiles only and hosted sign-in (`CODE.md`, section 6b)
 - [ ] If chosen: sign-in, cloud sync of profile history, privacy policy
 
+## Phase 7 — Android app on Google Play (future, not v1; plan 2026-11-14, `PROJECT.md` 12q, build guide `CODE.md` 9ae; NOT STARTED)
+
+- [x] Future plan written (docs only)
+- [ ] Before any Play Store work: network slice 4, online rooms (Phase 4c), slice E, accessibility pass, every pending phone test, card glitch explained or gone
+- [ ] User decides: Capacitor or Trusted Web Activity; store name and title; app id; tip button or nothing
+- [ ] Check the name "Pubby" is free on Google Play
+- [ ] Wrapper and app changes (`CODE.md` 9ae.1 to 9ae.2): server origin, join links, back button, exit, keep awake, camera permission
+- [ ] GitHub Actions build of the signed `.aab` (9ae.3); user creates the upload key
+- [ ] Privacy policy page; store listing art and text; Data safety; content rating
+- [ ] Google Play developer account (user)
+- [ ] Internal test, then closed test with 15 to 20 testers for 14 days in a row (9ae.5 checklist)
+- [ ] Apply for production and release
+- [ ] Marketing: short videos, store keywords (Bhabhi, Thulla, Get Away), societies and Reddit, launch before a get-together season
+- [ ] Later, if wanted: iPhone App Store version
+
 ## Blocked
 
 - (none)
