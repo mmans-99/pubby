@@ -1,7 +1,7 @@
 {
   "name": "pubby",
   "private": true,
-  "version": "2.34.0",
+  "version": "2.34.1",
   "description": "Pubby: a Bhabhi-based card game for 2 to 8 players on phones, offline.",
   "type": "module",
   "scripts": {

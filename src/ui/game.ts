@@ -1297,9 +1297,7 @@ export function reactionsLayer(): HTMLElement[] {
   // 9ad.5 (2.34): the typing bar lives outside the page, so redraws never wipe what's typed.
   ensureMessageBar().classList.add('open');
   // A sheet above the 😂 button: every phrase in a wrapping grid, scrolling up and down (2.11).
-  // 9ad.5: the last 5 typed messages come first, as chips to send again with one tap.
   const sheet = h('section', { class: opening ? 'reactions-sheet opening' : 'reactions-sheet', 'aria-label': 'Reactions', 'data-scroll': 'reactions' },
-    recentMessages().map((text) => h('button', { class: 'phrase-chip', onclick: () => sendRecent(text) }, text)),
     h('button', { class: 'phrase-chip laugh-chip', 'aria-label': 'Laugh', onclick: (e) => react(-1, e as MouseEvent) }, '😂 Laugh'),
     CATCH_PHRASES.map((ph, i) =>
       h('button', { class: 'phrase-chip', onclick: (e) => react(i, e as MouseEvent) }, ph)),
@@ -1310,26 +1308,6 @@ export function reactionsLayer(): HTMLElement[] {
 // ---------------------------------------------------------------------------
 // Typed messages (CODE.md 9ad.5, 2.34)
 // ---------------------------------------------------------------------------
-
-const RECENT_KEY = 'pubby.recentMessages';
-
-/** The last 5 distinct messages this phone sent (wrapped in try/catch, as storage.ts does). */
-function recentMessages(): string[] {
-  try {
-    const raw: unknown = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]');
-    return Array.isArray(raw) ? raw.filter((t): t is string => typeof t === 'string').slice(0, 5) : [];
-  } catch { return []; }
-}
-
-function rememberMessage(text: string): void {
-  const list = [text, ...recentMessages().filter((t) => t !== text)].slice(0, 5);
-  try { localStorage.setItem(RECENT_KEY, JSON.stringify(list)); } catch { /* storage full or blocked: skip */ }
-}
-
-function sendRecent(text: string): void {
-  rememberMessage(text);
-  sendMessage(text);
-}
 
 /** Built once, on first use, and kept on document.body: it survives every redraw. */
 let messageBar: HTMLFormElement | null = null;
@@ -1343,7 +1321,6 @@ function ensureMessageBar(): HTMLFormElement {
       e.preventDefault();
       const text = cleanMessage(input.value);
       if (!text) return;
-      rememberMessage(text);
       sendMessage(text);
       input.value = '';
       input.focus(); // keeps the keyboard up for the next one

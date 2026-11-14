@@ -738,7 +738,7 @@ User (phone test, 2026-11-13): doesn't like where the other players' names sit a
 - Your own seat (the "You" pill) does not change.
 - The user asked for Haiku to build it.
 
-### 12p. Points table, typed messages, away notice, seats over fans, cards on "who leads?" (PLAN, user 2026-11-14 00:09; build guide `CODE.md` 9ad; BUILT 2.34.0 and pushed; phone test pending)
+### 12p. Points table, typed messages, away notice, seats over fans, cards on "who leads?" (PLAN, user 2026-11-14 00:09; build guide `CODE.md` 9ad; BUILT 2.34.0 and pushed; 2.34.1 removed the recent-message chips, nothing saved from the message box; phone test pending)
 
 User (network game test of 2.33, three screenshots) asked for:
 - **Points table** on the results screen: every player's points for each round and the total (kept with the podium). Also on the game-over screen if it has none.

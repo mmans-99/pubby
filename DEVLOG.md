@@ -4,6 +4,16 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-14 (09:52) — 2.34.1: recent-message chips removed, nothing is saved when typing or sending
+
+**User:** typing in the reactions box should not save anything. **Found:** the recent-message chips (plan 9ad.5 item 2) kept the last 5 texts in `localStorage` (`pubby.recentMessages`), written on Send and on a chip tap. Typing wrote nothing; sending did not save the game.
+
+**Changed (user chose option 2):** removed the chips, their storage and their helpers from `src/ui/game.ts`. Typing and Send still work. Version 2.34.1. Checked in a browser: 0 storage writes while typing and sending; 409 unit tests pass; build passes.
+
+**Not yet:** pushed; phone test pending.
+
+---
+
 ## 2026-11-14 (09:40) — Build 9ad (2.34): points table, typed messages, away notice, seats over fans, cards on "who leads?", profiles backup and restore
 
 **Built** all six parts of `CODE.md` 9ad (A seats over fans, B away notice floats over the table, C your cards on "who leads?" with "Show my cards" on one phone, D points table, E typed messages with protocol 9, F keep storage, backup and restore, old profiles load). Version 2.34.0.
