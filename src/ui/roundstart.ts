@@ -19,7 +19,7 @@ import { hostLine } from './netscreens.ts';
 import { icon, type IconName } from './icons.ts';
 import type { SavedGame } from './storage.ts';
 import { getState, update } from './store.ts';
-import { resultsSummary, targetRow } from './between.ts';
+import { targetRow } from './between.ts';
 import { sfx } from '../audio/sfx.ts';
 
 // ---------------------------------------------------------------------------
@@ -138,7 +138,7 @@ function waitStage(g: SavedGame, me: PlayerId, what: 'vote' | 'swap' | 'tap' | '
     what === 'vote' && v ? ballotChips(s) : null,
     seatStrip(s, publicView(s), {}),
     what === 'vote' && me === s.hostId && v && !v.awaitingHost && Object.keys(v.ballots).length > 0 ? countNowButton(s) : null,
-    s.phase === 'results' ? resultsSummary(s) : handBlock(s, playerView(s, me), null, { head: false }),
+    s.phase === 'results' ? null : handBlock(s, playerView(s, me), null, { head: false }),
   );
 }
 
@@ -160,7 +160,6 @@ function passStage(g: SavedGame, who: PlayerId, what: 'vote' | 'swap' | 'tap'): 
     seatStrip(s, publicView(s), { highlight: who }),
     handoffBlock(name, () => update({ game: { ...g, stage: 'hand', holder: who } }), { compact: true }),
     what === 'vote' && Object.keys(v!.ballots).length > 0 ? countNowButton(s) : null,
-    resultsSummary(s),
   );
 }
 

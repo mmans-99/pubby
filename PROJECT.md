@@ -408,7 +408,7 @@ The user wants a polished card-table look, like popular online card games:
 - **Swap:** "Swap up to 4?", your cards, Swap / Keep.
 - **Pass the phone:** phone and arrow, the name big, one "I'm Dan" button.
 - **Playing:** the led suit as a big faint symbol on the felt; the glowing seat shows whose turn it is; the last trick as tiny cards (the slapped player's ringed in red); the Play button says "Play 2♥"; only playable cards are bright; no "X's cards" heading.
-- **Results:** a podium (1st, 2nd, Last; top three and a short list for bigger games) with round points and total; trivia as small award cards (Most slapped, Top slapper, Rivals) with More for the rest and the slapped-by table; Ready name chips with a tick; Next round with an Ultimate button beside it.
+- **Results:** the points table (see the 2.34.2 note in section 12p; the podium was removed); trivia as small award cards (Most slapped, Top slapper, Rivals) with More for the rest and the slapped-by table; Ready name chips with a tick; Next round with an Ultimate button beside it.
 
 The testbed (`CODE.md` section 8a) is only a rules test tool and does not use this look.
 
@@ -741,7 +741,7 @@ User (phone test, 2026-11-13): doesn't like where the other players' names sit a
 ### 12p. Points table, typed messages, away notice, seats over fans, cards on "who leads?" (PLAN, user 2026-11-14 00:09; build guide `CODE.md` 9ad; BUILT 2.34.0 and pushed; 2.34.1 removed the recent-message chips, nothing saved from the message box; phone test pending)
 
 User (network game test of 2.33, three screenshots) asked for:
-- **Points table** on the results screen: every player's points for each round and the total (kept with the podium). Also on the game-over screen if it has none.
+- **Points table** on the results screen: every player's points for each round and the total. Also on the game-over screen. Since 2.34.2 it is the only results table: the podium, the "Last" row and the "Round · total" caption are gone on every screen (results, game over, network play, and the pass-the-phone vote summary).
 - **Typed messages** during the game, as well as the 😂 and catch-phrases. Defaults chosen in the plan (user can change): 60 characters; float from the sender's seat on every phone like a catch-phrase; last 5 sent kept on the phone as quick chips; not saved in the game record; no word filter; computer players don't answer.
 - **Away notice** must not push the game screen down or cut off the board: it becomes a small box floating over the table.
 - **Names, initials and card counts** must not be covered by the fans of card backs.

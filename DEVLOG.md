@@ -4,6 +4,16 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-14 (10:08) — 2.34.2: podium removed on every screen
+
+**User:** "I don't need this top part, the table is good enough" (circled the podium, the "Last" row and the "Round · total" caption). Confirmed: remove all screens, offline and network play.
+
+**Changed:** removed `podium()`, `resultsSummary()` and their calls in `between.ts` (results, game over Ultimate round), `netscreens.ts` (network results) and `roundstart.ts` (pass-the-phone vote summary). Removed the podium and rest-list CSS. Points table and awards stay. Version 2.34.2.
+
+**Checked:** type check passes; 409 unit tests pass; build passes; results screen at 384×730 shows the title, points table, awards and buttons with no podium.
+
+**Not yet:** pushed; phone test pending.
+
 ## 2026-11-14 (09:52) — 2.34.1: recent-message chips removed, nothing is saved when typing or sending
 
 **User:** typing in the reactions box should not save anything. **Found:** the recent-message chips (plan 9ad.5 item 2) kept the last 5 texts in `localStorage` (`pubby.recentMessages`), written on Send and on a chip tap. Typing wrote nothing; sending did not save the game.

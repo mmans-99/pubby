@@ -18,7 +18,7 @@ import { joinNames } from '../session/names.ts';
 import { getState, update } from './store.ts';
 import { chooseLeaderStage, dealingStage, fastForwardMenuItems, gameFrame, handBlock, isHostSeat, nameOf, noticeStage, ownSeat, playHandStage, publicView, send, stageLayout } from './game.ts';
 import { netRoundStart } from './roundstart.ts';
-import { awardsRow, gameOverStage, podium, scoreSheet, targetRow } from './between.ts';
+import { awardsRow, gameOverStage, scoreSheet, targetRow } from './between.ts';
 import { playerView } from '../session/view.ts';
 import { netSeats } from './netlobby.ts';
 import { roundTable, wastePile } from './table.ts';
@@ -157,7 +157,6 @@ function results(g: SavedGame): Child {
   return h('div', { class: 'stack' },
     h('h2', { class: 'center results-head' }, icon('trophy'), ` ${nameOf(s, rec.finishingOrder[0])} wins ${rec.ultimate ? 'the Ultimate Round' : `round ${rec.round}`}`),
     s.ultimateRound ? h('p', { class: 'center' }, h('span', { class: 'chip-info gold' }, icon('bolt'), ' Next: Ultimate Round')) : null,
-    podium(s, rec),
     scoreSheet(s, { me }),
     awardsRow(s),
     targetRow(s, { me }),

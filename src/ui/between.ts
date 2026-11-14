@@ -220,36 +220,6 @@ export const targetPanel = targetRow;
 // Results screen
 // ---------------------------------------------------------------------------
 
-/** R1: places as a podium (1st, 2nd, Last for three; top three and a short list for more). */
-export function podium(s: Session, rec: RoundRecord): HTMLElement {
-  const order = rec.finishingOrder;
-  const n = order.length;
-  const place = (i: number): number | 'last' => (i === n - 1 ? 'last' : i + 1);
-  const pts = (id: PlayerId): string => rec.ultimate ? `${rec.totals[id] ?? 0}` : `${signed(rec.points[id] ?? 0)} · ${rec.totals[id] ?? 0}`;
-  const step = (i: number): HTMLElement => {
-    const id = order[i]!;
-    const p = place(i);
-    return h('div', { class: `step ${i === 0 ? 'p1' : p === 'last' ? 'plast' : `p${i + 1}`}` },
-      placeBadge(p),
-      h('span', { class: 'step-name' }, nameOf(s, id)),
-      h('small', null, pts(id)),
-      rec.forfeitedBy === id ? h('small', { class: 'forfeit' }, 'forfeit') : null);
-  };
-  const top = n <= 3 ? order.map((_, i) => i) : [0, 1, 2];
-  const visual = top.length === 3 ? [top[1]!, top[0]!, top[2]!] : top.length === 2 ? [top[1]!, top[0]!] : top;
-  const rest = n > 3 ? order.slice(3).map((id, k) => {
-    const i = k + 3;
-    return h('li', null, placeBadge(place(i)), h('span', { class: 'grow' }, nameOf(s, id), rec.forfeitedBy === id ? h('small', { class: 'forfeit' }, ' forfeit') : null), h('span', { class: 'muted' }, pts(id)));
-  }) : [];
-  return h('section', { class: 'podium-wrap', 'aria-label': `Results: ${order.map((id, i) => `${p2s(place(i))} ${nameOf(s, id)}`).join(', ')}` },
-    h('div', { class: 'podium' }, visual.map(step)),
-    rest.length ? h('ol', { class: 'rest-list' }, rest) : null,
-    h('p', { class: 'muted small center' }, rec.ultimate ? 'Total' : 'Round · total'),
-  );
-}
-
-const p2s = (p: number | 'last'): string => (p === 'last' ? 'Last' : ordinal(p));
-
 /** R4: Ultimate Round button next to Next round; tap it, then pick who is calling. */
 function ultimateCall(s: Session): HTMLElement | null {
   if (s.ultimateRound || getState().armed !== 'ultimatecaller') return null;
@@ -273,7 +243,6 @@ export function resultsStage(g: SavedGame): Child {
   return h('div', { class: 'stack' },
     h('h2', { class: 'center results-head' }, icon('trophy'), ` ${nameOf(s, rec.finishingOrder[0])} wins ${rec.ultimate ? 'the Ultimate Round' : `round ${rec.round}`}`),
     s.ultimateRound ? h('p', { class: 'center' }, h('span', { class: 'chip-info gold' }, icon('bolt'), ' Next: Ultimate Round')) : null,
-    podium(s, rec),
     scoreSheet(s),
     awardsRow(s),
     targetRow(s),
@@ -294,13 +263,6 @@ export function resultsStage(g: SavedGame): Child {
       },
     }, armed ? `Tap again: ${host} ends the game` : `End the game · ${host}`),
   );
-}
-
-/** Shown under "Pass the phone to X" while a results-screen vote goes round. */
-export function resultsSummary(s: Session): HTMLElement | null {
-  if (s.phase !== 'results') return null;
-  const rec = s.rounds[s.rounds.length - 1];
-  return rec ? podium(s, rec) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -340,7 +302,6 @@ export function gameOverStage(g: SavedGame): Child {
           h('b', null, `${s.scores[id] ?? 0} pts`)))),
     ),
     scoreSheet(s),
-    last?.ultimate ? [h('h2', { class: 'center' }, 'Ultimate Round'), podium(s, last)] : null,
     awardsRow(s),
     h('p', { class: 'muted small center' }, `${s.rounds.length} ${s.rounds.length === 1 ? 'round' : 'rounds'} played.`),
     gameOverSaved(g.recordId),

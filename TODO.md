@@ -418,6 +418,7 @@ Also open from this session (not committed): 2.32.1 and 2.32.2 fixes (Fast forwa
 - [x] Part E: typed messages (protocol 9)
 - [x] Part F: keep storage, back up and restore stats, old profiles load
 - [x] Version 2.34.0 and checks done; the dealing-screen fix is in
+- [x] Version 2.34.2: podium, "Last" row and "Round · total" caption removed on every results, game-over and network screen
 - [ ] User's phone test (`CODE.md` 9ad.7)
 - [x] Version 2.34.1: recent-message chips removed; nothing is saved from the reactions box (`CODE.md` 9ad.5 note)
 - [ ] Watch: a played card or a suit symbol on the table once drew as a solid red or white box (phone screenshot, 2026-11-14; not reproduced in 46 plays; the last-trick spades showed the same). Fix only if it comes back.
