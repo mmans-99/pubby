@@ -2496,59 +2496,116 @@ Pause and reactions work as now during a notice.
   3. Multiplayer on two phones: tap OK on one; it shows "Waiting for …" until the other taps; play starts only then.
   4. The suit is never named.
 
-## 9z. Computer players that learn from the people they play against (PLAN, user 2026-11-13 21:25; option 1 chosen 2026-11-15; NOT BUILT)
+## 9z. Computer players that learn from the people they play against (PLAN, user 2026-11-13 21:25; option 1 chosen 2026-11-15; plan finished by Opus 2026-11-15 13:30, APPROVED by the user 13:16; target 2.35.0; NOT BUILT)
 
 **Today:** computer players learn nothing between rounds or games. `src/ai/memory.ts` is built only from public events in the current round (and reset each round). Their personality and level are fixed at setup (`src/ai/persona.ts`, `PERSONALITY_WEIGHTS`). Nothing writes learned values to storage.
 
-**Goal:** after several games, a computer player plays a little more like the people it actually plays against, without ever seeing a hidden card.
+**Goal (option 1):** during one game, a Normal or Hard computer player plays a little more like the people at the table, without ever seeing a hidden card. Everything is forgotten when the game ends.
 
-**Fairness rule (must hold):** a learning bot may use only what a person at the table could see: public events in the log (plays, slaps, pick-ups, takes, round results, who led). It may never read a hand, a hidden deck, the declared-but-secret missing suit, or the session's private state. The no-cheating test (`tests/ai/fair` style check, CODE.md 9m) must still pass, and a new test must show that changing a hidden card does not change a learned value.
+**Fairness rule (must hold):** a learning bot may use only what a person at the table could see: public events in the log (cards played, jokers played, jokers thrown away, trick ends, round starts) and the public "computer" tag on each seat. It may never read a hand, a hidden deck, the secret missing suit (including the `suits` field that old saved games still carry on `missingSuitDeclared`), the swapped cards, or the session's private state. The no-cheating test (`tests/ai/fairplay.test.ts`, 9m) must still pass with learning on, and a new test (9z.6 step 1) shows that changing a hidden card does not change a learned value.
 
-### 9z.0 Options (the user chooses; none is built)
+### 9z.0 Options (the user chose option 1 on 2026-11-15)
 
 | Option | What it does | Where it is kept | Risk |
 |---|---|---|---|
-| 1. Within one game (recommended first step) | Each bot watches each human's public habits in the current game (slap rate, joker timing, leads high or low, cards picked up) and nudges its own weights a little toward or away from them. Resets when the game ends. | Memory only (nothing saved) | Low. Easy to switch off. Effect is small and only lasts one game. |
-| 2. Across games on the same phone | Same counters, kept over several games and saved with the game records (`src/session/record.ts`, profile history). A bot's personality weights drift slowly toward the saved habits of its opponents. | Storage (needs a reset button and a size cap) | Medium. Needs storage design and a clear "reset learning" control. |
-| 3. Offline tuning from your game records | A script (arena, `npm run` arena scripts) uses your saved records to tune the weights, then the new weights are written into `persona.ts` by hand. No change to the app at run time. | Code (`persona.ts`) | Low. Changes only happen when you run and approve the tune. |
+| **1. Within one game (CHOSEN)** | Each bot watches each person's public habits in the current game and nudges its own weights a little toward them. Resets when the game ends. | Memory only (nothing saved) | Low. Easy to switch off. Effect is small and only lasts one game. |
+| 2. Across games on the same phone | Same counters, kept over several games and saved with the game records (`src/session/record.ts`, profile history). | Storage (needs a reset button and a size cap) | Medium. Not chosen; would get its own plan and version. |
+| 3. Offline tuning from your game records | A script tunes `persona.ts` from saved records; the app itself doesn't change. | Code (`persona.ts`) | Low. Not chosen. |
 
-### 9z.1 Option 1 in detail (if chosen)
+### 9z.1 Option 1: decisions (Opus 2026-11-15; approved by the user 2026-11-15)
 
-- **Counters per human player, this game only:** slaps made, slaps on a suit they were missing (shown by the slap, so public), jokers played and how early, leads of a low card when they had a high one (only when the lead is public), cards picked up.
-- **Nudge, not rewrite:** each counter moves the bot's `risk` and `jokerSave` weight by at most ±20% of its base value (base values are in `persona.ts`). A bot never goes below 50% or above 150% of its base weight, so its personality stays recognisable.
-- **Minimum evidence:** no nudge until the human has had at least 6 public chances to show the habit (e.g. 6 slap chances). Before that the bot plays its normal personality.
-- **Reset:** the nudge is cleared when the game ends or when a new game starts. Option 1 saves nothing.
-- **Setting:** a new setup switch, "Computer players learn from me" (on or off, default off until the user tests it).
+1. **Off by default.** A new setup switch, **"Computer players learn as they play"**, starts off. It is kept with the game (`BotsInfo.learn`) so Carry on keeps it, and the setup screen remembers the last choice the same way it remembers Reactions. Turning it on by default is a later, separate decision after the phone test passes (its own small version).
+2. **Normal and Hard only.** Easy never learns, in Mixed too. Reasons: Easy plays a random card 20% of the time and forgets after each trick, so a ±20% nudge would not show; and Easy is the level for beginners, so it should not adapt against them. Hard: the nudged weights change Normal's card, which Hard's search keeps unless it finds a clearly better card (`hardCard` in `moves.ts`), so on Hard the effect is smaller. That is expected.
+3. **Fairness confirmed** (rule above). Learning reads only an allow-list of event types (9z.2). It never consumes the bot's `rng`, so with learning off every decision is exactly as in 2.34.2.
+4. **Minimum evidence: 6 public chances per habit, per person**, for the two play habits. **One change from the draft: the joker habit needs 3**, because there are only 2 or 3 jokers in a round, so a person rarely plays 6 in a whole game and at 6 the jokerSave nudge would almost never switch on. Before a habit has its chances, it has no effect.
+5. **Imitate, don't counter.** The bots drift toward the table's style (the Goal above). Weights move by what they do, not by their names (see the note in 9z.3).
+6. **Only people are watched.** Seats with the public `computer` tag are not counted, so all-computer games (Fast forward, the arena by default) never change.
+7. **One habit table per game**, shared by all the bots on the phone (they all see the same public events). In Multiplayer it lives on the host only, like the bots.
+8. **Carry on:** the habit table is rebuilt from the whole game's log (public events only), so a reopened game has the same learned values as one played straight through. Nothing new is stored.
 
-### 9z.2 Option 2 in detail (if chosen, after option 1 is tested)
+### 9z.2 The habits counted (final list)
 
-- Same counters, kept in a profile record per human name (the names in profile history), capped at the last 20 games.
-- A "Reset computer learning" button in the profiles screen. Deleting a profile deletes its learning.
-- Stored only on the phone that holds the saved game. Nothing leaves the phone.
+Counted per person (seat without the `computer` tag), from the start of the game to its end, across rounds. Round starts and reshuffles do **not** clear them; game end and a new game do.
 
-### 9z.3 Option 3 in detail (if chosen)
+| Habit | A chance is | It counts as "yes" when | Feeds | Needs |
+|---|---|---|---|---|
+| **Bold follow** | the person follows the led suit (a `cardPlayed` of the led suit, not the first card of the trick) when a card of the led suit is already down **and** at least one more card is played after theirs in the same trick | their card is higher than the top card of the led suit at that moment | `risk` | 6 |
+| **High lead** | the person leads a normal card (their `cardPlayed` is the first normal card of the trick and they started the trick; a card after someone else's joker lead does not count) | the card is J, Q, K or A | `risk` | 6 |
+| **Early joker** | the person plays a joker (`jokerPlayed`) or has jokers thrown away with their last normal card (`jokersDiscarded`, each joker counts once) | it was a `jokerPlayed` within the first `earlyJokerTricks` tricks of the round (default 5) | `jokerSave` | 3 |
 
-- A script reads exported game records, runs the arena with the proposed weights, and prints the win rate and average score before and after.
-- Weights are changed in `persona.ts` only after the user reads the printed result and says so. Each change is a normal versioned build.
+"Someone played after them" is known only when the trick ends (`trickResolved` or `slapped`), so a follow is scored at trick end. All of this is in the public log.
 
-### 9z.4 Files likely to change (option 1)
+**Dropped from the draft, and why:**
+- *Slaps made* and *slaps on a missing suit*: a slap is forced by the rules (you must follow suit if you can), so it shows a void, not a habit; and the second one leans on the secret missing suit.
+- *Leads a low card when they had a high one*: needs their hidden hand. Breaks the fairness rule.
+- *Cards picked up*: a result of the cards, not a choice.
+
+**Allow-list:** the learning code reads only `roundStarted`, `cardPlayed`, `jokerPlayed`, `jokersDiscarded`, `slapped` and `trickResolved` (the driver clears the table at game over and new game). Everything else (`swapped`, `missingSuitDeclared`, `reshuffled`, votes, takes) is ignored.
+
+### 9z.3 How a habit becomes a weight
+
+- For each habit, a person's rate is `yes / chances` once chances reach the minimum. The **table rate** is the average over the people who have reached it. A habit nobody has reached yet has no effect.
+- Each habit has a **neutral rate**: what the current Normal bot does in the arena (measured in 9z.6 step 2 and written into `LEARN_TUNING` in `src/ai/learn.ts`). Until measured, the placeholders are bold follow 0.5, high lead 0.3, early joker 0.5.
+- `shift = clamp(0.4 × (table rate − neutral), −0.2, +0.2)`; the two `risk` habits are averaged (only those in effect).
+- **`risk`** factor = `1 − shift` (a bolder table makes the bot play bolder; in `moves.ts` a lower `risk` makes the bot see less danger, so it leads and follows higher).
+- **`jokerSave`** factor = `1 + shift` (a table that plays jokers early makes the bot spend jokers sooner; in `moves.ts` a higher `jokerSave` lowers the bar for playing a joker).
+- Learned weight = `clamp(base × factor, 0.5 × base, 1.5 × base)`. The ±20% keeps it within 80–120% in practice; the 50–150% clamp is the safety net and has its own test.
+- Only `risk` and `jokerSave` change. `reactRate` and `reshuffleBar` never change.
+
+**Note (found in this review, not changed by this plan):** the names of the weights run opposite to what they do. `careful` has `risk` 0.7, which makes it see *less* danger and play higher cards than `reckless` (1.4). This plan goes by behaviour, so it is not affected. Say if you want the personalities looked at separately.
+
+### 9z.4 Files to change (option 1)
 
 | File | Change |
 |---|---|
-| `src/ai/memory.ts` | Count public habits per human player this game |
-| `src/ai/persona.ts` | Nudge helper with the ±20% bound and the 50–150% clamp |
-| `src/ai/moves.ts` | Use the nudged `risk` and `jokerSave` (only when the setting is on) |
-| `src/session/types.ts`, `src/ui/solosetup.ts` | The "learn from me" switch |
-| `tests/ai/` | New tests: bound and clamp; minimum evidence; hidden-card test; reset at game end |
+| `src/ai/learn.ts` (new, pure) | `Habits` type; `newHabits(order, computerIds)`; `noteHabits(h, events)` (allow-list only, never reads a hand, no `rng`); `rebuildHabits(log, order, computerIds)`; `learnedWeights(base, level, h)` (returns base unchanged for Easy or when `h` is null); `LEARN_TUNING` (neutral rates, 0.4 gain, ±0.2, 50–150%, minimums 6/6/3, `earlyJokerTricks` 5) |
+| `src/ai/moves.ts` | `chooseCard`, `leadCard`, `followCard` take the weights from `learnedWeights` instead of reading `PERSONALITY_WEIGHTS` directly. Other `PERSONALITY_WEIGHTS` uses (votes, reshuffle) stay as they are |
+| `src/ai/decide.ts` | Optional last parameter `habits: Habits | null` (null = learning off), passed to `chooseCard` |
+| `src/ui/bots.ts` | One `Habits` per game when `BotsInfo.learn` is on: fed from the same public events as `remember`, rebuilt from the whole log on Carry on, dropped at game over and new game |
+| `src/ui/storage.ts` | `BotsInfo.learn?: boolean` (missing = off, so old saves load as off) |
+| `src/ui/solosetup.ts`, the Multiplayer host's computer-player settings (where Reactions is set, 2.26) | The switch "Computer players learn as they play", next to Reactions, off by default |
+| A test readout behind `?learnlog=1` (like `?onephone=1`) | In the ☰ menu: one line per computer player, e.g. "Sam: risk 86%, jokers 100% (learning)" or "Easy: not learning". Not shown without the flag, so the normal UI gets no new text |
+| `tests/ai/botgame.ts`, `testbed/ai_arena.ts` | `--learn` and `--people N` (the first N seats lose the `computer` tag but are still played by the bot code, so the learning bots have someone to watch); `--people-style careful|reckless|mixed` |
+| `tests/ai/learn.test.ts` (new), `tests/ai/fairplay.test.ts` | Tests in 9z.6 step 1 |
 
-### 9z.5 Version and process (when built)
+### 9z.5 Version and process
 
-- Proposed version: the next free number when built (2.31 is taken by 9aa) (option 1). Options 2 and 3 get their own version numbers when chosen.
-- `npm run check`, `npm test`, `npm run build`; arena check that the learning bot does not get worse than the current bot (win rate within the arena's usual margin); update the five MD files; playable test build; phone checklist; push only after the user says "Push it".
-- **Phone checklist (option 1, when built):**
-  1. Turn on "Computer players learn from me". Play one game where you slap often. Do the bots slap you back more by the end of the game than at the start?
-  2. Start a new game. Do the bots go back to their normal habits?
-  3. Turn the switch off. The bots play as before.
+- **Version 2.35.0** (2.31 is taken by 9aa).
+- `npm run check`, `npm test`, `npm run build`, `python3 testbed/run_checks.py --since origin/main`, and the arena bars (9m.4) because `src/ai/` changes.
+- **Arena check for learning (new bars, paired: same seeds with `--learn` off and on, 4 players, 2 bot seats + 2 people seats played by the bot code):**
+  1. 0 refused moves, 0 crashes, every game finishes.
+  2. **Not worse:** over 2000 games with Normal bots (and 500 with Hard), the learning bots' average place is no more than **0.05** worse than the same bots without learning, for each `--people-style` (careful, reckless, mixed). (0.05 is about two standard errors at 2000 paired games.)
+  3. **It moves the right way:** against `reckless` people the average learned `risk` factor is below 1; against `careful` people it is above 1; never outside 0.8–1.2.
+  4. Old bars still pass (Normal beats random by 0.3, Normal beats Easy by 0.15; Hard vs Normal as in the latest DEVLOG), and p95 decision time does not rise by more than 1 ms.
+  5. Write all numbers into the DEVLOG.
+- Update the five MD files; playable test build; phone checklist below; push only after the user says "Push it".
+- **Phone checklist (option 1, 2.35.0).** Open the test build with `?learnlog=1` so the ☰ menu shows what the computer players have learned.
+  1. New game, single player: the switch "Computer players learn as they play" is there, next to Reactions, and is **off**. Start a game against 3 Normal players: the ☰ readout says learning is off and every weight is 100%.
+  2. New game with the switch **on**, 3 Normal players. Play **boldly** for two rounds: lead J, Q, K or A when you can; when following, play over the top card even when others still have to play. After your 6th lead or bold follow, ☰ shows **risk below 100%** for each computer player, and never below 80%.
+  3. Play on carefully (lead low cards, duck under the top card). Risk drifts back toward 100% and can go above it, never above 120%.
+  4. Play a joker early in a round three times (within the first 5 tricks). ☰ shows **jokers above 100%**.
+  5. Save the game mid-round (leave and Carry on). The ☰ readout shows the same numbers as before.
+  6. Finish the game and start a new one: all back to 100% until you have played 6 more chances.
+  7. Mixed levels, switch on: Easy players show "not learning"; Normal and Hard players learn.
+  8. Multiplayer with computer players (host phone, switch on): the host's ☰ readout learns from every person at the table; the other phones see no difference.
+  9. Feel: do the computer players still feel like themselves, no slower than before?
+
+### 9z.6 Build steps (in order; each step's tests pass before the next)
+
+1. **`src/ai/learn.ts` and `tests/ai/learn.test.ts`** (no app change). Tests:
+   - each habit: chances and yes counts from hand-made event lists (bold follow scored only when someone plays after; joker-lead trick does not count as a lead; `jokersDiscarded` counts each joker);
+   - computer seats are never counted;
+   - minimum evidence: 5 chances → base weights; 6 → nudged (3 for jokers);
+   - ±20% bound and 50–150% clamp (with extreme made-up rates and a made-up `LEARN_TUNING`);
+   - Easy returns base weights; `habits` null returns base weights;
+   - habits survive `roundStarted` and `reshuffled`, and a new game starts empty;
+   - `rebuildHabits(log)` equals step-by-step `noteHabits`;
+   - **hidden-card test:** two full sessions with the same public log but (a) one different card in a person's hand, (b) one different card in a hidden deck (3 players), (c) a different `suits` on `missingSuitDeclared` and different swapped cards: the habit tables and learned weights are deep-equal;
+   - `noteHabits` never calls `rng` (pass an rng that throws).
+2. **Arena options** (`--learn`, `--people`, `--people-style`) in `tests/ai/botgame.ts` and `testbed/ai_arena.ts`, counting only. Measure the Normal bot's neutral rates (2000 games) and write them into `LEARN_TUNING`.
+3. **Wire into `moves.ts` and `decide.ts`.** Regression test: with `habits` null (and with Easy), 500 recorded positions give exactly the same moves as 2.34.2 for the same seeds. Fair-play test also run with learning on. Run the arena bars in 9z.5.
+4. **Driver, storage, switch, readout** (`bots.ts`, `storage.ts`, `solosetup.ts`, the Multiplayer host settings, `?learnlog=1`). Bump to 2.35.0. Browser checks for the setup screens and a solo game with the switch on.
+5. **MD files, test build, phone checklist (9z.5).** Push only after the user says "Push it".
 
 ## 9aa. Version 2.31: screens keep their scroll place, Fast forward buttons in your hand area, deal and round-start buttons that fit, and a neater last-trick stack (PLAN, user 2026-11-13 21:33; written for any model, Haiku included; BUILT 2.31.0, not committed; spec `PROJECT.md` 12m)
 

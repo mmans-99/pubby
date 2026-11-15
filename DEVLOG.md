@@ -4,6 +4,27 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-15 (13:30) — Opus plan review: computer players that learn within one game (docs only, pushed)
+
+**User:** review and finish the plan for option 1 (`CODE.md` 9z); decide default on or off, Easy or not, confirm the fairness rule and hidden-card test, confirm the 6-chance threshold and the habit list. Target 2.35.0. No code.
+
+**Decided (approved by the user with "Push", 2026-11-15):**
+- Off by default; switch "Computer players learn as they play" next to Reactions, kept in `BotsInfo.learn`.
+- Normal and Hard only; Easy never learns.
+- Fairness confirmed, with an allow-list of public events, no `rng` use, and a hidden-card test (hand card, hidden-deck card, old `missingSuitDeclared.suits`, swapped cards).
+- Habits: bold follow and high lead (6 chances each, feed `risk`), early joker (3 chances, feeds `jokerSave`; 6 would almost never be reached in one game). Dropped: slaps (forced by the rules), "led low while holding high" (needs the hidden hand), cards picked up.
+- Bots imitate people, never learn from computer seats; one habit table per game, rebuilt from the log on Carry on.
+- Arena: paired runs with "people" seats played by the bot code; learning not worse by more than 0.05 places; learned `risk` moves the right way against careful and reckless styles.
+- Phone checklist rewritten around a `?learnlog=1` readout in the ☰ menu, so the small nudges can be seen.
+
+**Found:** `PERSONALITY_WEIGHTS` names run opposite to behaviour (careful `risk` 0.7 plays higher than reckless 1.4). Not changed; noted in `CODE.md` 9z.3.
+
+**Changed:** `PROJECT.md` 12l, `CODE.md` 9z (rewritten, new 9z.6 build steps), `TODO.md` Phase 4k, this entry. `CLAUDE.md` checked, no change. No code, version still 2.34.2.
+
+**Next:** Haiku builds step 1 of `CODE.md` 9z.6.
+
+---
+
 ## 2026-11-15 (10:50) — Catch-up: phone tests passed, test bot fixed, online status (docs and testbed only, not committed)
 
 **User:** "All tests are passed" (read as: every pending phone checklist, 9m.9 to 9ad.7, passed; not separately itemised). Cloudflare is set up and `/health` checked on the phone. Test bot fix approved ("do it"). Testbed votes confirmed fixed by the user. Card glitch: could not be recreated; left as a watch item. Asked for the computer-player options again, a check of online play, and all files updated.

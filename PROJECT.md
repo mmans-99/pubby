@@ -689,7 +689,7 @@ From the user's Multiplayer test of 2.23:
 
 **Version:** 2.30.0. Phone checklist in `CODE.md` 9y.5.
 
-### 12l. Computer players that learn from the people they play against (PLAN, user 2026-11-13 21:25; build guide `CODE.md` 9z; DECIDED 2026-11-15: option 1, within a game; NOT BUILT)
+### 12l. Computer players that learn from the people they play against (PLAN, user 2026-11-13 21:25; build guide `CODE.md` 9z; DECIDED 2026-11-15: option 1, within a game; plan approved 2026-11-15; target 2.35.0; NOT BUILT)
 
 **Request (user 21:23 to 21:25):** "Can I make the AI learn by me playing against it?" Then: write it up as a plan, push, and build later.
 
@@ -700,9 +700,14 @@ From the user's Multiplayer test of 2.23:
 
 **Fairness:** a learning bot may use only what a person at the table could see. Hidden cards and the secret missing suit are never used.
 
-**Decided 2026-11-15:** option 1 (within one game). Build not started; the next free version is 2.35.0. Open before building: should learning be on by default (plan: off until tested), and should it apply to Easy as well as Normal and Hard?
+**Decided 2026-11-15:** option 1 (within one game). The bots nudge their `risk` and `jokerSave` weights toward each person's public habits, by at most ±20%, never outside 50–150% of the base. Nothing is saved; it resets when the game ends. Target version 2.35.0. Build guide `CODE.md` 9z.
 
-**Open questions:** should learning be on by default (plan says off until tested)? Should it apply to Normal and Hard only, or also Easy?
+**Open questions settled in the Opus plan review (2026-11-15, approved by the user; details `CODE.md` 9z.1 to 9z.3):**
+1. **Off by default.** A setup switch "Computer players learn as they play", next to Reactions. Turning it on by default is a later decision, after the phone test.
+2. **Normal and Hard only.** Easy never learns (also in Mixed).
+3. **Fairness confirmed:** only public events and the public computer tag. Hands, hidden decks, the secret missing suit and swapped cards are never read. A test shows that changing a hidden card changes no learned value.
+4. **Habits counted:** bold follow (playing over the top card when someone still has to play after you), high lead (leading J, Q, K or A), and early joker (a joker played in the first 5 tricks of a round). **6 public chances** per habit before it counts, **except jokers, 3** (only 2 or 3 jokers a round, so 6 would almost never be reached in one game). Dropped from the draft: slaps (forced by the rules, and one leaned on the secret missing suit), "led low while holding high" (needs the hidden hand), cards picked up (not a choice).
+5. **The bots imitate** the people at the table (they don't counter them), and learn only from people, never from other computer players.
 
 ### 12m. Scroll place, Fast forward where your cards were, buttons that fit, neater last-trick stack (PLAN, user 2026-11-13 21:33; build guide `CODE.md` 9aa; BUILT 2.31.0, not committed; user's phone test pending)
 
