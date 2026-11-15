@@ -12,7 +12,7 @@ import type { PlayerId } from '../session/types.ts';
 import { unknownPool, type Memory } from './memory.ts';
 import type { AiSeen } from './seen.ts';
 
-const TRIES_WITH_VOIDS = 20;
+const TRIES_WITH_VOIDS = 60;
 
 /** One attempt: deal `pool` into each other player's slots. Null if the rules can't be met. */
 function tryDeal(
@@ -25,7 +25,9 @@ function tryDeal(
 ): Record<PlayerId, Card[]> | null {
   const left = shuffle(pool, rng);
   const dealt: Record<PlayerId, Card[]> = {};
-  for (const p of others) {
+  // 12r (9af.4): the players with the most known missing suits are dealt first (ties keep seat order).
+  const order = respectVoids ? [...others].sort((a, b) => (m.voids[b]?.size ?? 0) - (m.voids[a]?.size ?? 0)) : others;
+  for (const p of order) {
     const need = slots[p] ?? 0;
     const voids = respectVoids ? m.voids[p] : undefined;
     const got: Card[] = [];

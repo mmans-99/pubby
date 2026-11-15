@@ -6,6 +6,8 @@ import assert from 'node:assert/strict';
 import { seededRng } from '../../src/rules/rng.ts';
 import { chooseCard, HARD_TUNING } from '../../src/ai/moves.ts';
 import { searchCard } from '../../src/ai/search.ts';
+import { knownSlap } from '../../src/ai/eval.ts';
+import { isStandard } from '../../src/rules/cards.ts';
 import { randomPersona } from '../../src/ai/persona.ts';
 import { playBotGame } from './botgame.ts';
 
@@ -53,7 +55,16 @@ test('Hard plays the search\'s best card when the switch margin is 0', () => {
         if (seen.view.turn !== seen.me || seen.view.legalCardIds.length < 2) return;
         const hard = chooseCard(seen, memory, persona, seededRng(checked + 1));
         const best = searchCard(seen, memory, seededRng(checked + 1));
-        assert.equal(actionId(hard), best);
+        // 12r (9af.2): the one exception is a lead into a known missing suit, where Normal's safe lead is kept.
+        const normal = chooseCard(seen, memory, { ...persona, level: 'normal' }, seededRng(checked + 1));
+        const slapLead = (id: string | undefined): boolean => {
+          const c = seen.view.myHand.find((x) => x.id === id);
+          return c !== undefined && isStandard(c) && knownSlap(memory, seen, c.suit);
+        };
+        const expected = seen.view.ledSuit === null && slapLead(best) && !slapLead(actionId(normal))
+          ? actionId(normal)
+          : best;
+        assert.equal(actionId(hard), expected);
         checked++;
       },
     });

@@ -4,6 +4,48 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-15 (21:10) — Build: computer players stop leading into a known missing suit (2.34.3, not committed)
+
+**User:** "Yes, and then code it with haiku" (plan 20:31), then "Code it" on Haiku.
+
+**Built (`CODE.md` 9af, `PROJECT.md` 12r, `TODO.md` Phase 4p):**
+- `src/ai/eval.ts`: `knownSlap(m, seen, suit)`. Counts a player as certainly out of a suit when `pVoid` is 1 (a slap showed it, or the public cards leave no way to hold one). Broader than the plan's wording; see the reason below.
+- `src/ai/moves.ts`: Hard keeps Normal's safe lead instead of switching to a lead into a known missing suit. Final-two lead (other player on one card) prefers a suit they are not known to be missing.
+- `src/ai/sample.ts`: imagined deals deal the most restricted players first; `TRIES_WITH_VOIDS` 20 → 60.
+- `package.json` 2.34.2 → 2.34.3.
+- Tests: `tests/ai/lead_slap.test.ts` (new, 6 tests). `tests/ai/hard.test.ts` expectation changed to the new exception (plan said unchanged; the rule is the change). `tests/ai/fairplay.test.ts` habit-table sample widened 4 → 16 games per size. `tests/ai/regress.test.ts` now uses `tests/ai/fixtures/moves-2.34.3.json` (new); `moves-2.34.2.json` kept.
+- `testbed/lead_check.ts` (new): counts leads into a known missing suit while holding a safe suit.
+
+**Why `knownSlap` is broader than the plan:** the first lead check used only slap-shown suits. Normal's remaining "bad" leads were suits with no unknown card left (e.g. every diamond accounted for, so the other player could not hold one), and the bot's own risk model already rated them 1. The narrow test called those leads safe, so the measure was wrong, not the bot's choice.
+
+**Checks:**
+- `node --test tests/ai/*.test.ts` (Node 22 strip-types, `tsx` not installed): **125 of 125 pass** (119 before + 6 new).
+- `tsc --noEmit -p tsconfig.json`: clean. `tsconfig.rules.json` fails on the missing `@types/node` (environment).
+- `testbed/lead_check.ts`, 30 games per level, leads into a known missing suit while holding a safe suit:
+  - 4 players: Normal 0 (of 414 known-slap leads), Hard 0 (of 444). Easy 110, reported only.
+  - 3 players: Normal 0, Hard 0. Easy 67.
+  - 2 players: Normal 0, Hard 0. Easy 39.
+  - Before (2.34.2, 4 players, same measure with the narrow definition): Normal 135, Hard 119.
+- Imagined deals breaking a known missing suit (every Hard decision with one, 20 games): 2.32% → 0.01%.
+- Regression vs 2.34.2, first differing move per game: Hard leads changed on purpose. One Hard follow and one Easy move changed because the deal order draws random numbers differently from the shared stream; with the order turned off both match 2.34.2 again. Easy's logic is unchanged.
+- Arena bars (`testbed/ai_arena.ts --bars --workers 1`, 2000 games each): **all 9 pass.** Normal vs Random 1.799 / 3.201 (gain 1.402); Normal vs Easy 2.234 / 2.766 (gain 0.532); Normal vs Hard 2.594 / 2.406 (Hard ahead by 0.188, bar 0.15; it was 0.242 in the 2.34.x runs); p95 Easy 0.05 ms, Normal 0.06 ms, Hard 9.1 ms (bar 150 ms; was 8.4 ms, within the 20% limit in 9af.7).
+
+**Not run here:** `npm run build` and the test build (esbuild not installed, so no playable link yet), `npm run check` in full, `testbed/run_checks.py`, `testbed/playthrough.py`. The arena was run with one worker because its child-process mode needs `tsx`.
+
+**Next:** test build and the phone checklist (`CODE.md` 9af.8). No commit or push until the user says "push".
+
+---
+
+## 2026-11-15 (20:31) — Plan: computer players stop leading into a known missing suit (docs only, no version bump)
+
+**User:** computer players keep leading the suit they just got slapped on, "like they're not remembering". Then: "Yes, and then code it with haiku".
+
+**Found (scratch script, 30 four-player games per level, not committed):** memory is fine; every slap records the missing suit. Hard's search overrides Normal and leads low into known missing suits (552 of 2523 leads; 262 with a clearly safer suit), helped by imagined deals that broke known missing suits 235 times in 1840. Normal's misses were nearly all forced, apart from the final-two "other player on one card" lead. Easy forgets by design.
+
+**Plan written:** `PROJECT.md` 12r, `CODE.md` 9af, `TODO.md` Phase 4p. Target 2.34.3. Easy unchanged.
+
+---
+
 ## 2026-11-15 (14:55) — Phase 4k step 3: learning wired into the card choice; bar 3 open (no app change, no version bump, pushed to branch phase-4k-step-3)
 
 **User:** "build step 3 from CODE.md 9z.6" (with: keep the version at 2.34.2; no commit or push until "push"; update the MD files; say which tests fail for environment reasons; stop if one keeps failing after two fix attempts).

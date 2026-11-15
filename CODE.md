@@ -3197,6 +3197,68 @@ Developer account; create the app; store listing (icon 512×512, feature graphic
 ### 9ae.5 Phone checklist (closed test)
 Install from Play; first open with no internet (game plays offline); Nearby game across 2 to 8 phones by QR; online room on two different networks; back button on every screen; Exit Pubby closes the app; screen stays on during a game; sounds and the iPhone/Android silent switch; profiles kept after an app update; backup from the website and restore in the app.
 
+## 9af. Computer players stop leading into a known missing suit (PLAN, user 2026-11-15 20:31; spec `PROJECT.md` 12r; written for Haiku; BUILT **2.34.3** on 2026-11-15, not committed; see 9af.9 for what changed from the plan)
+
+### 9af.0 Read first
+- Spec and measured numbers: `PROJECT.md` 12r. Files: `src/ai/eval.ts`, `src/ai/moves.ts`, `src/ai/sample.ts`, tests in `tests/ai/`, a new check script `testbed/lead_check.ts`.
+- **Easy is not changed** (its forgetting and random cards stay).
+- Fair play: use only `Memory` (`m.voids`, `m.known`) and `AiSeen`. Never the session's real hands or the secret missing-suit declaration.
+- Version 2.34.3 in `package.json` (2.35.0 stays reserved for Phase 4k).
+
+### 9af.1 Part A: one helper (`src/ai/eval.ts`)
+Add and export:
+```ts
+/** True if a player other than me who still holds cards is known to be missing `suit`
+ *  (in m.voids) and holds no known card of it. Uses memory only. */
+export function knownSlap(m: Memory, seen: AiSeen, suit: Suit): boolean
+```
+Same "known card of the suit wins over the void" rule as `pVoid`. Use `activeOthers`.
+**Built as (9af.9):** `knownSlap` is `pVoid(...) === 1` for some other active player, so it also counts the deductions that make `pVoid` certain (no unknown card of the suit left, or all their cards known and none of it).
+
+### 9af.2 Part B: Hard may not switch a safe lead into a known slap (`src/ai/moves.ts` `hardCard`)
+`hardCard` gets `seen` and `m` already. After the search picks `best`:
+- Only when leading (`seen.view.ledSuit === null`).
+- Let `normalCard` and `bestCard` be the hand cards for `normal` and `best.id`.
+- If `normalCard` is a standard card with `!knownSlap(m, seen, normalCard.suit)` **and** `bestCard` is a standard card with `knownSlap(m, seen, bestCard.suit)`, return `normal`.
+- Otherwise as now (switch margin 0.3 unchanged). Following is not changed.
+
+### 9af.3 Part C: final two, other player on one card (`src/ai/moves.ts` `leadCard`)
+In the "holders.length === 2 && other has 1 card" branch: `low` = the lowest card among standard cards whose suit is `!knownSlap(...)`; if there are none, the lowest standard card (as now). The joker check after it is unchanged.
+
+### 9af.4 Part D: imagined deals keep to known missing suits (`src/ai/sample.ts`)
+In `tryDeal` with `respectVoids` true, deal players in this order: most known missing suits first (ties: seat order), so the most limited hands are filled while there is still choice. Keep the result keyed by player, as now. Raise `TRIES_WITH_VOIDS` from 20 to 60. The fallback (ignore missing suits) stays for when no deal is possible.
+
+### 9af.5 Tests (built: `tests/ai/lead_slap.test.ts` (6 tests), `hard.test.ts` changed, `fairplay.test.ts` changed; see 9af.9)
+- `tests/ai/eval.test.ts`: `knownSlap` true for a known void, false once that player picked up a card of the suit, false for a player with no cards left, false for me.
+- `tests/ai/moves.test.ts` (use `position.ts`): (1) Hard, leading, one opponent known missing hearts, hand has low hearts and a safe spade: over 20 seeds Hard never leads a heart. (2) Final two, other player on one card and known missing clubs, my lowest card a club and a higher diamond: Normal leads the diamond. (3) Same with only clubs in hand: leads lowest club.
+- `tests/ai/sample.test.ts`: 3 players with 1 to 2 known missing suits each, 200 deals: 0 imagined hands hold a known missing suit (when a valid deal exists).
+- `tests/ai/regress.test.ts`: Hard leads and the final-two lead change on purpose. Run the old test first and list the decisions that differ: they must all be Hard decisions or the final-two branch; **any other changed decision is a bug**. Then make a new fixture `tests/ai/fixtures/moves-2.34.3.json` with `regress-fixture.ts` on the new code, point the test at it, and keep the 2.34.2 file. Say in the DEVLOG how many decisions changed and of which kind.
+- `tests/ai/fairplay.test.ts` and `hard.test.ts` must pass unchanged.
+
+### 9af.6 Check script `testbed/lead_check.ts` (new; built)
+Uses `playBotGame` from `tests/ai/botgame.ts` with `onDecision`. For each level (easy, normal, hard), 30 games, 4 players, 3 rounds, seeds 1000+. For every lead with a standard card, count: leads; leads into a `knownSlap` suit; of those, how many while holding a suit with `!knownSlap`. Print JSON. Run with `npx tsx testbed/lead_check.ts [games] [players]`. Also run with 2 and 3 players.
+- **Bar:** Normal and Hard "into a known slap while holding a safe suit" = 0. Before (2.34.2, 4 players, loose count): Normal 394 into a known slap / 155 holding another suit (only 18 with a lower risk, all from the final-two rule); Hard 552 / 393 (262 with a lower risk). Easy is reported, not barred.
+
+### 9af.7 Arena and version
+- `npx tsx testbed/ai_arena.ts --bars` (all 9 bars must pass; record Normal vs Hard places; Hard must still be ahead of Normal). p95 Hard decision time no more than 20% above 2.34.2 (8.4 ms).
+- `package.json` 2.34.3. `npm run check`, `npm test`, `npm run build`, `python3 testbed/run_checks.py`, `python3 testbed/playthrough.py 2 4` where the sandbox allows; say which could not run and why.
+
+### 9af.9 What was built (2026-11-15, Haiku), and where it differs from the plan
+- **knownSlap** counts certain voids, not only slap-shown ones (`pVoid` = 1). Reason: the first bar run showed Normal's remaining known-slap leads were all suits with no unknown card left (e.g. every diamond accounted for, the other player holding none), so the plan's narrow test called the lead "safe" wrongly. Bar result after the change: 0 at 2, 3 and 4 players (DEVLOG 2026-11-15 21:10).
+- **Deal sampling (9af.4):** deal order by number of known missing suits, and `TRIES_WITH_VOIDS` 60. Measured over every Hard decision with a known missing suit (20 games, 2 rounds, 4 players): imagined deals breaking a known missing suit fell from 2.32% (1407 of 60680) to 0.01% (5 of 62880).
+- **Test changes, all on purpose:** `hard.test.ts` ("Hard plays the search's best card when the switch margin is 0") now expects the one exception the new rule makes: a lead into a known missing suit when Normal's lead is safe. The plan said this file must pass unchanged; it could not, because the rule is the change. `fairplay.test.ts`: the "habit table changes some moves" check was 1 of 2735 positions on the original code and 0 with this change; widened from 4 to 16 games per size (9 of 9378 now). The hidden-card check (changed = 0) is untouched.
+- **Regression fixture:** `tests/ai/fixtures/moves-2.34.3.json` is new (500 decisions). `moves-2.34.2.json` is kept. Compared game by game with 2.34.2 (the first move that differs in each game): Hard leads changed on purpose (guard); Hard follow in one game and Easy in one game changed because the deal order draws random numbers differently from the shared random stream, not because Easy's logic changed (with the deal order turned back off, both games match 2.34.2 again). One Normal game only looked different because the 2.34.2 file stops at 500 decisions.
+- **Check results:** `testbed/lead_check.ts` (30 games per level), leads into a known missing suit while holding a safe suit: Normal 0, Hard 0 at 2, 3 and 4 players (Easy 39 / 67 / 110, reported only, not barred). Before the change (4 players, narrow definition): Normal 135 and Hard 119.
+- **Arena bars:** all 9 pass (2000 games each). Hard beats Normal by 0.188 (bar 0.15). Hard p95 9.1 ms (bar 150 ms).
+- **Not run in this sandbox:** `npm run build`, `npm run check` (only `tsc -p tsconfig.json` ran: clean; `tsconfig.rules.json` fails on the missing `@types/node`), `testbed/run_checks.py`, `testbed/playthrough.py` and the phone test build. `tsx` and `esbuild` are not installed, so the arena's child-process mode can't run; it was run with `--workers 1` (in-process).
+
+### 9af.8 Phone checklist (2.34.3)
+1. Single player vs **All Hard**, 4 players. When a computer player slaps on a suit, watch the next leads: no computer player leads that suit while that player still holds cards and hasn't picked any of it up, unless the leader only holds suits someone is known to be missing.
+2. Same with **All Normal**, and with 2 players (Hard).
+3. Final two vs a computer player when you have one card left: it shouldn't lead a suit you've already slapped on, if it has another suit.
+4. **Easy** still slips now and then (expected).
+5. A whole game plays to the end with no stalls; Fast forward still works.
+
 ## 8a. Playable test builds (required before every commit)
 
 `CLAUDE.md` rule 5: the user tests every change on their phone before approving a commit.

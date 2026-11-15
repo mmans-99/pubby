@@ -58,6 +58,15 @@ export function pVoid(m: Memory, seen: AiSeen, p: PlayerId, suit: Suit): number 
   return ((total - u) / total) ** k;
 }
 
+/**
+ * 12r / 9af.1: true if a player other than me who still holds cards is certainly out of `suit`:
+ * a slap showed it (m.voids), or the public cards leave no way to hold one (pVoid is 1: no unknown
+ * card of the suit is left, or all their cards are known and none is of it). Memory only.
+ */
+export function knownSlap(m: Memory, seen: AiSeen, suit: Suit): boolean {
+  return activeOthers(m, seen).some((p) => pVoid(m, seen, p, suit) === 1);
+}
+
 /** Chance that someone still to play in this trick cannot follow `suit` (a slap). */
 export function pSlapAfterMe(m: Memory, seen: AiSeen, suit: Suit): number {
   let none = 1;

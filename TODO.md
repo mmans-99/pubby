@@ -325,6 +325,13 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [x] Plan written for Haiku (docs only)
 - [ ] **2.28.0:** `tableBox` (9w.2) and `seatLayout` (9w.3) with tests; Option C seat markup and CSS (9w.1); any screen and landscape (9w.4); hand sizing (9w.5); checks; phone test passed (user, 2026-11-15)
 
+## Phase 4p — Computer players stop leading into a known missing suit (plan 2026-11-15 20:31, `PROJECT.md` 12r, build guide `CODE.md` 9af; BUILT 2.34.3, not committed)
+
+- [x] Problem measured and plan approved (user 2026-11-15)
+- [x] Part A `knownSlap` helper; Part B Hard guard; Part C final-two lead; Part D deals keep known missing suits
+- [x] Tests (`tests/ai/lead_slap.test.ts`), new regress fixture 2.34.3, `testbed/lead_check.ts` (bar met: 0 for Normal and Hard); arena bars (see DEVLOG)
+- [ ] Test build (not possible in this sandbox: esbuild missing) and phone checklist (`CODE.md` 9af.8); push on "push"
+
 ## Phase 5 — Polish
 
 - [ ] Animations for slap and trick resolution

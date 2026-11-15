@@ -88,7 +88,8 @@ test('with learning on, the bot makes the same move whatever the hidden cards ar
   let changed = 0;
   let influenced = 0;
   for (const n of [3, 5, 8]) {
-    for (let g = 0; g < 4; g++) {
+    // 9af: 16 games per size (was 4): the table changes so few moves that 4 games could show none.
+    for (let g = 0; g < 16; g++) {
       playBotGame({
         players: n,
         levels: ['normal', 'easy', 'hard'],

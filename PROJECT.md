@@ -477,7 +477,7 @@ How much of this it remembers depends on its level (Easy forgets a lot, Hard rem
 
 ### How they play (rules of thumb used by every level, tuned by level and personality)
 - **Following suit:** if someone still to play might be out of the led suit (known missing suit, or that suit is nearly gone), play your **lowest** card of the suit so you're not the one who picks up the slap. If everyone still to play surely has the suit (or you're last), it's safe to get rid of a **high** card.
-- **Leading:** lead a suit nobody is known to be out of, preferably one with plenty of cards still out; lead high when it's safe to clear big cards, low when it's risky. Avoid leading into a known missing suit.
+- **Leading:** lead a suit nobody is known to be out of, preferably one with plenty of cards still out; lead high when it's safe to clear big cards, low when it's risky. Avoid leading into a known missing suit (every level except Easy's slips; Hard's search may not override this, 12r).
 - **Slapping (when out of the led suit):** pick the card you most want rid of: usually a high card, or the last card of a short suit (to become out of that suit and slap again later).
 - **Jokers:** played instead of following when following would very likely make you the one who picks up a slap, or to get through a dangerous trick near the end. Kept, not wasted, early in the round. In the final two, used the way a good player would (section 7 cases), including the "missing round" case.
 - **Final two:** aims for its last card to be lower than the other player's. When its last card was higher: **pick up** the waste pile if it's small or it still has a good chance; **forfeit** if the pile is huge and the scores make last place acceptable.
@@ -776,6 +776,22 @@ User (network game test of 2.33, three screenshots) asked for:
 - **Price:** free; an optional tip later, never ads.
 
 **Open questions for later:** Capacitor or Trusted Web Activity; store name and title (Pubby alone or "Pubby: Bhabhi card game"); is the name free on Play; tip button or nothing; an iPhone App Store version later (Capacitor can also build iOS, needs a Mac or a cloud build and $99 a year).
+
+### 12r. Computer players stop leading into a known missing suit (PLAN, user 2026-11-15 20:31: "Yes, and then code it with haiku"; build guide `CODE.md` 9af; BUILT 2.34.3, not committed; phone test pending)
+
+**Problem (user 2026-11-15):** after a slap, computer players often lead the same suit again and get slapped again, as if they forgot. They do remember (memory keeps every missing suit shown by a slap). Measured over 30 four-player games per level (scratch script, 2026-11-15):
+- **Hard:** led into a known missing suit in 552 of 2523 leads; in 262 of them it held a safer suit. Cause: the Hard search (imagined deals, 3 tricks ahead) often scores "lead low into the missing suit, pick up 2 cards" as cheapest and overrides Normal's choice. Also about 1 in 8 imagined deals (235 of 1840) broke known missing suits, which makes those leads look safe.
+- **Normal:** 155 of 2110 leads, nearly all forced (every suit it held was a known slap). The rest came from the final-two rule "the other player has one card left: lead my lowest card", which ignores missing suits.
+- **Easy:** forgets 15% of missing suits after each trick and plays a random card 20% of the time. This is by design and **is not changed**.
+
+**Decisions (user 2026-11-15: fix options A and B; Claude's suggestion for the final-two case included):**
+1. **Hard never swaps a safe lead for a known slap.** If Normal's lead is a suit no one still holding cards is known to be missing, Hard may not switch to a lead in a suit someone is known to be missing.
+2. **Hard's imagined deals keep to what it knows.** An imagined hand never holds a suit that player is known to be missing, unless no such deal is possible.
+3. **Final two, other player on one card:** lead the lowest card of a suit they are not known to be missing; only if every suit I hold is a known missing suit, lead my lowest card.
+
+**"Known missing" (as built, 2.34.3):** a player is known to be missing a suit when a slap showed it, or when the public cards leave them no way to hold one (no unknown card of that suit is left, or all their cards are known and none is of that suit). The second part is a deduction from cards already seen, so a computer player can use it without seeing any hidden card. The plan first counted only slap-shown suits; the bar then measured the wrong thing (see `CODE.md` 9af.6).
+4. Fair play is unchanged: only missing suits shown by slaps are used (never the secret declaration).
+5. **Pass bars:** Hard and Normal lead into a known missing suit while holding a suit no one is known to be missing: 0 times in the check games. Hard still beats Normal in the arena. All old arena bars pass.
 
 ## 13. Quick rules (in-game help)
 

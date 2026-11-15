@@ -13,7 +13,7 @@ import type { Rng } from '../rules/rng.ts';
 import type { PlayerId, SessionAction } from '../session/types.ts';
 import { PERSONALITY_WEIGHTS, type Persona } from './persona.ts';
 import { learnedWeights, type Habits } from './learn.ts';
-import { handBadness, leadRisk, pSlapAfterMe, rankValue, yetToPlay } from './eval.ts';
+import { handBadness, knownSlap, leadRisk, pSlapAfterMe, rankValue, yetToPlay } from './eval.ts';
 import { unknownPool, type Memory } from './memory.ts';
 import { searchScores } from './search.ts';
 import type { AiSeen } from './seen.ts';
@@ -65,7 +65,18 @@ function hardCard(seen: AiSeen, m: Memory, ruleCard: () => string | undefined, r
   if (normal === undefined) return best.id;
   const mine = scores.find((x) => x.id === normal);
   if (!mine) return normal;
-  return best.avg - mine.avg >= HARD_TUNING.switchMargin ? best.id : normal;
+  if (best.avg - mine.avg < HARD_TUNING.switchMargin) return normal;
+  // 12r (9af.2): on a lead, never switch from a safe suit to one someone is known to be missing.
+  if (seen.view.ledSuit === null && leadsIntoKnownSlap(seen, m, best.id) && !leadsIntoKnownSlap(seen, m, normal)) {
+    return normal;
+  }
+  return best.id;
+}
+
+/** 12r: true if the card with this id is a standard card of a suit someone is known to be missing. */
+function leadsIntoKnownSlap(seen: AiSeen, m: Memory, cardId: string | undefined): boolean {
+  const c = seen.view.myHand.find((x) => x.id === cardId);
+  return c !== undefined && isStandard(c) && knownSlap(m, seen, c.suit);
 }
 
 /**
@@ -122,7 +133,9 @@ function leadCard(
   const holders = seen.view.players.filter((p) => p.cardCount > 0);
   const other = holders.filter((p) => p.id !== seen.me);
   if (holders.length === 2 && other.length === 1 && other[0]?.cardCount === 1) {
-    const low = lowestOf(std);
+    // 12r (9af.3): prefer a suit the other player is not known to be missing.
+    const safe = std.filter((c) => !knownSlap(m, seen, c.suit));
+    const low = lowestOf(safe.length > 0 ? safe : std);
     if (low && jokerId && low.rank > avgUnknownRank(m, seen)) return jokerId;
     return low?.id;
   }

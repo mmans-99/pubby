@@ -1,0 +1,6515 @@
+[
+ {
+  "seed": 1,
+  "n": 0,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "setDealMode",
+    "by": "p1",
+    "mode": "auto"
+   },
+   {
+    "type": "autoDealStart",
+    "by": "p1",
+    "firstSeat": "p4"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 1,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-8"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 2,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-13"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 3,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-14"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 4,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-11"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 5,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-14"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 6,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-7"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 7,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-13"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 8,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-11"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 9,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-12"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 10,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-11"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 11,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-13"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 12,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-14"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 13,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-7"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 14,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-3"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 15,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-13"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 16,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "clubs-10"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 17,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-2"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 18,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-4"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 19,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-9"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 20,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-10"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 21,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-7"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 22,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-4"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 23,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "clubs-8"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 24,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-7"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 25,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-2"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 26,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-12"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 27,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-3"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 28,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-10"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 29,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-2"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 30,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-6"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 31,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-5"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 32,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-12"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 33,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-4"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 34,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-10"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 35,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-4"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 36,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-9"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 37,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-4"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 38,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-8"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 39,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-4"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 40,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-7"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 41,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-7"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 42,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-6"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 43,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-8"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 44,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-3"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 45,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-2"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 46,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-14"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 47,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-9"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 48,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-12"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 49,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-10"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 50,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-5"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 51,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-5"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 52,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-12"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 53,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-5"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 54,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-4"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 55,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-6"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 56,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-4"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 57,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-3"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 58,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-5"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 59,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-2"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 60,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-9"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 61,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-3"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 62,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-6"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 63,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-4"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 64,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-9"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 65,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-12"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 66,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-4"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 67,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-8"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 68,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-6"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 69,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-10"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 70,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-4"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 71,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-5"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 72,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-3"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 73,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-2"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 74,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p1"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 75,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p2"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 76,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p3"
+   }
+  ]
+ },
+ {
+  "seed": 1,
+  "n": 77,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p4"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 0,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "setDealMode",
+    "by": "p1",
+    "mode": "auto"
+   },
+   {
+    "type": "autoDealStart",
+    "by": "p1",
+    "firstSeat": "p1"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 1,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-12"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 2,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-14"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 3,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-9"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 4,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-11"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 5,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-14"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 6,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-11"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 7,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-12"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 8,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-13"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 9,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-14"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 10,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-11"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 11,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-10"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 12,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-14"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 13,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-14"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 14,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "clubs-7"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 15,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-13"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 16,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-12"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 17,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-2"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 18,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-5"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 19,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-10"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 20,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-7"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 21,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-3"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 22,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-8"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 23,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-14"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 24,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-14"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 25,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-13"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 26,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-9"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 27,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-8"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 28,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-6"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 29,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-3"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 30,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-4"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 31,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-8"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 32,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-2"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 33,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-8"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 34,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-6"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 35,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "clubs-4"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 36,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-3"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 37,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "joker-1"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 38,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-7"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 39,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-3"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 40,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-13"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 41,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-13"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 42,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-12"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 43,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-3"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 44,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-5"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 45,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-4"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 46,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-11"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 47,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-7"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 48,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-5"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 49,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-12"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 50,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-3"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 51,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-4"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 52,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-6"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 53,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-6"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 54,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-3"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 55,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-4"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 56,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-6"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 57,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-6"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 58,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-10"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 59,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-9"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 60,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-2"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 61,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-8"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 62,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-4"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 63,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-13"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 64,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-10"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 65,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-10"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 66,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-9"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 67,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-2"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 68,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-11"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 69,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-5"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 70,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-10"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 71,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-3"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 72,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-7"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 73,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-3"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 74,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-13"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 75,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-10"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 76,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-9"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 77,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-6"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 78,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-13"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 79,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-4"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 80,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-13"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 81,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-3"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 82,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p1"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 83,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p2"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 84,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p3"
+   }
+  ]
+ },
+ {
+  "seed": 2,
+  "n": 85,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p4"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 0,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "setDealMode",
+    "by": "p1",
+    "mode": "auto"
+   },
+   {
+    "type": "autoDealStart",
+    "by": "p1",
+    "firstSeat": "p4"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 1,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "clubs-14"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 2,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-10"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 3,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-13"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 4,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-12"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 5,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-12"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 6,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-13"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 7,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-10"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 8,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-14"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 9,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-6"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 10,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-14"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 11,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-13"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 12,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-11"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 13,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-11"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 14,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-12"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 15,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-13"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 16,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-14"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 17,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-5"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 18,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-4"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 19,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-10"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 20,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-9"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 21,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-3"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 22,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-8"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 23,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-10"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 24,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-9"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 25,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-3"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 26,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-8"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 27,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-11"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 28,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-11"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 29,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-2"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 30,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-3"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 31,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-3"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 32,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-3"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 33,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-7"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 34,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-7"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 35,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-6"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 36,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-5"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 37,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-3"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 38,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "requestTake",
+    "by": "p2",
+    "target": "p4"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 39,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "answerTake",
+    "by": "p4",
+    "requester": "p2",
+    "accept": true
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 40,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-3"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 41,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-12"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 42,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-10"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 43,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "clubs-9"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 44,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-11"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 45,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-8"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 46,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-5"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 47,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-4"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 48,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-9"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 49,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-4"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 50,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-6"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 51,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-7"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 52,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-3"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 53,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-4"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 54,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-2"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 55,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-6"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 56,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-7"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 57,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-2"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 58,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-5"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 59,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-7"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 60,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-8"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 61,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "forfeit",
+    "by": "p1"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 62,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p1"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 63,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p2"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 64,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p3"
+   }
+  ]
+ },
+ {
+  "seed": 3,
+  "n": 65,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p4"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 0,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "setDealMode",
+    "by": "p1",
+    "mode": "auto"
+   },
+   {
+    "type": "autoDealStart",
+    "by": "p1",
+    "firstSeat": "p3"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 1,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "clubs-12"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 2,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-6"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 3,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-2"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 4,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-14"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 5,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-13"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 6,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-14"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 7,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-12"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 8,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-11"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 9,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-6"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 10,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-14"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 11,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-13"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 12,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-8"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 13,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-14"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 14,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-4"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 15,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-11"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 16,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-13"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 17,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-3"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 18,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-13"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 19,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-11"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 20,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-12"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 21,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-9"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 22,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-7"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 23,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-4"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 24,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-12"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 25,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-6"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 26,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-2"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 27,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-9"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 28,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-10"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 29,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-3"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 30,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "joker-2"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 31,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-10"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 32,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-7"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 33,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-10"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 34,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-2"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 35,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-3"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 36,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-5"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 37,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-2"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 38,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-5"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 39,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-11"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 40,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-9"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 41,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-12"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 42,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-8"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 43,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-11"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 44,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-7"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 45,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-3"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 46,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-5"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 47,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-6"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 48,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "requestTake",
+    "by": "p3",
+    "target": "p4"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 49,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "answerTake",
+    "by": "p4",
+    "requester": "p3",
+    "accept": true
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 50,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-3"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 51,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-7"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 52,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-12"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 53,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-4"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 54,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-8"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 55,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-11"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 56,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-8"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 57,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-5"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 58,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-5"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 59,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-9"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 60,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-4"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 61,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p1"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 62,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p2"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 63,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p3"
+   }
+  ]
+ },
+ {
+  "seed": 4,
+  "n": 64,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p4"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 0,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "setDealMode",
+    "by": "p1",
+    "mode": "auto"
+   },
+   {
+    "type": "autoDealStart",
+    "by": "p1",
+    "firstSeat": "p2"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 1,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "clubs-8"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 2,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-13"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 3,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-12"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 4,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-14"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 5,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-12"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 6,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-14"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 7,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-13"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 8,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-11"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 9,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-14"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 10,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-12"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 11,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-9"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 12,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-11"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 13,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-14"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 14,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-11"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 15,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-10"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 16,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-6"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 17,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "clubs-5"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 18,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-4"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 19,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-11"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 20,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-10"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 21,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-6"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 22,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-8"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 23,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-9"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 24,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-10"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 25,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-7"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 26,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-4"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 27,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-3"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 28,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-13"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 29,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-13"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 30,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-7"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 31,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-8"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 32,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-10"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 33,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "joker-1"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 34,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-5"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 35,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-6"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 36,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-4"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 37,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-3"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 38,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-9"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 39,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-12"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 40,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-5"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 41,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-4"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 42,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-2"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 43,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-6"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 44,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-2"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 45,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-5"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 46,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-7"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 47,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-2"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 48,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-7"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 49,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "clubs-7"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 50,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-2"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 51,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-3"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 52,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-5"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 53,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-9"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 54,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-12"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 55,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-2"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 56,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-3"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 57,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-8"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 58,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-3"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 59,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-2"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 60,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-7"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 61,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-5"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 62,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "clubs-7"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 63,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-9"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 64,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-6"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 65,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "clubs-2"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 66,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-3"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 67,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-8"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 68,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-4"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 69,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-3"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 70,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-8"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 71,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-2"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 72,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-3"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 73,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-2"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 74,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p1"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 75,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p2"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 76,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p3"
+   }
+  ]
+ },
+ {
+  "seed": 5,
+  "n": 77,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p4"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 0,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "setDealMode",
+    "by": "p1",
+    "mode": "auto"
+   },
+   {
+    "type": "autoDealStart",
+    "by": "p1",
+    "firstSeat": "p2"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 1,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-7"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 2,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-9"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 3,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "clubs-13"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 4,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-14"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 5,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-14"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 6,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-13"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 7,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-12"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 8,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-11"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 9,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-13"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 10,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-3"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 11,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-6"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 12,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-13"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 13,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-14"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 14,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-7"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 15,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-9"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 16,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-7"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 17,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-10"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 18,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-5"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 19,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-4"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 20,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-12"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 21,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-10"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 22,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-14"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 23,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-14"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 24,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-10"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 25,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-12"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 26,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-13"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 27,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-6"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 28,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-6"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 29,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-2"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 30,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-9"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 31,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-4"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 32,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-3"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 33,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-11"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 34,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-11"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 35,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-6"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 36,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-9"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 37,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-7"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 38,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-2"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 39,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-3"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 40,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-3"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 41,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-5"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 42,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "joker-1"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 43,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-2"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 44,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "clubs-11"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 45,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "requestTake",
+    "by": "p3",
+    "target": "p4"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 46,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "answerTake",
+    "by": "p4",
+    "requester": "p3",
+    "accept": true
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 47,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "clubs-8"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 48,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-12"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 49,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-11"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 50,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-2"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 51,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-3"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 52,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-8"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 53,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "clubs-2"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 54,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-5"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 55,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-10"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 56,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "joker-2"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 57,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-5"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 58,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-4"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 59,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-8"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 60,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-6"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 61,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-3"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 62,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-4"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 63,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-10"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 64,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-4"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 65,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-5"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 66,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-3"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 67,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p1"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 68,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p2"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 69,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p3"
+   }
+  ]
+ },
+ {
+  "seed": 6,
+  "n": 70,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "readyUp",
+    "by": "p4"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 0,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "setDealMode",
+    "by": "p1",
+    "mode": "auto"
+   },
+   {
+    "type": "autoDealStart",
+    "by": "p1",
+    "firstSeat": "p3"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 1,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-5"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 2,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-13"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 3,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-12"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 4,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-14"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 5,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-11"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 6,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "clubs-14"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 7,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-13"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 8,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-2"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 9,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-14"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 10,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "hearts-5"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 11,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-13"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 12,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-10"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 13,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-8"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 14,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-13"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 15,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-14"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 16,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-11"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 17,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-12"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 18,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-10"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 19,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-7"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 20,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-5"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 21,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-2"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 22,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-3"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 23,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-12"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 24,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "spades-4"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 25,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "diamonds-4"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 26,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-3"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 27,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-11"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 28,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "diamonds-7"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 29,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-2"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 30,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "clubs-4"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 31,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-4"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 32,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-9"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 33,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-6"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 34,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-4"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 35,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-3"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 36,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-10"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 37,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-10"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 38,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "hearts-7"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 39,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-4"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 40,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-9"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 41,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "spades-9"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 42,
+  "me": "p4",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p4",
+    "cardId": "spades-6"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 43,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "spades-4"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 44,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-8"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 45,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-4"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 46,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "clubs-12"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 47,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-8"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 48,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "clubs-6"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 49,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "clubs-5"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 50,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "clubs-10"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 51,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "diamonds-2"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 52,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-12"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 53,
+  "me": "p3",
+  "level": "easy",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p3",
+    "cardId": "hearts-8"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 54,
+  "me": "p1",
+  "level": "normal",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p1",
+    "cardId": "hearts-2"
+   }
+  ]
+ },
+ {
+  "seed": 7,
+  "n": 55,
+  "me": "p2",
+  "level": "hard",
+  "actions": [
+   {
+    "type": "playCard",
+    "by": "p2",
+    "cardId": "diamonds-6"
+   }
+  ]
+ }
+]
