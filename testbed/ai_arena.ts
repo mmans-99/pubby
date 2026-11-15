@@ -5,6 +5,11 @@
 //   npx tsx testbed/ai_arena.ts --bars     (the pass bars in CODE.md 9m.4, 2000 games each)
 //   add --workers N (default: the number of CPU cores). Games are split into N chunks, each run
 //   in its own process; each game keeps its seed, so the results do not depend on N (CODE.md 9o.5).
+//   Learning arena (CODE.md 9z.6 step 2), counting only:
+//   --people N                 the first N seats are people (bot code, no computer tag)
+//   --people-style bot|careful|reckless|mixed   their personality (default bot = a normal bot's random one)
+//   --learn                    keep a habit table per game and report the pooled rates of the people seats
+//   e.g. --games 2000 --people 4 --learn   measures what the Normal bot does (the neutral rates)
 //
 // Output is JSON: games finished, refused moves (must be 0), crashed moves
 // (must be 0), average place by level and personality (place 1 = first out,
@@ -15,7 +20,8 @@
 import { execFile } from 'node:child_process';
 import { cpus } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { playBotGame, type BotGameResult, type SeatLevel } from '../tests/ai/botgame.ts';
+import { playBotGame, type BotGameResult, type PeopleSetup, type SeatLevel } from '../tests/ai/botgame.ts';
+import type { HabitName } from '../src/ai/learn.ts';
 
 interface Args {
   games: number;
@@ -25,6 +31,13 @@ interface Args {
   seed: number;
   bars: boolean;
   workers: number;
+  setup: ArenaSetup;
+}
+
+/** The learning options from the command line. Empty = the arena as before (all computer seats). */
+export interface ArenaSetup {
+  readonly people?: PeopleSetup;
+  readonly learn?: boolean;
 }
 
 /** One chunk of games: game numbers from `from` (inclusive) to `to` (exclusive). */
@@ -35,7 +48,10 @@ interface Job {
   seedBase: number;
   from: number;
   to: number;
+  setup?: ArenaSetup;
 }
+
+const STYLES: readonly PeopleSetup['style'][] = ['bot', 'careful', 'reckless', 'mixed'];
 
 function parseArgs(argv: string[]): Args {
   const get = (name: string): string | undefined => {
@@ -43,6 +59,13 @@ function parseArgs(argv: string[]): Args {
     return i === -1 ? undefined : argv[i + 1];
   };
   const levels = (get('levels') ?? 'normal').split(',').map((x) => x.trim()) as SeatLevel[];
+  const style = (get('people-style') ?? 'bot') as PeopleSetup['style'];
+  if (!STYLES.includes(style)) throw new Error(`--people-style must be one of ${STYLES.join(', ')}`);
+  const count = Number(get('people') ?? 0);
+  const setup: ArenaSetup = {
+    ...(count > 0 ? { people: { count, style } } : {}),
+    ...(argv.includes('--learn') ? { learn: true } : {}),
+  };
   return {
     games: Number(get('games') ?? 200),
     players: Number(get('players') ?? 4),
@@ -51,6 +74,7 @@ function parseArgs(argv: string[]): Args {
     seed: Number(get('seed') ?? 1),
     bars: argv.includes('--bars'),
     workers: Math.max(1, Number(get('workers') ?? cpus().length)),
+    setup,
   };
 }
 
@@ -78,10 +102,22 @@ interface Totals {
   byPersonality: Map<string, Acc>;
   bySeat: Map<number, Acc>;
   decisionMs: Map<string, number[]>;
+  /** Pooled chances and yes counts of every people seat, over all games (--learn). */
+  habits: Record<HabitName, { chances: number; yes: number }>;
 }
 
 function emptyTotals(): Totals {
-  return { games: 0, finished: 0, refused: 0, crashed: 0, byLevel: new Map(), byPersonality: new Map(), bySeat: new Map(), decisionMs: new Map() };
+  return {
+    games: 0,
+    finished: 0,
+    refused: 0,
+    crashed: 0,
+    byLevel: new Map(),
+    byPersonality: new Map(),
+    bySeat: new Map(),
+    decisionMs: new Map(),
+    habits: { boldFollow: { chances: 0, yes: 0 }, highLead: { chances: 0, yes: 0 }, earlyJoker: { chances: 0, yes: 0 } },
+  };
 }
 
 function add(map: Map<string | number, Acc>, key: string | number, value: number): void {
@@ -108,6 +144,24 @@ function absorb(t: Totals, r: BotGameResult): void {
     list.push(d.ms);
     t.decisionMs.set(d.level, list);
   }
+  if (r.habits) {
+    for (const person of Object.values(r.habits.people)) {
+      for (const name of Object.keys(t.habits) as HabitName[]) {
+        t.habits[name].chances += person[name].chances;
+        t.habits[name].yes += person[name].yes;
+      }
+    }
+  }
+}
+
+/** Pooled rate per habit: yes / chances over every people seat and game (null when no chances). */
+function habitRates(t: Totals): Record<HabitName, { chances: number; yes: number; rate: number | null }> {
+  const out = {} as Record<HabitName, { chances: number; yes: number; rate: number | null }>;
+  for (const name of Object.keys(t.habits) as HabitName[]) {
+    const { chances, yes } = t.habits[name];
+    out[name] = { chances, yes, rate: chances > 0 ? Math.round((yes / chances) * 10000) / 10000 : null };
+  }
+  return out;
 }
 
 function report(t: Totals, extra: Record<string, unknown> = {}): Record<string, unknown> {
@@ -133,7 +187,16 @@ function report(t: Totals, extra: Record<string, unknown> = {}): Record<string, 
 function runGames(job: Job): BotGameResult[] {
   const out: BotGameResult[] = [];
   for (let g = job.from; g < job.to; g++) {
-    out.push(playBotGame({ players: job.players, levels: job.levels, rounds: job.rounds, seed: job.seedBase + g }));
+    out.push(
+      playBotGame({
+        players: job.players,
+        levels: job.levels,
+        rounds: job.rounds,
+        seed: job.seedBase + g,
+        ...(job.setup?.people ? { people: job.setup.people } : {}),
+        ...(job.setup?.learn ? { learn: true } : {}),
+      }),
+    );
   }
   return out;
 }
@@ -154,12 +217,20 @@ function runChunk(job: Job): Promise<BotGameResult[]> {
  * contiguous chunks, one per worker, and absorbed in game order, so the totals match a
  * single-worker run exactly (each game keeps its own seed).
  */
-async function runMany(games: number, players: number, levels: SeatLevel[], rounds: number, seedBase: number, workers = 1): Promise<Totals> {
+async function runMany(
+  games: number,
+  players: number,
+  levels: SeatLevel[],
+  rounds: number,
+  seedBase: number,
+  workers = 1,
+  setup: ArenaSetup = {},
+): Promise<Totals> {
   const t = emptyTotals();
   const n = Math.max(1, Math.min(workers, games));
   const jobs: Job[] = [];
   for (let w = 0; w < n; w++) {
-    jobs.push({ players, levels, rounds, seedBase, from: Math.floor((games * w) / n), to: Math.floor((games * (w + 1)) / n) });
+    jobs.push({ players, levels, rounds, seedBase, from: Math.floor((games * w) / n), to: Math.floor((games * (w + 1)) / n), setup });
   }
   const parts = n === 1 ? [runGames(jobs[0]!)] : await Promise.all(jobs.map(runChunk));
   for (const part of parts) for (const r of part) absorb(t, r);
@@ -175,8 +246,23 @@ async function main(): Promise<void> {
   }
   const args = parseArgs(argv);
   if (!args.bars) {
-    const t = await runMany(args.games, args.players, args.levels, args.rounds, args.seed, args.workers);
-    console.log(JSON.stringify(report(t, { players: args.players, levels: args.levels, rounds: args.rounds }), null, 2));
+    const t = await runMany(args.games, args.players, args.levels, args.rounds, args.seed, args.workers, args.setup);
+    const people = args.setup.people
+      ? { count: args.setup.people.count, style: args.setup.people.style }
+      : undefined;
+    console.log(
+      JSON.stringify(
+        report(t, {
+          players: args.players,
+          levels: args.levels,
+          rounds: args.rounds,
+          ...(people ? { people } : {}),
+          ...(args.setup.learn ? { learnedHabits: habitRates(t) } : {}),
+        }),
+        null,
+        2,
+      ),
+    );
     return;
   }
 

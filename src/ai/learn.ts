@@ -49,7 +49,10 @@ export interface Habits {
 
 /** The numbers that turn habits into weights. Changing them changes play, so they are tuned in one place. */
 export interface LearnTuning {
-  /** What the normal bot does on average in the arena. Placeholders until measured (CODE.md 9z.6 step 2). */
+  /**
+   * What the normal bot does on average in the arena: pooled yes / chances over 2000 four-player
+   * games (`--people 4 --learn`, seeds 1 and 2 agree; DEVLOG 9z.6 step 2). Changing these changes play.
+   */
   readonly neutral: Readonly<Record<HabitName, number>>;
   /** Chances a person needs before a habit counts for them. */
   readonly minimum: Readonly<Record<HabitName, number>>;
@@ -66,7 +69,7 @@ export interface LearnTuning {
 }
 
 export const LEARN_TUNING: LearnTuning = {
-  neutral: { boldFollow: 0.5, highLead: 0.3, earlyJoker: 0.5 },
+  neutral: { boldFollow: 0.4168, highLead: 0.2004, earlyJoker: 0.0011 },
   minimum: { boldFollow: 6, highLead: 6, earlyJoker: 3 },
   gain: 0.4,
   shiftCap: 0.2,

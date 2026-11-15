@@ -4,6 +4,39 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-15 (14:00) — Phase 4k step 2: arena learning options and measured neutral rates (no app change, no version bump, not committed)
+
+**User:** "build step 2 from CODE.md 9z.6".
+
+**Built:**
+- `testbed/ai_arena.ts`: `--people N` (first N seats lose the `computer` tag, bot code still plays them), `--people-style bot|careful|reckless|mixed` (default `bot` = the seat's own random personality), `--learn` (keeps one habit table per game and reports pooled yes/chances/rate of the people seats). Default runs (no new flags) are unchanged.
+- `tests/ai/botgame.ts`: the same options. A person seat taps OK on a `leadNotice` (the session refuses computer seats there, and the bot code did not answer notices before). Computer seats wait during a notice. The table is fed from the public log before each decision; counting only, decisions unchanged.
+- `src/ai/learn.ts`: `LEARN_TUNING.neutral` set to the measured values (table below). Comment updated.
+- `tests/ai/learn.test.ts`: one test assumed the placeholder neutral 0.5; it now passes its own tuning with 0.5, so it still checks the averaging.
+
+**Measured:** `--games 2000 --players 4 --levels normal --people 4 --learn` (all four seats are Normal bots counted as people, random personalities). Pooled over all seats and games:
+
+| Habit | Chances | Yes | Rate (seed 1) | Rate (seed 2) | Placeholder |
+|---|---|---|---|---|---|
+| Bold follow | 134,915 | 56,228 | 0.4168 | 0.4167 | 0.5 |
+| High lead | 144,701 | 28,995 | 0.2004 | 0.2004 | 0.3 |
+| Early joker | 12,182 | 13 | 0.0011 | 0.0011 | 0.5 |
+
+Both seeds: 2000 of 2000 finished, 0 refused, 0 crashed. Seed 1 is in `LEARN_TUNING`.
+
+**Checks:**
+- Default arena, 100 games, 4 Normal seats: same outcomes as the 2.34.2 run made before the edits (places, finished, refused, crashed). Only decision timings differ.
+- Smoke runs: `--people 4 --learn` and `--people 2 --people-style careful --learn`, 200 games each: all finished, 0 refused, 0 crashed.
+- Early-joker count checked separately: a one-off script over the same 2000 seeds counted 13 jokers played in the first 5 tricks (matches the table's yes count) and 12,182 chances in total (5,890 plays + 6,292 jokers thrown away, matching the table's chances). The Normal bot holds jokers until late in a round, so the low rate is real, not a counting bug.
+- `tsx --test "tests/**/*.test.ts"`: 427 pass, 5 fail. All 5 are server/relay tests (health, rooms, socket, refusals, origin) that spawn `node --import tsx` in a directory with no `node_modules`; this sandbox cannot install packages, so they fail here for that reason only. Every AI test passes.
+- `tsc --noEmit -p tsconfig.json`: clean.
+
+**Not done / notes:**
+- With `workers` above 1 the arena's child processes hit the same missing `tsx` package here, so these runs used `--workers 1` (results do not depend on the worker count, CODE.md 9o.5).
+- The measurement counts people seats, so notices appear in those games. Notices do not change which card a bot plays; the habit numbers come from the same plays.
+- Step 3 (wiring `habits` into `moves.ts` and `decide.ts`) not started. Arena bars for learning (9z.5) belong to step 3.
+- Version stays 2.34.2. Not committed or pushed: waiting for your "push".
+
 ## 2026-11-15 (13:25) — Phase 4k step 1: learning habits module and tests (no app change, no version bump, pushed)
 
 **User:** "build step 1 of CODE.md 9z.6", then "push this" (step 2 to start in another chat).

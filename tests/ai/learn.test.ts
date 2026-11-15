@@ -179,8 +179,10 @@ test('the table is the average of the people who reached the minimum only', () =
   at(h, 'p1').boldFollow = { chances: 6, yes: 6 }; // rate 1, counts
   at(h, 'p2').boldFollow = { chances: 6, yes: 0 }; // rate 0, counts
   at(h, 'p3').boldFollow = { chances: 5, yes: 0 }; // too few chances, ignored
-  // Average of 1 and 0 is 0.5, which is the neutral rate for bold follows: no shift.
-  assert.deepEqual(learnedWeights(BASE, 'normal', h), BASE);
+  // Average of 1 and 0 is 0.5. With a neutral rate of 0.5 for bold follows there is no shift.
+  // (The real neutral is measured in step 2, so this test passes its own tuning.)
+  const tuning = { ...LEARN_TUNING, neutral: { ...LEARN_TUNING.neutral, boldFollow: 0.5 } };
+  assert.deepEqual(learnedWeights(BASE, 'normal', h, tuning), BASE);
 });
 
 test('the nudge stays within 80% to 120% of the base at the real tuning', () => {

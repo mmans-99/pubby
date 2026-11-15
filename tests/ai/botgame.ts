@@ -13,11 +13,24 @@ import { applyAction, createSession } from '../../src/session/session.ts';
 import type { PlayerId, Session, SessionAction } from '../../src/session/types.ts';
 import { decide, type Decision } from '../../src/ai/decide.ts';
 import { remember, newMemory, type Memory } from '../../src/ai/memory.ts';
-import { randomPersona, type Level, type Persona } from '../../src/ai/persona.ts';
+import { randomPersona, type Level, type Persona, type Personality } from '../../src/ai/persona.ts';
 import { seenBy, type AiSeen } from '../../src/ai/seen.ts';
+import { newHabits, noteHabits, type Habits } from '../../src/ai/learn.ts';
 
 /** A seat's level in the arena: a real level, or 'random' (random legal moves, the baseline). */
 export type SeatLevel = Level | 'random';
+
+/**
+ * How the arena's "people" seats play (CODE.md 9z.6 step 2). They are the first `count` seats:
+ * they lose the public `computer` tag, so the session asks them to tap notices, and the
+ * learning table counts them. The bot code still plays them. `style` picks their personality:
+ * 'bot' keeps the random personality a computer seat would get; 'careful' and 'reckless' fix it;
+ * 'mixed' draws careful or reckless for each person seat.
+ */
+export interface PeopleSetup {
+  readonly count: number;
+  readonly style: 'bot' | 'careful' | 'reckless' | 'mixed';
+}
 
 export interface BotGameOptions {
   readonly players: number;
@@ -27,6 +40,10 @@ export interface BotGameOptions {
   readonly rounds: number;
   readonly seed: number;
   readonly jokers?: boolean;
+  /** Arena people seats (default: none, so every seat is a computer player as before). */
+  readonly people?: PeopleSetup;
+  /** Keep a habit table for the game from the public log (CODE.md 9z; counting only until step 3). */
+  readonly learn?: boolean;
   /** Called for every decision that is about to be sent (before it is applied). */
   readonly onDecision?: (info: { seen: AiSeen; memory: Memory; persona: Persona; decision: Decision; session: Session }) => void;
   /** Called when the session refuses a move (should never happen). */
@@ -49,6 +66,25 @@ export interface BotGameResult {
   /** Time spent in decide(), in milliseconds, for every call. */
   readonly decisionMs: { level: SeatLevel; ms: number }[];
   readonly seats: SeatResult[];
+  /** The game's habit table when `learn` is on (people seats only), else null. */
+  readonly habits: Habits | null;
+}
+
+/**
+ * A person seat's own step when a notice is on screen: it taps OK once (the session
+ * refuses computer seats here). Computer seats never reach this.
+ */
+function noticeDecision(seen: AiSeen): Decision | null {
+  const v = seen.view;
+  if (v.phase !== 'leadNotice' || seen.session.noticeSeen.includes(seen.me)) return null;
+  return { actions: [{ type: 'seenNotice', by: seen.me }], think: 'forced' };
+}
+
+/** The personality a people seat plays with, for the --people-style option. */
+function peoplePersonality(style: PeopleSetup['style'], drawn: Personality, rng: Rng): Personality {
+  if (style === 'careful' || style === 'reckless') return style;
+  if (style === 'mixed') return rng() < 0.5 ? 'careful' : 'reckless';
+  return drawn;
 }
 
 /** What a random-level seat does: a random legal move, with the same shape as decide(). */
@@ -119,15 +155,27 @@ export function playBotGame(opts: BotGameOptions): BotGameResult {
   const rng = seededRng(opts.seed);
   const ids = Array.from({ length: opts.players }, (_, i) => `p${i + 1}`);
   const seatLevels = ids.map((_, i) => opts.levels[i % opts.levels.length] ?? 'normal');
+  // The first `people` seats are people: no computer tag, but the bot code still plays them.
+  const people = opts.people?.count ?? 0;
   const personas = new Map<PlayerId, Persona>();
   ids.forEach((id, i) => {
     const level = seatLevels[i] ?? 'normal';
-    personas.set(id, randomPersona(level === 'random' ? 'normal' : level, rng));
+    const drawn = randomPersona(level === 'random' ? 'normal' : level, rng);
+    const isPerson = i < people && opts.people !== undefined;
+    personas.set(
+      id,
+      isPerson ? { ...drawn, personality: peoplePersonality(opts.people!.style, drawn.personality, rng) } : drawn,
+    );
   });
 
   let s = createSession(
     {
-      players: ids.map((id) => ({ id, profileName: `computer:${id}`, sessionName: id, computer: true })),
+      players: ids.map((id, i) => ({
+        id,
+        profileName: `${i < people ? 'person' : 'computer'}:${id}`,
+        sessionName: id,
+        computer: i >= people,
+      })),
       hostId: 'p1',
       jokerRuleEnabled: opts.jokers ?? true,
       waitForAll: true, // 2.20: as in games against the computer (everyone sees their cards, Next round waits)
@@ -143,6 +191,14 @@ export function playBotGame(opts: BotGameOptions): BotGameResult {
     memories.set(id, newMemory(id, level === 'random' ? 'normal' : level, ids));
     logIndex.set(id, 0);
   }
+
+  // One habit table for the game, from the public log only (noteHabits reads an allow-list).
+  const habits: Habits | null = opts.learn ? newHabits(ids, ids.slice(people)) : null;
+  let fed = 0;
+  const feed = (): void => {
+    if (habits) noteHabits(habits, s.log.slice(fed).map((entry) => entry.event));
+    fed = s.log.length;
+  };
 
   let refused = 0;
   let crashed = 0;
@@ -165,11 +221,15 @@ export function playBotGame(opts: BotGameOptions): BotGameResult {
       const seen = seenBy(s, id, logIndex.get(id) ?? 0);
       remember(memory, seen.events, rng);
       logIndex.set(id, s.log.length);
+      feed();
 
       const t0 = performance.now();
       let decision: Decision | null;
       try {
-        decision = level === 'random' ? randomDecision(seen, rng) : decide(seen, memory, persona, rng);
+        // During a notice only people tap OK (the session refuses computer seats); computer seats wait.
+        const isPerson = seat < people;
+        if (seen.view.phase === 'leadNotice') decision = isPerson ? noticeDecision(seen) : null;
+        else decision = level === 'random' ? randomDecision(seen, rng) : decide(seen, memory, persona, rng);
       } catch {
         crashed++;
         skipUntil.set(id, s.log.length);
@@ -216,5 +276,6 @@ export function playBotGame(opts: BotGameOptions): BotGameResult {
       places,
     };
   });
-  return { session: s, finished: finished || s.phase === 'gameOver', refused, crashed, decisionMs, seats };
+  feed();
+  return { session: s, finished: finished || s.phase === 'gameOver', refused, crashed, decisionMs, seats, habits };
 }

@@ -400,7 +400,7 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [x] Opus plan review (2026-11-15): off by default; Normal and Hard only; fairness and hidden-card test confirmed; habits = bold follow, high lead (6 chances each), early joker (3 chances) (`CODE.md` 9z.1 to 9z.3)
 - [x] User approved the finished plan (2026-11-15, "Push")
 - [x] Step 1: `src/ai/learn.ts` and `tests/ai/learn.test.ts`, including the hidden-card test (`CODE.md` 9z.6; 23 tests, no app change, not in the app yet)
-- [ ] Step 2: arena `--learn`, `--people`, `--people-style`; measure neutral rates into `LEARN_TUNING`
+- [x] Step 2: arena `--learn`, `--people`, `--people-style`; neutral rates measured (2000 games) into `LEARN_TUNING` (2026-11-15, not committed; no app change)
 - [ ] Step 3: wire into `moves.ts` / `decide.ts`; regression test (learning off = 2.34.2 moves); arena bars (9z.5)
 - [ ] Step 4: driver, storage, setup switch, Multiplayer host switch, `?learnlog=1` readout; version 2.35.0
 - [ ] Step 5: MD files, test build, phone checklist (`CODE.md` 9z.5), push after the user says "Push it"
