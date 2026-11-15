@@ -57,7 +57,7 @@ test('Hard plays the search\'s best card when the switch margin is 0', () => {
         const best = searchCard(seen, memory, seededRng(checked + 1));
         // 12r (9af.2): the one exception is a lead into a known missing suit, where Normal's safe lead is kept.
         const normal = chooseCard(seen, memory, { ...persona, level: 'normal' }, seededRng(checked + 1));
-        const slapLead = (id: string | undefined): boolean => {
+        const slapLead = (id: string | null | undefined): boolean => {
           const c = seen.view.myHand.find((x) => x.id === id);
           return c !== undefined && isStandard(c) && knownSlap(memory, seen, c.suit);
         };

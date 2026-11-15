@@ -34,6 +34,8 @@ Newest entries at the top. One entry per session, added before each commit.
 
 **Pushed:** on the user's "push" (21:1x), as commit `effd0fd` on `main`, on top of `33470f7`. Pushed before a phone test build existed, at the user's explicit request. Test build and phone checklist (`CODE.md` 9af.8) still to do.
 
+**Deploy failed (21:2x):** the GitHub Pages workflow runs `npm run check` before deploying, and the type check failed on a line in `tests/ai/hard.test.ts` (`string | null` passed where `string | undefined` was expected). My local type check had passed only because the rules config could not load `@types/node` here, which hid the error. Fixed in **2.34.4** (`package.json`), which is the version that will be deployed. The 2.34.3 deploy never went out. Verified here with the rules config and a borrowed `@types/node`: clean; 125 of 125 AI tests pass.
+
 **Doc fix (21:2x):** the entries above said "not committed" after the push; corrected in a docs-only commit.
 
 ---
