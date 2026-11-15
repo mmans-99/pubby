@@ -3197,7 +3197,7 @@ Developer account; create the app; store listing (icon 512×512, feature graphic
 ### 9ae.5 Phone checklist (closed test)
 Install from Play; first open with no internet (game plays offline); Nearby game across 2 to 8 phones by QR; online room on two different networks; back button on every screen; Exit Pubby closes the app; screen stays on during a game; sounds and the iPhone/Android silent switch; profiles kept after an app update; backup from the website and restore in the app.
 
-## 9af. Computer players stop leading into a known missing suit (PLAN, user 2026-11-15 20:31; spec `PROJECT.md` 12r; written for Haiku; BUILT **2.34.3** on 2026-11-15, not committed; see 9af.9 for what changed from the plan)
+## 9af. Computer players stop leading into a known missing suit (PLAN, user 2026-11-15 20:31; spec `PROJECT.md` 12r; written for Haiku; BUILT and PUSHED **2.34.3** (effd0fd) on 2026-11-15; see 9af.9 for what changed from the plan)
 
 ### 9af.0 Read first
 - Spec and measured numbers: `PROJECT.md` 12r. Files: `src/ai/eval.ts`, `src/ai/moves.ts`, `src/ai/sample.ts`, tests in `tests/ai/`, a new check script `testbed/lead_check.ts`.

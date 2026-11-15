@@ -4,7 +4,7 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
-## 2026-11-15 (21:10) — Build: computer players stop leading into a known missing suit (2.34.3, not committed)
+## 2026-11-15 (21:10) — Build: computer players stop leading into a known missing suit (2.34.3, pushed to main as effd0fd)
 
 **User:** "Yes, and then code it with haiku" (plan 20:31), then "Code it" on Haiku.
 
@@ -32,7 +32,9 @@ Newest entries at the top. One entry per session, added before each commit.
 
 **Not run here:** `npm run build` and the test build (esbuild not installed, so no playable link yet), `npm run check` in full, `testbed/run_checks.py`, `testbed/playthrough.py`. The arena was run with one worker because its child-process mode needs `tsx`.
 
-**Next:** test build and the phone checklist (`CODE.md` 9af.8). No commit or push until the user says "push".
+**Pushed:** on the user's "push" (21:1x), as commit `effd0fd` on `main`, on top of `33470f7`. Pushed before a phone test build existed, at the user's explicit request. Test build and phone checklist (`CODE.md` 9af.8) still to do.
+
+**Doc fix (21:2x):** the entries above said "not committed" after the push; corrected in a docs-only commit.
 
 ---
 

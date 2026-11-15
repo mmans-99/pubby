@@ -777,7 +777,7 @@ User (network game test of 2.33, three screenshots) asked for:
 
 **Open questions for later:** Capacitor or Trusted Web Activity; store name and title (Pubby alone or "Pubby: Bhabhi card game"); is the name free on Play; tip button or nothing; an iPhone App Store version later (Capacitor can also build iOS, needs a Mac or a cloud build and $99 a year).
 
-### 12r. Computer players stop leading into a known missing suit (PLAN, user 2026-11-15 20:31: "Yes, and then code it with haiku"; build guide `CODE.md` 9af; BUILT 2.34.3, not committed; phone test pending)
+### 12r. Computer players stop leading into a known missing suit (PLAN, user 2026-11-15 20:31: "Yes, and then code it with haiku"; build guide `CODE.md` 9af; PUSHED 2.34.3 as effd0fd on 2026-11-15; phone test pending)
 
 **Problem (user 2026-11-15):** after a slap, computer players often lead the same suit again and get slapped again, as if they forgot. They do remember (memory keeps every missing suit shown by a slap). Measured over 30 four-player games per level (scratch script, 2026-11-15):
 - **Hard:** led into a known missing suit in 552 of 2523 leads; in 262 of them it held a safer suit. Cause: the Hard search (imagined deals, 3 tricks ahead) often scores "lead low into the missing suit, pick up 2 cards" as cheapest and overrides Normal's choice. Also about 1 in 8 imagined deals (235 of 1840) broke known missing suits, which makes those leads look safe.
