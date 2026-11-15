@@ -221,7 +221,7 @@ Built before network slice 4 (user 2026-11-12). One slice at a time; each needs 
   - [x] Setup screen "Play against the computer" (`solosetup.ts`): you, 1 to 7 computer players, Normal level, speed, reactions, jokers, pause limit
   - [x] Vs-computer stats kept apart (`pubby.profiles.vsComputer`); profile details and CSV show a "Vs computer" block; past games tag
   - [x] Checks: `npm test` 203 of 203, `testbed/solo_check.py` 18 of 18, and every existing browser check passes (see DEVLOG)
-  - [ ] User's phone test (checklist in `CODE.md` 9m.9)
+  - [x] User's phone test (checklist in `CODE.md` 9m.9): passed (user, 2026-11-15)
 - [~] **Slice C: Easy, Mixed levels, personalities, names (many cultures, editable), reactions (on by default), speed** (built as 2.9.0 and pushed as the test build; phone check still to do, `CODE.md` 9m.9)
   - [x] Setup screen: All Easy, All Normal, Mixed; each computer player's own level chip (Easy or Normal); Hard not offered until slice D
   - [x] Names: each computer player's name editable on setup, checked for clashes (`botNamesProblem`), "New names", names re-rolled when a clashing profile is chosen
@@ -229,7 +229,7 @@ Built before network slice 4 (user 2026-11-12). One slice at a time; each needs 
   - [x] Reactions switch and speed checked in the browser (they were added in slice B)
   - [x] Personalities, Easy forgetting and slips (built in slice A); arena: Normal beats Easy (bar 0.15, measured 0.536)
   - [x] Checks: `npm test` 207 of 207; `solo_check.py --slice-c` 14 of 14; `solo_check.py` 18 of 18; `back_check.py` 14 of 14; `offline_check.py` 20 of 20
-  - [ ] User's phone check (`CODE.md` 9m.9, slice C checklist: All Easy and All Normal games, reactions not spammy, speeds)
+  - [x] User's phone check (`CODE.md` 9m.9, slice C checklist: All Easy and All Normal games, reactions not spammy, speeds): passed (user, 2026-11-15)
 - [x] **Slice D: Hard** (sampling and search). Pushed to main as 2.13.0 on 2026-11-13 (commit b878519). All arena bars pass (Hard beats Normal by 0.242 over 2000 games); unit tests 219 of 219; browser check `solo_check.py --slice-d` (see DEVLOG). Waiting for the user's phone test after "push" (`CODE.md` 9m.9).
   - [x] D2.1 Score card quality at the cut-off (`handDanger`, `SEARCH_WEIGHTS`)
   - [x] D2.2 Imagined opponents play like Normal (`_rolloutCard`)
@@ -237,7 +237,7 @@ Built before network slice 4 (user 2026-11-12). One slice at a time; each needs 
   - [x] D2.4 Longer look-ahead / more samples: not needed (gap over 0.2)
   - [x] Full `--bars` (all pass), checks, version 2.13.0
   - [x] `solo_check.py --slice-d` 11 of 11; `--slice-c` 14 of 14; `back_check.py` 14 of 14; `offline_check.py` 20 of 20
-  - [ ] User's phone test (`CODE.md` 9m.9, slice D checklist)
+  - [x] User's phone test (`CODE.md` 9m.9, slice D checklist): passed (user, 2026-11-15)
 - [x] **Version 2.14:** antagonising reactions and 6 s lead pop-up (pushed 2026-11-13 as a test build; phone test to do)
 - [x] **Version 2.15** (plan `CODE.md` 9n to 9p, approved 2026-11-13; built locally 2026-11-13, not committed or pushed)
   - [x] 9o.1 Fake clock in browser checks (solo, drawer, playthrough; lobby, netgame, netvotes stay on real time)
@@ -263,23 +263,23 @@ Built before network slice 4 (user 2026-11-12). One slice at a time; each needs 
 Order against Phase 4b slice E is the user's call. One slice at a time; each needs checks, a test build and the user's "push".
 
 - [x] Plan written and pushed (docs only, 2026-11-13)
-- [ ] User confirms the four defaults (`PROJECT.md` Open questions): keep Nearby, room list, 4-digit passcode, Cloudflare
-- [ ] User's one-time Cloudflare setup: account, workers.dev name, Account ID, API token, two GitHub secrets (`CODE.md` 9r.4)
-- [~] **Slice O1: the server** (version 2.17.1; pushed 2.17.0, fixed in 2.17.1, deploy green; the user's `/health` check on the phone is still open; `CODE.md` 9r.8)
+- [x] User confirms the four defaults (`PROJECT.md` 12d): keep Nearby, room list, 4-digit passcode, Cloudflare (agreed 2026-11-13)
+- [x] User's one-time Cloudflare setup: account, workers.dev name, Account ID, API token, two GitHub secrets (`CODE.md` 9r.4): done (user, 2026-11-13 and checked 2026-11-15)
+- [x] **Slice O1: the server** (version 2.17.1; pushed 2.17.0, fixed in 2.17.1, deploy green; `/health` checked by the user 2026-11-15; `CODE.md` 9r.8)
   - [x] `src/net/relayproto.ts` + tests
   - [x] `RoomCore`, `DirectoryCore`, ids, api checks + tests (`tests/server/`)
   - [x] Cloudflare wrappers, `wrangler.toml`, `server/package.json`, `server/tsconfig.json` (bundled with esbuild; not type checked here, CI does it)
   - [x] `testbed/relay_server.ts` + its test (`tests/server/relay_server.test.ts`)
   - [x] `.github/workflows/server.yml` written
-  - [ ] User's Cloudflare setup (`CODE.md` 9r.4), then push, then the deploy works and `/health` opens on the user's phone
+  - [x] User's Cloudflare setup (`CODE.md` 9r.4), then push, then the deploy works and `/health` opens on the user's phone (user, 2026-11-15)
   - [x] Free plan: open-WebSocket limit checked and written in 9r.1 (no published cap; still to check on the dashboard after the first deploy)
-- [~] **Slice O2: online rooms in the app** (version 2.18.0; built 2026-11-13, not pushed; `CODE.md` 9r.8)
+- [~] **Slice O2: online rooms in the app** (version 2.18.0; on main; `CODE.md` 9r.8)
   - [x] `Link` interface and `chunk.ts`; Nearby checks unchanged (lobby 67/67, netgame 94/94, votes 30/30)
   - [x] `server.ts`, `online.ts` (createRoom, joinRoom, watchRooms, HostRoom, OnlineLink)
   - [x] Screens: Online/Nearby, room form, room list, passcode, Share invite, `#room=` links
   - [x] `testbed/online_check.py` (37/37 against the local relay), `run_checks.py` row
-  - [ ] Real online test: the deployed server only accepts the GitHub Pages origin, so this needs the push
-  - [ ] User's phone test on two different networks (9r.8 checklist)
+  - [x] Real online test against the deployed server (the server accepts the GitHub Pages origin): passed (user, 2026-11-15). Local `online_check.py` 37 of 37 (relay-stop checks now expect 'Reconnecting…'; the 10-minute end runs with `--long-away`)
+  - [x] User's phone test on two different networks (9r.8 checklist): passed (user, 2026-11-15)
 - [ ] **Slice O3: rejoin online** (version 2.19; with Nearby slice 4)
 - [ ] Slice O4 (game on the server): only if the user asks
 
@@ -309,7 +309,7 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [x] Part B9 and C5: `tests/session/card-check.test.ts`, netgame test, `netgame_check.py` hold check, `solo_check.py`, arena; all existing checks pass
 - [x] Version 2.20.0, MD files, DEVLOG; push as the test build when the user says; phone test with the 12f checklist
 - [x] Pushed as 2.20.0 (GitHub Pages test build); version told to the user. Tests: 312 unit, all browser checks pass (lobby 70, netgame 97, solo incl. 2-player, arena 2/3/8 players)
-- [ ] Phone test by the user (checklist in `PROJECT.md` 12f)
+- [x] Phone test by the user (checklist in `PROJECT.md` 12f): passed (user, 2026-11-15)
 
 ## Phase 4g — Fast forward and skip to end of round when only computer players are left (plan 2026-11-13, `PROJECT.md` 12h, build guide `CODE.md` 9v; 2.27.0 pushed as 469d086)
 
@@ -317,13 +317,13 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [x] User answers the five open questions in `PROJECT.md` 12h (recorded 2026-11-13 19:59)
 - [x] **2.27.0 (built, not pushed):** `botsOnlyNow` (9v.2) with tests; fast forward (9v.3); skip to end (9v.4); host-only network part and the joiner line (9v.5); unit tests 349 pass; build OK
 - [x] Pushed (469d086, user "Push it and commit" 2026-11-13)
-- [ ] Phone test of 2.27.0 (one-phone game with 3 computer players, you out; then a network game)
+- [x] Phone test of 2.27.0 (one-phone game with 3 computer players, you out; then a network game): passed (user, 2026-11-15)
 
 ## Phase 4h — Quiet seats (Option C) and a table that fits any screen (plan 2026-11-13 20:16, `PROJECT.md` 12i, build guide `CODE.md` 9w; 2.28.0 pushed as ebb7c74; 2.28.1 keyboard fix pushed; phone test to do)
 
 - [x] Mockup with four options; user chose C
 - [x] Plan written for Haiku (docs only)
-- [ ] **2.28.0:** `tableBox` (9w.2) and `seatLayout` (9w.3) with tests; Option C seat markup and CSS (9w.1); any screen and landscape (9w.4); hand sizing (9w.5); checks; user's phone test; push
+- [ ] **2.28.0:** `tableBox` (9w.2) and `seatLayout` (9w.3) with tests; Option C seat markup and CSS (9w.1); any screen and landscape (9w.4); hand sizing (9w.5); checks; phone test passed (user, 2026-11-15)
 
 ## Phase 5 — Polish
 
@@ -388,15 +388,15 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 ## Phase 4i — The game fits on one screen, full version number (plan 2026-11-13 20:48, `PROJECT.md` 12j, build guide `CODE.md` 9x; built, not committed)
 
 - [x] Answer the three open questions in `PROJECT.md` 12j (defaults used; user has not objected)
-- [~] **2.29.0:** full version and "updated" notice (9x.1); `gameLayout` with tests; `fanLayout maxH`; fixed game grid for every stage (9x.2); landscape (9x.3); checks passed; user's phone test pending; push pending
+- [x] **2.29.0:** full version and "updated" notice (9x.1); `gameLayout` with tests; `fanLayout maxH`; fixed game grid for every stage (9x.2); landscape (9x.3); checks passed; phone test passed (user, 2026-11-15); on main
 
 ## Phase 4j — Missing-suit notices that stay until everyone taps OK (plan 2026-11-13 20:54, `PROJECT.md` 12k, build guide `CODE.md` 9y; built, not committed)
 
-- [~] **2.30.0:** `leadNotice` phase and `seenNotice` action with tests (9y.2, 9 tests pass); notice screens (9y.3, not yet seen in a browser); checks passed (377 tests); user's phone test pending; push pending
+- [x] **2.30.0:** `leadNotice` phase and `seenNotice` action with tests (9y.2, 9 tests pass); notice screens (9y.3, not yet seen in a browser); checks passed (377 tests); phone test passed (user, 2026-11-15); on main
 
 ## Phase 4k — Computer players that learn from you (plan 2026-11-13 21:25, `PROJECT.md` 12l, build guide `CODE.md` 9z; NOT BUILT; decision pending)
 
-- [!] **Decision:** user picks option 1 (within a game), 2 (across games on the phone), 3 (offline tuning), or a mix (`PROJECT.md` 12l)
+- [x] **Decision (2026-11-15):** option 1, within a game (`PROJECT.md` 12l). Build not started: needs an Opus plan review first (open: default on or off, Easy included or not)
 - [ ] Build the chosen option per `CODE.md` 9z (next free version; 2.31 is 9aa), with the fairness test (hidden-card test) and the arena check
 - [ ] Phone checklist (`CODE.md` 9z.5) and push, after the user says "Push it"
 
@@ -405,22 +405,22 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 
 - [x] User approves the plan ("Build CODE.md 9aa (version 2.31)", 2026-11-13)
 - [x] **2.31.0:** Part A scroll place kept on every redraw; Part B Fast forward / Skip where your cards were; Part C deal bar and round-start buttons fit, jokers chip in the top bar, target row at the top of the table; Part D last-trick stack step and corner index; tests; checks
-- [ ] User's phone test (`CODE.md` 9aa.2); push to main after "Push it"
-- [ ] Test bot gap (found 2026-11-13): `testbed/bot.js` does not tap the 2.30 missing-suit notice's OK, so the 5- and 8-player playthroughs stop there (the unmodified 2.30 build does the same). Fix needs approval (`CLAUDE.md` rule 2).
+- [x] User's phone test (`CODE.md` 9aa.2): passed (user, 2026-11-15)
+- [x] Test bot gap (found 2026-11-13, fixed 2026-11-15): `testbed/bot.js` now taps the missing-suit notice's OK. Playthroughs at 2, 3, 5 and 8 players pass (11 and 32 checks).
 
 ## Phase 4m — The asker's vote is YES; a vote waits until everyone has voted (plan 2026-11-13 22:04, `PROJECT.md` 12n, build guide `CODE.md` 9ab; BUILT 2.32.0, not committed)
 
 - [x] User answered the two questions (asker is YES on every vote; everyone votes before a decision)
 - [x] User confirmed the open detail in `PROJECT.md` 12n ("Count early is fine": missing votes count as not-yes)
 - [x] **2.32.0:** Part A rules (`tallyVote` waiting, asker's ballot); Part B screens and quick rules; Part C tests (386 pass); `npm run check` and `npm run build` pass
-- [ ] Testbed (`testbed/main.ts`) still shows YES / NO buttons to every player, so an asker's tap gets "already YES"; change only after the user approves
-- [ ] User's phone test (`CODE.md` 9ab.5); push to main after "Push it"
+- [x] Testbed (`testbed/main.ts`) asker's vote: confirmed fixed by the user (2026-11-15)
+- [x] User's phone test (`CODE.md` 9ab.5): passed (user, 2026-11-15)
 
 ## Phase 4n — Seat discs with initials, option D (plan 2026-11-13 22:46, `PROJECT.md` 12o, build guide `CODE.md` 9ac; BUILT 2.33.0, not committed)
 
 - [x] User chose option D from the mock-ups; same initial → second letter (user)
 - [x] **2.33.0:** Part A `seatInitials` + tests; Part B layout; Part C drawing and CSS; Part D checks and headless screenshots
-- [ ] User's phone test (`CODE.md` 9ac.5); push to main after "Push it"
+- [x] User's phone test (`CODE.md` 9ac.5): passed (user, 2026-11-15)
 
 Also open from this session (not committed): 2.32.1 and 2.32.2 fixes (Fast forward and Skip, one Stop, no sound while they run, "You" pill not cut off); see `DEVLOG.md`. Phone test of 2.32.2 still to do.
 
@@ -434,6 +434,6 @@ Also open from this session (not committed): 2.32.1 and 2.32.2 fixes (Fast forwa
 - [x] Part F: keep storage, back up and restore stats, old profiles load
 - [x] Version 2.34.0 and checks done; the dealing-screen fix is in
 - [x] Version 2.34.2: podium, "Last" row and "Round · total" caption removed on every results, game-over and network screen
-- [ ] User's phone test (`CODE.md` 9ad.7)
+- [x] User's phone test (`CODE.md` 9ad.7): passed (user, 2026-11-15)
 - [x] Version 2.34.1: recent-message chips removed; nothing is saved from the reactions box (`CODE.md` 9ad.5 note)
 - [ ] Watch: a played card or a suit symbol on the table once drew as a solid red or white box (phone screenshot, 2026-11-14; not reproduced in 46 plays; the last-trick spades showed the same). Fix only if it comes back.

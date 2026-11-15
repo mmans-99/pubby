@@ -25,6 +25,11 @@
   }
 
   function step(cfg) {
+    // 2.30 (CODE.md 9y.3): a missing-suit notice stays until OK is tapped. A person taps it
+    // on their own phone; computer players never do (the game does it for them).
+    const notice = [...document.querySelectorAll('.notice-overlay .notice-card button')]
+      .find((b) => visible(b) && b.textContent.trim() === 'OK');
+    if (notice) return click(notice, 'notice OK');
     // Pop-ups first.
     // Pop-ups close by themselves; the ones that can be tapped away are skipped.
     const skip = document.querySelector('.popup-overlay[data-skip]');

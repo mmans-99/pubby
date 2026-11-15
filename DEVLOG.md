@@ -4,6 +4,30 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-15 (10:50) — Catch-up: phone tests passed, test bot fixed, online status (docs and testbed only, not committed)
+
+**User:** "All tests are passed" (read as: every pending phone checklist, 9m.9 to 9ad.7, passed; not separately itemised). Cloudflare is set up and `/health` checked on the phone. Test bot fix approved ("do it"). Testbed votes confirmed fixed by the user. Card glitch: could not be recreated; left as a watch item. Asked for the computer-player options again, a check of online play, and all files updated.
+
+**Changed:**
+- `testbed/bot.js`: taps the missing-suit notice's OK (`.notice-overlay .notice-card` button "OK") before anything else. No app code, no version change (test-only, as 9q).
+- `TODO.md`: pending phone tests ticked as passed by the user; Cloudflare setup, defaults, O1 and `/health` ticked; test bot gap and testbed votes ticked; O2 status; 2.29 and 2.30 marked done.
+- `PROJECT.md` 12d: O2 status and Cloudflare check.
+- `CODE.md` 9r.8: O1 and O2 status lines.
+
+**Checked here:**
+- `node --check testbed/bot.js`; `node build.mjs` (2.34.2).
+- `testbed/playthrough.py` 5 players: 11 of 11. 2, 3 and 8 players: 32 of 32 (the 5- and 8-player games used to stall at the notice).
+- `npm test`: 409 of 409.
+- `testbed/online_check.py`: 35 of 37, twice. The two failures are "relay stopped: Ben sees Connection lost" and "relay stopped: the host sees Room closed". The checks wait 20 s. Since 2.25 a dropped phone redials for up to 10 minutes (`AWAY_MS`, `src/net/online.ts`) before showing the lost message, so the checks are out of date, not the app. Fix needs approval (testbed code).
+
+**Not changed:** no commit, no push, no app code, version still 2.34.2. The Cloudflare two-network phone test (`CODE.md` 9r.8) is still open. Card glitch (`TODO.md` watch item) stays open and unreproduced.
+
+**Next:** Opus plan review of option 1 (`CODE.md` 9z), then build as 2.35.0.
+
+**Update (same day, after the user's answers):** the user confirmed the two-network online test passed and approved updating the online check. `testbed/online_check.py` relay-stop checks now expect 'Reconnecting…' (and `--long-away` for the 10-minute end): 37 of 37. Option 1 chosen for computer-player learning (`PROJECT.md` 12l); not built, because it touches several systems and needs an Opus plan review first (defaults still open: on or off, Easy included).
+
+---
+
 ## 2026-11-15 (10:20) — Model split rule: Haiku default, prompt to switch to Opus (docs only)
 
 **User:** wants Opus for planning and for problems that keep coming back, Haiku for the bulk of coding and pushing; Haiku stays the default and should prompt the user to switch to Opus.

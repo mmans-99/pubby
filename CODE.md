@@ -1350,7 +1350,7 @@ Screens are in `PROJECT.md` 12d. Code shape:
 
 #### Slice O1: the server (version 2.17)
 
-**Status (2026-11-13): PUSHED as 2.17.0 (commit ebf8168); the first deploy failed on type errors; fixed in 2.17.1.** No screen changes, so nothing to play yet (`CLAUDE.md` rule 5). Still to do: the deploy must go green, then the `/health` check in step 8 on the phone.
+**Status (2026-11-13): PUSHED as 2.17.0 (commit ebf8168); the first deploy failed on type errors; fixed in 2.17.1. Status (2026-11-15): deployed green; the user has set up Cloudflare (9r.4) and checked `/health` on the phone.** No screen changes, so nothing to play yet (`CLAUDE.md` rule 5). Still to do: the deploy must go green, then the `/health` check in step 8 on the phone.
 
 **Build notes (what was decided where this plan left room):**
 - Files built: `src/net/relayproto.ts`; `server/src/core/ids.ts`, `api.ts` (input and origin checks, shared by the Worker and the stand-in; not in the list below), `room.ts`, `directory.ts`; `server/src/env.ts`, `room.ts`, `directory.ts`, `index.ts`; `server/wrangler.toml`, `server/package.json`, `server/tsconfig.json`; `testbed/relay_server.ts`; `.github/workflows/server.yml`; tests `tests/net/relayproto.test.ts`, `tests/server/room.test.ts`, `directory.test.ts`, `ids.test.ts`, `relay_server.test.ts`.
@@ -1378,7 +1378,7 @@ Screens are in `PROJECT.md` 12d. Code shape:
 
 #### Slice O2: online rooms in the app (version 2.18)
 
-**Status (2026-11-13): BUILT as 2.18.0, not pushed.** Files: `src/net/link.ts`, `chunk.ts`, `server.ts`, `online.ts`; `src/ui/online.ts`; changed `peer.ts`, `netlobby.ts`, `app.ts`, `styles.css`, `build.mjs`, `quick-rules.md`, `package.json`. Tests: `tests/net/chunk.test.ts`; `testbed/online_check.py` (37 of 37, four phases with their own local relay). Nearby checks pass unchanged. Build notes: the room-list socket runs on the passcode screen too, so an invite shows the room name; parts are halved until every frame fits FRAME_MAX (quote-heavy text takes more room); the menu says "Multiplayer" (was "Play on several phones"). Not covered in the browser: a version mismatch (unit test) and frames over FRAME_MAX (unit test).
+**Status (2026-11-15): on main (built as 2.18.0). The deployed server is live. The user's two-network phone test passed (2026-11-15). Local `testbed/online_check.py` now gives 37 of 37: since 2.25 a dropped phone shows 'Reconnecting…' first, so the relay-stop checks expect that; the 10-minute end runs with `--long-away`.** Earlier note (2026-11-13): BUILT as 2.18.0, not pushed. Files: `src/net/link.ts`, `chunk.ts`, `server.ts`, `online.ts`; `src/ui/online.ts`; changed `peer.ts`, `netlobby.ts`, `app.ts`, `styles.css`, `build.mjs`, `quick-rules.md`, `package.json`. Tests: `tests/net/chunk.test.ts`; `testbed/online_check.py` (37 of 37, four phases with their own local relay). Nearby checks pass unchanged. Build notes: the room-list socket runs on the passcode screen too, so an invite shows the room name; parts are halved until every frame fits FRAME_MAX (quote-heavy text takes more room); the menu says "Multiplayer" (was "Play on several phones"). Not covered in the browser: a version mismatch (unit test) and frames over FRAME_MAX (unit test).
 
 1. `link.ts` and `chunk.ts`, Peer changes, netlobby types (9r.5.2). Nearby checks pass unchanged.
 2. `server.ts`, `build.mjs` define, `online.ts`.
@@ -2496,7 +2496,7 @@ Pause and reactions work as now during a notice.
   3. Multiplayer on two phones: tap OK on one; it shows "Waiting for …" until the other taps; play starts only then.
   4. The suit is never named.
 
-## 9z. Computer players that learn from the people they play against (PLAN, user 2026-11-13 21:25; NOT BUILT; decision pending in `PROJECT.md` 12l)
+## 9z. Computer players that learn from the people they play against (PLAN, user 2026-11-13 21:25; option 1 chosen 2026-11-15; NOT BUILT)
 
 **Today:** computer players learn nothing between rounds or games. `src/ai/memory.ts` is built only from public events in the current round (and reset each round). Their personality and level are fixed at setup (`src/ai/persona.ts`, `PERSONALITY_WEIGHTS`). Nothing writes learned values to storage.
 

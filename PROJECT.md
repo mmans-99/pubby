@@ -521,7 +521,7 @@ Built after single player works (`CODE.md` 9m slices E and F):
 6. Order: single player (this whole section) is built **before** network slice 4 and the multiplayer release.
 7. Version numbers: the user doesn't mind which number; every pushed code change gets a new version and the user is told the new number (`CLAUDE.md` rule 8).
 
-## 12d. Online play: rooms over the internet (PLAN, user 2026-11-13; build guide `CODE.md` 9r; slice O1, the server, pushed as 2.17.0 and fixed in 2.17.1, deployed; slice O2, the screens, built as 2.18.0 on 2026-11-13, not pushed, phone test on two networks still to do)
+## 12d. Online play: rooms over the internet (PLAN, user 2026-11-13; build guide `CODE.md` 9r; slice O1, the server, pushed as 2.17.0 and fixed in 2.17.1, deployed; slice O2, the screens, on main as 2.18.0; Cloudflare set up and `/health` checked by the user 2026-11-15; phone test on two networks still to do)
 
 **User 2026-11-13:** wants to play with people who aren't on the same network, free to run if possible, and "something like: click multiplayer, then host makes a room with a name and code, other people click join, find the room and pass and then start together."
 
@@ -689,7 +689,7 @@ From the user's Multiplayer test of 2.23:
 
 **Version:** 2.30.0. Phone checklist in `CODE.md` 9y.5.
 
-### 12l. Computer players that learn from the people they play against (PLAN, user 2026-11-13 21:25; build guide `CODE.md` 9z; NOT BUILT; DECISION PENDING)
+### 12l. Computer players that learn from the people they play against (PLAN, user 2026-11-13 21:25; build guide `CODE.md` 9z; DECIDED 2026-11-15: option 1, within a game; NOT BUILT)
 
 **Request (user 21:23 to 21:25):** "Can I make the AI learn by me playing against it?" Then: write it up as a plan, push, and build later.
 
@@ -700,7 +700,7 @@ From the user's Multiplayer test of 2.23:
 
 **Fairness:** a learning bot may use only what a person at the table could see. Hidden cards and the secret missing suit are never used.
 
-**Decision needed from the user:** which option (1, 2, 3, or a mix). Until then nothing is built. Option 1 would be version 2.31.0.
+**Decided 2026-11-15:** option 1 (within one game). Build not started; the next free version is 2.35.0. Open before building: should learning be on by default (plan: off until tested), and should it apply to Easy as well as Normal and Hard?
 
 **Open questions:** should learning be on by default (plan says off until tested)? Should it apply to Normal and Hard only, or also Easy?
 

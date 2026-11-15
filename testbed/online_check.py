@@ -22,6 +22,7 @@ tests/server/room.test.ts) and frames over FRAME_MAX (unit test too).
 Usage: npm run build && python3 testbed/online_check.py
 """
 
+import sys
 import functools
 import http.server
 import pathlib
@@ -349,8 +350,13 @@ def phase_d(browser, base, errors):
         check('before the stop: Ben is in the lobby', wait_for(lambda: step_of(ben) == 'lobby', 20))
     finally:
         stop_relay(proc)
-    check('relay stopped: Ben sees "Connection lost"', wait_for(lambda: ben.get_by_text('Connection lost').count() == 1, 20))
-    check('relay stopped: the host sees "Room closed"', wait_for(lambda: amy.get_by_text('Room closed').count() == 1, 20))
+    # Since 2.25 a dropped phone redials first (online.ts, AWAY_MS = 10 minutes) and shows
+    # "Reconnecting…" while it does. The 10-minute end is checked only with --long-away.
+    check('relay stopped: Ben sees "Reconnecting…"', wait_for(lambda: ben.get_by_text('Reconnecting… your place is kept.').count() == 1, 20))
+    check('relay stopped: the host sees "Reconnecting…"', wait_for(lambda: amy.get_by_text('Reconnecting… your room is kept.').count() == 1, 20))
+    if '--long-away' in sys.argv:
+        check('after 10 minutes: Ben sees "Connection lost"', wait_for(lambda: ben.get_by_text('Connection lost').count() == 1, 11 * 60))
+        check('after 10 minutes: the host sees "Room closed"', wait_for(lambda: amy.get_by_text('Room closed').count() == 1, 11 * 60))
     if amy and ben:
         for p in (amy, ben):
             p.context.close()
