@@ -41,7 +41,7 @@ Newest entries at the top. One entry per session, added before each commit.
 **Not done / notes:**
 - No playable test build and no phone checklist: step 3 is engine only, and the switch that turns learning on arrives in step 4. So there is nothing to try on a phone yet (CLAUDE.md rule 5: the test build comes once the switch exists).
 - `PROJECT.md` 12l still says NOT BUILT, which stays true. No rule changed. `CLAUDE.md` unchanged. Version stays **2.34.2** (`package.json` untouched); step 4 sets 2.35.0.
-- Pushed to branch `phase-4k-step-3` after the user said "push" (2026-11-15, 15:08). Not merged to `main`. The test build and phone checklist come with step 4.
+- Pushed to `main` (fast-forward) after the user said "push to main" (2026-11-15, 15:08); branch `phase-4k-step-3` kept as well. The test build and phone checklist come with step 4.
 - CLAUDE.md rule 8 asks for a new version with every pushed code change. The user asked for 2.34.2 to stay (step 4 sets 2.35.0), so the version is unchanged here; this is a known deviation from rule 8.
 
 ## 2026-11-15 (14:00) — Phase 4k step 2: arena learning options and measured neutral rates (no app change, no version bump, not committed)
