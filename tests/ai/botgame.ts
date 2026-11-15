@@ -15,7 +15,7 @@ import { decide, type Decision } from '../../src/ai/decide.ts';
 import { remember, newMemory, type Memory } from '../../src/ai/memory.ts';
 import { randomPersona, type Level, type Persona, type Personality } from '../../src/ai/persona.ts';
 import { seenBy, type AiSeen } from '../../src/ai/seen.ts';
-import { newHabits, noteHabits, type Habits } from '../../src/ai/learn.ts';
+import { learnedFactors, newHabits, noteHabits, type Habits } from '../../src/ai/learn.ts';
 
 /** A seat's level in the arena: a real level, or 'random' (random legal moves, the baseline). */
 export type SeatLevel = Level | 'random';
@@ -42,7 +42,10 @@ export interface BotGameOptions {
   readonly jokers?: boolean;
   /** Arena people seats (default: none, so every seat is a computer player as before). */
   readonly people?: PeopleSetup;
-  /** Keep a habit table for the game from the public log (CODE.md 9z; counting only until step 3). */
+  /**
+   * Keep a habit table for the game from the public log and give it to the computer seats
+   * (CODE.md 9z, step 3). People seats never learn, so they are always played with null.
+   */
   readonly learn?: boolean;
   /** Called for every decision that is about to be sent (before it is applied). */
   readonly onDecision?: (info: { seen: AiSeen; memory: Memory; persona: Persona; decision: Decision; session: Session }) => void;
@@ -56,6 +59,20 @@ export interface SeatResult {
   readonly personality: Persona['personality'];
   /** Place in each non-Ultimate round (1 = first out). */
   readonly places: number[];
+  /** True for a people seat (no computer tag): it is played by the bot code, but it never learns. */
+  readonly person: boolean;
+}
+
+/** Learned factors summed over the card decisions of computer Normal and Hard seats (--learn, step 3). */
+export interface LearnedSums {
+  /** Sum of the `risk` factor over those decisions. */
+  readonly risk: number;
+  /** Sum of the `jokerSave` factor over those decisions. */
+  readonly jokerSave: number;
+  /** How many card decisions were counted. */
+  readonly decisions: number;
+  /** How many of them had a factor other than 1 (the table reached their weights). */
+  readonly moved: number;
 }
 
 export interface BotGameResult {
@@ -68,6 +85,8 @@ export interface BotGameResult {
   readonly seats: SeatResult[];
   /** The game's habit table when `learn` is on (people seats only), else null. */
   readonly habits: Habits | null;
+  /** Learned factors over computer Normal and Hard card decisions when `learn` is on, else null. */
+  readonly learned: LearnedSums | null;
 }
 
 /**
@@ -202,6 +221,7 @@ export function playBotGame(opts: BotGameOptions): BotGameResult {
 
   let refused = 0;
   let crashed = 0;
+  const learned = { risk: 0, jokerSave: 0, decisions: 0, moved: 0 };
   const decisionMs: { level: SeatLevel; ms: number }[] = [];
   const maxSteps = 400000;
   let finished = false;
@@ -229,7 +249,19 @@ export function playBotGame(opts: BotGameOptions): BotGameResult {
         // During a notice only people tap OK (the session refuses computer seats); computer seats wait.
         const isPerson = seat < people;
         if (seen.view.phase === 'leadNotice') decision = isPerson ? noticeDecision(seen) : null;
-        else decision = level === 'random' ? randomDecision(seen, rng) : decide(seen, memory, persona, rng);
+        else if (level === 'random') decision = randomDecision(seen, rng);
+        else {
+          // People seats are played with null: a person does not learn from the table.
+          const mine = isPerson ? null : habits;
+          if (mine && seen.view.turn === id && (level === 'normal' || level === 'hard')) {
+            const f = learnedFactors(mine);
+            learned.risk += f.risk;
+            learned.jokerSave += f.jokerSave;
+            learned.decisions++;
+            if (f.risk !== 1 || f.jokerSave !== 1) learned.moved++;
+          }
+          decision = decide(seen, memory, persona, rng, mine);
+        }
       } catch {
         crashed++;
         skipUntil.set(id, s.log.length);
@@ -274,8 +306,18 @@ export function playBotGame(opts: BotGameOptions): BotGameResult {
       level: seatLevels[i] ?? 'normal',
       personality: personas.get(id)!.personality,
       places,
+      person: i < people,
     };
   });
   feed();
-  return { session: s, finished: finished || s.phase === 'gameOver', refused, crashed, decisionMs, seats, habits };
+  return {
+    session: s,
+    finished: finished || s.phase === 'gameOver',
+    refused,
+    crashed,
+    decisionMs,
+    seats,
+    habits,
+    learned: habits ? learned : null,
+  };
 }

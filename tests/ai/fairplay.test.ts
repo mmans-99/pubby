@@ -10,6 +10,7 @@ import type { Card } from '../../src/rules/cards.ts';
 import { seededRng, shuffle } from '../../src/rules/rng.ts';
 import type { PlayerId, Session } from '../../src/session/types.ts';
 import { decide } from '../../src/ai/decide.ts';
+import { rebuildHabits } from '../../src/ai/learn.ts';
 import { seenBy } from '../../src/ai/seen.ts';
 import { playBotGame } from './botgame.ts';
 
@@ -77,6 +78,41 @@ test('the bot makes the same move whatever the hidden cards are (at least 500 po
   }
   assert.ok(positions >= 500, `only ${positions} positions checked`);
   assert.equal(changed, 0, `${changed} of ${positions} decisions changed when hidden cards moved`);
+});
+
+// CODE.md 9z.6 step 3: the same check with learning on. Two seats are people (no computer tag), so
+// the habit table is built from real public events. Hidden cards must still not change a move, and
+// the table must change some moves, or the check would prove nothing.
+test('with learning on, the bot makes the same move whatever the hidden cards are (at least 500 positions)', () => {
+  let positions = 0;
+  let changed = 0;
+  let influenced = 0;
+  for (const n of [3, 5, 8]) {
+    for (let g = 0; g < 4; g++) {
+      playBotGame({
+        players: n,
+        levels: ['normal', 'easy', 'hard'],
+        rounds: 2,
+        seed: 7000 + n * 10 + g,
+        people: { count: 2, style: 'reckless' },
+        onDecision: ({ seen, memory, persona, session }) => {
+          const computerIds = session.players.filter((p) => p.computer).map((p) => p.id);
+          const table = rebuildHabits(session.log, session.order, computerIds);
+          const seenAfter = scrambled(session, seen.me, 4242 + positions);
+          const seenFake = seenBy(seenAfter, seen.me, session.log.length - seen.events.length);
+          const real = decide(seen, memory, persona, seededRng(99), table);
+          const fake = decide(seenFake, memory, persona, seededRng(99), table);
+          if (JSON.stringify(real) !== JSON.stringify(fake)) changed++;
+          const plain = decide(seen, memory, persona, seededRng(99), null);
+          if (JSON.stringify(real) !== JSON.stringify(plain)) influenced++;
+          positions++;
+        },
+      });
+    }
+  }
+  assert.ok(positions >= 500, `only ${positions} positions checked`);
+  assert.equal(changed, 0, `${changed} of ${positions} decisions changed when hidden cards moved`);
+  assert.ok(influenced > 0, 'the habit table never changed a move, so the check proves nothing');
 });
 
 test('scrambling keeps every pile the same size and the bot\'s own hand', () => {

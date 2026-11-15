@@ -12,6 +12,7 @@ import { betweenTricks, takeAllowed } from '../rules/play.ts';
 import type { Rng } from '../rules/rng.ts';
 import type { PlayerId, SessionAction } from '../session/types.ts';
 import { PERSONALITY_WEIGHTS, type Persona } from './persona.ts';
+import { learnedWeights, type Habits } from './learn.ts';
 import { handBadness, leadRisk, pSlapAfterMe, rankValue, yetToPlay } from './eval.ts';
 import { unknownPool, type Memory } from './memory.ts';
 import { searchScores } from './search.ts';
@@ -67,8 +68,17 @@ function hardCard(seen: AiSeen, m: Memory, ruleCard: () => string | undefined, r
   return best.avg - mine.avg >= HARD_TUNING.switchMargin ? best.id : normal;
 }
 
-/** My card on my turn (not a final-two choice). */
-export function chooseCard(seen: AiSeen, m: Memory, persona: Persona, rng: Rng): SessionAction | null {
+/**
+ * My card on my turn (not a final-two choice). `habits` is the game's learned table (CODE.md 9z,
+ * learn.ts), or null when learning is off; it changes only the weights of Normal and Hard players.
+ */
+export function chooseCard(
+  seen: AiSeen,
+  m: Memory,
+  persona: Persona,
+  rng: Rng,
+  habits: Habits | null = null,
+): SessionAction | null {
   const v = seen.view;
   if (v.turn !== seen.me || v.pendingFinalTwo !== null) return null;
   const legal = v.legalCardIds;
@@ -76,7 +86,9 @@ export function chooseCard(seen: AiSeen, m: Memory, persona: Persona, rng: Rng):
   const legalSet = new Set(legal);
 
   const ruleCard = (): string | undefined =>
-    v.ledSuit === null ? leadCard(seen, m, persona, legalSet) : followCard(seen, m, persona, legalSet);
+    v.ledSuit === null
+      ? leadCard(seen, m, persona, legalSet, habits)
+      : followCard(seen, m, persona, legalSet, habits);
 
   let cardId: string | undefined;
   if (persona.level === 'hard') {
@@ -92,8 +104,14 @@ export function chooseCard(seen: AiSeen, m: Memory, persona: Persona, rng: Rng):
 }
 
 /** Leading (nothing led yet, or only a joker has been played). */
-function leadCard(seen: AiSeen, m: Memory, persona: Persona, legal: ReadonlySet<string>): string | undefined {
-  const w = PERSONALITY_WEIGHTS[persona.personality];
+function leadCard(
+  seen: AiSeen,
+  m: Memory,
+  persona: Persona,
+  legal: ReadonlySet<string>,
+  habits: Habits | null,
+): string | undefined {
+  const w = learnedWeights(PERSONALITY_WEIGHTS[persona.personality], persona.level, habits);
   const hand = seen.view.myHand;
   const std = hand.filter(isStandard);
   const jokerId = jokerOf(hand, legal);
@@ -122,8 +140,14 @@ function leadCard(seen: AiSeen, m: Memory, persona: Persona, legal: ReadonlySet<
 }
 
 /** Following the led suit, or slapping when I have none of it. */
-function followCard(seen: AiSeen, m: Memory, persona: Persona, legal: ReadonlySet<string>): string | undefined {
-  const w = PERSONALITY_WEIGHTS[persona.personality];
+function followCard(
+  seen: AiSeen,
+  m: Memory,
+  persona: Persona,
+  legal: ReadonlySet<string>,
+  habits: Habits | null,
+): string | undefined {
+  const w = learnedWeights(PERSONALITY_WEIGHTS[persona.personality], persona.level, habits);
   const led = seen.view.ledSuit;
   if (led === null) return undefined;
   const hand = seen.view.myHand;

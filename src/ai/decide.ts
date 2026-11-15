@@ -36,6 +36,7 @@ import {
   chooseTap,
   chooseVote,
 } from './moves.ts';
+import type { Habits } from './learn.ts';
 import type { Memory } from './memory.ts';
 import type { Persona, ThinkKind } from './persona.ts';
 import type { AiSeen } from './seen.ts';
@@ -45,7 +46,11 @@ export interface Decision {
   readonly think: ThinkKind;
 }
 
-export function decide(seen: AiSeen, m: Memory, persona: Persona, rng: Rng): Decision | null {
+/**
+ * `habits` is the game's learned table (CODE.md 9z), or null for learning off (the default, and
+ * every game before 2.35.0). Only the card on my turn reads it; votes, swaps and the rest do not.
+ */
+export function decide(seen: AiSeen, m: Memory, persona: Persona, rng: Rng, habits: Habits | null = null): Decision | null {
   const v = seen.view;
   const s = seen.session;
   const me = seen.me;
@@ -84,7 +89,7 @@ export function decide(seen: AiSeen, m: Memory, persona: Persona, rng: Rng): Dec
   if (v.turn === me) {
     // A take-cards request is waiting: the trick waits for it.
     if (s.takeRequests.some((r) => !r.agreed)) return null;
-    const card = chooseCard(seen, m, persona, rng);
+    const card = chooseCard(seen, m, persona, rng, habits);
     return one(card, v.legalCardIds.length === 1 ? 'forced' : 'hard');
   }
 

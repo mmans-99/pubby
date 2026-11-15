@@ -401,7 +401,7 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [x] User approved the finished plan (2026-11-15, "Push")
 - [x] Step 1: `src/ai/learn.ts` and `tests/ai/learn.test.ts`, including the hidden-card test (`CODE.md` 9z.6; 23 tests, no app change, not in the app yet)
 - [x] Step 2: arena `--learn`, `--people`, `--people-style`; neutral rates measured (2000 games) into `LEARN_TUNING` (2026-11-15, not committed; no app change)
-- [ ] Step 3: wire into `moves.ts` / `decide.ts`; regression test (learning off = 2.34.2 moves); arena bars (9z.5)
+- [ ] Step 3: wire into `moves.ts` / `decide.ts`; regression test (learning off = 2.34.2 moves); arena bars (9z.5). BUILT 2026-11-15, pushed to branch `phase-4k-step-3` on the user's "push" (no version bump, per the user): regression and fair-play (learning on) pass; bars 1, 2, 4 pass; bar 3 open, its wording needs your decision (`CODE.md` 9z.5)
 - [ ] Step 4: driver, storage, setup switch, Multiplayer host switch, `?learnlog=1` readout; version 2.35.0
 - [ ] Step 5: MD files, test build, phone checklist (`CODE.md` 9z.5), push after the user says "Push it"
 

@@ -8,7 +8,9 @@
 //   Learning arena (CODE.md 9z.6 step 2), counting only:
 //   --people N                 the first N seats are people (bot code, no computer tag)
 //   --people-style bot|careful|reckless|mixed   their personality (default bot = a normal bot's random one)
-//   --learn                    keep a habit table per game and report the pooled rates of the people seats
+//   --learn                    keep a habit table per game from the people seats; computer Normal and Hard
+//                              bots play with it (CODE.md 9z.6 step 3); report the people's pooled rates,
+//                              the learned factors and the places of computer seats only
 //   e.g. --games 2000 --people 4 --learn   measures what the Normal bot does (the neutral rates)
 //
 // Output is JSON: games finished, refused moves (must be 0), crashed moves
@@ -104,6 +106,10 @@ interface Totals {
   decisionMs: Map<string, number[]>;
   /** Pooled chances and yes counts of every people seat, over all games (--learn). */
   habits: Record<HabitName, { chances: number; yes: number }>;
+  /** Places of computer seats only (no people seats), by level: the bots the learning bars compare. */
+  computerByLevel: Map<string, Acc>;
+  /** Learned factors summed over computer Normal and Hard card decisions (--learn, CODE.md 9z.5). */
+  learned: { risk: number; jokerSave: number; decisions: number; moved: number };
 }
 
 function emptyTotals(): Totals {
@@ -117,6 +123,8 @@ function emptyTotals(): Totals {
     bySeat: new Map(),
     decisionMs: new Map(),
     habits: { boldFollow: { chances: 0, yes: 0 }, highLead: { chances: 0, yes: 0 }, earlyJoker: { chances: 0, yes: 0 } },
+    computerByLevel: new Map(),
+    learned: { risk: 0, jokerSave: 0, decisions: 0, moved: 0 },
   };
 }
 
@@ -137,8 +145,15 @@ function absorb(t: Totals, r: BotGameResult): void {
       add(t.byLevel, seat.level, place);
       add(t.byPersonality, seat.personality, place);
       add(t.bySeat, i, place);
+      if (!seat.person) add(t.computerByLevel, seat.level, place);
     }
   });
+  if (r.learned) {
+    t.learned.risk += r.learned.risk;
+    t.learned.jokerSave += r.learned.jokerSave;
+    t.learned.decisions += r.learned.decisions;
+    t.learned.moved += r.learned.moved;
+  }
   for (const d of r.decisionMs) {
     const list = t.decisionMs.get(d.level) ?? [];
     list.push(d.ms);
@@ -152,6 +167,20 @@ function absorb(t: Totals, r: BotGameResult): void {
       }
     }
   }
+}
+
+/**
+ * Average learned factors over the computer Normal and Hard card decisions (CODE.md 9z.5 bar 3).
+ * `risk` below 1 = the bots play boldly; above 1 = carefully. `shareMoved` = how often a factor was not 1.
+ */
+function learnedSummary(t: Totals): Record<string, number | null> {
+  const n = t.learned.decisions;
+  return {
+    decisions: n,
+    averageRisk: n > 0 ? Math.round((t.learned.risk / n) * 10000) / 10000 : null,
+    averageJokerSave: n > 0 ? Math.round((t.learned.jokerSave / n) * 10000) / 10000 : null,
+    shareMoved: n > 0 ? Math.round((t.learned.moved / n) * 10000) / 10000 : null,
+  };
 }
 
 /** Pooled rate per habit: yes / chances over every people seat and game (null when no chances). */
@@ -177,6 +206,7 @@ function report(t: Totals, extra: Record<string, unknown> = {}): Record<string, 
     crashedMoves: t.crashed,
     averagePlaceByLevel: Object.fromEntries([...t.byLevel].map(([k, a]) => [k, mean(a)])),
     averagePlaceByPersonality: Object.fromEntries([...t.byPersonality].map(([k, a]) => [k, mean(a)])),
+    averagePlaceComputerBotsByLevel: Object.fromEntries([...t.computerByLevel].map(([k, a]) => [k, mean(a)])),
     averagePlaceBySeat: Object.fromEntries([...t.bySeat].map(([k, a]) => [`seat${k + 1}`, mean(a)])),
     decisionTime: decision,
     ...extra,
@@ -257,7 +287,7 @@ async function main(): Promise<void> {
           levels: args.levels,
           rounds: args.rounds,
           ...(people ? { people } : {}),
-          ...(args.setup.learn ? { learnedHabits: habitRates(t) } : {}),
+          ...(args.setup.learn ? { learnedHabits: habitRates(t), learnedBots: learnedSummary(t) } : {}),
         }),
         null,
         2,

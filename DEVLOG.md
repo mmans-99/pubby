@@ -4,6 +4,46 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-15 (14:55) — Phase 4k step 3: learning wired into the card choice; bar 3 open (no app change, no version bump, pushed to branch phase-4k-step-3)
+
+**User:** "build step 3 from CODE.md 9z.6" (with: keep the version at 2.34.2; no commit or push until "push"; update the MD files; say which tests fail for environment reasons; stop if one keeps failing after two fix attempts).
+
+**Repo:** `/home/claude/pubby` was not on disk, so it was cloned (shallow) at `1cfab6e` (steps 1 and 2 are in it). Branch `main`.
+
+**Built:**
+- `src/ai/moves.ts`: `chooseCard(seen, m, persona, rng, habits = null)`. `leadCard` and `followCard` take their weights from `learnedWeights(PERSONALITY_WEIGHTS[…], level, habits)`. Votes and reshuffle still read `PERSONALITY_WEIGHTS` directly.
+- `src/ai/decide.ts`: optional last parameter `habits: Habits | null = null`, passed to `chooseCard` (the card on my turn only).
+- `tests/ai/regress.test.ts` (new): (1) 500 recorded decisions with learning off match the 2.34.2 golden file; (2) Easy ignores a live habit table (4 people in the game, 4 seeds, every Easy decision the same with a table as with null), and the table does reach Normal bots' weights.
+- `tests/ai/regress-fixture.ts` (new, not a test): makes `tests/ai/fixtures/moves-2.34.2.json` from the code before this change (500 decisions, 7 seeded games, Normal 255, Hard 106, Easy 139).
+- `tests/ai/fairplay.test.ts`: a second test with learning on (two people seats, habit table from the public log, hidden cards scrambled). 0 moves changed. The table changed some moves, so the check is not empty.
+- `tests/ai/botgame.ts` and `testbed/ai_arena.ts`: `--learn` now gives the table to computer Normal and Hard seats. People seats are always played with `null` (a person does not learn). The arena reports places of computer seats only (`averagePlaceComputerBotsByLevel`) and the learned factors (`learnedBots`).
+
+**Checks:**
+- `tsx --test "tests/**/*.test.ts"`: 435 tests, 430 pass. The 5 failures are the server tests (health, rooms, socket, refusals, origin). Cause: `Cannot find package 'tsx'` (no `node_modules` in this sandbox). Ignored, as you asked.
+- `tsc --noEmit -p tsconfig.json`: clean. `tsconfig.rules.json` fails with `Cannot find type definition file for 'node'` (no `@types/node` here). Environment only; `src/rules` is not changed.
+- `node build.mjs` and the browser checks (`python3 testbed/run_checks.py --since origin/main`) could not run: `Cannot find package 'esbuild'`, and installs are refused in this session.
+- **Test failures during this step:** `regress.test.ts` test 2 failed twice, both times in the test, not the code. (1) I first required more than 100 Easy decisions; there were 80 in 4 games, so I lowered it to 50. (2) I then required that a habit table change a Normal decision; over 613 Normal decisions it changed none, because the nudge is small by design. I changed that check to "the table reaches the Normal player's weights", which is true in 184 of 312 positions. It passes now. Both were test-assumption fixes; no source change followed from them.
+
+**Arena bars (2000 games each, 4 players, `--workers 1`, paired: same seeds, `--learn` off then on, 2 bot seats and 2 people seats played by the bot code; levels Normal):**
+
+| People style | Normal places off | on | Learning worse by | Average `risk` factor (decisions) | Share of decisions moved |
+|---|---|---|---|---|---|
+| careful | 2.461 | 2.462 | +0.001 | 0.9919 (213,458) | 0.81 |
+| reckless | 2.514 | 2.510 | −0.004 | 1.0011 (220,452) | 0.80 |
+| mixed | 2.486 | 2.483 | −0.003 | 0.9957 (216,571) | 0.81 |
+
+- Bar 1 (0 refused, 0 crashes, every game finishes): **pass** in all six runs (2000 of 2000 each).
+- Bar 2 (no more than 0.05 worse): **pass** (worst +0.001).
+- Bar 3 (moves the right way; factor below 1 against reckless, above 1 against careful; 0.8 to 1.2): **not met as written.** The factors are 1.001 against reckless and 0.992 against careful, so the wording is backwards by name. The direction is right by behaviour: the pooled bold-follow rate is 0.440 for careful people (neutral 0.4168), so their bots play boldly (factor below 1); it is 0.392 for reckless people, so their bots play cautiously (factor above 1). Also the effect is about 1%, far smaller than bar 3 seems to expect. `jokerSave` stayed at 1.000 in every run (the early-joker rate of 0.001 is at neutral). **Your decision:** reword bar 3 to behaviour and accept the small effect, or retune (a later plan). I have not changed the bar.
+- Bar 4 (old bars and p95): **pass.** The old pass bars on the changed code and on 2.34.2 give the same averages (Normal vs Random 1.801 / 3.199; Normal vs Easy 2.237 / 2.763; Normal vs Hard 2.625 / 2.375), since no learning runs there. p95 decision time: Hard 8.76 → 8.37 ms, Normal 0.08 → 0.07 ms, Easy 0.06 → 0.05 ms (no rise). All 9 bars pass for both.
+- The 2.34.2 bars run was stopped once by the 30-minute background limit before it wrote output; it was rerun alone and completed.
+
+**Not done / notes:**
+- No playable test build and no phone checklist: step 3 is engine only, and the switch that turns learning on arrives in step 4. So there is nothing to try on a phone yet (CLAUDE.md rule 5: the test build comes once the switch exists).
+- `PROJECT.md` 12l still says NOT BUILT, which stays true. No rule changed. `CLAUDE.md` unchanged. Version stays **2.34.2** (`package.json` untouched); step 4 sets 2.35.0.
+- Pushed to branch `phase-4k-step-3` after the user said "push" (2026-11-15, 15:08). Not merged to `main`. The test build and phone checklist come with step 4.
+- CLAUDE.md rule 8 asks for a new version with every pushed code change. The user asked for 2.34.2 to stay (step 4 sets 2.35.0), so the version is unchanged here; this is a known deviation from rule 8.
+
 ## 2026-11-15 (14:00) — Phase 4k step 2: arena learning options and measured neutral rates (no app change, no version bump, not committed)
 
 **User:** "build step 2 from CODE.md 9z.6".
