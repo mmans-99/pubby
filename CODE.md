@@ -3259,6 +3259,147 @@ Uses `playBotGame` from `tests/ai/botgame.ts` with `onDecision`. For each level 
 4. **Easy** still slips now and then (expected).
 5. A whole game plays to the end with no stalls; Fast forward still works.
 
+## 9ag. Forfeit any time in the last two, jokers kept when slapped, iPad landscape (PLAN, user 2026-11-15 22:55 / 23:00; spec `PROJECT.md` 12s and sections 6 and 7; written for Haiku; target **2.34.5**; NOT BUILT)
+
+### 9ag.0 Read first
+- Spec: `PROJECT.md` 12s, section 6 (forfeit at any time) and section 7 ("You can't hold only jokers").
+- Three parts, each can be built and tested on its own: **A** forfeit, **B** jokers, **C** layout. Build them in that order.
+- **Computer players are not changed** (`src/ai/` stays as it is, apart from the event handling in B.4 if a test shows it is needed).
+- Version: `package.json` 2.34.4 → **2.34.5** (2.35.0 stays reserved for Phase 4k).
+- Building here: `esbuild` and `typescript` are in `/opt/npm-tools/node_modules`. Link them before building: `mkdir -p node_modules && ln -sf /opt/npm-tools/node_modules/esbuild node_modules/esbuild && ln -sf /opt/npm-tools/node_modules/@esbuild node_modules/@esbuild`, then `node build.mjs` (works, checked 2026-11-15). Playwright and `/usr/bin/google-chrome` are there for the browser checks (`chromium.launch(executable_path='/usr/bin/google-chrome')`). Don't commit `node_modules`.
+
+### 9ag.1 Part A: forfeit at any time in the last two
+**Rules (`src/rules/play.ts`):**
+- Add and export `canForfeit(state: PlayState, player: PlayerId): boolean`: true when the round is not over, the players not yet finished (`order` minus `finished`) are exactly two, and `player` is one of them. (While the other player faces the pick-up choice they have no cards in hand but are not finished, so the count is still two; that is intended.)
+- `forfeit()`: replace the `facingChoice` / `forfeitAllowed` check with `canForfeit`. Error text stays `${player} cannot forfeit` when false. The rest (end order, `forfeitedBy`, event) is unchanged.
+- Keep the `forfeitAllowed` field in `PlayState` (old saved games carry it); it no longer decides anything. Update its comment.
+- Update the file's top comment (final two block).
+**Session view (`src/session/view.ts`):** `canForfeit: !!play && canForfeit(play, me)`.
+**UI (`src/ui/game.ts`):** no change needed: the Forfeit button already shows when `v.canForfeit` and needs two taps. Check it shows on the hand screen when it is not my turn, too (it is built outside `myTurn` already). On one phone (pass-and-play) it shows for whoever is holding the phone.
+**Network:** no change (`forfeit` is already a phone move; the host's session checks it).
+**Computer players:** `src/ai/decide.ts` only forfeits from `pendingFinalTwo`. Leave it. Add a test that a computer player in the last two, not facing the choice, never sends `forfeit` (B.5 test 5).
+**Test bot (`testbed/bot.js`):** today it clicks Forfeit with `cfg.forfeitChance` only inside the pick-up panel. Leave that. Add `cfg.anyForfeitChance` (default 0): when a "Forfeit" button is on screen and there is no pick-up panel, click it with that chance (two taps). `playthrough.py` sets 0.01 for the 2-player game only, so the new path is covered without ending most rounds early.
+**Quick rules (`src/content/quick-rules.md`, final two part):** add one line: "Either of the last two can forfeit at any time (tap Forfeit twice): you take last place."
+
+### 9ag.2 Part B: jokers set aside with the last normal card
+**State:** add to `PlayState`:
+```ts
+/** Jokers set aside with a player's last normal card (PROJECT.md 7). Thrown away if that player goes out; back into the hand if they pick up (slapped, or the final-two pick-up). */
+readonly asideJokers?: Readonly<Record<PlayerId, readonly Card[]>>;
+```
+Optional, so saved games from 2.34.4 load (`?? {}` everywhere it is read). `startPlay` sets `{}`.
+**`playCard`:** where it now throws the jokers away (`rest.every(isJoker)`): move them to `asideJokers[player]` instead, and do **not** add them to `usedJokers` and do **not** push `jokersDiscarded` yet. The hand is still emptied, so every "last card" check works as today.
+**One helper, `settleAsideJokers(state, events)`,** returns the new state: for each player in `asideJokers`:
+- hand not empty (they picked up): put the jokers back into the hand (at the end of the hand), clear the entry;
+- hand empty: add the jokers to `usedJokers`, push `{ type: 'jokersDiscarded', player, count }`, clear the entry.
+**Call it:**
+1. at the start of `resolveTrick` (after a slap the slapped player's hand already holds the trick, so a slapped player gets the jokers back; a player who went out has an empty hand and loses them). Do it **before** `finished` and `stillIn` are worked out, because a player who gets jokers back is not out.
+2. in `endRound` (the forfeit path and any end not through `resolveTrick`), before the round-end event.
+3. **not** in the final-two "higher last card" branch of `resolveFinalTwo`: there the jokers stay aside while the player chooses.
+4. in `pickUpWastePile`: after the waste pile is added to the hand, the player's aside jokers go back into the hand too (use the helper).
+5. `forfeit` goes through `endRound`, so a forfeiting player's aside jokers are thrown away there.
+**Check these cases by hand while building** (each becomes a test in B.5): last normal card as a slap (goes out, jokers thrown away); last normal card followed and the trick ends normally (out, thrown away); last normal card was the highest of the led suit and someone slaps (picks up, jokers back in hand); final two, higher last card, pick up (back); final two, higher, forfeit (thrown away); final two, lower last card (wins, thrown away).
+**Who sees what:** the card count of the player shows 0 while the jokers are aside (same as today), then the picked-up cards plus the jokers. No new event is needed for the "back in hand" case: the count shows it, as a slap pick-up does today. `jokersDiscarded` now comes later in the event list (at the trick or round end). Check `src/ui/game.ts` (the "Jokers out" notice), `src/ai/memory.ts` and `src/ai/learn.ts` still read it right; they count it when it comes, so they need no change.
+**Computer players' memory (fair play):** today a joker discarded counts as played as soon as the last card is played. Now it is counted only when it really leaves. A computer player who sees a player pick up after a slap must not assume those jokers are gone: they are not in `m.jokersPlayed`, so they stay "somewhere unknown", which is right.
+**Quick rules (`jokers` part):** change "any jokers left are thrown away and that was your last card" to "that was your last card: your jokers are thrown away if you go out, and come back to your hand if you get slapped or pick up the waste pile."
+
+### 9ag.3 Part C: the game screen on tablets (iPad landscape first)
+**What was seen (2026-11-15, built 2.34.4, Playwright at 1180 × 820, 1024 × 768, 1366 × 1024 and 820 × 1180):**
+- Landscape: the hand cards are sized for the row height (200 px), so the fan is too wide for the hand column (window − 16 − 170 px) and too tall: the bottom of the cards is cut off below the screen, and with 12 to 13 cards the fan runs over the action column (the Play / "Pick a card" button).
+- The action column's button stretches into a tall box (about 170 × 200 px).
+- The 😂 button (`.reactions-toggle`, bottom-left) sits on top of the cards in landscape, and in portrait on an iPad (the fan reaches down into the bar row).
+- Side players' fans of card backs are cut off by the table's edge (the table slot has `overflow: hidden`).
+- User's photos: Manual / Auto / Deal are cut off in landscape (three buttons don't fit the 170 px column).
+**Fixes:**
+1. **Hand fits its box.** Find where the hand calls `fanLayout(n, width, maxCardW, minCardW, maxH)` (`src/ui/cards.ts` line ~85; caller in `src/ui/game.ts`). Pass the real hand-slot width (`lay.handW`) and height (`lay.handH`) and make the card size the smaller of "fits the height" and "fits the width" (the step between cards may shrink, down to 22 px; past that use two rows as it does now). The raised (selected) card may stick up above the row by its usual lift, nothing more. No card may go below the hand slot.
+2. **Action column on wide screens:** `SIDE_BAR_W` becomes `sideBarW(viewW) = clamp(0.17 * viewW, 170, 240)` (`src/ui/layout.ts`; keep 170 on phones). The buttons in the column are their normal height (`.big` about 56 px), centred in the column, not stretched (`align-self: center; height: auto`). The deal controls (Manual / Auto / Deal all) wrap onto two lines inside the column when they don't fit on one; they are never cut off.
+3. **😂 button off the cards.** Landscape: it sits at the top of the action column (above the Play button), not over the hand. Portrait: stays bottom-left in the bar row; fix 1 keeps the cards out of that row. Its sheet (`.reactions-sheet`) still opens upwards from it and stays on screen.
+4. **Side fans inside the table.** In `seatLayout` / the side-seat fan drawing (`src/ui/table.ts`), keep each fan's box inside the table box with a small margin (as the top seat already is), or let the fan show by setting the fan's offset so its outer edge is at the table edge. Use `seatCollisions` style checks so seat discs, names and fans don't overlap.
+5. Phones must not change: 390 × 844, 844 × 390, 568 × 320 look the same as 2.34.4 (compare screenshots).
+**New check script `testbed/tablet_check.py`** (single player vs 3 computer players, Fast, like `solo_check.py`; bot.js taps the person's seat). Viewports: 1180 × 820, 1024 × 768, 1366 × 1024, 1194 × 834 (landscape), 820 × 1180, 1024 × 1366 (portrait), and the phones 390 × 844, 844 × 390. At (a) the deal screen, (b) my turn with the most cards in hand seen so far (at least 13; also force a big hand by playing on until a slap pick-up or use a saved game with 30 cards), (c) the final-two choice if reached. Check with bounding boxes:
+- every `.hand .card` is inside the viewport and inside the hand slot (top may stick up by the lift only);
+- no hand card overlaps the action slot's buttons or `.reactions-toggle`;
+- the deal buttons and the Play button are fully inside the viewport and not covered (`elementFromPoint` at their centre is the button);
+- every side fan is inside the table slot;
+- no page errors.
+Save a screenshot of each to `/tmp/tablet/` and send them to the user with the test build.
+
+### 9ag.4 Tests (`tests/`)
+- `tests/rules/final-two.test.ts`: change line ~85 (`forfeit(up, 'c')` must still throw: c is out or not one of the two). Add: (1) last two, no pick-up yet, either player can forfeit on the other's turn and mid-trick; finishing order and `forfeitedBy` right. (2) 2-player game, first trick: forfeit works. (3) three players still in: forfeit throws. (4) while the other player faces the pick-up choice, the waiting player can forfeit; the chooser takes the higher place.
+- `tests/rules/play.test.ts` (jokers): the six cases in 9ag.2, plus: (5) a 2.34.4 saved `PlayState` with no `asideJokers` field plays on; (6) total cards are kept: hands + waste + used jokers + aside = the dealt cards, after every action in a random 200-game run (use the session helpers if there is a deal-to-end loop).
+- `tests/session/` : `canForfeit` in the view for both players of the last two, and false for a third player still in.
+- `tests/ai/`: (5) in 200 bot games, no computer player ever sends `forfeit` unless it faced `pendingFinalTwo`. `fairplay.test.ts`, `regress.test.ts` (2.34.3 fixture) must pass unchanged; if the regress test changes, list which decisions changed and why (the only expected cause is a joker coming back after a slap).
+- `tests/ui/layout.test.ts`: `sideBarW` (170 at 844 wide, 200 at 1180, 240 at 1366+); hand fan fits `handW` × `handH` for n = 1 to 40 at the tablet sizes.
+
+### 9ag.5 Checks and version
+- `package.json` 2.34.5. `node --test tests/**/*.test.ts` (Node 22 strip-types; `tsx` is not installed, so the server tests fail for that reason only), `tsc --noEmit -p tsconfig.json`, and `tsc --noEmit -p tsconfig.rules.json` with a borrowed `@types/node` (the deploy runs `npm run check`; see DEVLOG 21:10 for why).
+- `node build.mjs`, `python3 testbed/tablet_check.py`, `python3 testbed/solo_check.py`, `python3 testbed/playthrough.py`, `python3 testbed/run_checks.py` where they can run; say which could not and why.
+- Test build: publish `dist/index.html` as a private test page (CLAUDE.md rule 5) and give the user the link and the 9ag.6 checklist. Push only on "push".
+
+### 9ag.6 Phone and iPad checklist (2.34.5)
+1. **Forfeit (any game, last two left):** the Forfeit button shows for both of you, on your turn and not. Tap once: it turns red and says "Tap again to forfeit (last place)". Tap again: the round ends, you are last, the other player is above you.
+2. 2-player game: Forfeit is there from the first trick.
+3. The old choice still works: higher last card → "Pick up or forfeit" panel, both buttons as before.
+4. Play against the computer to the last two: the computer players never forfeit except from the pick-up-or-forfeit choice.
+5. **Joker:** get down to one normal card and one joker. Play the normal card as the highest of the led suit and get slapped: the joker is back in your hand with the picked-up cards. Play the normal card and go out: "Jokers out" shows and you're out. Final two, higher last card with a joker left: pick up → the joker is in your hand.
+6. **iPad landscape:** your hand fits on screen with nothing cut off at the bottom, even with 13 or more cards; the Play button is a normal button beside the hand and never covered; the 😂 button is above the Play button, not on the cards; Manual / Auto / Deal are whole while dealing; the side players' card fans are not cut off.
+7. **iPad portrait and your phone:** look the same as before, except the 😂 button no longer sits on the cards.
+
+## 9ah. Last trick before the results, Deal again per deal, "Ultimate Badboy" (PLAN, user 2026-11-15 23:11 / 23:12; spec `PROJECT.md` 12t and 2a; written for Haiku; target **2.34.6**; build **after 9ag**; NOT BUILT)
+
+### 9ah.0 Read first
+- Spec: `PROJECT.md` 12t and section 2a. Three parts: **D** last trick, **E** deal again, **F** Ultimate Badboy. Build in that order; each is testable alone.
+- Version: `package.json` → **2.34.6** (or 2.34.5 if 9ag and 9ah are built and pushed together; say which).
+- Building and browser checks here: see 9ag.0 (esbuild from `/opt/npm-tools`, Playwright with `/usr/bin/google-chrome`).
+- **Rules (`src/rules/`) are not changed by D or F.** E changes `src/session/session.ts` only.
+
+### 9ah.1 Part D: the last trick of a round is shown until tapped
+**Cause (checked 2026-11-15):** `src/rules/play.ts` `resolveFinalTwo` ends the round with `endRound(...)` and no `trickResolved` event (so do `forfeit` and the "both went out" branch). `src/ui/game.ts` `absorb()` builds `finished` (and starts `trickAnim`) only on `trickResolved`, so nothing is drawn: the next draw is the results stage, and `g.lastTrick` keeps the trick before.
+**Fix (UI only, `src/ui/game.ts`):**
+1. In `absorb()`'s event loop: on `roundEnded`, if `trickLog.length > 0`, treat it as a finished trick: `lastTrick = { plays: trickLog, slap, nextLeader: null }`, `finished = { plays: trickLog, slapped: slap?.slapped ?? null }`, then clear `trickLog`. (When the round ended through `resolveTrick`, `trickResolved` already came first and `trickLog` is empty, so nothing doubles.)
+2. Mark the animation final: `TrickAnim` gets `final: boolean`, true when `events` holds a `roundEnded` (both paths above).
+3. `driveTrickAnim()`: for a final trick in `step === 'hold'`, **don't** start the hold timer. The step stays `hold` until the player taps. Exception: `fastForwardOn() || skipping() || instantSkipping()` → use the normal `TRICK_HOLD_MS` (no wait).
+4. `trickFinishStage()`: when `a.final && a.step === 'hold'`, add a line on the felt ("Tap to see the results", class `hint center`, inside the table, not over the trick cards) and make the whole table slot one button (`role="button"`, `aria-label="See the results"`, `onclick`: set `a.step = 'fly'` (or `'wait'` if its SLAP! pop-up is still up) and `update({})`). Keep the hand drawn as it is.
+5. Pop-ups: the round-over (`lastTwo`) and any `slap` pop-up are already held back while `trickAnim` is up (`popupFor`, line ~1426 `trickAnim && trickAnim.step !== 'wait'`). Check that the SLAP! pop-up of a round-ending slap still shows **before** the tap (its step is `wait`), and the round-over pop-up shows **after** the cards move.
+6. Network games: every phone runs its own `absorb()`, so each phone taps its own; nothing is sent. The host's Next round button is on the results stage, so the host taps first; that's fine.
+7. Pass-and-play: the trick shows on whatever screen is up (table or hand), one tap.
+**Test bot (`testbed/bot.js`):** add a step: if "Tap to see the results" is on screen, click it (before the other checks). Otherwise `playthrough.py` and `solo_check.py` stall at every round end.
+**Checks:** in `testbed/tablet_check.py` (9ag) or a new `testbed/lasttrick_check.py`: play single player to a round end (Fast), at the round end assert the trick cards (`.round-table .trick-play`) are drawn and "Tap to see the results" shows; advance the fake clock 10 s: still there; click: the round-over pop-up shows, then results. Repeat with 2 players (final two from the first trick). Screenshot each.
+
+### 9ah.2 Part E: deal again once per deal, as many deals as wanted
+**Now:** `reshuffleUsed` is set by `callVote` and reset only by `startNextRound`; `afterDealStep` skips the reshuffle window when `reshuffleUsed` (the round starts by itself after a redeal); the button then says "Used".
+**Change (`src/session/session.ts`):**
+- `afterDealStep`: always `return { ...s2, phase: 'reshuffle', reshuffleUsed: false }` (delete the skip). The field now means "a vote was held on this deal"; keep the name (saved games). Update its comment in `src/session/types.ts`.
+- `callVote` (reshuffle): unchanged (`fail` if `reshuffleUsed`, so one vote per deal).
+- Vote result: passed → redeal as now (back to `dealing`; when the deal completes, `afterDealStep` opens the window again). Failed → `afterReshuffleWindow` as now (the round starts with that deal).
+- The top-of-file comment and the "After a reshuffle the vote is used up" comment: update.
+**UI:** no logic change (`canCallReshuffle` already reads `!s.reshuffleUsed`). After a redeal the S1 screen (`roundstart.ts` `reshuffleStage`) and the network `beforeRound` (`netscreens.ts`) show again with "Deal again?". Pass-and-play: "Look at cards" again before Start, as after the first deal.
+**Computer players (`src/ai/moves.ts` `chooseCallVote`):** no change needed (gated by `canCallReshuffle`). But check it can't loop: run 300 four-player all-computer rounds (`tests/ai/botgame.ts` or `testbed/ai_arena.ts`) and report the average and the most deals per round. **Bar:** average under 1.5 deals per round, most under 8. If not, stop and write "🔁 Switch to Opus" (don't invent a limit).
+**Quick rules (`src/content/quick-rules.md`):** line 32 "(once per round)" → "(once per deal: if it passes, you can ask again after the new deal)"; line 62 "(reshuffle, once per round)" → "(reshuffle, once per deal)".
+**Tests:** `tests/session/`: (1) pass a reshuffle vote, deal: phase is `reshuffle`, `canCallReshuffle` true; pass again: dealt a third time; (2) a failed vote starts the round (phase leaves `reshuffle`); (3) a second `callVote` on the same deal fails "Only one reshuffle vote per round" (change the message to "…per deal" and update any test that matches the old text); (4) 2-player (asker + agree) works the same; (5) round 2 and later behave the same. The trivia "most reshuffle votes" still counts every call.
+
+### 9ah.3 Part F: "You are the Ultimate Badboy!!" (private, four aces)
+**No session or network change.** Each phone works it out from its own player's hand (`playerView(s, me).myHand`), so nothing is logged or sent and other players can't learn it.
+1. Helper `hasFourAces(hand: readonly Card[]): boolean` in `src/ui/cards.ts` (four standard cards of rank 14). Unit test.
+2. **When to check** (`src/ui/game.ts`, in `absorb()` after the new session is taken in, or in the draw for the hand screen):
+   - after a deal completes (event `dealComplete` in this batch), for the player whose hand this phone shows (`ownSeat(g)`; on one phone, the player when their private hand screen is first shown for this deal: `stage === 'hand'` / the "Look at cards" hand-off reaching them);
+   - after the hidden swap (event `swapped` / the swap reveal for that player, `roundstart.ts` `swapReveal`) if the new hand has four aces and the dealt hand did not.
+   - **Once per deal per player:** key `${round}:${dealIndex}:${player}`, where `dealIndex` counts `dealComplete` events this round (from `s.log`). Keep the keys in a module `Set` (not saved; after a reload it may show again, which is fine).
+   - Never for computer players, never on the shared table screen in pass-and-play.
+3. **Pop-up:** new `Popup` kind `badboy` (`src/ui/store.ts`), drawn like the SLAP! pop-up (`.popup.slap` style: big comic word with the same burst; the text "You are the Ultimate Badboy!!" on two lines on a phone, "Ultimate Badboy!!" as the big word and "You are the" small above it). Stays `SLAP_MS` (4 s) with the countdown bar, closes on a tap too. Not on other phones, no reactions from computer players.
+4. **Sound:** new `Sfx` `'badboy'` in `src/audio/sfx.ts`: an epic fanfare, about 2 s: a low `kick` hit, a rising three-note `brass` chord (e.g. A3-E4-A4 then C#5), and a `bell`/`reverb` tail; `BIG` set, `DUR` 2.0. Play it when the pop-up opens. It follows the effects on/off and volume setting like every effect. Add it to `testbed/sound_check.py` if that lists every effect.
+5. **Checks:** `tests/ui/` test for `hasFourAces`; a browser check (fake a deal: start single player with a seeded game, or set `pubby.currentGame` in localStorage to a session where the person holds four aces at `reshuffle`, then reload and "Carry on") that the pop-up shows once, not again on the next draw, and is not shown for a computer seat. Screenshot it.
+
+### 9ah.4 Checks and version
+- Version as in 9ah.0. `node --test` (all), both `tsc` configs (9ag.5), `node build.mjs`, the browser checks above, `solo_check.py`, `playthrough.py` (with the bot.js step from D), `run_checks.py` where they can run.
+- Test build link + the checklist below. Push only on "push".
+
+### 9ah.5 Phone checklist (2.34.6)
+1. **Last trick:** play to the end of a round (vs computer, 4 players, and a 2-player game). The last trick stays on the table with "Tap to see the results". Wait: it stays. Tap: the cards slide away, then the round-over pop-up and results. If the round ends on a slap, SLAP! shows first.
+2. With only computer players left, Fast forward and Skip don't stop at the last trick.
+3. **Deal again:** after the deal, vote "Deal again?" and pass it: after the new deal you're back on the screen with Look at cards / Deal again? / Start, and Deal again? works again. A failed vote starts the round. Try it in round 2 and 3 too, and on two phones.
+4. **Badboy:** hard to get by chance (about 1 in 400 hands with 4 players); use the test link's "four aces" test game (the build guide's check sets one up) to see it: the pop-up and the fanfare on your screen only; the other phone shows nothing.
+
 ## 8a. Playable test builds (required before every commit)
 
 `CLAUDE.md` rule 5: the user tests every change on their phone before approving a commit.

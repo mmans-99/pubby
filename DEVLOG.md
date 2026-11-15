@@ -4,6 +4,32 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-15 (23:15) — Plan: last trick before results, Deal again per deal, Ultimate Badboy (docs only, no version bump)
+
+**User (23:11):** last trick not shown at round end; "Deal again" gone after one use; a private "You are the Ultimate Badboy!!" pop-up for four aces. **Answers (23:12):** last trick stays until tapped; more than one deal again in a round; Badboy after the deal and after the swap, with an epic sound. Also asked where rejoining after a dropped connection is.
+
+**Found:**
+- Last trick: `resolveFinalTwo` (and forfeit) end the round with no `trickResolved` event; `game.ts` `absorb()` only animates a trick on `trickResolved`, so the last trick is never drawn.
+- Deal again: the session resets `reshuffleUsed` each round (checked rounds 1 to 4 with a script), so it was the "once per round" rule; after a redeal the round also started by itself.
+- Rejoin: not built (Nearby slice 4, Online O3). Only the 10-minute "Away" seat while Pubby stays open.
+
+**Plan written:** `PROJECT.md` 12t and 2a; `CODE.md` 9ah; `TODO.md` Phase 4r. Target 2.34.6, built after 9ag (2.34.5).
+
+---
+
+## 2026-11-15 (23:00) — Plan: forfeit any time in the last two, jokers kept when slapped, iPad layout (docs only, no version bump)
+
+**User (22:55, with 4 iPad photos):** wants a forfeit in the last two (a player can get trapped being slapped), says a joker vanishes when you play your last normal card and get slapped, and reports iPad landscape UI problems. **Answers (23:00):** forfeit at any time, in every game size; computer players left as they are (pick-up-or-forfeit stays); jokers also come back after the final-two pick-up.
+
+**Found:**
+- Joker: `src/rules/play.ts` `playCard` throws the jokers away the moment the last normal card is played, before the trick ends, so a slap pick-up can't bring them back. Section 7 also said the final-two pick-up loses them (now changed).
+- Forfeit: today only the player facing the pick-up choice, or who picked up, can forfeit (`forfeitAllowed`). The two-tap Forfeit button already exists.
+- Layout: built 2.34.4 here (esbuild from `/opt/npm-tools`) and screenshotted at four iPad sizes. Landscape: hand too big for its row (cut off at the bottom, runs over the Play button with 12+ cards), Play button stretched into a tall box, 😂 button on the cards (also iPad portrait), side fans cut by the table edge. The deal buttons being cut off is from the user's photos.
+
+**Plan written:** `PROJECT.md` 12s and sections 6, 7 and the decided list; `CODE.md` 9ag; `TODO.md` Phase 4q. Target 2.34.5.
+
+---
+
 ## 2026-11-15 (21:10) — Build: computer players stop leading into a known missing suit (2.34.3, pushed to main as effd0fd)
 
 **User:** "Yes, and then code it with haiku" (plan 20:31), then "Code it" on Haiku.

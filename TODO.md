@@ -332,6 +332,23 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [x] Tests (`tests/ai/lead_slap.test.ts`), new regress fixture 2.34.3, `testbed/lead_check.ts` (bar met: 0 for Normal and Hard); arena bars (see DEVLOG)
 - [ ] Test build (not possible in this sandbox: esbuild missing) and phone checklist (`CODE.md` 9af.8); push on "push"
 
+## Phase 4q — Forfeit any time in the last two, jokers kept when slapped, tablet layout (plan 2026-11-15 23:00, `PROJECT.md` 12s, build guide `CODE.md` 9ag; target 2.34.5; NOT BUILT)
+
+- [x] Plan approved (user 2026-11-15 23:00: forfeit any time, every game size, computers unchanged, jokers back on pick-up too)
+- [ ] Part A: forfeit at any time in the last two (`canForfeit`), quick rules line, bot.js `anyForfeitChance`
+- [ ] Part B: jokers set aside with the last normal card (`asideJokers`, `settleAsideJokers`), quick rules text
+- [ ] Part C: tablet layout (hand fits its box, side column width, Play button size, 😂 off the cards, deal buttons whole, side fans inside the table); `testbed/tablet_check.py`
+- [ ] Tests (9ag.4), version 2.34.5, test build and checklist (9ag.6); push on "push"
+
+## Phase 4r — Last trick before results, Deal again per deal, Ultimate Badboy (plan 2026-11-15 23:12, `PROJECT.md` 12t, build guide `CODE.md` 9ah; target 2.34.6, after Phase 4q; NOT BUILT)
+
+- [x] Plan approved (user 2026-11-15 23:12: last trick until tapped; more than one deal again; Badboy after deal and swap, with an epic sound)
+- [ ] Part D: last trick shown until tapped (UI), bot.js step, check script
+- [ ] Part E: one reshuffle vote per deal, window opens again after a redeal; quick rules; loop bar for computer players
+- [ ] Part F: "You are the Ultimate Badboy!!" pop-up and fanfare, private, once per deal
+- [ ] Tests, version, test build and checklist (9ah.5); push on "push"
+- [ ] **Not planned yet:** rejoining a multiplayer game after a drop (Nearby slice 4, Online O3); needs an Opus plan
+
 ## Phase 5 — Polish
 
 - [ ] Animations for slap and trick resolution

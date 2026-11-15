@@ -58,9 +58,9 @@ The order of steps 3 and 4 does not matter to the players, so the order above is
 - **Who can call it:** Any player.
 - **When:** Before every round, after everyone has looked at their cards. Once the round has begun, it can no longer be called.
 - **Passing rule:** Majority vote, once everyone has voted (2.32). The player who calls it is an automatic YES. If there is no majority, the host decides.
-- **Closing the window:** If nobody calls a vote, the host taps "Start the round". After a vote, the round carries on by itself (after the new deal if it passed).
+- **Closing the window:** If nobody calls a vote, the host taps "Start the round". After a failed vote, the round carries on by itself. After a passed vote, the cards are dealt again and the window opens again (see below).
 - **If it passes:** The dealer of that round shuffles the cards again and deals them again. This includes the hidden decks.
-- **Once per round:** Only one reshuffle vote per round. After a vote (passed or failed), no other reshuffle vote can be called that round. After a reshuffle, players keep the new deal.
+- **Once per deal, as many deals as wanted (user 2026-11-15 23:12, section 12t; was "once per round"):** one reshuffle vote per deal. If it passes, after the new deal everyone looks at their cards again and "Deal again?" is back, so another vote can be called (no limit on how many times a round is dealt). If a vote fails, the round starts with that deal.
 
 ### 2b. Dealing
 - **The deck:** One standard 52-card deck for every player count, plus jokers when the joker rule is on (section 7).
@@ -181,6 +181,7 @@ The Ace of Spades has no special rule. It is an ordinary card.
 - **Last card higher** than the other player's card: that player must choose:
   - **Pick up the whole waste pile** (including this trick) and play on. They lead next. They keep the option to forfeit at any time while two players are left.
   - **Forfeit:** they take last place (the same as a Bhabhi) and the other player takes the higher place. The round ends.
+- **Forfeit at any time (user 2026-11-15 23:00, section 12s):** either of the last two players may forfeit at any time while only the two of them are left in the round: on their turn or not, mid-trick, and while the other player is choosing pick up or forfeit. This is in every game size, so in a 2-player game it is there from the first trick. They take last place and the other player takes the higher place; the round ends. It needs two taps ("Forfeit", then "Tap again to forfeit (last place)"). This is **added** to the pick-up-or-forfeit choice above, which stays as it is. **Computer players do not use it**; they keep their existing pick-up-or-forfeit choice only.
 - **Jokers in the final two:** Jokers can always be played, including against a last card. A last card that meets only a joker (no normal card from the other player) goes out unopposed and **wins** (section 7).
 - **Both go out in the same trick:** the lower card, or the slapper, wins. The other takes last place.
 - **Only the player who played their last card** can face the pick-up-or-forfeit choice.
@@ -196,7 +197,11 @@ The Ace of Spades has no special rule. It is an ordinary card.
 - **Dealt from the player deck.** Jokers are part of the normal deal, not set aside.
 - **Joker count shown:** The game shows the total number of jokers in the deck to all players at the start of the game. It is not updated during play. It is there to make players aware that jokers are in play somewhere.
 - **Jokers are playing cards.** They count as cards in a player's hand (for card counts and taking cards).
-- **You can't hold only jokers:** When a player plays their **last normal card** and only jokers are left in their hand, those jokers are thrown away (they leave the game) and that normal card counts as their **last card**. This is the same when the last card is a slap. In the final two, the last card is compared as usual; if it was higher and the player picks up the waste pile, the jokers are still gone. A joker is never a last card.
+- **You can't hold only jokers:** When a player plays their **last normal card** and only jokers are left in their hand, that normal card counts as their **last card**. This is the same when the last card is a slap. A joker is never a last card.
+  - **The jokers are set aside, not thrown away straight away (user 2026-11-15 23:00, section 12s; changed from "thrown away at once"):** they stay with the player until it is settled whether that player really goes out.
+  - **The player goes out** (the trick ends and their hand is empty, or the round ends): the jokers are thrown away (they leave the game).
+  - **The player is slapped** in that trick (they picked up the trick): the jokers **go back into their hand** with the picked-up cards.
+  - **Final two, higher last card:** if they **pick up the waste pile**, the jokers go back into their hand too. If they forfeit, the jokers are thrown away.
 - **Use:** A joker is a wild card. A player may play it on their own turn, even if they could follow suit. Playing it skips their turn.
 - **Joker as the lead:** If the leader plays a joker as the first card of a trick, they have started the trick and are part of it, but nothing in it affects them: they can't be slapped and don't play again in that trick. The joker is gone and the next player clockwise plays any card, which sets the suit for the rest of the trick. This is the same in the final two. (Wording settled 2026-11-07: the screens say "same trick", not "starts the trick".)
 - **After use:** The joker leaves the game. It does not go into the waste pile.
@@ -793,6 +798,43 @@ User (network game test of 2.33, three screenshots) asked for:
 4. Fair play is unchanged: only missing suits shown by slaps are used (never the secret declaration).
 5. **Pass bars:** Hard and Normal lead into a known missing suit while holding a suit no one is known to be missing: 0 times in the check games. Hard still beats Normal in the arena. All old arena bars pass.
 
+### 12s. Forfeit any time in the last two, jokers kept when slapped, iPad landscape fixes (PLAN, user 2026-11-15 22:55, answers 23:00; build guide `CODE.md` 9ag; target **2.34.5**; NOT BUILT)
+
+**User (22:55):** "Need a forfeit in the last two, because sometime one player might not have a suit then get trapped in getting slapped the whole match if the other player plays it right." "If you have two cards left, one is a joker, and you play your normal card and then get slapped, joker should stay in hand, not disappear." "There's some UI issues in iPad on landscape mode." Photos: the hand covers the Play button and the waste pile label, the 😂 button sits on the cards, the Manual / Auto / Deal buttons and a side player's cards are cut off.
+
+**Decisions (user 23:00):**
+1. **Forfeit any time in the last two** (section 6): either of the two players, at any time while only they are left, every game size (2-player games from the first trick). Added to, not replacing, the pick-up-or-forfeit choice.
+2. **Computer players are left as they are:** they never use the new forfeit; only their existing pick-up-or-forfeit choice.
+3. **Jokers set aside with the last normal card** (section 7): thrown away only if the player goes out. Slapped: back into the hand. Final two, picks up the waste pile: back into the hand. Forfeit: thrown away.
+4. **iPad landscape (and tablets in portrait):** nothing on the game screen may be cut off or covered:
+   - the hand fits its row (width and height) at any number of cards, and never reaches the Play button or the 😂 button;
+   - the Play button keeps its normal size (not a tall box);
+   - the 😂 button never sits on the cards;
+   - the deal controls (Manual / Auto / Deal) are whole;
+   - the side players' fans of card backs sit inside the table;
+   - phones look the same as now.
+
+**This is a bug fix for the joker (it was found in the code: the jokers were thrown away the moment the last normal card was played, before the slap), a rule addition for the forfeit, and a layout fix.**
+
+### 12t. Last trick shown before the results, Deal again more than once, "Ultimate Badboy" for four aces (PLAN, user 2026-11-15 23:11, answers 23:12; build guide `CODE.md` 9ah; target **2.34.6**, after 12s; NOT BUILT)
+
+**User (23:11):** "When it's last cards, it goes straight to results without showing what the last trick was." "The deal again seems to disappear after using it once in the later rounds." "When someone holds all 4 aces at the start of the round, on that player's screen, a pop up should show You are the Ultimate Badboy!!"
+
+**1. The last trick of a round is shown (bug, found in the code):** the round usually ends in the final-two check, which ends the round without the "trick over" step the screens wait for, so the last trick's cards are never drawn and the results come at once. Also "Last trick" in the corner is not updated.
+- **Decided (user 23:12): the last trick stays on the table until tapped.** A line on the felt says "Tap to see the results". Tapping it moves the cards away and then the round-over pop-up and results show, as now.
+- Each phone taps its own in network games; it doesn't hold anyone else up. On one phone, one tap. With only computer players left (Fast forward or Skip), there is no wait.
+- This is the same for any trick that ends the round (a slap, a forfeit in the middle of a trick, the last two going out together).
+
+**2. Deal again more than once in a round (user 23:12: "Gone after one use" → wants more):** see section 2a: one vote per deal, as many deals as wanted. After a deal again, the before-the-round screen (Look at cards / Deal again? / Start) comes back instead of the round starting by itself. Computer players follow the same rule (they call a vote only when their hand is bad, at most once per deal).
+
+**3. "You are the Ultimate Badboy!!" (user 23:12: after the deal and the swap; a sound):**
+- When a player holds **all four aces** at the start of a round, a big comic pop-up (SLAP! style) says **"You are the Ultimate Badboy!!"** with an **epic sound**. It closes by itself after about 4 seconds, or on a tap.
+- **Only that player's screen.** Nobody else is told, nothing is logged, nothing is sent to other phones, and computer players don't react (it would give the aces away).
+- **When:** the first time the player sees the hand they were dealt (after each deal, so a deal again can show it again), and in 2 and 3 player games also after the hidden swap if the swap gives them the fourth ace. At most once per deal.
+- On one phone (pass-and-play) it shows on that player's own private hand screen, never on the shared table. Computer players never get it.
+
+**Asked, not part of this plan (23:12): rejoining a multiplayer game after a dropped connection.** Not built yet: Nearby slice 4 and Online slice O3 (`TODO.md`). What exists: a phone that leaves the screen or loses signal for a short while is "Away" and its seat is kept for 10 minutes while Pubby stays open (online reconnects by itself). A phone that closes Pubby or drops for good can't get back into the game. Needs its own plan (Opus).
+
 ## 13. Quick rules (in-game help)
 
 - **What it is:** A short, simplified rules guide inside the app.
@@ -838,7 +880,7 @@ Answer these in any order. Each one unblocks part of the build.
 - A vote is decided as soon as more than half agree. The host can close a vote early; with no majority, the host decides.
 - Any player can propose a target score. It can be voted on before round 1 starts or on any results screen. Once agreed it is fixed, and no more target votes appear (also none once the Ultimate Round is agreed).
 - The Ultimate Round is not counted in round wins, round losses, or bottom-two stats.
-- Final two (all game sizes): the pick-up-or-forfeit choice only applies to a player whose last card is higher than the other player's. A lower last card or a slap wins. After picking up, the forfeit option stays.
+- Final two (all game sizes): the pick-up-or-forfeit choice only applies to a player whose last card is higher than the other player's. A lower last card or a slap wins. After picking up, the forfeit option stays. Since 2026-11-15 (12s): either of the last two players can forfeit at any time; computer players don't use this.
 - Jokers are played on your own turn, even if you could follow suit.
 - If nobody who played the led suit still holds cards, the next player clockwise still holding cards leads.
 - Going out is checked at the end of the trick: a player who played their last card and is then slapped picks up and stays in.
