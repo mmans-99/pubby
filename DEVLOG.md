@@ -4,6 +4,24 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-15 (13:25) — Phase 4k step 1: learning habits module and tests (no app change, no version bump, pushed)
+
+**User:** "build step 1 of CODE.md 9z.6", then "push this" (step 2 to start in another chat).
+
+**Built:**
+- `src/ai/learn.ts` (new, pure): habit tables per game (bold follow, high lead, early joker), counted from public events only (`roundStarted`, `cardPlayed`, `jokerPlayed`, `jokersDiscarded`, `slapped`, `trickResolved`); computer seats never counted; no randomness; `LEARN_TUNING` with placeholder neutral rates until step 2; `learnedWeights` (Easy and null table return base; ±20% and 50–150% bounds).
+- `tests/ai/learn.test.ts` (new): 23 tests covering each habit, minimum evidence (6, 6, 3), bounds with a made-up tuning, Easy/null, what survives a round, rebuild equals step-by-step, hidden-card test (hidden material and old `missingSuitDeclared.suits` do not change tables), and a source check for no randomness and no hand fields.
+
+**Choices made while building (see CODE.md 9z.6 step 1):**
+- Trick ends are counted from `trickResolved` only; `slapped` always comes with one in the same action and also scores pending follows.
+- A `trickResolved` with no plays (final-two pick-up) is not counted as a trick.
+- The two risk habits are averaged as shifts, not rates.
+- The hidden-card test feeds identical public logs; full-session fair-play with learning on comes in step 3.
+
+**Checks:** `tsx --test` on learn and imports tests: 25 pass. `tsc -p tsconfig.json` clean. The rules config type-check could not run here (no `@types/node` in this environment).
+
+**Not done:** version stays 2.34.2 (2.35.0 is set in step 4 per 9z.5); MD updates beyond TODO and DEVLOG; no test build because nothing in the app changed yet.
+
 ## 2026-11-15 (13:30) — Opus plan review: computer players that learn within one game (docs only, pushed)
 
 **User:** review and finish the plan for option 1 (`CODE.md` 9z); decide default on or off, Easy or not, confirm the fairness rule and hidden-card test, confirm the 6-chance threshold and the habit list. Target 2.35.0. No code.
