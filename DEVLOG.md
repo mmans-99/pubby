@@ -4,6 +4,18 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-15 (10:20) — Model split rule: Haiku default, prompt to switch to Opus (docs only)
+
+**User:** wants Opus for planning and for problems that keep coming back, Haiku for the bulk of coding and pushing; Haiku stays the default and should prompt the user to switch to Opus.
+
+**Written:** `CLAUDE.md` new section "Which model does what": when Haiku must start its reply with "🔁 Switch to Opus" (same problem after 2 fix attempts, new feature with no plan, change across several systems, unclear approach), and Opus ends with "✅ Switch back to Haiku" plus the next task.
+
+**Checked:** `PROJECT.md`, `CODE.md`, `TODO.md`: no change needed (no game, tech or task change).
+
+**Not changed:** no code, no version change.
+
+---
+
 ## 2026-11-14 (10:15) — Future plan: Android app on Google Play (docs only)
 
 **User:** asked how best to build Pubby as an Android app, how to market it and whether it's ready; then "put it in the plan for the future".
