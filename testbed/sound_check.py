@@ -169,6 +169,9 @@ with sync_playwright() as p:
         if st == 'results':
             break
         page.wait_for_timeout(15 if a not in ('wait', 'stuck') else 120)
+    # 2.34.6: the round's last trick waits on the felt until a player taps it; the round-end sounds come after that tap.
+    if page.locator('.final-trick[role="button"]').count():
+        page.locator('.final-trick[role="button"]').click()
     for _ in range(80):
         if page.locator('.anim-block').count() == 0:
             break

@@ -1,8 +1,8 @@
 /** The fixed game screen (CODE.md 9x.5, 2.29). Pure functions only. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fanLayout } from '../../src/ui/cards.ts';
-import { CHROME_PORTRAIT, gameLayout, MIN_TABLE_H } from '../../src/ui/layout.ts';
+import { fanBounds, fanLayout, fitFan } from '../../src/ui/cards.ts';
+import { CHROME_PORTRAIT, gameLayout, MIN_TABLE_H, sideBarW } from '../../src/ui/layout.ts';
 import { fitBox, seatCollisions, tableBoxFor, lastBox, lastStep } from '../../src/ui/table.ts';
 
 /** The 16 screen sizes from CODE.md 9w.7, plus the test phone (384 × 730, CODE.md 9x.5). */
@@ -49,13 +49,13 @@ test('the table box is the size of the row it sits in', () => {
   assert.deepEqual(lay.box, tableBoxFor(lay.tableW, lay.tableH, false));
 });
 
-test('landscape: the action bar is a column of 170 px beside the hand; the table is at least 96 px', () => {
+test('landscape: the action bar is a column of sideBarW px beside the hand; the table is at least 96 px', () => {
   for (const [w, h] of SIZES) {
     if (w <= h) continue;
     const lay = gameLayout(w, h, { bar: 92 });
-    assert.equal(lay.sideW, 170);
+    assert.equal(lay.sideW, sideBarW(w));
     assert.equal(lay.barH, 0);
-    assert.equal(lay.handW, w - 16 - 170);
+    assert.equal(lay.handW, Math.min(w, 1100) - 16 - sideBarW(w));
     assert.ok(lay.tableH >= 96, `${w}x${h}: table ${lay.tableH}`);
     assert.ok(60 + lay.tableH + lay.handH <= h || lay.tableH === 96, `${w}x${h}: total over the window`);
   }
@@ -133,4 +133,46 @@ test('lastBox: 8 cards stay left of the You pill, and a slap adds room for its m
   const eight = lastBox(box, 8);
   assert.ok(eight.x + eight.w <= 0.4 * box.w + 8);
   assert.ok(Math.abs(lastBox(box, 8, true).w - eight.w - 1.4 * box.u) < 1e-9);
+});
+
+// ---------------------------------------------------------------------------
+// 2.34.5 (CODE.md 9ag.3): tablets
+// ---------------------------------------------------------------------------
+
+test('sideBarW: 170 on phones, 17% of the window on tablets, at most 240', () => {
+  assert.equal(sideBarW(568), 170);
+  assert.equal(sideBarW(844), 170);
+  assert.equal(sideBarW(1000), 170);
+  assert.equal(sideBarW(1180), 200);
+  assert.equal(sideBarW(1366), 232); // 0.17 × 1366 (the plan said 240: that is the cap, reached from 1412 px)
+  assert.equal(sideBarW(1412), 240);
+  assert.equal(sideBarW(1920), 240);
+});
+
+test('the layout uses the game screen\'s width (at most 1100 px), so wide windows do not overflow it', () => {
+  const lay = gameLayout(1366, 1024, { bar: 52 });
+  assert.equal(lay.tableW, 1084);
+  assert.equal(lay.handW + lay.sideW, 1084);
+});
+
+test('fitFan: the hand fits the hand slot for 1 to 40 cards at the tablet and phone sizes', () => {
+  const sizes: [number, number][] = [[1180, 820], [1024, 768], [1366, 1024], [1194, 834], [820, 1180], [1024, 1366], [390, 844], [844, 390], [568, 320]];
+  for (const [w, h] of sizes) {
+    const lay = gameLayout(w, h, { bar: 52 });
+    const fit = lay.landscape ? lay.handH : lay.handH - 8;
+    for (let n = 1; n <= 40; n++) {
+      const fan = fitFan(n, lay.handW, fit, lay.landscape);
+      const b = fanBounds(fan);
+      const top = (fit - fan.height) / 2;
+      assert.ok(top + b.top >= -0.6 && top + b.bottom <= fit + 0.6, `${w}x${h} n=${n}: height ${b.top}..${b.bottom} in ${fit}`);
+      assert.ok(b.left >= -8.1 && b.right <= lay.handW + 8.1, `${w}x${h} n=${n}: width ${b.left}..${b.right} in ${lay.handW}`);
+    }
+  }
+});
+
+test('fitFan: a phone hand that already fits is the same as before (390 × 844, up to 13 cards)', () => {
+  const lay = gameLayout(390, 844, { bar: 52 });
+  for (const n of [5, 10, 13]) {
+    assert.deepEqual(fitFan(n, lay.handW, lay.handH - 8, false), fanLayout(n, lay.handW, undefined, 64, lay.handH - 8));
+  }
 });

@@ -3259,7 +3259,9 @@ Uses `playBotGame` from `tests/ai/botgame.ts` with `onDecision`. For each level 
 4. **Easy** still slips now and then (expected).
 5. A whole game plays to the end with no stalls; Fast forward still works.
 
-## 9ag. Forfeit any time in the last two, jokers kept when slapped, iPad landscape (PLAN, user 2026-11-15 22:55 / 23:00; spec `PROJECT.md` 12s and sections 6 and 7; written for Haiku; target **2.34.5**; NOT BUILT)
+## 9ag. Forfeit any time in the last two, jokers kept when slapped, iPad landscape (PLAN, user 2026-11-15 22:55 / 23:00; spec `PROJECT.md` 12s and sections 6 and 7; written for Haiku; target **2.34.5**; BUILT 2026-11-16, shipped as part of 2.34.6, not pushed)
+
+**Built notes (2026-11-16):** `canForfeit` in `src/rules/play.ts`; `asideJokers` + `settleAsideJokers` (called at the start of `resolveTrick`, in `endRound`, in `pickUpWastePile`); `sideBarW` in `layout.ts`; `fitFan` / `fanBounds` in `cards.ts` (hand fits its slot, width and height); 😂 at the top of the action column in landscape (`html[data-side]` rule in `styles.css`); `tableInset` keeps tablet side fans inside the felt. Regress fixture moved to `moves-2.34.5.json`: games of seeds 1, 2, 5 and 7 change a few moves after a joker is set aside (the expected cause). Checks: `testbed/tablet_check.py` 67 of 67; `node --test` 352+ pass; `tsc` both configs clean.
 
 ### 9ag.0 Read first
 - Spec: `PROJECT.md` 12s, section 6 (forfeit at any time) and section 7 ("You can't hold only jokers").
@@ -3345,7 +3347,9 @@ Save a screenshot of each to `/tmp/tablet/` and send them to the user with the t
 6. **iPad landscape:** your hand fits on screen with nothing cut off at the bottom, even with 13 or more cards; the Play button is a normal button beside the hand and never covered; the 😂 button is above the Play button, not on the cards; Manual / Auto / Deal are whole while dealing; the side players' card fans are not cut off.
 7. **iPad portrait and your phone:** look the same as before, except the 😂 button no longer sits on the cards.
 
-## 9ah. Last trick before the results, Deal again per deal, "Ultimate Badboy" (PLAN, user 2026-11-15 23:11 / 23:12; spec `PROJECT.md` 12t and 2a; written for Haiku; target **2.34.6**; build **after 9ag**; NOT BUILT)
+## 9ah. Last trick before the results, Deal again per deal, "Ultimate Badboy" (PLAN, user 2026-11-15 23:11 / 23:12; spec `PROJECT.md` 12t and 2a; written for Haiku; target **2.34.6**; build **after 9ag**; BUILT 2026-11-16, test build, not pushed)
+
+**Built notes (2026-11-16):** last trick: `absorb()` treats `roundEnded` with a trick on the felt as final (`TrickAnim.final`); `waitsForTap` / `tapFinalTrick`; the table is the button (`.final-trick`, "Tap to see the results"); bot.js taps it. Deal again: `afterDealStep` always opens the window, `reshuffleUsed` now means "voted on this deal"; loop check `testbed/deal_again_check.ts` (300 rounds, average 1.00, most 1). Badboy: `badboyCheck` in `game.ts` (per deal per player, module Set), `sfx` `badboy`, `hasFourAces` in `cards.ts`; browser check `testbed/lasttrick_check.py` 20 of 20. Also 2026-11-15 23:54: "PATHETIC!!!" pop-up on forfeit (`pathetic` popup kind, every phone) and the catch-phrase edits in `src/content/catch-phrases.md`.
 
 ### 9ah.0 Read first
 - Spec: `PROJECT.md` 12t and section 2a. Three parts: **D** last trick, **E** deal again, **F** Ultimate Badboy. Build in that order; each is testable alone.

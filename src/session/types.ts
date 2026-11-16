@@ -145,7 +145,7 @@ export interface Session {
   readonly hands: Readonly<Record<PlayerId, readonly Card[]>>;
   /** Hidden decks (2 and 3 players). Never sent to any player. */
   readonly hiddenDecks: Readonly<Record<SeatId, readonly Card[]>>;
-  /** Only one reshuffle vote per round. */
+  /** A reshuffle vote was held on this deal (one per deal; reset by every new deal, 2.34.6). Name kept for saved games. */
   readonly reshuffleUsed: boolean;
   readonly swapDone: readonly PlayerId[];
   /** 2.20: which players have pressed Done on their new hand (cardCheck). */

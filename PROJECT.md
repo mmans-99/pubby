@@ -798,7 +798,7 @@ User (network game test of 2.33, three screenshots) asked for:
 4. Fair play is unchanged: only missing suits shown by slaps are used (never the secret declaration).
 5. **Pass bars:** Hard and Normal lead into a known missing suit while holding a suit no one is known to be missing: 0 times in the check games. Hard still beats Normal in the arena. All old arena bars pass.
 
-### 12s. Forfeit any time in the last two, jokers kept when slapped, iPad landscape fixes (PLAN, user 2026-11-15 22:55, answers 23:00; build guide `CODE.md` 9ag; target **2.34.5**; NOT BUILT)
+### 12s. Forfeit any time in the last two, jokers kept when slapped, iPad landscape fixes (PLAN, user 2026-11-15 22:55, answers 23:00; build guide `CODE.md` 9ag; target **2.34.5**; BUILT in 2.34.6, test build, not pushed)
 
 **User (22:55):** "Need a forfeit in the last two, because sometime one player might not have a suit then get trapped in getting slapped the whole match if the other player plays it right." "If you have two cards left, one is a joker, and you play your normal card and then get slapped, joker should stay in hand, not disappear." "There's some UI issues in iPad on landscape mode." Photos: the hand covers the Play button and the waste pile label, the 😂 button sits on the cards, the Manual / Auto / Deal buttons and a side player's cards are cut off.
 
@@ -816,7 +816,11 @@ User (network game test of 2.33, three screenshots) asked for:
 
 **This is a bug fix for the joker (it was found in the code: the jokers were thrown away the moment the last normal card was played, before the slap), a rule addition for the forfeit, and a layout fix.**
 
-### 12t. Last trick shown before the results, Deal again more than once, "Ultimate Badboy" for four aces (PLAN, user 2026-11-15 23:11, answers 23:12; build guide `CODE.md` 9ah; target **2.34.6**, after 12s; NOT BUILT)
+### 12t. Last trick shown before the results, Deal again more than once, "Ultimate Badboy" for four aces (PLAN, user 2026-11-15 23:11, answers 23:12; build guide `CODE.md` 9ah; target **2.34.6**, after 12s; BUILT, test build, not pushed)
+
+**Added 2026-11-15 23:54 (user, mid-build):**
+- **"PATHETIC!!!"** (capitals) pop-up on every phone when a player forfeits: SLAP!-style, "<name> forfeited · Last place." Shown with the round-over pop-up.
+- **Catch-phrases:** added "HIGHER!!!" and "LOWER!!!"; removed "Slap him!!", "Slap her!!", "Get them!!" and "Pick them up!!" (they tell another player what to do). The user's "like" was read as these four; say if others should go too.
 
 **User (23:11):** "When it's last cards, it goes straight to results without showing what the last trick was." "The deal again seems to disappear after using it once in the later rounds." "When someone holds all 4 aces at the start of the round, on that player's screen, a pop up should show You are the Ultimate Badboy!!"
 

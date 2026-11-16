@@ -210,3 +210,101 @@ test('play functions never change the state passed in', () => {
   playCard(s, 'a', 'hearts-5');
   assert.equal(JSON.stringify(s), before);
 });
+
+// ---------------------------------------------------------------------------
+// 2.34.5: jokers set aside with the last normal card (PROJECT.md 7, 12s)
+// ---------------------------------------------------------------------------
+
+test('last normal card is highest of the led suit and someone slaps: the jokers come back', () => {
+  const s = startPlay(
+    ['a', 'b', 'c'],
+    { a: [c('hearts', 5), c('clubs', 9)], b: [c('hearts', 13), J(1)], c: [c('spades', 3), c('clubs', 4)] },
+    'a',
+  );
+  const r1 = run(s, [['a', 'hearts-5'], ['b', 'hearts-13']]);
+  assert.deepEqual(ids(r1.s.asideJokers?.['b']), ['joker-1']);
+  assert.deepEqual(r1.s.hands['b'], []);
+  const r2 = playCard(r1.s, 'c', 'spades-3'); // slap: b picks up
+  assert.ok(!r2.events.some((e) => e.type === 'jokersDiscarded'));
+  assert.deepEqual(ids(r2.state.hands['b']), ['hearts-13', 'hearts-5', 'joker-1', 'spades-3']);
+  assert.deepEqual(r2.state.usedJokers, []);
+  assert.ok(!r2.state.finished.includes('b'));
+  assert.deepEqual(r2.state.asideJokers ?? {}, {});
+});
+
+test('2.34.4 saved state without asideJokers plays on', () => {
+  const s = startPlay(
+    ['a', 'b', 'c'],
+    { a: [c('hearts', 5), c('clubs', 9)], b: [c('hearts', 2), J(1)], c: [c('hearts', 3), c('clubs', 4)] },
+    'a',
+  );
+  const old = { ...s } as Record<string, unknown>;
+  delete old['asideJokers'];
+  const { s: after, events } = run(old as unknown as PlayState, [['a', 'hearts-5'], ['b', 'hearts-2'], ['c', 'hearts-3']]);
+  assert.ok(events.some((e) => e.type === 'jokersDiscarded' && e.player === 'b'));
+  assert.deepEqual(after.finished, ['b']);
+});
+
+test('cards are kept: hands + waste + used + aside = dealt, after every action (200 random games)', async () => {
+  const { createDeck } = await import('../../src/rules/cards.ts');
+  const { canForfeit, forfeit, pickUpWastePile } = await import('../../src/rules/play.ts');
+  let seed = 12345;
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  // Every dealt card is in exactly one place (trick cards may also be in the
+  // waste pile once the trick is closed, so count distinct ids, and check no
+  // card is in two hands).
+  const count = (st: PlayState) => {
+    const inHands = Object.values(st.hands).flat().map((x) => x.id);
+    assert.equal(new Set(inHands).size, inHands.length, 'a card in two hands');
+    const held = new Set(inHands);
+    for (const x of [...st.wastePile, ...st.usedJokers, ...Object.values(st.asideJokers ?? {}).flat()]) {
+      assert.ok(!held.has(x.id), `${x.id} in a hand and elsewhere`);
+    }
+    const all = [
+      ...inHands,
+      ...st.wastePile.map((x) => x.id),
+      ...st.usedJokers.map((x) => x.id),
+      ...st.trick.plays.map((x) => x.card.id),
+      ...Object.values(st.asideJokers ?? {}).flat().map((x) => x.id),
+    ];
+    return new Set(all).size;
+  };
+  let jokerBacks = 0;
+  for (let g = 0; g < 200; g++) {
+    const n = 2 + (g % 7);
+    const deck = createDeck(n, true).sort(() => rnd() - 0.5);
+    const order = Array.from({ length: n }, (_, i) => `p${i}`);
+    const hands: Record<string, Card[]> = Object.fromEntries(order.map((p) => [p, [] as Card[]]));
+    // Small hands so the last-card and final-two cases come up often.
+    const per = 3 + (g % 4);
+    deck.slice(0, per * n).forEach((card, i) => hands[order[i % n] as string]!.push(card));
+    for (const p of order) {
+      const hp: Card[] = hands[p]!;
+      if (!hp.some((x) => x.kind !== 'joker')) hp.push(deck[per * n + order.indexOf(p)] as Card);
+    }
+    const total = Object.values(hands).reduce((k, h) => k + h.length, 0);
+    let st = startPlay(order, hands, 'p0');
+    for (let step = 0; step < 2000 && !st.over; step++) {
+      let r;
+      if (st.pendingFinalTwo) {
+        r = rnd() < 0.8 ? pickUpWastePile(st, st.pendingFinalTwo) : forfeit(st, st.pendingFinalTwo);
+      } else {
+        const p = st.turn as string;
+        if (canForfeit(st, p) && rnd() < 0.005) r = forfeit(st, p);
+        else {
+          const legal = legalCards(st, p);
+          r = playCard(st, p, (legal[Math.floor(rnd() * legal.length)] as Card).id);
+        }
+      }
+      if (r.events.some((e) => e.type === 'wastePilePickedUp' || e.type === 'slapped')) {
+        const before = Object.values(st.asideJokers ?? {}).reduce((k, h) => k + h.length, 0);
+        if (before > 0) jokerBacks++;
+      }
+      st = r.state;
+      assert.equal(count(st), total, `game ${g} step ${step}`);
+    }
+    assert.ok(st.over, `game ${g} ended`);
+    assert.deepEqual(st.asideJokers ?? {}, {}, 'nothing aside at the end');
+  }
+  assert.ok(jokerBacks > 0, 'the joker-back case came up');
+});

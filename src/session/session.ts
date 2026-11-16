@@ -8,7 +8,8 @@
  * actions throw an Error with a message the UI can show.
  *
  * Flow of a round:
- *   dealing -> reshuffle (anyone may call a vote; host starts the round)
+ *   dealing -> reshuffle (anyone may call a vote, once per deal; a passed vote deals
+ *   again and opens the window again; host starts the round)
  *   -> swap (2 and 3 players) -> missing suits / Reaction Tap / winner picks
  *   -> playing -> results (votes, ready up, host moves on or ends)
  * The Ultimate Round goes straight to the end of the session.
@@ -469,9 +470,8 @@ function afterDealStep(s: Session, out: Out): Session {
     handSizes: Object.fromEntries(s.order.map((p) => [p, (hands[p] ?? []).length])),
   });
   const s2: Session = { ...s, deal: null, hands, hiddenDecks: deal.hiddenDecks };
-  // After a reshuffle the vote is used up, so the round moves straight on.
-  if (s2.reshuffleUsed) return afterReshuffleWindow(s2, out);
-  return { ...s2, phase: 'reshuffle' };
+  // 2.34.6 (CODE.md 9ah.2): every deal opens the reshuffle window; one vote per deal, as many deals as wanted.
+  return { ...s2, phase: 'reshuffle', reshuffleUsed: false };
 }
 
 // ---------------------------------------------------------------------------
@@ -489,7 +489,7 @@ function callVote(
   if (s.vote) fail('A vote is already in progress');
   if (kind === 'reshuffle') {
     if (s.phase !== 'reshuffle') fail('A reshuffle vote can only be called after the deal, before the round begins');
-    if (s.reshuffleUsed) fail('Only one reshuffle vote per round');
+    if (s.reshuffleUsed) fail('Only one reshuffle vote per deal');
     value = null;
   } else if (kind === 'target') {
     if (!targetVoteAllowed(s)) {

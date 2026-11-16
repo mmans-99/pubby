@@ -25,7 +25,7 @@ import {
   type SessionEvent,
   type Top,
 } from '../src/session/index.ts';
-import { legalCards } from '../src/rules/play.ts';
+import { canForfeit, legalCards } from '../src/rules/play.ts';
 
 // ---------------------------------------------------------------------------
 // State
@@ -485,7 +485,7 @@ function handsBlock(opts: { playable?: boolean; swapPick?: boolean } = {}) {
         })
         .join('');
       const forfeitBtn =
-        ss.phase === 'playing' && play && !play.over && play.forfeitAllowed.includes(p) && play.pendingFinalTwo !== p
+        ss.phase === 'playing' && play && canForfeit(play, p) && play.pendingFinalTwo !== p
           ? `<button class="small warn" data-act="forfeit" data-arg="${p}">Forfeit</button>` : '';
       return `<div class="hand ${isTurn ? 'turn' : ''}">
         <div class="who">${esc(nm(p))}${p === ss.hostId ? ' (host)' : ''}${placeBadge(p)} · ${h.length} cards ${isTurn ? '<b>← turn</b>' : ''} ${forfeitBtn}</div>

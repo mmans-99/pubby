@@ -1,10 +1,10 @@
-// CODE.md 9z.6 step 3 (regression): the moves the bots make with learning off (2.34.3; 2.34.2's file is kept).
+// CODE.md 9z.6 step 3 (regression): the moves the bots make with learning off (2.34.5; 2.34.2's and 2.34.3's files are kept).
 // Plays seeded all-computer games and records the first `total` decisions: the seed, the place in
 // the game, the seat, its level and the actions sent. regress.test.ts replays the same games and
 // checks that every decision is still the same when learning is off (habits null) and on Easy.
 //
 // Regenerate only if the bot's moves are meant to change (then say so in the DEVLOG):
-//   tsx tests/ai/regress-fixture.ts > tests/ai/fixtures/moves-2.34.3.json  (9af: was 2.34.2)
+//   node --experimental-strip-types tests/ai/regress-fixture.ts > tests/ai/fixtures/moves-2.34.5.json  (9ag: was 2.34.3; 9af: was 2.34.2)
 
 import { fileURLToPath } from 'node:url';
 import type { SessionAction } from '../../src/session/types.ts';

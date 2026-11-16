@@ -4,6 +4,24 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-16 (version 2.34.6, test build, NOT committed or pushed)
+
+**Built Phase 4q (CODE.md 9ag, 2.34.5) and Phase 4r (CODE.md 9ah, 2.34.6) together, as one version (2.34.6).** Test build: https://claude.ai/artifact/SgksbF3avr6NTg5uWUfth8
+
+- **Forfeit (9ag.1):** either of the last two can forfeit at any time (`canForfeit`); computer players unchanged.
+- **Jokers (9ag.2):** jokers set aside with the last normal card; thrown away if the player goes out, back in hand if slapped or after a final-two pick-up, thrown away on forfeit. Saved games from 2.34.4 still load.
+- **Tablet layout (9ag.3):** hand fits its slot (width and height), action column 17% of the window (170 to 240 px), 😂 at the top of the column in landscape, tablet side fans inside the felt. Phones look the same. `testbed/tablet_check.py` 67 of 67.
+- **Last trick (9ah.1):** the round's last trick stays on the felt until tapped ("Tap to see the results").
+- **Deal again (9ah.2):** one reshuffle vote per deal, as many deals as wanted. Loop check: 300 rounds, average 1.00 deals per round, most 1.
+- **Ultimate Badboy (9ah.3):** private pop-up and fanfare for four aces, once per deal per player, never for computer players. `testbed/lasttrick_check.py` 20 of 20.
+- **User, 23:54 (mid-build):** "PATHETIC!!!" pop-up on every phone when someone forfeits; catch-phrases HIGHER!!! and LOWER!!! added; "Slap him!!", "Slap her!!", "Get them!!", "Pick them up!!" removed.
+
+**Checks:** `node --test` on rules, session, AI and UI: all pass. `tsc` is clean for both configs. Browser checks (`run_checks.py --all`): playthrough, drawer, back, offline and sound pass (sound was fixed to tap the last trick first); tablet, last-trick and Badboy checks pass. Still failing, and checked against a worktree of HEAD (same failures there): `netvotes_check` (2 items), `lobby_check` (3), `netgame_check` (3 of 97, "own seat at the bottom"), and `online_check` (the relay does not start in this environment). `solo_check` fails on its "new name shows at the table" item, which uses a `.seat-name` class that is not in the table code at HEAD either (I read that from the code, did not run it at HEAD). None of these were fixed here.
+
+**Open:** the user's "like slap her, or get them" was read as the four imperative phrases above (see PROJECT.md 12t); say if others should go too. Rejoining after a dropped connection is not planned yet (needs Opus).
+
+---
+
 ## 2026-11-15 (23:15) — Plan: last trick before results, Deal again per deal, Ultimate Badboy (docs only, no version bump)
 
 **User (23:11):** last trick not shown at round end; "Deal again" gone after one use; a private "You are the Ultimate Badboy!!" pop-up for four aces. **Answers (23:12):** last trick stays until tapped; more than one deal again in a round; Badboy after the deal and after the swap, with an epic sound. Also asked where rejoining after a dropped connection is.

@@ -13,7 +13,7 @@ import { instantSkipping, skipping } from '../ai/fastforward.ts';
 export type Sfx =
   | 'tap' | 'shuffle' | 'deal' | 'play' | 'slap' | 'pickUp' | 'trickDone' | 'joker' | 'gotAway' | 'lastPlace'
   | 'roundWinner' | 'ultimateWinner' | 'coward' | 'voteResult' | 'tapReady' | 'tapGo' | 'reaction' | 'yourTurn'
-  | 'notAllowed' | 'knock' | 'paused' | 'resumed' | 'laugh';
+  | 'notAllowed' | 'knock' | 'paused' | 'resumed' | 'laugh' | 'badboy';
 
 const T = (): number => (ctx as AudioContext).currentTime + 0.01;
 
@@ -25,11 +25,11 @@ const T = (): number => (ctx as AudioContext).currentTime + 0.01;
 const DUR: Record<Sfx, number> = {
   tap: 0.06, deal: 0.1, play: 0.12, trickDone: 0.3, reaction: 0.35, notAllowed: 0.2, yourTurn: 0.6,
   shuffle: 0.85, slap: 0.95, pickUp: 0.8, joker: 0.65, gotAway: 0.9, lastPlace: 2.1, roundWinner: 0.95,
-  ultimateWinner: 2.0, coward: 1.6, voteResult: 1.3, tapReady: 1.15, tapGo: 0.5, knock: 0.3, paused: 0.15, resumed: 0.15, laugh: 0.85,
+  ultimateWinner: 2.0, coward: 1.6, voteResult: 1.3, tapReady: 1.15, tapGo: 0.5, knock: 0.3, paused: 0.15, resumed: 0.15, laugh: 0.85, badboy: 2.0,
 };
-const BIG = new Set<Sfx>(['laugh', 'shuffle', 'slap', 'pickUp', 'joker', 'gotAway', 'lastPlace', 'roundWinner', 'ultimateWinner', 'coward', 'voteResult', 'tapReady', 'knock']);
+const BIG = new Set<Sfx>(['badboy', 'laugh', 'shuffle', 'slap', 'pickUp', 'joker', 'gotAway', 'lastPlace', 'roundWinner', 'ultimateWinner', 'coward', 'voteResult', 'tapReady', 'knock']);
 /** The music dips under these. */
-const DUCK = new Set<Sfx>(['laugh', 'slap', 'gotAway', 'lastPlace', 'roundWinner', 'ultimateWinner', 'coward', 'voteResult']);
+const DUCK = new Set<Sfx>(['badboy', 'laugh', 'slap', 'gotAway', 'lastPlace', 'roundWinner', 'ultimateWinner', 'coward', 'voteResult']);
 /** Never wait or get skipped: their timing matters (Reaction Tap GO, pause clicks). */
 const NOW = new Set<Sfx>(['tapGo', 'paused', 'resumed']);
 /** Effects queued further ahead than this are dropped. */
@@ -136,6 +136,18 @@ const FX: Record<Sfx, () => void> = {
   reaction() {
     const out = sfxOut(); const t = T(); const g = gain(0); g.connect(out); env(g, t, 0.002, 0.3, 0.07); osc('sine', 500, t, t + 0.09, g).frequency.exponentialRampToValueAtTime(1300, t + 0.06);
     [0.1, 0.18, 0.26].forEach((s, i) => { const gg = gain(0); gg.connect(out); env(gg, t + s, 0.002, 0.16, 0.05); osc('triangle', 1400 - i * 150, t + s, t + s + 0.07, gg).frequency.exponentialRampToValueAtTime(1000 - i * 150, t + s + 0.05); });
+  },
+  // 2.34.6 (CODE.md 9ah.3): "You are the Ultimate Badboy!!" (four aces): an epic fanfare, about 2 s.
+  badboy() {
+    const out = sfxOut(); const t = T(); const room = reverb(2.4, out, 0.5);
+    kick(t, out, 1); kick(t + 0.02, room, 0.6);
+    for (let i = 0; i < 8; i++) snare(t + 0.05 + i * 0.04, out, 0.15 + i * 0.04);
+    // A rising three-note chord (A3, E4, A4), then C#5 on top, held.
+    let at = t + 0.38;
+    for (const m of [57, 64, 69] as const) { brass(m, at, 0.22, out, 0.9); brass(m - 12, at, 0.22, room, 0.5); at += 0.18; }
+    for (const m of [57, 64, 69, 73] as const) brass(m, at, 0.85, room, m === 73 ? 1 : 0.6);
+    kick(at, out, 0.9); snare(at, out, 0.6);
+    [81, 85, 88, 93].forEach((m, i) => bell(m, at + 0.1 + i * 0.07, 1.1, room, 0.6));
   },
   yourTurn() { const out = sfxOut(); const t = T(); bell(84, t, 0.5, out, 0.6); bell(88, t + 0.12, 0.7, out, 0.6); },
   notAllowed() { const out = sfxOut(); const t = T(); for (const s of [0, 0.11]) { const g = gain(0); const lp = filter('lowpass', 900); lp.connect(g); g.connect(out); env(g, t + s, 0.003, 0.25, 0.08); osc('square', 150, t + s, t + s + 0.1, lp); } },

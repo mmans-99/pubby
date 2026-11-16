@@ -197,28 +197,38 @@ export function cardBackSize(u: number): { bw: number; bh: number } {
   return { bw, bh: Math.round(bw * 1.4) };
 }
 
+/** A tablet-sized table (CODE.md 9ag.3 fix 4): the fans of card backs sit inside the felt. Phones never reach this. */
+export function tableInset(box: TableBox): boolean {
+  return box.w >= 600 && box.h >= 380;
+}
+
 /** Where each other player sits, in px, for `n` players in this box (CODE.md 9w.3). */
 export function seatLayout(n: number, box: TableBox): SeatSpot[] {
   const { w, h, u } = box;
   const { bh } = cardBackSize(u);
-  const topBand = 6.2 * u, bottomBand = 4.5 * u;
   const list = edgeListFor(n, box.landscape);
+  // 2.34.5 (CODE.md 9ag.3 fix 4): on a tablet-sized table the fans sit inside the felt (their outer
+  // edge at the table's edge), not half off it, so they are never cut off. Phones keep the old look.
+  const inset = tableInset(box);
+  const sideIn = inset ? bh / 2 + 10 : 0;
+  const topIn = inset ? bh / 2 - 5 : 0;
+  const topBand = 6.2 * u + topIn, bottomBand = 4.5 * u;
   const out: SeatSpot[] = [];
   for (let k = 1; k <= n - 1; k++) {
     const [edge, t] = list[k - 1] ?? ['top', 0.5];
     let spot: Omit<SeatSpot, 'hit'>;
     if (edge === 'top') {
       const x = t * w;
-      const by = 0.95 * bh;
-      spot = { edge, fan: { x, y: 0 }, bubble: { x, y: by }, name: { x, y: by + 1.5 * u, align: 'center' } };
+      const by = topIn + 0.95 * bh;
+      spot = { edge, fan: { x, y: topIn }, bubble: { x, y: by }, name: { x, y: by + 1.5 * u, align: 'center' } };
     } else {
       const y = topBand + (h - topBand - bottomBand) * t;
       const left = edge === 'left';
       spot = {
         edge,
-        fan: { x: left ? 0 : w, y },
-        bubble: { x: left ? 0.95 * bh : w - 0.95 * bh, y },
-        name: { x: left ? 0.95 * bh : w - 0.95 * bh, y: y + 1.5 * u, align: 'center' },
+        fan: { x: left ? sideIn : w - sideIn, y },
+        bubble: { x: left ? sideIn + 0.95 * bh : w - sideIn - 0.95 * bh, y },
+        name: { x: left ? sideIn + 0.95 * bh : w - sideIn - 0.95 * bh, y: y + 1.5 * u, align: 'center' },
       };
     }
     out.push({ ...spot, hit: hitBox(spot, u, bh) });

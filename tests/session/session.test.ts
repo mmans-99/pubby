@@ -56,7 +56,7 @@ test('only the dealer deals; the deal ends in the reshuffle window', () => {
   assert.ok(types(s).includes('dealComplete'));
 });
 
-test('reshuffle vote: any player calls, majority passes, dealer deals again, only once per round', () => {
+test('reshuffle vote: any player calls, majority passes, dealer deals again, and the window opens again (2.34.6)', () => {
   const rng = seededRng(3);
   let s = dealAll(start(4, rng), rng);
   const before = JSON.stringify(s.hands);
@@ -75,8 +75,10 @@ test('reshuffle vote: any player calls, majority passes, dealer deals again, onl
   assert.equal(s.dealer, 'p1');
   s = dealAll(s, rng);
   assert.notEqual(JSON.stringify(s.hands), before);
-  // Vote used up: the round moves straight on (4 players: no swap).
-  assert.equal(s.phase, 'playing');
+  // 2.34.6 (CODE.md 9ah.2): one vote per deal, so after the new deal the window opens again.
+  assert.equal(s.phase, 'reshuffle');
+  assert.equal(s.reshuffleUsed, false);
+  assert.ok(playerView(s, 'p2').canCallReshuffle);
 });
 
 test('reshuffle vote: majority no fails and the round goes on', () => {
@@ -472,4 +474,77 @@ test('full sessions with random take-cards requests run without errors', () => {
     for (const r of s.rounds) assert.equal(new Set(r.finishingOrder).size, n);
   }
   assert.ok(takes > 0);
+});
+
+// ---------------------------------------------------------------------------
+// 2.34.6 (CODE.md 9ah.2): Deal again once per deal, as many deals as wanted
+// ---------------------------------------------------------------------------
+
+function passReshuffle(s: Session, by: string, rng: ReturnType<typeof seededRng>): Session {
+  s = act(s, { type: 'callVote', by, kind: 'reshuffle' }, rng);
+  for (const p of s.order) if (p !== by) s = act(s, { type: 'castVote', by: p, ballot: 'yes' }, rng);
+  return s;
+}
+
+test('deal again: pass, deal, pass again: dealt a third time', () => {
+  const rng = seededRng(21);
+  let s = dealAll(start(4, rng), rng);
+  const first = JSON.stringify(s.hands);
+  s = dealAll(passReshuffle(s, 'p2', rng), rng);
+  assert.equal(s.phase, 'reshuffle');
+  assert.ok(playerView(s, 'p3').canCallReshuffle);
+  const second = JSON.stringify(s.hands);
+  s = dealAll(passReshuffle(s, 'p3', rng), rng);
+  assert.equal(s.phase, 'reshuffle');
+  assert.notEqual(JSON.stringify(s.hands), second);
+  assert.notEqual(second, first);
+  assert.equal(s.log.filter((e) => e.event.type === 'reshuffled').length, 2);
+});
+
+test('deal again: a failed vote starts the round with that deal', () => {
+  const rng = seededRng(22);
+  let s = dealAll(start(4, rng), rng);
+  s = act(s, { type: 'callVote', by: 'p2', kind: 'reshuffle' }, rng);
+  for (const p of ['p1', 'p3', 'p4']) s = act(s, { type: 'castVote', by: p, ballot: 'no' }, rng);
+  assert.notEqual(s.phase, 'reshuffle');
+  assert.notEqual(s.phase, 'dealing');
+});
+
+test('deal again: a second vote on the same deal fails', () => {
+  const rng = seededRng(23);
+  let s = dealAll(start(4, rng), rng);
+  s = act(s, { type: 'callVote', by: 'p2', kind: 'reshuffle' }, rng);
+  assert.ok(s.vote);
+  // While this vote is open another can't be called; once a vote has been held on this deal, none can.
+  assert.throws(() => act(s, { type: 'callVote', by: 'p4', kind: 'reshuffle' }, rng), /already in progress/);
+  const used = { ...s, vote: null, reshuffleUsed: true };
+  assert.throws(() => act(used, { type: 'callVote', by: 'p4', kind: 'reshuffle' }, rng), /Only one reshuffle vote per deal/);
+  assert.equal(playerView(used, 'p4').canCallReshuffle, false);
+});
+
+test('deal again, 2 players: asking counts as agreeing; the window opens again after the deal', () => {
+  const rng = seededRng(24);
+  let s = dealAll(start(2, rng), rng);
+  s = passReshuffle(s, 'p1', rng);
+  assert.equal(s.phase, 'dealing');
+  s = dealAll(s, rng);
+  assert.equal(s.phase, 'reshuffle');
+  assert.ok(playerView(s, 'p2').canCallReshuffle);
+});
+
+test('deal again works the same in round 2', () => {
+  const rng = seededRng(25);
+  let s = start(4, rng);
+  s = playRound(s, rng);
+  for (let i = 0; i < 50 && s.phase !== 'dealing'; i++) {
+    if (s.phase === 'results') {
+      for (const p of s.order) if (!s.ready.includes(p)) s = act(s, { type: 'readyUp', by: p }, rng);
+      s = act(s, { type: 'advance', by: s.hostId }, rng);
+    }
+  }
+  assert.equal(s.round, 2);
+  s = dealAll(s, rng);
+  s = dealAll(passReshuffle(s, 'p4', rng), rng);
+  assert.equal(s.phase, 'reshuffle');
+  assert.ok(playerView(s, 'p1').canCallReshuffle);
 });

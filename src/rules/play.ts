@@ -13,8 +13,10 @@
  *   skips your turn and leaves the game. A joker led as the first card passes
  *   the lead to the next player clockwise.
  * - Nobody holds only jokers: when a player plays their last normal card, any
- *   jokers left in their hand are thrown away (they leave the game), so that
- *   card is their last card. A joker is never a last card.
+ *   jokers left in their hand are set aside, so that card is their last card.
+ *   A joker is never a last card. When the trick ends (or the round ends) the
+ *   aside jokers are thrown away if the player went out, and come back to the
+ *   hand if they picked up (slapped, or the final-two pick-up). PROJECT.md 7.
  * - Final two: jokers can always be played (the "no jokers against a last
  *   card" block was dropped on 2026-11-07). A joker led is still the same
  *   trick: the other player plays any card, or a joker (missed round). A last
@@ -25,11 +27,12 @@
  *   them plays their last card:
  *     - lower than the other player's card, or a slap: they win;
  *     - higher than the other player's card: they must pick up the whole
- *       waste pile and play on, or forfeit (take last place). After picking
- *       up, they can forfeit at any time while two players are left;
+ *       waste pile and play on, or forfeit (take last place);
  *     - both go out in the same trick: the lower card, or the slapper, wins.
  *   Both play jokers in a trick without going out: missed round, the player
  *   who played first leads again.
+ * - Either of the last two players can forfeit at any time (PROJECT.md 6, 12s):
+ *   they take last place, the other player the higher place.
  * - The round ends when one player is left holding cards: the loser.
  */
 
@@ -65,8 +68,13 @@ export interface PlayState {
   readonly finished: readonly PlayerId[];
   /** Final two: player who must choose to pick up the waste pile or forfeit. */
   readonly pendingFinalTwo: PlayerId | null;
-  /** Players who picked up the waste pile and may forfeit at any time. */
+  /**
+   * Players who picked up the waste pile. Kept for saved games; no longer
+   * decides anything (either of the last two can forfeit at any time, 2.34.5).
+   */
   readonly forfeitAllowed: readonly PlayerId[];
+  /** Jokers set aside with a player's last normal card (PROJECT.md 7). Thrown away if that player goes out; back into the hand if they pick up (slapped, or the final-two pick-up). */
+  readonly asideJokers?: Readonly<Record<PlayerId, readonly Card[]>>;
   /** Set when the round ends: the player left holding cards. */
   readonly loser: PlayerId | null;
   /** True once the round has ended. */
@@ -89,7 +97,7 @@ export interface RoundEnd {
 export type PlayEvent =
   | { readonly type: 'cardPlayed'; readonly player: PlayerId; readonly card: StandardCard }
   | { readonly type: 'jokerPlayed'; readonly player: PlayerId; readonly asLeader: boolean }
-  /** Last normal card played: the jokers left in the hand are thrown away. */
+  /** Jokers set aside with a player's last normal card are thrown away (the player went out). Comes when the trick or round ends. */
   | { readonly type: 'jokersDiscarded'; readonly player: PlayerId; readonly count: number }
   | {
       readonly type: 'slapped';
@@ -152,14 +160,39 @@ function otherOf(pair: readonly PlayerId[], p: PlayerId): PlayerId {
   return (pair[0] === p ? pair[1] : pair[0]) as PlayerId;
 }
 
+/**
+ * Settle jokers set aside with a last normal card: back into the hand if the
+ * player holds cards again (picked up), otherwise thrown away.
+ */
+function settleAsideJokers(state: PlayState, events: PlayEvent[]): PlayState {
+  const aside = state.asideJokers ?? {};
+  const players = Object.keys(aside) as PlayerId[];
+  if (players.length === 0) return state;
+  let hands = state.hands;
+  let usedJokers = state.usedJokers;
+  for (const p of players) {
+    const jokers = aside[p] ?? [];
+    if (jokers.length === 0) continue;
+    const hand = handOf({ hands }, p);
+    if (hand.length > 0) {
+      hands = { ...hands, [p]: [...hand, ...jokers] };
+    } else {
+      usedJokers = [...usedJokers, ...jokers];
+      events.push({ type: 'jokersDiscarded', player: p, count: jokers.length });
+    }
+  }
+  return { ...state, hands, usedJokers, asideJokers: {} };
+}
+
 /** End the round with a complete order from first to last. */
 function endRound(
-  state: PlayState,
+  stateIn: PlayState,
   events: PlayEvent[],
   orderFirstToLast: readonly PlayerId[],
   wastePile: readonly Card[],
   extra: { sharedSecondLast?: readonly PlayerId[]; forfeitedBy?: PlayerId } = {},
 ): PlayResult {
+  const state = settleAsideJokers(stateIn, events);
   for (let i = state.finished.length; i < orderFirstToLast.length - 1; i++) {
     events.push({ type: 'playerOut', player: orderFirstToLast[i] as PlayerId, place: i + 1 });
   }
@@ -207,6 +240,7 @@ export function startPlay(
     finished: [],
     pendingFinalTwo: null,
     forfeitAllowed: [],
+    asideJokers: {},
     loser: null,
     over: false,
   };
@@ -257,13 +291,14 @@ export function playCard(state: PlayState, player: PlayerId, cardId: string): Pl
   const std = card as StandardCard;
   events.push({ type: 'cardPlayed', player, card: std });
 
-  // Last normal card: any jokers left are thrown away, so this is the last card.
+  // Last normal card: any jokers left are set aside, so this is the last card.
+  // They are thrown away or come back when the trick ends (settleAsideJokers).
   const rest = hands[player] ?? [];
   let base: PlayState = state;
   if (rest.length > 0 && rest.every(isJoker)) {
     hands[player] = [];
-    base = { ...state, usedJokers: [...state.usedJokers, ...rest] };
-    events.push({ type: 'jokersDiscarded', player, count: rest.length });
+    const aside = state.asideJokers ?? {};
+    base = { ...state, asideJokers: { ...aside, [player]: [...(aside[player] ?? []), ...rest] } };
   }
 
   // Leading card sets the suit.
@@ -387,6 +422,8 @@ function resolveTrick(
   events: PlayEvent[],
   fallbackFrom?: PlayerId,
 ): PlayResult {
+  // Aside jokers first: a slapped player gets them back and is not out.
+  state = settleAsideJokers(state, events);
   const trick = state.trick;
   const wastePile = [...state.wastePile, ...waste];
 
@@ -428,9 +465,14 @@ function resolveTrick(
 export function pickUpWastePile(state: PlayState, player: PlayerId): PlayResult {
   if (state.pendingFinalTwo !== player) throw new Error(`${player} has no pick-up choice`);
   const cards = state.wastePile;
-  const hands = { ...state.hands, [player]: [...handOf(state, player), ...cards] };
+  const events: PlayEvent[] = [];
+  const settled = settleAsideJokers(
+    { ...state, hands: { ...state.hands, [player]: [...handOf(state, player), ...cards] } },
+    events,
+  );
+  const hands = settled.hands;
   const s: PlayState = {
-    ...state,
+    ...settled,
     hands,
     wastePile: [],
     pendingFinalTwo: null,
@@ -441,6 +483,7 @@ export function pickUpWastePile(state: PlayState, player: PlayerId): PlayResult 
   return {
     state: s,
     events: [
+      ...events,
       { type: 'wastePilePickedUp', player, cards: cards.length },
       { type: 'trickResolved', nextLeader: player },
     ],
@@ -448,18 +491,25 @@ export function pickUpWastePile(state: PlayState, player: PlayerId): PlayResult 
 }
 
 /**
+ * True when `player` may forfeit: the round is not over and they are one of
+ * exactly two players not yet finished (PROJECT.md 6, 12s). While the other
+ * player faces the pick-up choice they hold no cards but are not finished, so
+ * the count is still two.
+ */
+export function canForfeit(state: PlayState, player: PlayerId): boolean {
+  if (state.over) return false;
+  const remaining = state.order.filter((p) => !state.finished.includes(p));
+  return remaining.length === 2 && remaining.includes(player);
+}
+
+/**
  * Forfeit: the player takes last place and the other player takes the higher
- * place. Allowed for the player facing the pick-up choice, and at any time for
- * a player who picked up the waste pile, while two players are left.
+ * place. Either of the last two can forfeit at any time.
  */
 export function forfeit(state: PlayState, player: PlayerId): PlayResult {
   if (state.over) throw new Error('The round is over');
-  const facingChoice = state.pendingFinalTwo === player;
-  if (!facingChoice && !state.forfeitAllowed.includes(player)) {
-    throw new Error(`${player} cannot forfeit`);
-  }
+  if (!canForfeit(state, player)) throw new Error(`${player} cannot forfeit`);
   const remaining = state.order.filter((p) => !state.finished.includes(p));
-  if (remaining.length !== 2 || !remaining.includes(player)) throw new Error('Forfeit is only for the final two');
   const other = otherOf(remaining, player);
   const events: PlayEvent[] = [{ type: 'forfeited', player }];
   return endRound(state, events, [...state.finished, other, player], state.wastePile, { forfeitedBy: player });

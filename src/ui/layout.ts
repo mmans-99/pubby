@@ -18,8 +18,17 @@ export const CHROME_PORTRAIT = 78;
 export const CHROME_LANDSCAPE = 60;
 /** The shortest table in landscape (a 568 × 320 phone): the cards are small there (CODE.md 9x.3). */
 export const MIN_TABLE_LANDSCAPE = 96;
-/** Landscape: the action bar's column beside the hand (CODE.md 9x.3). */
+/** Landscape: the action bar's column beside the hand on a phone (CODE.md 9x.3). */
 export const SIDE_BAR_W = 170;
+
+/**
+ * Landscape: the action column's width (CODE.md 9ag.3 fix 2, 2.34.5). 17% of the
+ * window, at least 170 (phones keep 170) and at most 240, so a tablet's column
+ * has room for the deal buttons and the 😂 button above Play.
+ */
+export function sideBarW(viewW: number): number {
+  return Math.floor(clamp(0.17 * viewW, SIDE_BAR_W, 240));
+}
 
 export interface LayoutOpts {
   /** Is there a hand? (Pass-the-phone and look-at-hands screens may have no cards to show.) */
@@ -50,10 +59,12 @@ export interface GameLayout {
  * Portrait: the hand is a fifth of the window (120 to 190 px), and it gives way
  * to the table (down to 120 px) when the window is short.
  * Landscape: the hand row is 30% of the height (96 to 200 px); the bar is a
- * column of 170 px beside the hand (it needs a row only when there is no hand).
+ * column of sideBarW px beside the hand (it needs a row only when there is no hand).
  */
 export function gameLayout(viewW: number, viewH: number, opts: LayoutOpts = {}): GameLayout {
   const landscape = viewW > viewH;
+  // 2.34.5: the game screen is at most 1100 px wide (styles.css .screen.game), padded 8 px each side.
+  const inner = Math.min(viewW, 1100) - 16;
   const wantHand = opts.hand ?? true;
   const bar = opts.bar ?? 52;
   if (!landscape) {
@@ -62,11 +73,11 @@ export function gameLayout(viewW: number, viewH: number, opts: LayoutOpts = {}):
     if (wantHand && room - handH < MIN_TABLE_H) handH = Math.max(120, room - MIN_TABLE_H);
     const tableW = Math.min(viewW - 16, 760);
     const tableH = room - handH;
-    return { landscape, tableW, tableH, handH, handW: Math.min(viewW - 16, 1100), barH: bar, sideW: 0, box: tableBoxFor(tableW, tableH, false) };
+    return { landscape, tableW, tableH, handH, handW: inner, barH: bar, sideW: 0, box: tableBoxFor(tableW, tableH, false) };
   }
-  const sideW = bar > 0 ? SIDE_BAR_W : 0;
+  const sideW = bar > 0 ? sideBarW(viewW) : 0;
   const handH = wantHand || bar > 0 ? clamp(0.3 * viewH, 96, 200) : 0;
-  const tableW = Math.min(viewW - 16, 1100);
+  const tableW = inner;
   const tableH = Math.max(MIN_TABLE_LANDSCAPE, viewH - CHROME_LANDSCAPE - handH);
-  return { landscape, tableW, tableH, handH, handW: viewW - 16 - sideW, barH: 0, sideW, box: tableBoxFor(tableW, tableH, true) };
+  return { landscape, tableW, tableH, handH, handW: inner - sideW, barH: 0, sideW, box: tableBoxFor(tableW, tableH, true) };
 }

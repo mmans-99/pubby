@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Card, Suit } from '../../src/rules/cards.ts';
 import {
+  canForfeit,
   forfeit,
   legalCards,
   pickUpWastePile,
@@ -67,7 +68,10 @@ test('last card higher: must pick up the waste pile or forfeit', () => {
   assert.equal(after.turn, null);
   assert.throws(() => playCard(after, 'c', 'clubs-3'), /choice/);
   assert.throws(() => pickUpWastePile(after, 'c'));
-  assert.throws(() => forfeit(after, 'c'));
+  // c is one of the last two, so c may forfeit even while b chooses (2.34.5).
+  const cf = ended(forfeit(after, 'c').events);
+  assert.ok(cf && cf.type === 'roundEnded');
+  assert.deepEqual(cf.finishingOrder, ['a', 'b', 'c']);
 
   // Pick up: whole waste pile (including this trick), b leads, b can forfeit later.
   const up = pickUpWastePile(after, 'b').state;
@@ -82,7 +86,9 @@ test('last card higher: must pick up the waste pile or forfeit', () => {
   assert.ok(end && end.type === 'roundEnded');
   assert.deepEqual(end.finishingOrder, ['a', 'c', 'b']);
   assert.equal(end.forfeitedBy, 'b');
-  assert.throws(() => forfeit(up, 'c'), /cannot forfeit/);
+  // a is out: a cannot forfeit. c (still in) can.
+  assert.throws(() => forfeit(up, 'a'), /cannot forfeit/);
+  assert.equal(ended(forfeit(up, 'c').events)?.forfeitedBy, 'c');
 });
 
 test('last card higher: forfeit straight away', () => {
@@ -208,27 +214,70 @@ test('jokers allowed in the final two while both players have two or more normal
   assert.ok(legalCards(s, 'b').some((x) => x.id === 'joker-1'));
 });
 
-test('a last normal card with only jokers left counts as the last card (jokers thrown away)', () => {
-  // b holds a 5 and a joker; c has two normal cards so b's joker is not blocked, but b plays the 5.
+test('a last normal card with only jokers left counts as the last card (jokers set aside, thrown away when out)', () => {
+  // b holds a 5 and a joker; b plays the 5: the joker is set aside.
   const s = finalTwo([c('hearts', 5), J(1)], [c('hearts', 9), c('clubs', 3)], 'b');
   const r = playCard(s, 'b', 'hearts-5');
-  assert.ok(r.events.some((e) => e.type === 'jokersDiscarded' && e.player === 'b' && e.count === 1));
+  assert.ok(!r.events.some((e) => e.type === 'jokersDiscarded'));
   assert.deepEqual(r.state.hands['b'], []);
-  assert.deepEqual(ids(r.state.usedJokers), ['joker-1']);
-  // c can't answer with a joker now anyway; lower last card: b wins.
-  const end = ended(playCard(r.state, 'c', 'hearts-9').events);
+  assert.deepEqual(ids(r.state.asideJokers?.['b'] ?? []), ['joker-1']);
+  assert.deepEqual(ids(r.state.usedJokers), []);
+  // Lower last card: b wins and goes out, the joker is thrown away.
+  const r2 = playCard(r.state, 'c', 'hearts-9');
+  assert.ok(r2.events.some((e) => e.type === 'jokersDiscarded' && e.player === 'b' && e.count === 1));
+  assert.deepEqual(ids(r2.state.usedJokers), ['joker-1']);
+  const end = ended(r2.events);
   assert.ok(end && end.type === 'roundEnded');
   assert.deepEqual(end.finishingOrder, ['a', 'b', 'c']);
 });
 
-test('last normal card higher: jokers still thrown away when picking up the waste pile', () => {
+test('last normal card higher: jokers come back when picking up the waste pile (2.34.5)', () => {
   const s = finalTwo([c('hearts', 13), J(1)], [c('hearts', 9), c('clubs', 3)], 'b');
   const { s: after } = run(s, [
     ['b', 'hearts-13'],
     ['c', 'hearts-9'],
   ]);
   assert.equal(after.pendingFinalTwo, 'b');
+  assert.deepEqual(ids(after.asideJokers?.['b'] ?? []), ['joker-1'], 'still aside while b chooses');
   const up = pickUpWastePile(after, 'b').state;
-  assert.ok(!(up.hands['b'] ?? []).some((x) => x.kind === 'joker'));
-  assert.deepEqual(ids(up.usedJokers), ['joker-1']);
+  assert.ok((up.hands['b'] ?? []).some((x) => x.id === 'joker-1'));
+  assert.deepEqual(ids(up.usedJokers), []);
+  assert.deepEqual(up.asideJokers ?? {}, {});
+});
+
+test('last normal card higher, then forfeit: jokers thrown away', () => {
+  const s = finalTwo([c('hearts', 13), J(1)], [c('hearts', 9), c('clubs', 3)], 'b');
+  const { s: after } = run(s, [['b', 'hearts-13'], ['c', 'hearts-9']]);
+  const r = forfeit(after, 'b');
+  assert.ok(r.events.some((e) => e.type === 'jokersDiscarded' && e.player === 'b'));
+  assert.deepEqual(ids(r.state.usedJokers), ['joker-1']);
+  assert.deepEqual(ended(r.events)?.finishingOrder, ['a', 'c', 'b']);
+});
+
+// 2.34.5: either of the last two can forfeit at any time (PROJECT.md 12s).
+test('last two, no pick-up: either can forfeit on the other\'s turn and mid-trick', () => {
+  const s = finalTwo([c('hearts', 13), c('clubs', 2)], [c('hearts', 9), c('clubs', 3)], 'b');
+  assert.ok(canForfeit(s, 'b') && canForfeit(s, 'c'));
+  assert.ok(!canForfeit(s, 'a'));
+  // c forfeits on b's turn.
+  const r1 = forfeit(s, 'c');
+  assert.deepEqual(ended(r1.events)?.finishingOrder, ['a', 'b', 'c']);
+  assert.equal(ended(r1.events)?.forfeitedBy, 'c');
+  // Mid-trick: b led, b forfeits on c's turn.
+  const mid = playCard(s, 'b', 'clubs-2').state;
+  assert.equal(mid.turn, 'c');
+  const r2 = forfeit(mid, 'b');
+  assert.deepEqual(ended(r2.events)?.finishingOrder, ['a', 'c', 'b']);
+});
+
+test('2-player game: forfeit works from the first trick', () => {
+  const s = startPlay(['a', 'b'], { a: [c('spades', 14), c('clubs', 4)], b: [c('spades', 2), c('clubs', 3)] }, 'a');
+  assert.ok(canForfeit(s, 'b'));
+  assert.deepEqual(ended(forfeit(s, 'b').events)?.finishingOrder, ['a', 'b']);
+});
+
+test('three players still in: forfeit throws', () => {
+  const s = startPlay(['a', 'b', 'c'], { a: [c('spades', 14)], b: [c('spades', 2)], c: [c('spades', 5)] }, 'a');
+  assert.ok(!canForfeit(s, 'a'));
+  assert.throws(() => forfeit(s, 'a'), /cannot forfeit/);
 });

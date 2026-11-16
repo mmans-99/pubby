@@ -19,7 +19,7 @@ NAMES = ['Amy', 'Ben', 'Cat', 'Dan', 'Eve', 'Fay', 'Gus', 'Hal']
 
 # One game per player count. Different settings so each game covers different screens.
 GAMES = [
-    {'players': 2, 'rounds': 2, 'manualDeal': True, 'swap': True, 'reshuffle': True, 'ultimate': False, 'voteYes': True, 'forfeitChance': 0.3, 'jokers': True},
+    {'players': 2, 'rounds': 2, 'manualDeal': True, 'swap': True, 'reshuffle': True, 'ultimate': False, 'voteYes': True, 'forfeitChance': 0.3, 'anyForfeitChance': 0.01, 'jokers': True},
     {'players': 3, 'rounds': 2, 'manualDeal': False, 'swap': True, 'reshuffle': True, 'ultimate': True, 'voteYes': True, 'forfeitChance': 0.0, 'jokers': True},
     {'players': 5, 'rounds': 2, 'manualDeal': True, 'swap': False, 'reshuffle': False, 'ultimate': True, 'voteYes': False, 'forfeitChance': 0.2, 'jokers': False},
     {'players': 8, 'rounds': 1, 'manualDeal': False, 'swap': False, 'reshuffle': True, 'ultimate': True, 'voteYes': True, 'forfeitChance': 0.1, 'jokers': True},

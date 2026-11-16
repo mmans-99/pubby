@@ -105,6 +105,62 @@ export function fanLayout(n: number, width: number, maxCardW?: number, minCardW 
   return { cardW, height: cardH + (rows.length > 1 ? cardH * 0.55 : 0) + 30, spots };
 }
 
+/** The box the fanned cards really cover (rotation and the curve included), in px. */
+export function fanBounds(fan: { cardW: number; spots: readonly FanSpot[] }): { left: number; top: number; right: number; bottom: number } {
+  const w = fan.cardW, hgt = fan.cardW * 1.4;
+  let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+  for (const p of fan.spots) {
+    const a = (Math.abs(p.rot) * Math.PI) / 180;
+    const bw = w * Math.cos(a) + hgt * Math.sin(a);
+    const bh = w * Math.sin(a) + hgt * Math.cos(a);
+    const cx = p.x + w / 2, cy = p.y + hgt / 2;
+    left = Math.min(left, cx - bw / 2); right = Math.max(right, cx + bw / 2);
+    top = Math.min(top, cy - bh / 2); bottom = Math.max(bottom, cy + bh / 2);
+  }
+  if (!fan.spots.length) return { left: 0, top: 0, right: 0, bottom: 0 };
+  return { left, top, right, bottom };
+}
+
+/**
+ * The fanned hand for a hand slot of `width` × `height` px (CODE.md 9ag.3 fix 1, 2.34.5).
+ * Starts from the usual fan (so a phone's hand that already fits is unchanged) and, when
+ * the cards would go past the slot (below it, or wider than it), makes them smaller until
+ * they fit: the card size is the smaller of "fits the height" and "fits the width". The
+ * returned height is what the cards cover, so the centred fan never runs below the slot.
+ * `lift` is the raised card's lift (it may stick up above the slot; not counted).
+ */
+export function fitFan(n: number, width: number, height: number, landscape: boolean): { cardW: number; height: number; spots: FanSpot[] } {
+  const twoRows = n > 15;
+  const first = landscape
+    ? fanLayout(n, width, (height - 30) / (twoRows ? 1.4 * 1.55 : 1.4), 48)
+    : fanLayout(n, width, undefined, 64, height);
+  // The fan's box is centred in the slot; every card must be inside the slot. Sideways, a tilted end
+  // card may reach into the screen's 8 px side padding (as it always has on phones).
+  const SIDE = 8;
+  const fits = (f: { cardW: number; height: number; spots: FanSpot[] }): boolean => {
+    const b = fanBounds(f);
+    const top = (height - f.height) / 2;
+    return top + b.top >= -0.5 && top + b.bottom <= height + 0.5 && b.left >= -SIDE && b.right <= width + SIDE;
+  };
+  if (n === 0 || fits(first)) return first;
+  let fan = first;
+  let cardW = first.cardW;
+  for (let i = 0; i < 40; i++) {
+    cardW *= 0.95;
+    fan = fanLayout(n, width, cardW, Math.min(48, cardW), undefined);
+    const b = fanBounds(fan);
+    if (b.bottom - b.top <= height && b.left >= -SIDE && b.right <= width + SIDE) break;
+  }
+  // The fan's box is what the cards cover, so the centred fan never runs past the slot.
+  const b = fanBounds(fan);
+  return { cardW: fan.cardW, height: b.bottom - b.top, spots: fan.spots.map((p) => ({ ...p, y: p.y - b.top })) };
+}
+
+/** 2.34.6 (CODE.md 9ah.3): all four aces in one hand ("You are the Ultimate Badboy!!"). */
+export function hasFourAces(hand: readonly Card[]): boolean {
+  return hand.filter((c) => c.kind === 'standard' && c.rank === 14).length === 4;
+}
+
 /** Face of a card from its id ("spades-14", "joker-1"), for the last-trick row. */
 export function cardFaceFromId(id: string, extraClass = ''): HTMLElement {
   if (id.startsWith('joker')) return cardFace({ kind: 'joker', id }, extraClass);

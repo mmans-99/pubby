@@ -8,7 +8,7 @@
 
 import type { Card, StandardCard, Suit } from '../rules/cards.ts';
 import type { DealMode } from '../rules/deal.ts';
-import { legalCards } from '../rules/play.ts';
+import { canForfeit, legalCards } from '../rules/play.ts';
 import { swapAllowed } from '../rules/round.ts';
 import { handOf, targetVoteAllowed } from './session.ts';
 import type { LeadNotice, PlayerId, RoundRecord, Session, SessionEnd, SessionPhase, UltimateLabels, VoteKind } from './types.ts';
@@ -127,7 +127,7 @@ export function playerView(s: Session, me: PlayerId): PlayerView {
     wastePileCount: play?.wastePile.length ?? 0,
     pendingFinalTwo: play?.pendingFinalTwo ?? null,
     myTakeRequests: s.takeRequests.filter((r) => r.requester === me || r.target === me),
-    canForfeit: !!play && !play.over && (play.pendingFinalTwo === me || play.forfeitAllowed.includes(me)),
+    canForfeit: !!play && canForfeit(play, me),
     vote: v
       ? {
           kind: v.kind,

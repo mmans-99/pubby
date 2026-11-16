@@ -30,6 +30,10 @@
     const notice = [...document.querySelectorAll('.notice-overlay .notice-card button')]
       .find((b) => visible(b) && b.textContent.trim() === 'OK');
     if (notice) return click(notice, 'notice OK');
+    // 2.34.6 (CODE.md 9ah.1): the round's last trick stays on the felt until tapped.
+    const finalTrick = document.querySelector('.final-trick[role="button"]');
+    if (finalTrick && window.__holdFinal) return 'wait'; // lasttrick_check.py looks at it first
+    if (finalTrick && !document.querySelector('.popup-overlay')) { st.finalTaps = (st.finalTaps || 0) + 1; return click(finalTrick, 'tap to see the results'); }
     // Pop-ups first.
     // Pop-ups close by themselves; the ones that can be tapped away are skipped.
     const skip = document.querySelector('.popup-overlay[data-skip]');
@@ -130,6 +134,12 @@
       }
       return click(pickUp, 'pick up waste pile');
     }
+
+    // 2.34.5 (CODE.md 9ag.1): either of the last two can forfeit at any time (two taps).
+    const armed = byText('Tap again to forfeit');
+    if (armed) return click(armed, 'forfeit (any time)');
+    const anyF = buttons().find((b) => b.textContent.trim() === 'Forfeit');
+    if (anyF && Math.random() < (cfg.anyForfeitChance || 0)) return click(anyF, 'forfeit armed');
 
     // Playing a card.
     const playable = [...document.querySelectorAll('.hand .card.playable')];

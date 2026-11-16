@@ -46,6 +46,10 @@ export type Popup =
   | { kind: 'slap'; slapper: PlayerId; slapped: PlayerId; cards: number; /** The slap ended the round (no pick-up line): 'game' if the game is over too. */ over?: 'round' | 'game' }
   /** Final two: the lower last card laughs at the higher one, who must pick up or forfeit. */
   | { kind: 'haha'; laugher: PlayerId; loser: PlayerId }
+  /** 2.34.6 (CODE.md 9ah.3): this phone's player holds all four aces. Private: shown on their own screen only. */
+  | { kind: 'badboy'; player: PlayerId }
+  /** 2.34.6: someone forfeited the round (last place). Shown on every phone. */
+  | { kind: 'pathetic'; player: PlayerId }
   | { kind: 'out'; player: PlayerId; place: number }
   | {
       kind: 'lastTwo';

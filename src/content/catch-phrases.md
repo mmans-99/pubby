@@ -8,11 +8,8 @@ Add a new line starting with "- " to add a catch-phrase. Lines without "- " are 
 - You got slapped
 - You got slapped by a kiiid
 - Hurry up!!
-- Slap him!!
-- Slap her!!
 - Come on!!
 - Too slow!!
-- Get them!!
 - Oofaa!!!!
 - Revenge time!!
 - Nooo, not again!!
@@ -23,7 +20,6 @@ Add a new line starting with "- " to add a catch-phrase. Lines without "- " are 
 - Sit down, sweetheart!!
 - Ha! Caught you!!
 - Oh no, oh no, oh no!!
-- Pick them up!!
 - Enjoy the pile!!
 - Bye bye, losers!!
 - Coward!!
@@ -39,3 +35,5 @@ Add a new line starting with "- " to add a catch-phrase. Lines without "- " are 
 - Ooh, a joker!!
 - Not so easy, sweetheart!!
 - Ultimate time!!
+- HIGHER!!!
+- LOWER!!!

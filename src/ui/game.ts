@@ -22,7 +22,7 @@ import { defaultRng } from '../rules/rng.ts';
 import { applyAction, handOf } from '../session/session.ts';
 import type { LeadNotice, PlayerId, Session, SessionAction, SessionEvent } from '../session/types.ts';
 import { playerView, type PlayerView } from '../session/view.ts';
-import { cardFace, cardFaceFromId, fanLayout, ordinal, shortLabel, sortHand, SUIT_NAME, SUIT_SYMBOL } from './cards.ts';
+import { cardFace, cardFaceFromId, fanLayout, fitFan, hasFourAces, ordinal, shortLabel, sortHand, SUIT_NAME, SUIT_SYMBOL } from './cards.ts';
 import { h, type Child } from './dom.ts';
 import type { GameStage, LastTrick, SavedGame, TrickPlay } from './storage.ts';
 import { getState, say, update, type Popup } from './store.ts';
@@ -61,7 +61,7 @@ const POP_MS = 2400;
 /** How long a pop-up stays up. */
 function popupMs(p: Popup): number {
   if (p.kind === 'info' && p.ms) return p.ms;
-  return p.kind === 'slap' || p.kind === 'haha' ? SLAP_MS : p.kind === 'lastTwo' ? POP_MS + 600 : POP_MS;
+  return p.kind === 'slap' || p.kind === 'haha' || p.kind === 'badboy' || p.kind === 'pathetic' ? SLAP_MS : p.kind === 'lastTwo' ? POP_MS + 600 : POP_MS;
 }
 /** "X leads" pop-up (who leads and any missing suits): long enough to read (user, 2026-11-13). */
 const LEAD_MS = 6000;
@@ -91,6 +91,10 @@ interface TrickAnim {
   flying: boolean;
   /** Events of the move that ended the trick: their sounds play when the animation is done. */
   after: readonly SessionEvent[];
+  /** 2.34.6 (CODE.md 9ah.1): the round's last trick. It stays on the felt until the player taps. */
+  final: boolean;
+  /** The player tapped the final trick away. */
+  tapped: boolean;
 }
 let trickAnim: TrickAnim | null = null;
 
@@ -289,7 +293,16 @@ function absorb(g: SavedGame, session: Session, events: readonly SessionEvent[],
       trickLog = [];
       slap = null;
     }
+    // 2.34.6 (CODE.md 9ah.1): the final-two end, a forfeit mid-trick and "both went out" end the round
+    // with no trickResolved: the cards on the felt are still the last trick, so show it.
+    if (e.type === 'roundEnded' && trickLog.length) {
+      lastTrick = { plays: trickLog, slap, nextLeader: null };
+      finished = { plays: trickLog, slapped: slap?.slapped ?? null };
+      trickLog = [];
+      slap = null;
+    }
   }
+  const roundOver = events.some((e) => e.type === 'roundEnded');
 
   // Private notes (take-cards answers): only the requester sees them, on their own hand screen.
   const notes: Record<string, string[]> = {};
@@ -349,11 +362,18 @@ function absorb(g: SavedGame, session: Session, events: readonly SessionEvent[],
   if (!instantSkipping()) {
     if (dealt.any) sfx('deal');
     cardSound(events);
+    // Network game: the host moved on (next round, end of the game) before this phone tapped the last trick.
+    if (!finished && trickAnim?.final && events.some((e) => e.type === 'roundStarted' || e.type === 'sessionEnded')) {
+      if (trickAnim.timer) window.clearTimeout(trickAnim.timer);
+      trickAnim = null;
+      shownTrickCount = 0;
+    }
     if (finished) {
       if (trickAnim?.timer) window.clearTimeout(trickAnim.timer);
       trickAnim = {
         plays: finished.plays, slapped: finished.slapped, step: 'hold', timer: null, flying: false, after: events,
         slapPopup: finished.slapped ? fresh.find((p) => p.kind === 'slap') ?? null : null,
+        final: roundOver, tapped: false,
       };
     } else {
       eventSounds(events, true);
@@ -407,6 +427,10 @@ function popupsFor(s: Session, events: readonly SessionEvent[]): Popup[] {
       }
       case 'playerOut':
         if (!lastTwo.includes(e.player)) out.push({ kind: 'out', player: e.player, place: e.place });
+        break;
+      case 'forfeited':
+        // 2.34.6: a forfeit is shown to everyone, in capitals.
+        out.push({ kind: 'pathetic', player: e.player });
         break;
       case 'finalTwoChoice': {
         const v = publicView(s);
@@ -499,8 +523,32 @@ function popupsFor(s: Session, events: readonly SessionEvent[]): Popup[] {
 // Screen
 // ---------------------------------------------------------------------------
 
+/**
+ * 2.34.6 (CODE.md 9ah.3): "You are the Ultimate Badboy!!" Each phone works it out from the hand it
+ * shows (its own seat, or on one phone the player holding it on their private hand screen), after the
+ * deal and after the swap, once per deal per player. Nothing is logged or sent.
+ */
+const badboyShown = new Set<string>();
+const BADBOY_PHASES: readonly string[] = ['reshuffle', 'swap', 'cardCheck', 'leadNotice', 'reactionTap', 'chooseLeader'];
+
+function badboyCheck(g: SavedGame): void {
+  const s = g.session;
+  if (!BADBOY_PHASES.includes(s.phase)) return;
+  const who = ownSeat(g) ?? (g.stage === 'hand' ? g.holder : null);
+  if (!who || s.players.find((p) => p.id === who)?.computer) return;
+  if (!hasFourAces(playerView(s, who).myHand)) return;
+  let fromRound = 0;
+  s.log.forEach((e, i) => { if (e.event.type === 'roundStarted') fromRound = i; });
+  const dealIndex = s.log.slice(fromRound).filter((e) => e.event.type === 'dealComplete').length;
+  const key = `${s.round}:${dealIndex}:${who}`;
+  if (badboyShown.has(key)) return;
+  badboyShown.add(key);
+  window.setTimeout(() => update({ popups: [...getState().popups, { kind: 'badboy', player: who }] }), 0);
+}
+
 export function gameScreen(g: SavedGame): HTMLElement {
   if (g.stage !== 'hand') shownHandKey = '';
+  badboyCheck(g);
   const s = g.session;
   const st = getState();
   let body: Child;
@@ -672,18 +720,27 @@ function trickFinishStage(g: SavedGame, a: TrickAnim): Child {
   shownTrickCount = -1;
   const lay = stageLayout(true, 52);
   const who = ownSeat(g) ?? g.holder;
+  const table = roundTable(s, v, {
+    bottom: bottomSeat(g, g.holder),
+    highlight: a.slapped,
+    plays: a.plays,
+    newFrom: firstDraw ? last : a.plays.length,
+    waste: wastePile(waste),
+    you: ownSeat(g) !== null,
+    box: lay.box,
+  });
+  // 2.34.6 (CODE.md 9ah.1): the round's last trick stays until tapped; the whole table is the button.
+  const tapToGo = a.step === 'hold' && waitsForTap(a) && a.timer === null;
   return gameFrame(lay, {
-    table: roundTable(s, v, {
-      bottom: bottomSeat(g, g.holder),
-      highlight: a.slapped,
-      plays: a.plays,
-      newFrom: firstDraw ? last : a.plays.length,
-      waste: wastePile(waste),
-      you: ownSeat(g) !== null,
-      box: lay.box,
-    }),
+    table: tapToGo
+      ? h('div', {
+        class: 'final-trick', role: 'button', tabindex: '0', 'aria-label': 'See the results',
+        onclick: () => tapFinalTrick(a),
+        onkeydown: (e: Event) => { const k = (e as KeyboardEvent).key; if (k === 'Enter' || k === ' ') tapFinalTrick(a); },
+      }, table, h('p', { class: 'hint center final-hint' }, 'Tap to see the results'))
+      : table,
     hand: handBlock(s, playerView(s, who), null, { head: false, fit: lay.handH, width: lay.handW }),
-    extra: h('div', { class: 'anim-block', 'aria-hidden': 'true' }),
+    extra: tapToGo ? null : h('div', { class: 'anim-block', 'aria-hidden': 'true' }),
   });
 }
 
@@ -711,9 +768,25 @@ function flyTrick(a: TrickAnim, done: () => void): void {
 }
 
 /** Moves the end-of-trick animation on; called after every draw. */
+/** 2.34.6 (CODE.md 9ah.1): the round's last trick waits for a tap, except while Fast forward or Skip runs. */
+function waitsForTap(a: TrickAnim): boolean {
+  return a.final && !a.tapped && !(fastForwardOn() || skipping() || instantSkipping());
+}
+
+/** The player taps the round's last trick away: its cards move, then the round-over pop-up and the results. */
+function tapFinalTrick(a: TrickAnim): void {
+  if (trickAnim !== a || a.tapped) return;
+  a.tapped = true;
+  if (a.step === 'hold' && a.timer === null) a.step = 'fly';
+  update({});
+}
+
 function driveTrickAnim(): void {
   const a = trickAnim;
   if (!a) return;
+  // A final trick waits on the felt; a round-ending slap still shows its SLAP! pop-up first (hold, then wait).
+  const slapStillDue = !!(a.slapped && a.slapPopup && getState().popups.includes(a.slapPopup));
+  if (a.step === 'hold' && a.timer === null && waitsForTap(a) && !slapStillDue) return;
   if (a.step === 'hold' && a.timer === null) {
     a.timer = window.setTimeout(() => {
       a.timer = null;
@@ -723,6 +796,13 @@ function driveTrickAnim(): void {
       update({});
     }, trickMs(TRICK_HOLD_MS));
   } else if (a.step === 'wait' && !(a.slapPopup && getState().popups.includes(a.slapPopup))) {
+    if (waitsForTap(a)) {
+      // SLAP! has been shown: back to holding the trick until the tap.
+      a.step = 'hold';
+      a.slapPopup = null;
+      window.setTimeout(() => { if (trickAnim === a) update({}); }, 0);
+      return;
+    }
     a.step = 'fly';
     window.setTimeout(() => { if (trickAnim === a) update({}); }, 0);
   } else if (a.step === 'fly' && !a.flying) {
@@ -795,6 +875,12 @@ export function stageLayout(hasHand: boolean, bar: number): GameLayout {
  */
 export function gameFrame(lay: GameLayout, parts: { table: Child; hand?: Child; action?: Child; extra?: Child; extraAt?: 'top' | 'bottom' }): HTMLElement {
   // 2.31 (CODE.md 9aa Part C item 5): `extraAt: 'top'` moves the floating panels to the top of the table (round start: the target row).
+  // 2.34.5 (CODE.md 9ag.3 fix 3): the 😂 button lives outside the frame; in landscape it sits at the top of the
+  // action column, so it needs the column's size.
+  const root = document.documentElement;
+  root.style.setProperty('--side-w', `${lay.sideW.toFixed(1)}px`);
+  root.style.setProperty('--hand-h', `${lay.handH.toFixed(1)}px`);
+  if (lay.landscape && lay.sideW > 0) root.dataset['side'] = '1'; else delete root.dataset['side'];
   return h('div', { class: 'game-frame', style: `--hand-h:${lay.handH.toFixed(1)}px;--bar-h:${lay.barH.toFixed(1)}px;--side-w:${lay.sideW.toFixed(1)}px` },
     h('div', { class: 'game-table-slot' }, parts.table,
       parts.extra ? h('div', { class: parts.extraAt === 'top' ? 'game-extra at-top' : 'game-extra', 'data-scroll': 'extra' }, parts.extra) : null),
@@ -1051,9 +1137,11 @@ export function handBlock(
   const landscape = window.innerWidth > window.innerHeight;
   // 2.29: the hand fits its fixed row (`fit`), one row up to 15 cards; its width comes from the stage's layout.
   const width = opts.width ?? Math.min(window.innerWidth, 1100) - 12;
+  // 2.34.5 (CODE.md 9ag.3 fix 1): the fan fits the hand slot's real width and height; cards get smaller when needed.
   const fan = landscape
-    ? fanLayout(hand.length, width, ((opts.fit ?? handH(window.innerWidth, window.innerHeight)) - 30) / (hand.length > 15 ? 1.55 : 1.4), 48)
-    : fanLayout(hand.length, width, undefined, 64, opts.fit);
+    ? fitFan(hand.length, width, opts.fit ?? handH(window.innerWidth, window.innerHeight), true)
+    // Portrait: the 😂 button reaches 6 px up into the hand row, so the cards keep 8 px clear at the bottom (styles.css).
+    : opts.fit !== undefined ? fitFan(hand.length, width, opts.fit - 8, false) : fanLayout(hand.length, width, undefined, 64, opts.fit);
   const legal = new Set(opts.all ? v.myHand.map((c) => c.id) : v.legalCardIds);
   const selected = getState().selected;
   const raised = (id: string): boolean => (opts.picked ? opts.picked.has(id) && !opts.mark : selected === id);
@@ -1202,8 +1290,25 @@ export function popupLayer(): HTMLElement | null {
   const next = (): void => update({ popups: st.popups.slice(1) });
   let body: Child;
   let cls = shownPopups.has(p) ? 'popup seen' : 'popup';
-  shownPopups.add(p);
-  if (p.kind === 'haha') {
+  const firstShow = !shownPopups.has(p);
+  if (p.kind === 'pathetic') {
+    cls += ' slap pathetic';
+    body = [
+      h('div', { class: 'slap-word pathetic-word', 'aria-label': 'Pathetic!!!' }, 'PATHETIC!!!'),
+      h('div', { class: 'slap-who' }, `${nameOf(s, p.player)} forfeited`),
+      h('div', { class: 'small' }, 'Last place.'),
+      popupTimer(p),
+    ];
+  } else if (p.kind === 'badboy') {
+    cls += ' slap badboy';
+    if (firstShow) sfx('badboy');
+    body = [
+      h('div', { class: 'badboy-pre' }, 'You are the'),
+      h('div', { class: 'slap-word badboy-word', 'aria-label': 'You are the Ultimate Badboy!!' }, 'Ultimate', h('br'), 'Badboy!!'),
+      h('div', { class: 'small' }, 'All four aces.'),
+      popupTimer(p),
+    ];
+  } else if (p.kind === 'haha') {
     cls += ' slap haha';
     body = [
       h('div', { class: 'slap-word', 'aria-label': 'Ha ha ha!' }, 'HAHAHA!'),
@@ -1240,6 +1345,11 @@ export function popupLayer(): HTMLElement | null {
       h('div', { class: 'popup-title' }, p.title),
       p.text ? h('div', { class: 'popup-text' }, p.text) : null,
     ];
+  }
+  shownPopups.add(p);
+  // 2.34.6: the Badboy pop-up closes by itself after 4 s (countdown bar) or on a tap.
+  if (p.kind === 'badboy' || p.kind === 'pathetic') {
+    return h('div', { class: 'overlay popup-overlay', 'data-skip': 'true', onclick: next }, h('div', { class: cls, role: 'alert' }, body));
   }
   // Every pop-up closes by itself (afterRender). SLAP! and HAHAHA! stay their full time; the others can be tapped away.
   if (p.kind === 'slap' || p.kind === 'haha') {

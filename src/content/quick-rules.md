@@ -29,7 +29,7 @@ Next round: the loser deals, and the winner picks who leads (they can pick thems
 The dealer shuffles and deals one 52-card deck. Hidden decks (2 and 3 players) are dealt face down first.
 **Manual:** tap a name to give that player one card. Once someone has a card, their name is greyed out until everyone has one, so the deal stays even.
 **Auto:** tap who gets the first card; the cards then go clockwise from them. **Deal all** finishes the deal at once.
-After the deal: **Look at cards** passes the phone round so everyone sees their own hand. **Deal again?** calls the reshuffle vote (once per round). The host taps **Start** to begin.
+After the deal: **Look at cards** passes the phone round so everyone sees their own hand. **Deal again?** calls the reshuffle vote (once per deal: if it passes, you can ask again after the new deal). The host taps **Start** to begin.
 
 ## Playing a trick
 The leader plays any card. Going clockwise, everyone must play the same suit if they can. Highest card of that suit leads next. Ace is high.
@@ -39,7 +39,7 @@ On your turn only the cards you can play are bright. Tap a card, then **Play**, 
 No card of the led suit? Play any other card. That's a SLAP! The trick stops, and whoever played the highest card of the led suit picks up every card in the trick, then leads.
 
 ## Jokers
-Wild. Play one on your turn, even if you could follow suit. It skips your turn and then leaves the game. If you lead with a joker, it's still your trick but nothing in it affects you: the next player plays any card, and that sets the suit. You can't hold only jokers: when you play your last normal card, any jokers left are thrown away and that was your last card. 2 jokers with 2 to 5 players, 3 with 6 to 8. The host can turn jokers off. In 2 and 3 player games some jokers may be sitting in the hidden decks, so fewer may be in play.
+Wild. Play one on your turn, even if you could follow suit. It skips your turn and then leaves the game. If you lead with a joker, it's still your trick but nothing in it affects you: the next player plays any card, and that sets the suit. You can't hold only jokers: when you play your last normal card, that was your last card: your jokers are thrown away if you go out, and come back to your hand if you get slapped or pick up the waste pile. 2 jokers with 2 to 5 players, 3 with 6 to 8. The host can turn jokers off. In 2 and 3 player games some jokers may be sitting in the hidden decks, so fewer may be in play.
 
 ## {hand} Missing a suit
 No cards of a suit after the deal? Say so. You lead first. If more than one player is missing a suit, play Reaction Tap: the slowest tapper leads. Tapping early counts as slowest.
@@ -49,6 +49,7 @@ When only two players hold cards and you play your last card:
 - Lower than theirs, or a slap: you win the round.
 - Higher than theirs: pick up the whole waste pile and keep playing (you can still forfeit later), or forfeit and take last place.
 Both go out in the same trick? Lower card or slapper wins.
+Either of the last two can forfeit at any time (tap Forfeit twice): you take last place.
 Jokers are always allowed. If one of you leads a joker, it's still the same trick: the other plays any card. Both play a joker? Missed round: the first player leads again. A last card that only meets a joker wins.
 
 ## {take} Taking cards
@@ -59,7 +60,7 @@ With 2 or 3 players, some cards are dealt face down into hidden decks before the
 At the start of every round, each player can swap up to 4 of their cards for random unseen cards from the hidden decks, or keep their hand. Swapped-out cards leave the round.
 
 ## Votes
-The person who asks is a YES. Nothing is decided until everyone has voted. Your vote is secret. More than half wins. A tie goes to the host, and the host can count the votes early. Votes happen before a round (reshuffle, once per round) or on the results screen (target score, Ultimate Round). On several phones, votes are open: every phone shows each ballot as it's cast.
+The person who asks is a YES. Nothing is decided until everyone has voted. Your vote is secret. More than half wins. A tie goes to the host, and the host can count the votes early. Votes happen before a round (reshuffle, once per deal) or on the results screen (target score, Ultimate Round). On several phones, votes are open: every phone shows each ballot as it's cast.
 With 2 players there are no votes: one of you asks, and it only happens if the other agrees.
 
 **Target score** (optional): anyone can propose one before round 1 starts or on a results screen, with **Propose** on the target row. Once agreed it's fixed. When someone reaches it, the Ultimate Round vote starts.
