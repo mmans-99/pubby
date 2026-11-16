@@ -54,6 +54,16 @@ ALL_ORDER = [
     'lobby_check.py',
     'online_check.py',
     'sound_check.py',
+    # 9al.7 (2.37.1): the checks that were missing from this list (CODE.md 9ak.9)
+    'tablet_check.py',
+    'popups_check.py',
+    'lasttrick_check.py',
+    'landscape_check.py',
+    'results_check.py',
+    'lasttwo_check.py',
+    # 9am.3 (2.37.2)
+    'ffstop_check.py',
+    'react_check.py',
 ]
 ALL = set(ALL_ORDER)
 PASS_LINE = re.compile(r'checks? (passed|pass)\b')

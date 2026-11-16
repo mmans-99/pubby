@@ -3707,6 +3707,53 @@ Cause of the crushed Play button (screenshot: Forfeit + "Pick a card to lead" in
 6. **Last two with a big hand:** Forfeit and "Pick a card" / "Play 7♠" side by side on one line, nothing cut off, cards above the buttons.
 7. **Still to check from 2.37.0:** results un-ready (tap I'm ready twice — needs a network game or another phone as host), landscape sideways, take sheet Cancel, iPad.
 
+### 9al.9 Built notes (2.37.1, Haiku; not pushed)
+- Parts A to G built in order. Unit tests 475 of 475; `npm run check` clean; `node build.mjs` ok.
+- Part A: `noteLayer(s)` in `game.ts` (`.note-layer`, transparent, z 31). Part B: `.target-sheet` header and `.stepper .step` rules; quick chips removed from `targetSheet`. Part C: `.notice-overlay` is `position: fixed` with a cream `.notice-card`. Part D: `forfeitLine` in `src/ui/popuptext.ts`, used by the PATHETIC and last-two pop-ups (`lastTwoBody` takes `me`). Part E: `reactionsToggle(inline)`; `gameFrame` puts it first in `.game-action-slot` (not in the rail), and the buttons moved into `.action-main`; `reactionsLayer(inline)` gets the flag from `app.ts`; results footer has it first. `--bar-h` is set on the root, so `html:has(.react-inline) .reactions-sheet` sits above the row. Part F: "Pick a card" when Forfeit shows; `.action-row > button` is nowrap with ellipsis.
+- Checks: `testbed/lasttwo_check.py` (new, 16 of 16). `run_checks.py` now lists tablet, popups, lasttrick, landscape, results and lasttwo. `popups_check` and `netvotes_check` step the target with − / + instead of the removed chips.
+- Known, from before this build: `lasttrick_check` 2p fails the round-over pop-up on 2.37.0 as well; `netgame_check` 94 of 97 (own-seat items); `solo_check` "new name shows at the table".
+
+## 9am. Stop fast forward on a phone; a reactions sheet you can close (user 2026-11-16 13:50; spec `PROJECT.md` 12x; target **2.37.2**)
+
+### 9am.0 Read first
+- Builds on the uncommitted 2.37.1 work (9al). Bump `package.json` to **2.37.2**. No rule, session or protocol change.
+- Both causes were found and the fixes tried in a scratch copy (Opus, 13:55) with a real finger tap (Chrome DevTools touch events, 120 ms between press and lift).
+
+### 9am.1 Part A: Stop fast forward (cause and fix)
+- **Cause:** `trickStage` (game.ts ~810) puts `.anim-block` (`position: fixed; inset: 0; z-index: 34`) over the whole screen while a trick animates, so taps can't reach cards mid-animation. During Fast forward a trick is animating almost all the time, so the block covers the bottom **Stop fast forward** button, the hand-area **Fast forward** / **Skip** buttons and ☰. Headless `click()` sometimes landed between animations, so the checks passed; a finger nearly always hits the block. (Playwright's own message: "anim-block … intercepts pointer events".) 9aj Part B only fixed Stop over pop-ups, not over this block.
+- **Fix:** `extra: tapToGo || (g.bots && botsOnlyFor(g)) ? null : h('div', { class: 'anim-block', … })`. When only computer players can move, the person has nothing to protect, so no block. Everywhere else unchanged.
+- Tried: with a 120 ms touch, 2.37.1 stays on; with the fix it stops at once (click and touch both).
+
+### 9am.2 Part B: the reactions sheet
+- **Cause (2.37.1):** `.msg-bar` is fixed at `bottom: 84px` (made for the old floating 😂) with z 60, and the sheet uses `--bar-h + 12px`. On results the 😂 / ✕ is in the footer's last row (y 676 to 724 at 384×800) and the typing bar (668 to 716) covers it, so the sheet can't be closed. In play the sheet's bottom also runs under the typing bar.
+1. `app.ts` `paint()`, after `replaceChildren`: if `root.querySelector('.react-inline')` exists, set `--react-bottom` on `<html>` to `innerHeight - toggle.top + 8` (px).
+2. CSS (replace the 9al.5 sheet rule): `html:has(.react-inline) .msg-bar { bottom: var(--react-bottom, 84px); }` and `html:has(.react-inline) .reactions-sheet { left: 8px; right: 8px; bottom: calc(var(--react-bottom, 84px) + 56px); max-height: min(42vh, calc(100dvh - var(--react-bottom, 84px) - 120px)); }`. Tablet `data-side` rule keeps its `right`, with the same `bottom`. Rail unchanged (floating 😂).
+3. Results screen: `html:has(.results-footer .react-inline) .reactions-sheet { background: var(--felt-dark); border-color: rgba(242,193,78,.55); }` and phrase chips `background: rgba(0,0,0,.35)` there, so the results text doesn't show through.
+4. **Tap-off (user to choose):** (a) recommended: a tap anywhere outside the sheet, the typing bar and ✕ closes the sheet and does nothing else (like the menu); a transparent `.react-catcher` (fixed, inset 0, z 36, under the sheet z 37) with `onclick: () => update({ reactionsOpen: false })`. (b) keep 12g / 2.4: it stays open until ✕.
+- Tried (a without the catcher): ✕ is the top element at its centre on the results screen; sheet and bar sit above it in play and on results.
+
+### 9am.3 Part C: checks
+- New `testbed/ffstop_check.py` (real time, 390×844, 4 players): the bot plays until the person is out; tap **Fast forward** and then **Stop fast forward** with CDP `Input.dispatchTouchEvent` (touchStart, 120 ms, touchEnd); after 400 ms `.fast-banner` is gone and normal play goes on. Same for a tap on ☰ during Fast forward (menu opens).
+- New `testbed/react_check.py` (384×800 and 360×740): open reactions in play and on the results screen: `elementFromPoint` at the ✕ centre is the ✕; the typing bar's bottom ≤ ✕ top; the sheet's bottom ≤ typing bar top; with (a), a tap on the table closes it.
+- `npm test`, `npm run check`, `node build.mjs`, `run_checks.py --all`; compare with the 9al.9 known list. Publish the test build, give 9am.4.
+
+### 9am.5 Built notes (2.37.2, Haiku, option (a) for tap-off; not pushed)
+- **A:** `trickStage` drops the `.anim-block` while only computer players can move (`g.bots && botsOnlyFor(g)`).
+- **B:** `app.ts` sets `--react-bottom` on `<html>` (the typing bar is in `<body>`, so the variable must be on the root) from the 😂/✕ button's top. CSS: typing bar and sheet use it; the sheet is solid on the results screen (`html:has(.results-footer .react-inline)`). Tap-off: `reactionsLayer` adds `.react-catcher` (fixed, z 36) under the sheet (z 37); an open `.react-inline.on` gets z 38 so ✕ is tappable itself.
+- **C:** new `testbed/ffstop_check.py` (CDP touch, 120 ms, real time; retries up to three fresh games to reach the out state, which is random) and `testbed/react_check.py` (384×800, 360×740). `run_checks.py` lists both. `tablet_check` skips the covered-button test while a pop-up overlay is up (a pop-up covers the screen by design).
+- Checks: `npm run check` clean; unit tests 475 of 475; `react_check` 28 of 28; `ffstop_check` 8 of 8 in 2 games that reached the state (1 game never reached it, so the test needed retries); tablet 70 of 70; landscape 24 of 24; results 8 of 8; lasttwo 16 of 16; netvotes 30 of 30; netgame 94 of 97 (known own-seat items); solo 36 of 37 (known); popups: the known random gaps. Baseline 2.37.0 fails `ffstop_check` at reaching the state; the earlier Playwright run showed `.anim-block` intercepting the Stop tap.
+
+### 9am.6 Fix after the 2.37.2 phone test (2.37.3, Opus, 16:35)
+- User (16:33): everything passed except the ✕ of the reactions during play: cut off at the top (screenshot).
+- Cause: `.react-inline.on` is `position: relative` (to sit above the catcher), so it took the floating `.reactions-toggle`'s `bottom: 14px` and moved 12 px up, out of `.game-action-slot` (`overflow: hidden`). The results footer has no clip, so it only showed in play.
+- Fix: `.react-inline { inset: auto; }`. `react_check` now checks the open ✕ sits fully inside its row (32 of 32). landscape 24/24, tablet 68/68, lasttwo 16/16, `npm run check` clean.
+
+### 9am.4 Phone checklist (2.37.2)
+1. Go out before the computer players; tap Fast forward, then **Stop fast forward**: it stops at once. Try ☰ during Fast forward too.
+2. Results screen: tap 😂: the sheet is solid and sits above the bottom row; the typing bar is above ✕; ✕ closes it (and, with (a), a tap anywhere else does too).
+3. During play: the sheet and typing bar sit above the bottom row; nothing covers ✕ or the buttons.
+4. The rest of 9al.8 still to check (items 1 to 7).
+
 ## 8a. Playable test builds (required before every commit)
 
 `CLAUDE.md` rule 5: the user tests every change on their phone before approving a commit.

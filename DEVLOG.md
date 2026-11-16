@@ -4,6 +4,50 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-16 (16:35, Opus) — Fix: the ✕ of reactions cut off in play (2.37.3, not pushed)
+
+**User (16:33):** 2.37.2 all good except the small ✕ of the reactions during play (cut off at the top). **Cause:** the open ✕ inherited the floating button's `bottom: 14px` once it became `position: relative`, so it rose out of the clipped action row. **Fix:** `.react-inline { inset: auto; }`; `react_check` checks it (32/32). Test build published.
+
+---
+
+## 2026-11-16 (14:25, Haiku) — Build: 9am Parts A to C (2.37.2, not pushed)
+
+Built `CODE.md` 9am, option (a) for tap-off. **A** no animation block while only computer players move (Stop fast forward, Fast forward / Skip and ☰ work with a finger). **B** the typing bar and reactions sheet sit above the 😂/✕ button (`--react-bottom` on `<html>`); the results sheet is solid; a tap outside closes the sheet, and ✕ is tappable. **C** new `testbed/ffstop_check.py` (real touch) and `testbed/react_check.py`, both listed in `run_checks.py`.
+
+**Checks:** `npm run check` clean; unit tests 475 of 475; react_check 28 of 28; ffstop_check 8 of 8 (in the two games that reached the state); tablet 70 of 70; landscape 24/24; results 8/8; lasttwo 16/16; netvotes 30/30; netgame 94/97 and solo 36/37 (known). `popups_check` has its known random gaps. Test build published; nothing committed or pushed.
+
+**Still to test on a phone:** 9am.4 items 1 to 4 and the rest of 9al.8.
+
+---
+
+## 2026-11-16 (13:55, Opus) — Plan: Stop fast forward and the reactions sheet (docs only)
+
+**User (13:50), testing 2.37.1:** Stop fast forward still doesn't work (second report); results screen reactions sheet is a mess and can't be closed (screenshot).
+
+**Found (reproduced in the browser with a real 120 ms finger tap):** `.anim-block` (full-screen, z 34) covers every button while a trick animates, which is nearly always during Fast forward; headless clicks sometimes slipped through, so checks passed. Reactions: the typing bar (fixed at 84 px) sits over the results footer's ✕. Both fixes tried in a scratch copy and work. **Plan:** `PROJECT.md` 12x, `CODE.md` 9am, `TODO.md` Phase 4v (target 2.37.2). Waiting for approval and the tap-off choice. No code changed in the repo.
+
+---
+
+## 2026-11-16 (13:45, Haiku) — Build: 9al Parts A to G (2.37.1, not pushed)
+
+Built `CODE.md` 9al (spec `PROJECT.md` 12w) on top of the pushed 2.37.0 base. Test build published as a private link; the user tests before any push.
+
+- **A** round note floats in a transparent layer (`noteLayer`); the table does not move.
+- **B** target sheet: quick chips removed; − / + are dark round buttons, disabled at the limits; title beside the icon.
+- **C** lead notice is a solid cream card over a full-screen dim (`.notice-overlay` fixed).
+- **D** `forfeitLine(name, isMe)` in `src/ui/popuptext.ts`: "You forfeited" on the forfeiter's own phone (`tests/ui/popuptext.test.ts`).
+- **E** 😂 is the first item of the action row (`reactionsToggle(true)`) and of the network results footer; the floating one stays for screens with no action row and for the rail. `reactionsLayer(inline)` suppresses the floating one when an inline one exists.
+- **F** "Pick a card" (not "to lead") while Forfeit shows; the action row's buttons never wrap. New `testbed/lasttwo_check.py` (16 of 16).
+- Version 2.37.1 in `package.json`.
+
+**Checks:** unit tests 475 of 475; `npm run check` clean; `node build.mjs` ok. Browser: landscape 24/24, results 8/8, tablet 88/88, playthrough 53/53, netvotes 30/30, netgame 94/97 (the known own-seat items), drawer 9/9, back 14/14, solo 36/37 (the known "new name" item), popups (take card, take sheet, Fast forward stop, tie band not seen in random games, as before). `popups_check` and `netvotes_check` now step the target with − / + (the chips are gone).
+
+**Known, not from this build:** `lasttrick_check` 2p "round-over pop-up" fails on the untouched 2.37.0 commit too (checked twice).
+
+**Still to test on a phone (9al.8 items 7 and 8):** results un-ready, landscape sideways, take sheet Cancel, iPad. Nothing is committed or pushed.
+
+---
+
 ## 2026-11-16 (13:15, Opus) — Plan: fixes after the 2.37.0 phone test (docs only)
 
 **User (13:15)** tested 2.37.0 on Android and sent screenshots: the round note pushes the screen down; target quick chips invisible (remove them); "missing a suit" should be a solid pop-up; last two with Forfeit and a two-row hand squeezes Play into four lines; PATHETIC says "U forfeited" (should be "You"); 😂 covers buttons.

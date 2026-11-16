@@ -78,7 +78,8 @@ GEOM = r"""
     const bb = r(b);
     if (!inside(bb, win)) { out.problems.push(`button cut off: "${b.textContent.trim()}" ${JSON.stringify(bb)}`); continue; }
     const at = document.elementFromPoint((bb.l + bb.r) / 2, (bb.t + bb.b) / 2);
-    if (!(at === b || b.contains(at))) out.problems.push(`button covered: "${b.textContent.trim()}" by ${at && at.className}`);
+    // A pop-up covers the whole screen by design, so only check buttons with no pop-up up.
+    if (!(at === b || b.contains(at)) && !document.querySelector('.popup-overlay')) out.problems.push(`button covered: "${b.textContent.trim()}" by ${at && at.className}`);
     if (bb.h > 90) out.problems.push(`button stretched: "${b.textContent.trim()}" ${Math.round(bb.h)} px tall`);
   }
   const tslot = document.querySelector('.game-table-slot');

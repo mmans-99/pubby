@@ -105,7 +105,14 @@ def main():
             seen['target_sheet'] = count(page, '.target-sheet') > 0
             if seen['target_sheet']:
                 page.screenshot(path='/tmp/popups-target.png')
-                page.get_by_role('button', name='10', exact=True).click()
+                # 9al.2 (2.37.1): the quick chips are gone; step − / + to 10 instead.
+                value = int(page.locator('.target-sheet .step-value').inner_text())
+                while value < 10:
+                    page.get_by_role('button', name='One more', exact=True).click()
+                    value += 1
+                while value > 10:
+                    page.get_by_role('button', name='One less', exact=True).click()
+                    value -= 1
                 page.get_by_role('button', name='Propose 10 points', exact=True).click()
                 # On one phone Propose asks "Who is proposing?" first; a phone that knows its player sends the vote at once.
                 if count(page, '.target-sheet .sheet-row[aria-label="Sam"]'):

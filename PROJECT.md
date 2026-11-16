@@ -911,6 +911,15 @@ User (network game test of 2.33, three screenshots) asked for:
 6. **Last two:** Forfeit and Play side by side on one line, nothing cut off.
 Claude's calls: the target sheet's header and stepper fixes; "Pick a card" (not "to lead") when Forfeit is shown; the notice dims the whole screen. No rule changes.
 
+### 12x. Stop fast forward and the reactions sheet (PLAN, user 2026-11-16 13:50; build guide `CODE.md` 9am; target **2.37.2**)
+
+**User (13:50), Android phone, 2.37.1 test build:** Stop fast forward still doesn't work (second report: also 09:49); on the results screen the reactions sheet covers the footer and can't be closed (screenshot).
+
+1. **Stop fast forward** (and the Fast forward and Skip buttons, and ☰) work with one tap while only computer players are playing.
+2. **Reactions:** the sheet and the typing bar always sit above the 😂 / ✕ button, so ✕ can always be tapped; on the results screen the sheet is solid (nothing to watch behind it). In play it stays see-through (12g).
+3. **Tap-off:** waiting on the user (see `CODE.md` 9am.2 item 4).
+No rule changes.
+
 ## 13. Quick rules (in-game help)
 
 - **What it is:** A short, simplified rules guide inside the app.

@@ -16,7 +16,7 @@ import type { SavedGame } from './storage.ts';
 import type { PlayerId, Session, SessionAction } from '../session/types.ts';
 import { joinNames } from '../session/names.ts';
 import { getState, update } from './store.ts';
-import { chooseLeaderStage, dealingStage, fastForwardMenuItems, gameFrame, handBlock, isHostSeat, nameOf, noticeStage, ownSeat, playHandStage, publicView, send, stageLayout } from './game.ts';
+import { chooseLeaderStage, dealingStage, fastForwardMenuItems, gameFrame, handBlock, isHostSeat, nameOf, noticeStage, ownSeat, playHandStage, publicView, reactionsToggle, send, stageLayout } from './game.ts';
 import { miniDisc, netRoundStart } from './roundstart.ts';
 import { awardCards, gameOverStage, scoreSheet, slappedByTable } from './between.ts';
 import { ordinal } from './cards.ts';
@@ -260,7 +260,8 @@ function results(g: SavedGame): Child {
       readyStrip,
       readyButton,
       nextButton,
-      h('div', { class: 'row results-actions' }, ultimateButton, endButton),
+      // 9al.5 (2.37.1): 😂 is the first item of the footer's buttons, so it never covers one.
+      h('div', { class: 'row results-actions' }, reactionsToggle(true), ultimateButton, endButton),
     ));
 }
 

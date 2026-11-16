@@ -522,7 +522,6 @@ table.results { width: 100%; border-collapse: collapse; }
 
 /* Reactions drawer: 😂 button bottom left, slides open, stays until put away */
 .game { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
-.game .play-bar { margin-left: 64px; margin-right: 64px; } /* room for 😂 on the left, same on the right so the button is centred */
 .reactions-toggle {
   position: fixed;
   left: max(12px, calc(50% - 250px));
@@ -553,6 +552,19 @@ table.results { width: 100%; border-collapse: collapse; }
   z-index: 37;
 }
 .reactions-sheet.opening { animation: sheet-up 0.22s ease-out; }
+/* 9al.5 (2.37.1): with the 😂 in the action row, the sheet sits just above that row (--bar-h set by gameFrame). */
+/* 9am.2 (2.37.2): the typing bar and the sheet sit above the 😂 / ✕ button (--react-bottom, set by app.ts paint). */
+html:has(.react-inline) .msg-bar { bottom: var(--react-bottom, 84px); }
+html:has(.react-inline) .reactions-sheet { left: 8px; right: 8px; bottom: calc(var(--react-bottom, 84px) + 56px); max-height: min(42vh, calc(100dvh - var(--react-bottom, 84px) - 120px)); }
+/* 9am.2: on the results screen the sheet is solid, so the results text does not show through. */
+html:has(.results-footer .react-inline) .reactions-sheet { background: var(--felt-dark); border-color: rgba(242, 193, 78, 0.55); }
+html:has(.results-footer .react-inline) .phrase-chip { background: rgba(0, 0, 0, 0.35); }
+/* 9am.2 (option a): a full-screen transparent layer under the sheet; a tap on it closes the sheet. */
+.react-catcher { position: fixed; inset: 0; z-index: 36; background: transparent; }
+/* 9am.2: an open ✕ sits above the catcher, so it can be tapped as itself (it also closes the sheet). */
+.react-inline.on { position: relative; z-index: 38; }
+/* 2.37.3: the inline button keeps none of the floating button's offsets (bottom: 14px pushed the open ✕ out of its row). */
+.react-inline { inset: auto; }
 @keyframes sheet-up { from { transform: translateY(12px); opacity: 0; } }
 .phrase-chip { min-height: 44px; padding: 6px 10px; border-radius: 14px; background: rgba(29, 29, 27, 0.55); color: var(--gold); text-shadow: 0 1px 2px #000; border: 1px solid rgba(242, 193, 78, 0.4); font-size: 0.9rem; font-style: italic; text-align: left; line-height: 1.25; }
 .phrase-chip.laugh-chip { font-style: normal; font-size: 1.1rem; font-weight: 800; text-align: center; }
@@ -712,6 +724,10 @@ table.trivia-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; 
 .take-icon-circle .icon { width: 28px; height: 28px; }
 .take-title { font-size: 26px; font-weight: 900; margin: 0; line-height: 1.15; }
 .sheet-head .take-title { font-size: 22px; }
+/* 9al.2 (2.37.1): the target sheet's title sits beside the gold circle, and − / + are dark round buttons. */
+.target-sheet .sheet-head { justify-content: flex-start; position: static; padding: 0; }
+.target-sheet .stepper .step { width: 56px; height: 56px; min-height: 56px; border-radius: 50%; padding: 0; background: var(--ink); color: var(--cream); border: 0; box-shadow: none; font-size: 1.6rem; font-weight: 900; }
+.target-sheet .stepper .step:disabled { opacity: 0.35; }
 .take-sub { margin: 0; font-size: 16px; font-weight: 600; color: #5d5646; }
 .take-private { margin: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; background: #e8e1cf; border-radius: 999px; padding: 4px 12px; color: var(--ink); }
 .take-private .icon { width: 14px; height: 14px; }
@@ -890,6 +906,10 @@ table.trivia-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; 
 .round-chip.on { background: var(--cream); color: var(--ink); }
 /* 9aj.5 (2.36): the round note under the top bar. */
 .round-note { display: block; width: 100%; margin: 0 0 6px; padding: 8px 12px; border-radius: 12px; background: var(--cream); color: var(--ink); font-weight: 700; text-align: center; min-height: 0; }
+/* 9al.1 (2.37.1): the round note floats under the top bar in a transparent layer; the table never moves. */
+.note-layer { position: fixed; inset: 0; z-index: 31; }
+.note-layer > .round-note { position: absolute; left: 12px; right: 12px; top: calc(56px + env(safe-area-inset-top)); width: auto; max-width: 520px; margin: 0 auto; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35); }
+html[data-rail="1"] .note-layer > .round-note { left: 64px; top: 8px; }
 /* 9aj.5 (2.36): the target button: gold ring in the top bar, gold icon. */
 .target-btn { box-shadow: inset 0 0 0 2px rgba(242, 193, 78, 0.85); color: var(--gold); }
 .target-circle { background: var(--gold); color: var(--ink); }
@@ -1226,7 +1246,11 @@ button.me-pill { background: var(--cream); color: var(--ink); }
 .round-buttons { width: 100%; display: flex; gap: 8px; flex-wrap: nowrap; }
 .round-buttons button { white-space: nowrap; min-height: 44px; padding: 0 12px; font-size: 1rem; }
 /* 2.30 (CODE.md 9y.3): the notice card sits over the table and waits for OK. */
-.notice-overlay { position: absolute; inset: 0; z-index: 7; display: flex; align-items: center; justify-content: center; padding: 12px; background: rgba(0, 0, 0, 0.28); }
+/* 9al.3 (2.37.1): the notice dims the whole screen (fixed), and its card is solid cream, so nothing shows through. */
+.notice-overlay { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 12px; background: rgba(0, 0, 0, 0.55); }
+.notice-overlay .notice-card { background: var(--cream); color: var(--ink); border-radius: 18px; padding: 20px 18px; }
+.notice-overlay .notice-card p { color: #5d5646; }
+html[data-rail="1"] .notice-overlay { padding-left: 64px; }
 .notice-card { width: min(100%, 340px); display: flex; flex-direction: column; align-items: stretch; gap: 10px; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45); }
 .notice-title { font-size: 1.3rem; line-height: 1.2; }
 .notice-card .big { width: 100%; }
@@ -1253,16 +1277,19 @@ button.me-pill { background: var(--cream); color: var(--ink); }
 .game-hand-slot .handoff.compact .handoff-name { font-size: 1.7rem; }
 .game-hand-slot .handoff.compact .big { margin-top: 8px; }
 /* 2.31 (CODE.md 9aa Part C): the 😂 button sits bottom-left only, so the left padding is for it and the right is small. */
-.game-action-slot { min-height: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0 76px; }
-/* 2.31.1: the padding is symmetric, so centred controls (Manual / Auto, Play) sit in the middle. The round-start
-   row reaches into the right padding (its width is the same as in 2.31.0), so "Deal again?" and "Start" still fit. */
-.game-action-slot > .round-buttons { width: calc(100% + 64px); margin-right: -64px; }
+/* 9al.5 (2.37.1): the action row is a flex row: the inline 😂 on the left, the buttons fill the rest (no side padding). */
+.game-action-slot { min-height: 0; overflow: hidden; display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 0; }
+.action-main { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+/* 9al.5: the inline 😂 is a plain row item; the floating rules below do not apply to it. */
+.react-inline { position: static; flex: none; width: 48px; height: 48px; min-height: 48px; font-size: 1.4rem; border-width: 2px; z-index: auto; }
+/* 2.31.1 / 9al.5: the round-start buttons fill the action area. */
+.action-main > .round-buttons { width: 100%; }
 /* 2.31 (CODE.md 9aa Part B): with no cards left, Fast forward and Skip sit where the cards were. */
 .hand-actions { height: 100%; display: flex; gap: 10px; align-items: center; justify-content: center; padding: 0 12px; }
 .hand-actions button { flex: 1; max-width: 220px; min-height: 48px; }
 @media (max-width: 339px) { .hand-actions { flex-direction: column; } }
-.game-action-slot .play-bar { position: static; margin: 0; width: 100%; }
-.game-action-slot h2 { font-size: 1rem; }
+.action-main .play-bar { position: static; margin: 0; width: 100%; }
+.action-main h2 { font-size: 1rem; }
 /* Panels over the bottom of the table: they scroll inside themselves and never push the rows. */
 .game-extra { position: absolute; left: 8px; right: 8px; bottom: 8px; max-height: 70%; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; z-index: 6; }
 .game-extra > .panel, .game-extra > .note { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35); }
@@ -1275,7 +1302,7 @@ button.me-pill { background: var(--cream); color: var(--ink); }
 .frame-col .big { width: min(100%, 360px); }
 .deal-bar { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 /* 2.34 fix: the deal bar spans the whole action area, so Manual, Auto and Deal all fit on one row on a phone. */
-.game-action-slot > .deal-bar { width: calc(100% + 152px); margin: 0 -76px; }
+.action-main > .deal-bar { width: 100%; margin: 0; }
 .deal-bar .seg-btn { padding: 0 6px; font-size: 0.9rem; }
 /* The last trick, in the felt's top-left corner (CODE.md 9x.2 rule 3). Sized by --u, like the table. */
 .table-last { position: absolute; z-index: 3; }
@@ -1303,26 +1330,18 @@ button.me-pill { background: var(--cream); color: var(--ink); }
   .game-frame { row-gap: 4px; grid-template-columns: minmax(0, 1fr) var(--side-w, 0px); grid-template-rows: minmax(0, 1fr) var(--hand-h, 0px); }
   .game-table-slot { grid-column: 1 / -1; grid-row: 1; }
   .game-hand-slot { grid-column: 1; grid-row: 2; }
-  .game-action-slot { grid-column: 2; grid-row: 2; padding: 0 4px; }
-  .game-action-slot > .round-buttons { width: 100%; margin-right: 0; }
-  .game-action-slot .play-bar { position: static; }
+  /* 9al.5 (2.37.1): the action column: the inline 😂 at its top (centred), then the buttons. */
+  .game-action-slot { grid-column: 2; grid-row: 2; padding: 0 4px; flex-direction: column; justify-content: center; }
+  .action-main { width: 100%; }
   /* 2.34.5 (CODE.md 9ag.3 fix 2): buttons in the column keep their normal height, centred, not stretched. */
-  .game-action-slot > button, .game-action-slot > .grow { flex: none; height: auto; align-self: stretch; }
+  .action-main > button, .action-main > .grow { flex: none; height: auto; align-self: stretch; }
   /* The deal controls wrap inside the column (Manual / Auto / Deal all), never cut off. */
-  .game-action-slot > .deal-bar { width: 100%; margin: 0; }
-  .game-action-slot > .deal-bar .seg { flex-wrap: wrap; }
-  /* 2.34.5 (fix 3): the 😂 button sits at the top of the action column, above Play, not over the cards. */
-  html[data-side="1"] .game-action-slot { padding-top: 58px; }
-  /* No hand on this screen (dealing, round start): the action row uses the whole width, so the deal
-     controls fit on one line; the 😂 button sits at the right, clear of the centred controls. */
+  .action-main > .deal-bar .seg { flex-wrap: wrap; }
+  html[data-side="1"] .react-inline { align-self: center; }
+  /* No hand on this screen (dealing, round start): the action row uses the whole width; the 😂 sits at its top. */
   .game-frame:has(> .game-hand-slot:empty) .game-action-slot { grid-column: 1 / -1; }
   .game-frame > .game-hand-slot:empty { display: none; }
-  html[data-side="1"] .game-frame:has(> .game-hand-slot:empty) .game-action-slot { padding-top: 0; padding-right: calc(var(--side-w, 170px) + 4px); padding-left: calc(var(--side-w, 170px) + 4px); }
-  html[data-side="1"] .reactions-toggle {
-    left: auto;
-    right: calc(8px + env(safe-area-inset-right) + (var(--side-w, 170px) - 54px) / 2);
-    bottom: calc(4px + env(safe-area-inset-bottom) + var(--hand-h, 0px) - 54px);
-  }
+  html[data-side="1"]:has(.react-inline) .reactions-sheet { right: calc(var(--side-w, 170px) + 12px); bottom: calc(var(--hand-h, 0px) + 12px + env(safe-area-inset-bottom)); }
 }
 .center-row { justify-content: center; align-items: center; }
 .center-row .grow { text-align: center; }
@@ -1387,6 +1406,8 @@ html[data-rail="1"] .screen.game.fixed .game-bar.menu-open { position: fixed; z-
 /* Part B (9ak.2): the bottom action row: Forfeit (red outline, flag) left of the main button. */
 .action-row { display: flex; align-items: stretch; gap: 8px; width: 100%; }
 .action-row > .grow { flex: 1 1 auto; min-width: 0; }
+/* 9al.6 (2.37.1): Forfeit and Play stay on one line; a long label is cut with an ellipsis, never wrapped. */
+.action-row > button { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .forfeit-btn {
   flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   width: 112px; min-height: 52px; height: 52px; padding: 0 10px; border-radius: 16px;
@@ -1429,6 +1450,7 @@ html[data-rail="1"] .reactions-toggle { left: calc(8px + env(safe-area-inset-lef
 html[data-rail="1"] .reactions-toggle.on { font-size: 1rem; }
 /* The 😂 button is in the rail now, so the action column has no top padding for it. */
 html[data-rail="1"] .game-action-slot { padding-top: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+html[data-rail="1"] .action-main { justify-content: flex-end; }
 html[data-rail="1"] .game-frame > .game-hand-slot:empty { display: none; }
 /* The action column: Forfeit (44 px) above the main button (52 px), full width. */
 html[data-rail="1"] .action-row { flex-direction: column; gap: 6px; }

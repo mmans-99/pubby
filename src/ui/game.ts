@@ -40,6 +40,7 @@ import { cleanMessage } from '../net/lobby.ts';
 import { handH, roundTable, wastePile } from './table.ts';
 import { joinNames } from '../session/names.ts';
 import { gameLayout, type GameLayout } from './layout.ts';
+import { forfeitLine } from './popuptext.ts';
 import { netGameBody, netMenu } from './netscreens.ts';
 import {
   askPausePanel, askToTake, gameOverStage, netPauseButton, notesPanel, passOnButton, pauseButton, pausePanel, pauseRequestsBanner,
@@ -596,7 +597,8 @@ export function gameScreen(g: SavedGame): HTMLElement {
       s.phase === 'dealing' ? dealChips(s) : null,
       takeButton(g),
     ),
-    st.armed === 'roundinfo' ? roundNote(s) : null,
+    // 9al.1 (2.37.1): the round note floats over the table; it never pushes the table down.
+    st.armed === 'roundinfo' ? noteLayer(s) : null,
     // 9ak.1 (2.37): the menu floats as a card over the table; a tap outside it closes it.
     st.menuOpen ? menuLayer(g.net ? netMenu(g) : gameMenu(g)) : null,
     st.lastOpen && s.phase !== 'gameOver' && g.lastTrick ? lastSheet(s, g.lastTrick) : null,
@@ -650,10 +652,14 @@ function menuLayer(menu: HTMLElement): HTMLElement {
   }, menu);
 }
 
-/** 9aj.5 (2.36): the small cream note under the bar; any tap closes it. */
-function roundNote(s: Session): HTMLElement {
-  return h('button', { class: 'round-note', onclick: () => update({ armed: null }) },
-    `Round ${s.round} · ${s.target !== null ? `first to ${s.target} points` : 'no target'}`);
+/**
+ * 9aj.5 (2.36): the small cream note under the bar; any tap closes it.
+ * 9al.1 (2.37.1): it floats in a transparent full-screen layer (no dim), so the table never moves.
+ */
+function noteLayer(s: Session): HTMLElement {
+  return h('div', { class: 'note-layer', onclick: () => update({ armed: null }) },
+    h('div', { class: 'round-note' },
+      `Round ${s.round} · ${s.target !== null ? `first to ${s.target} points` : 'no target'}`));
 }
 
 /** 9v.1: the Fast forward / Skip items, shown only while the game waits on computer players. */
@@ -801,7 +807,9 @@ function trickFinishStage(g: SavedGame, a: TrickAnim): Child {
       }, table, h('p', { class: 'hint center final-hint' }, 'Tap to see the results'))
       : table,
     hand: handBlock(s, playerView(s, who), null, { head: false, fit: lay.handH, width: lay.handW }),
-    extra: tapToGo ? null : h('div', { class: 'anim-block', 'aria-hidden': 'true' }),
+    // 9am.1 (2.37.2): while only computer players can move there is nothing to protect, so no block:
+    // a finger reaches Stop fast forward, Fast forward / Skip and ☰ during the animations.
+    extra: tapToGo || (g.bots && botsOnlyFor(g)) ? null : h('div', { class: 'anim-block', 'aria-hidden': 'true' }),
   });
 }
 
@@ -945,14 +953,19 @@ export function gameFrame(lay: GameLayout, parts: { table: Child; hand?: Child; 
   if (lay.landscape && lay.sideW > 0) root.dataset['side'] = '1'; else delete root.dataset['side'];
   // 9ak.6 (2.37): the rail (landscape phones): the top bar is a column down the left.
   if (lay.rail) root.dataset['rail'] = '1'; else delete root.dataset['rail'];
+  // 9al.5 (2.37.1): the reactions sheet sits above the action row (CSS reads --bar-h on the root).
+  root.style.setProperty('--bar-h', `${lay.barH.toFixed(1)}px`);
   return h('div', { class: 'game-frame', style: `--hand-h:${lay.handH.toFixed(1)}px;--bar-h:${lay.barH.toFixed(1)}px;--side-w:${lay.sideW.toFixed(1)}px` },
     h('div', { class: 'game-table-slot' }, parts.table,
       parts.extra ? h('div', { class: parts.extraAt === 'top' ? 'game-extra at-top' : 'game-extra', 'data-scroll': 'extra' }, parts.extra) : null),
     h('div', { class: 'game-hand-slot' }, parts.hand ?? null),
+    // 9al.5 (2.37.1): 😂 is the first item of the action row (portrait, tablet); the rail keeps its own floating one.
     // 2.32.2: while Fast forward is on, the one Stop button sits here on every screen (pop-ups and tricks don't hide it).
-    h('div', { class: 'game-action-slot' }, fastForwardOn()
-      ? h('button', { class: 'secondary big', onclick: () => stopFastForward() }, 'Stop fast forward')
-      : parts.action ?? null));
+    h('div', { class: 'game-action-slot' },
+      lay.rail ? null : reactionsToggle(true),
+      h('div', { class: 'action-main' }, fastForwardOn()
+        ? h('button', { class: 'secondary big', onclick: () => stopFastForward() }, 'Stop fast forward')
+        : parts.action ?? null)));
 }
 
 // ---------------------------------------------------------------------------
@@ -1304,7 +1317,8 @@ export function playHandStage(g: SavedGame): Child {
   const playButton = myTurn && !playBlocked
     ? h('button', { class: 'big grow', disabled: !selCard || busyWait, onclick: () => selected && !busyWait && play(selected) },
       busyWait ? icon('wait') : selCard ? ['Play ', h('span', { class: selCard.kind === 'standard' && (selCard.suit === 'hearts' || selCard.suit === 'diamonds') ? 'play-red' : '' }, shortLabel(selCard))]
-        : v.trick.length || jokerLed(s) ? 'Pick a card' : 'Pick a card to lead')
+        // 9al.6 (2.37.1): with Forfeit on the row the hint is just "Pick a card" (it must fit one line).
+        : v.trick.length || jokerLed(s) || v.canForfeit ? 'Pick a card' : 'Pick a card to lead')
     : null;
   // Panels that come and go float over the table (2.29), so the rows never move.
   const extra: Child[] = [
@@ -1412,7 +1426,7 @@ export function popupLayer(): HTMLElement | null {
     cls += ' slap pathetic';
     body = [
       h('div', { class: 'slap-word pathetic-word', 'aria-label': 'Pathetic!!!' }, 'PATHETIC!!!'),
-      h('div', { class: 'slap-who' }, `${nameOf(s, p.player)} forfeited`),
+      h('div', { class: 'slap-who' }, forfeitLine(nameOf(s, p.player), ownSeat(g) === p.player)),
       h('div', { class: 'small' }, 'Last place.'),
       popupTimer(p),
     ];
@@ -1452,7 +1466,7 @@ export function popupLayer(): HTMLElement | null {
       h('div', { class: 'small' }, mine ? 'Sit back and watch the rest.' : 'No cards left.'),
     ];
   } else if (p.kind === 'lastTwo') {
-    body = lastTwoBody(s, p);
+    body = lastTwoBody(s, p, ownSeat(g));
   } else if (p.kind === 'voteAlert') {
     // 9ai.4 (2.36): solid, no timer; "Vote now" or a tap anywhere closes it.
     cls += ' vote-alert';
@@ -1480,7 +1494,7 @@ export function popupLayer(): HTMLElement | null {
       : null);
 }
 
-function lastTwoBody(s: Session, p: Extract<Popup, { kind: 'lastTwo' }>): Child[] {
+function lastTwoBody(s: Session, p: Extract<Popup, { kind: 'lastTwo' }>, me: PlayerId | null): Child[] {
   const n = p.order.length;
   if (p.shared) {
     return [
@@ -1491,7 +1505,7 @@ function lastTwoBody(s: Session, p: Extract<Popup, { kind: 'lastTwo' }>): Child[
   }
   const second = p.order[n - 2]!;
   const loser = p.order[n - 1]!;
-  const forfeit = p.forfeitedBy ? h('div', { class: 'popup-text small' }, `${nameOf(s, p.forfeitedBy)} forfeited`) : null;
+  const forfeit = p.forfeitedBy ? h('div', { class: 'popup-text small' }, forfeitLine(nameOf(s, p.forfeitedBy), me === p.forfeitedBy)) : null;
   return [
     h('div', { class: 'popup-icon' }, icon('flag')),
     h('div', { class: 'popup-title' }, p.winner ? `${nameOf(s, p.winner)} wins the round` : 'Round over'),
@@ -1512,19 +1526,33 @@ function lastTwoBody(s: Session, p: Extract<Popup, { kind: 'lastTwo' }>): Child[
  */
 let drawerWasOpen = false;
 
-export function reactionsLayer(): HTMLElement[] {
+/**
+ * The 😂 button (2.4). 9al.5 (2.37.1): `inline` puts it in a screen's action row, where it never covers a
+ * control; otherwise it floats at the bottom left (screens with no action row, and the rail).
+ * Null once the game is over (no reactions then).
+ */
+export function reactionsToggle(inline: boolean): HTMLElement | null {
+  if (getState().game?.session.phase === 'gameOver') return null;
+  const open = getState().reactionsOpen;
+  return h('button', {
+    class: ['reactions-toggle', open ? 'on' : '', inline ? 'react-inline' : ''].filter(Boolean).join(' '),
+    'aria-label': open ? 'Put reactions away' : 'Open reactions',
+    'aria-expanded': open ? 'true' : 'false',
+    onclick: () => update({ reactionsOpen: !open }),
+  }, open ? '✕' : '😂');
+}
+
+/** `inline`: the page already has the 😂 button in its action row, so no floating one is added. */
+export function reactionsLayer(inline = false): HTMLElement[] {
   // Reactions show from the start of the game to the end (user, 2.4).
   if (getState().game?.session.phase === 'gameOver') { hideMessageBar(); return []; }
   const open = getState().reactionsOpen;
   const opening = open && !drawerWasOpen;
   drawerWasOpen = open;
-  const toggle = h('button', {
-    class: open ? 'reactions-toggle on' : 'reactions-toggle',
-    'aria-label': open ? 'Put reactions away' : 'Open reactions',
-    'aria-expanded': open ? 'true' : 'false',
-    onclick: () => update({ reactionsOpen: !open }),
-  }, open ? '✕' : '😂');
-  if (!open) { hideMessageBar(); return [toggle]; }
+  const toggle = inline ? null : reactionsToggle(false);
+  if (!open) { hideMessageBar(); return toggle ? [toggle] : []; }
+  // 9am.2 (2.37.2, option a): a tap anywhere outside the sheet closes it; the ✕ and the typing bar keep working.
+  const catcher = h('div', { class: 'react-catcher', 'aria-hidden': 'true', onclick: () => update({ reactionsOpen: false }) });
   // 9ad.5 (2.34): the typing bar lives outside the page, so redraws never wipe what's typed.
   ensureMessageBar().classList.add('open');
   // A sheet above the 😂 button: every phrase in a wrapping grid, scrolling up and down (2.11).
@@ -1533,7 +1561,7 @@ export function reactionsLayer(): HTMLElement[] {
     CATCH_PHRASES.map((ph, i) =>
       h('button', { class: 'phrase-chip', onclick: (e) => react(i, e as MouseEvent) }, ph)),
   );
-  return [sheet, toggle];
+  return toggle ? [catcher, sheet, toggle] : [catcher, sheet];
 }
 
 // ---------------------------------------------------------------------------

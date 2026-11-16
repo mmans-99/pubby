@@ -234,13 +234,12 @@ export function targetSheet(s: Session, opts: { me?: PlayerId } = {}): HTMLEleme
           h('span', { class: 'ask-chip' }, 'Pick', icon('arrow'))))),
     ]
     : [
+      // 9al.2 (2.37.1): the quick chips (5 / 10 / 15 / 20) are gone; − and + are the only controls.
       h('div', { class: 'stepper' },
-        h('button', { class: 'secondary step', 'aria-label': 'One less', onclick: () => set(targetDraft - 1) }, '−'),
+        h('button', { class: 'secondary step', 'aria-label': 'One less', disabled: targetDraft <= min, onclick: () => set(targetDraft - 1) }, '−'),
         h('span', { class: 'step-value', 'aria-live': 'polite' }, `${targetDraft}`),
-        h('button', { class: 'secondary step', 'aria-label': 'One more', onclick: () => set(targetDraft + 1) }, '+'),
+        h('button', { class: 'secondary step', 'aria-label': 'One more', disabled: targetDraft >= TARGET_MAX, onclick: () => set(targetDraft + 1) }, '+'),
       ),
-      h('div', { class: 'chips center-chips' }, [5, 10, 15, 20].filter((n) => n >= min).map((n) =>
-        h('button', { class: n === targetDraft ? 'quick on' : 'quick', onclick: () => set(n) }, String(n)))),
       h('button', {
         class: 'big target-propose',
         onclick: () => (me === undefined ? update({ armed: 'targetcaller' }) : propose(me)),

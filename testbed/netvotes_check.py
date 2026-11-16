@@ -73,7 +73,14 @@ def play_scenario(browser, base):
             except Exception:  # it closed by itself between the look and the tap
                 break
     pages[1].locator('.target-btn').click()
-    pages[1].get_by_role('button', name='10', exact=True).click()
+    # 9al.2 (2.37.1): the quick chips are gone; step − / + to 10.
+    value = int(pages[1].locator('.target-sheet .step-value').inner_text())
+    while value < 10:
+        pages[1].get_by_role('button', name='One more', exact=True).click()
+        value += 1
+    while value > 10:
+        pages[1].get_by_role('button', name='One less', exact=True).click()
+        value -= 1
     pages[1].get_by_role('button', name='Propose 10 points', exact=True).click()
     for p in pages:
         close_popups(p)

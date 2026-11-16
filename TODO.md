@@ -386,17 +386,25 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [x] Part G: checks, version 2.37.0, test build, phone checklist 9ak.8 (9ak.7)
 - [x] Phone test of 2.37.0 (user 13:15: fixes listed, planned as Phase 4u); pushed 13:18 on "Push it"
 
+## Phase 4v — Stop fast forward on a phone; reactions sheet you can close (plan 2026-11-16 13:55, `PROJECT.md` 12x, build guide `CODE.md` 9am; target 2.37.2; A to C BUILT 14:25, not pushed)
+
+- [x] Part A: no tap blocker while only computer players act (9am.1)
+- [x] Part B: reactions sheet and typing bar sit above the 😂 button; solid on the results screen; tap outside closes it (option a) (9am.2)
+- [x] Part C: checks: `testbed/ffstop_check.py` (real finger tap) and `testbed/react_check.py`; test build; checklist 9am.4 (9am.3)
+- [ ] Phone test of 2.37.2, then approval to commit and push
+
 ## Phase 4u — Fixes after the 2.37.0 phone test (plan 2026-11-16 13:15, `PROJECT.md` 12w, build guide `CODE.md` 9al; target 2.37.1)
 
 - [x] Plan written (user 13:15 list; 😂 in the bottom row chosen 13:15)
-- [ ] Part A: round note floats (9al.1)
-- [ ] Part B: target sheet: no quick chips, visible − / +, header (9al.2)
-- [ ] Part C: solid lead notice pop-up (9al.3)
-- [ ] Part D: "You forfeited" on your own phone (9al.4)
-- [ ] Part E: 😂 in the bottom row and results footer (9al.5)
-- [ ] Part F: last two: Forfeit + Play on one line, check (9al.6)
-- [ ] Part G: checks, `run_checks.py` table, test build, checklist 9al.8 (9al.7)
-- [ ] Phone test of 2.37.1, then approval to commit and push
+- [x] Part A: round note floats (9al.1)
+- [x] Part B: target sheet: no quick chips, visible − / +, header (9al.2)
+- [x] Part C: solid lead notice pop-up (9al.3)
+- [x] Part D: "You forfeited" on your own phone (9al.4)
+- [x] Part E: 😂 in the bottom row and results footer (9al.5)
+- [x] Part F: last two: Forfeit + Play on one line, check (9al.6)
+- [x] Part G: checks, `run_checks.py` table, test build, checklist 9al.8 (9al.7)
+- [x] Built 2026-11-16 13:45 (Haiku), test build published
+- [ ] Phone test of 2.37.1 (13:50: Stop fast forward and the results reactions sheet failed; see Phase 4v)
 
 ## Phase 5 — Polish
 

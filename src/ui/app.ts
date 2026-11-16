@@ -211,7 +211,8 @@ function paint(): void {
     st.screen === 'bye' ? null : soundButton(),
     st.screen === 'game' ? popupLayer() : null,
     st.screen === 'game' ? pauseLayer() : null,
-    ...(st.screen === 'game' && st.game ? reactionsLayer() : (hideMessageBar(), [])),
+    // 9al.5 (2.37.1): the 😂 button floats only when the screen has no inline one in its action row.
+    ...(st.screen === 'game' && st.game ? reactionsLayer(screen.querySelector('.react-inline') !== null) : (hideMessageBar(), [])),
     st.rulesOpen ? rulesOverlay() : null,
     st.soundOpen ? soundOverlay() : null,
     csvSheetLayer(),
@@ -232,6 +233,9 @@ function paint(): void {
   });
   if (pageKey === lastPageKey && window.scrollY !== pageY) window.scrollTo(0, pageY);
   lastPageKey = pageKey;
+  // 9am.2 (2.37.2): the reactions sheet and the typing bar sit just above the 😂 / ✕ button, wherever it is.
+  const inline = root.querySelector<HTMLElement>('.react-inline');
+  if (inline) document.documentElement.style.setProperty('--react-bottom', `${Math.round(window.innerHeight - inline.getBoundingClientRect().top + 8)}px`);
   afterRender();
   syncSound();
 }
