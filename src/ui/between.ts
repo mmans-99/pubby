@@ -23,10 +23,10 @@ import type { PlayerId, RoundRecord, Session, SessionPhase } from '../session/ty
 import { ordinal } from './cards.ts';
 import { h, type Child } from './dom.ts';
 import { scoreRows } from './scores.ts';
-import { nameOf, ownSeat, placeBadge, runsSession, send } from './game.ts';
+import { nameOf, ownSeat, placeBadge, publicView, runsSession, send } from './game.ts';
 import { icon, type IconName } from './icons.ts';
 import { gameOverSaved } from './history.ts';
-import { resetTap } from './roundstart.ts';
+import { miniDisc, resetTap } from './roundstart.ts';
 import { hostClock } from './netplay.ts';
 import type { SavedGame } from './storage.ts';
 import { getState, update } from './store.ts';
@@ -328,25 +328,35 @@ export function takePrompts(s: Session, me: PlayerId): HTMLElement | null {
   const asks = s.takeRequests.filter((r) => r.target === me && !r.agreed);
   if (!asks.length || !s.play) return null;
   const nextPlace = s.play.finished.length + 1;
-  const who = names(s, asks.map((r) => r.requester));
   const give = (requester: PlayerId): void => { send([{ type: 'answerTake', by: me, requester, accept: true }]); };
   const refuseAll = (): void => {
     send(asks.map((r) => ({ type: 'answerTake' as const, by: me, requester: r.requester, accept: false })));
   };
-  return h('section', { class: 'panel take-ask' },
-    h('h2', null, icon('take'), asks.length > 1 ? ` ${who} all want your cards` : ` ${who} wants your cards`),
-    h('p', { class: 'small' }, `Give them and you go out ${ordinal(nextPlace)}. Private.`),
-    asks.length > 1
-      ? [
-        h('div', { class: 'stack' }, asks.map((r) =>
-          h('button', { class: 'big vote-yes', onclick: () => give(r.requester) }, `Give them to ${nameOf(s, r.requester)}`))),
-        h('button', { class: 'big vote-no', onclick: refuseAll }, 'Refuse everyone'),
-      ]
-      : h('div', { class: 'vote-buttons' },
-        h('button', { class: 'big vote-yes', onclick: () => give(asks[0]!.requester) }, 'Agree'),
-        h('button', { class: 'big vote-no', onclick: refuseAll }, 'Refuse'),
-      ),
-  );
+  // 9ai.5 (2.36): a solid card over a much darker screen. No tap to close: an answer is needed.
+  const privateTag = h('p', { class: 'take-private' }, icon('eye'), ' Private · only you see this');
+  const card: Child[] = asks.length > 1
+    ? [
+      h('h2', { class: 'take-title' }, `${asks.length} players want your cards`),
+      h('p', { class: 'take-sub' }, `Pick one and you go out ${ordinal(nextPlace)}.`),
+      h('div', { class: 'take-rows' }, asks.map((r) =>
+        h('div', { class: 'take-row' },
+          miniDisc(s, r.requester, '36px'),
+          h('b', null, nameOf(s, r.requester)),
+          h('button', { class: 'take-give-small', onclick: () => give(r.requester) }, 'Give')))),
+      h('button', { class: 'big btn-outline-no', onclick: refuseAll }, 'Refuse everyone'),
+      privateTag,
+    ]
+    : [
+      h('div', { class: 'take-pair' },
+        miniDisc(s, asks[0]!.requester, '56px'),
+        h('span', { class: 'take-icon-circle' }, icon('take'))),
+      h('h2', { class: 'take-title' }, `${nameOf(s, asks[0]!.requester)} wants your cards`),
+      h('p', { class: 'take-sub' }, `Give them and you go out ${ordinal(nextPlace)}.`),
+      privateTag,
+      h('button', { class: 'big take-give', onclick: () => give(asks[0]!.requester) }, icon('check'), ` Give my cards to ${nameOf(s, asks[0]!.requester)}`),
+      h('button', { class: 'big btn-outline-no', onclick: refuseAll }, 'Refuse'),
+    ];
+  return h('div', { class: 'overlay take-overlay' }, h('section', { class: 'take-card', role: 'alertdialog', 'aria-label': 'Take cards' }, card));
 }
 
 /**
@@ -356,9 +366,35 @@ export function takePrompts(s: Session, me: PlayerId): HTMLElement | null {
 export function takeStatus(s: Session, me: PlayerId): HTMLElement | null {
   const waiting = s.takeRequests.filter((r) => !r.agreed && r.requester !== me && r.target !== me);
   if (!waiting.length) return null;
-  return h('div', { class: 'stack' }, waiting.map((r) =>
-    h('div', { class: 'host-line', role: 'status' }, icon('take'),
-      h('span', null, `${nameOf(s, r.requester)} asked ${nameOf(s, r.target)} for their cards…`))));
+  // 9ai.5 (2.36): a solid card per request: the asker's disc, the line, and a Waiting pill.
+  return h('div', { class: 'stack take-statuses' }, waiting.map((r) =>
+    h('div', { class: 'take-status', role: 'status' },
+      miniDisc(s, r.requester, '34px'),
+      h('span', { class: 'take-status-text' }, `${nameOf(s, r.requester)} asked ${nameOf(s, r.target)} for his cards`),
+      h('span', { class: 'pill wait' }, icon('wait'), ' Waiting'))));
+}
+
+/**
+ * 9ai.5 (2.36): the sheet for picking someone to ask (or who is asking, on one phone).
+ * A solid bottom sheet with one row per player; a tap on a row (or its Ask chip) does it.
+ */
+function askSheet(s: Session, title: string, ids: readonly PlayerId[], onPick: (id: PlayerId) => void, onCancel: () => void, showCards: boolean): HTMLElement {
+  const counts = publicView(s).players;
+  return h('div', { class: 'overlay take-sheet-overlay' },
+    h('section', { class: 'sheet take-sheet', role: 'dialog', 'aria-label': title },
+      h('span', { class: 'take-grab', 'aria-hidden': 'true' }),
+      h('div', { class: 'sheet-head' },
+        h('span', { class: 'take-icon-circle' }, icon('take')),
+        h('div', null, h('h2', { class: 'take-title' }, title), h('p', { class: 'take-sub' }, 'Before the trick · one ask at a time'))),
+      h('div', { class: 'sheet-rows' }, ids.map((id) => {
+        const n = counts.find((p) => p.id === id)?.cardCount ?? 0;
+        return h('button', { class: 'sheet-row', onclick: () => onPick(id), 'aria-label': `${showCards ? `Ask ${nameOf(s, id)} for ${n} cards` : nameOf(s, id)}` },
+          miniDisc(s, id, '40px'),
+          h('span', { class: 'sheet-name' }, h('b', null, nameOf(s, id)), showCards ? h('small', null, `${n} ${n === 1 ? 'card' : 'cards'}`) : null),
+          h('span', { class: 'ask-chip' }, showCards ? 'Ask' : 'Pick', icon('arrow')));
+      })),
+      h('p', { class: 'muted small center' }, 'Only you see their answer.'),
+      h('button', { class: 'ghost big', onclick: onCancel }, 'Cancel')));
 }
 
 /** Players `p` may ask right now (before a trick, nothing open). */
@@ -377,17 +413,18 @@ export function takeControls(s: Session, me: PlayerId): HTMLElement | null {
   const targets = takeTargets(s, me);
   const choosing = getState().armed === 'take' && targets.length > 0;
   if (!mine.length && !choosing) return null;
-  return h('section', { class: 'panel take-panel' },
-    mine.map((r) => h('div', { class: 'row take-mine' },
-      h('span', { class: 'grow small' }, icon('take'), ` ${nameOf(s, r.target)}: `,
-        h('b', null, r.agreed ? 'agreed' : 'waiting')),
+  // 9ai.5 (2.36): your own request is a solid card with Withdraw; picking someone is a bottom sheet.
+  return h('div', { class: 'stack' },
+    mine.map((r) => h('div', { class: 'take-status mine', role: 'status' },
+      miniDisc(s, me, '34px'),
+      h('span', { class: 'take-status-text' },
+        h('b', null, `You asked ${nameOf(s, r.target)}`),
+        h('small', { class: 'muted' }, r.agreed ? 'Agreed' : 'Waiting for an answer')),
       h('button', { class: 'ghost', onclick: () => send([{ type: 'withdrawTake', by: me, target: r.target }], { stage: 'hand', holder: me }) }, 'Withdraw'))),
     choosing
-      ? [
-        h('p', { class: 'small' }, 'Take all the cards of:'),
-        nameChips(s, (id) => send([{ type: 'requestTake', by: me, target: id }]), { only: targets, label: 'Ask' }),
-        h('button', { class: 'ghost', onclick: () => update({ armed: null }) }, 'Cancel'),
-      ]
+      ? askSheet(s, 'Take whose cards?', targets,
+        (id) => send([{ type: 'requestTake', by: me, target: id }]),
+        () => update({ armed: null }), true)
       : null,
   );
 }
@@ -397,11 +434,9 @@ export function askToTake(g: SavedGame): HTMLElement | null {
   const s = g.session;
   const askers = s.order.filter((p) => takeTargets(s, p).length > 0);
   if (!askers.length || getState().armed !== 'asker') return null;
-  return h('section', { class: 'panel take-panel' },
-    h('p', { class: 'small' }, 'Who wants to take cards?'),
-    nameChips(s, (id) => update({ game: { ...g, stage: 'hand', holder: id }, armed: 'take' }), { only: askers, label: 'Asking:' }),
-    h('button', { class: 'ghost', onclick: () => update({ armed: null }) }, 'Cancel'),
-  );
+  return askSheet(s, 'Who is asking?', askers,
+    (id) => update({ game: { ...g, stage: 'hand', holder: id }, armed: 'take' }),
+    () => update({ armed: null }), false);
 }
 
 /** H6: the take-cards button in the top bar (before a trick, when someone can ask). */

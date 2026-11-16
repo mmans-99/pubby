@@ -447,7 +447,17 @@ table.results { width: 100%; border-collapse: collapse; }
 .standings li > span { display: inline-block; min-width: 60%; }
 
 /* Pop-ups */
-.popup-overlay { align-items: center; z-index: 35; }
+.popup-overlay { align-items: center; z-index: 35; background: rgba(8, 20, 10, 0.72); }
+/* 9ai.2 (2.36): "Amy came 1st!" with a place badge (1st gold, 2nd silver, 3rd bronze, then cream). */
+.place-icon { width: 68px; height: 68px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #e8e1cf; }
+.place-icon .icon { width: 36px; height: 36px; }
+.place-big { font-size: 1.4rem; font-weight: 900; padding: 6px 18px; border-radius: 999px; background: #e8e1cf; color: var(--ink); }
+.place-1 { background: var(--gold); color: var(--ink); }
+.place-2 { background: #c9ced6; color: var(--ink); }
+.place-3 { background: #cd8b4e; color: var(--ink); }
+/* 9ai.1 (2.36): the line that says a pop-up closes on a tap. */
+.tap-hint { font-size: 0.8rem; color: #5d5646; margin-top: 4px; }
+.popup.slap .tap-hint { background: rgba(251, 246, 233, 0.85); border-radius: 8px; padding: 2px 8px; }
 .popup {
   width: min(88vw, 380px);
   background: var(--cream); color: var(--ink);
@@ -570,6 +580,47 @@ table.results { width: 100%; border-collapse: collapse; }
 .vote-word.yes { color: #2e7d32; }
 .vote-word.no { color: var(--red); }
 .popup.seen .vote-word { animation: none; }
+
+/* 9ai.4 (2.36): the vote card: solid, one row per player, YES and NO underneath. */
+.vote-card { background: var(--cream); color: var(--ink); border-radius: 20px; box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55); padding: 18px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+.vote-head { display: flex; align-items: center; gap: 12px; }
+.vote-head-text { min-width: 0; }
+.vote-head .vote-q { justify-content: flex-start; text-align: left; font-size: 22px; font-weight: 900; margin: 0; }
+.vote-head .muted { margin: 2px 0 0; }
+.vote-icon { width: 48px; height: 48px; border-radius: 50%; background: var(--gold); display: flex; align-items: center; justify-content: center; flex: none; }
+.vote-icon .icon { width: 26px; height: 26px; }
+.ballot-list { display: flex; flex-direction: column; gap: 6px; }
+.ballot-row { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 12px; background: #fffdf6; border: 2px solid transparent; }
+.ballot-row.mine { border-color: var(--gold); background: #fff6dc; }
+.ballot-name { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ballot-name b { font-size: 16px; }
+.ballot-name small { color: #5d5646; }
+.vote-disc { width: var(--d); height: var(--d); border-radius: 50%; background: #fffdf6; border: 2px solid var(--ink); display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: calc(var(--d) * 0.36); line-height: 1; flex: none; color: var(--ink); }
+.pill { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 4px 10px; font-size: 13px; font-weight: 800; white-space: nowrap; }
+.pill .icon { width: 14px; height: 14px; }
+.pill.yes { background: #2e7d32; color: #fff; }
+.pill.no { background: #c62828; color: #fff; }
+.pill.mine { background: var(--gold); color: var(--ink); }
+.pill.wait, .pill.voted { background: #e8e1cf; color: #5d5646; }
+.pill.voted { color: var(--ink); }
+.vote-progress { display: flex; flex-direction: column; gap: 4px; }
+.vote-progress .bar { display: block; height: 8px; border-radius: 4px; background: #e8e1cf; overflow: hidden; }
+.vote-progress .bar i { display: block; height: 100%; background: var(--gold); transition: width 0.3s ease; }
+.vote-progress small { color: #5d5646; font-weight: 700; }
+.vote-said-line { margin: 0; border-radius: 12px; padding: 10px 12px; font-weight: 800; text-align: center; }
+.vote-said-line.yes, .vote-said-line.asked { background: #eef6ee; color: #1b5e20; }
+.vote-said-line.no { background: #fdecea; color: #b71c1c; }
+@media (prefers-reduced-motion: reduce) { .vote-progress .bar i { transition: none; } }
+/* 9ai.4: the vote alert (solid, no timer) and the result rows. */
+.vote-alert-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--gold); display: flex; align-items: center; justify-content: center; }
+.vote-alert-icon .icon { width: 34px; height: 34px; }
+.vote-said { display: flex; align-items: center; gap: 8px; font-weight: 800; }
+.vote-now { width: 100%; }
+.vote-rows { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.vote-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-radius: 12px; padding: 8px 12px; font-weight: 800; }
+.vote-row.yes { background: #eef6ee; color: #1b5e20; }
+.vote-row.no { background: #fdecea; color: #b71c1c; }
+.vote-discs { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
 .small-title { font-size: 1.1rem; }
 @keyframes stamp { from { transform: scale(2.4) rotate(-10deg); opacity: 0; } }
 
@@ -644,9 +695,39 @@ table.trivia-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; 
 .titles { gap: 6px; }
 .title-line { font-size: 1.1rem; }
 
-.take-ask { border-color: var(--gold); background: rgba(242, 193, 78, 0.14); }
-.take-ask h2 { margin: 0; }
-.take-panel { gap: 8px; }
+/* 9ai.5 (2.36): take-cards. Solid cards and sheets only (no see-through panels). */
+.take-overlay { align-items: center; background: rgba(8, 20, 10, 0.82); }
+.take-card { width: min(88vw, 380px); background: var(--cream); color: var(--ink); border: 3px solid var(--gold); border-radius: 20px; padding: 22px 18px 18px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5); }
+.take-pair { display: flex; align-items: center; }
+.take-pair .vote-disc { position: relative; z-index: 1; }
+.take-pair .take-icon-circle { margin-left: -14px; }
+.take-icon-circle { width: 56px; height: 56px; border-radius: 50%; background: var(--gold); display: flex; align-items: center; justify-content: center; flex: none; }
+.take-icon-circle .icon { width: 28px; height: 28px; }
+.take-title { font-size: 26px; font-weight: 900; margin: 0; line-height: 1.15; }
+.sheet-head .take-title { font-size: 22px; }
+.take-sub { margin: 0; font-size: 16px; font-weight: 600; color: #5d5646; }
+.take-private { margin: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; background: #e8e1cf; border-radius: 999px; padding: 4px 12px; color: var(--ink); }
+.take-private .icon { width: 14px; height: 14px; }
+.take-give { width: 100%; background: #43a047; color: #fff; }
+.take-give-small { min-height: 44px; padding: 0 16px; background: #43a047; color: #fff; border: 0; border-radius: 999px; font-weight: 800; }
+.btn-outline-no { width: 100%; background: #fff; color: var(--danger); border: 2px solid var(--danger); }
+.take-rows { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.take-row { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 14px; padding: 8px 10px; }
+.take-row b { flex: 1; text-align: left; }
+.take-statuses { gap: 8px; }
+.take-status { display: flex; align-items: center; gap: 10px; background: var(--cream); color: var(--ink); border-radius: 14px; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3); padding: 10px 12px; }
+.take-status.mine { border: 2px solid var(--gold); }
+.take-status-text { flex: 1; min-width: 0; display: flex; flex-direction: column; text-align: left; font-weight: 700; }
+.take-sheet-overlay { align-items: flex-end; }
+.take-sheet { width: 100%; max-width: 520px; margin: 0 auto; background: var(--cream); color: var(--ink); border-radius: 22px 22px 0 0; padding: 10px 16px 18px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.4); }
+.take-grab { width: 44px; height: 5px; border-radius: 3px; background: #b9b09a; align-self: center; }
+.sheet-head { display: flex; align-items: center; gap: 12px; }
+.sheet-rows { display: flex; flex-direction: column; gap: 8px; }
+.sheet-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; background: #fff; color: var(--ink); border: 2px solid transparent; border-radius: 14px; padding: 8px 12px; text-align: left; }
+.sheet-row:active { border-color: var(--gold); }
+.sheet-name { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ask-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--gold); color: var(--ink); border-radius: 999px; padding: 6px 12px; font-weight: 800; }
+.ask-chip .icon { width: 14px; height: 14px; }
 .take-mine { align-items: center; }
 .private-note { border-color: var(--gold); }
 .private-note p { margin: 0; }
@@ -973,6 +1054,27 @@ button.table-seat { cursor: pointer; }
 .seat-disc .disc-count.at-right { right: calc(-0.75 * var(--u, 11px)); }
 .seat-disc .disc-count.at-left { left: calc(-0.75 * var(--u, 11px)); }
 .seat-quiet.turn .seat-disc { box-shadow: 0 0 0 3px var(--gold), 0 0 10px 2px rgba(242, 193, 78, 0.55); }
+/* 9ai.6 (2.36), idea 1: someone else's turn. A bigger disc with a slowly pulsing gold ring, "Ben's turn", the others faded. */
+.seat-quiet.turn .seat-disc { transform: scale(1.25); animation: turn-ring 1.6s ease-in-out infinite; }
+.turn-name { background: var(--gold); color: var(--ink); border-radius: 999px; padding: 2px 8px; }
+.table-seat.not-turn { opacity: 0.5; }
+.me-pill.turn-me { animation: turn-ring 1.6s ease-in-out infinite; }
+@keyframes turn-ring {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(242, 193, 78, 0.9), 0 0 18px 6px rgba(242, 193, 78, 0.55); }
+  50% { box-shadow: 0 0 0 6px var(--gold), 0 0 30px 12px rgba(242, 193, 78, 0.35); }
+}
+/* 9ai.6, idea 3: your own turn. The table edge glows, your hand is framed and glows, playable cards lift, a pill says what to do. */
+.round-table.your-turn .table-oval { box-shadow: 0 0 0 4px var(--gold), 0 0 30px 8px rgba(242, 193, 78, 0.4); }
+.hand-section.your-turn { position: relative; border: 2px solid var(--gold); border-radius: 18px; background: rgba(242, 193, 78, 0.12); animation: hand-glow 1.8s ease-in-out infinite; }
+@keyframes hand-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(242, 193, 78, 0); }
+  50% { box-shadow: 0 0 18px 4px rgba(242, 193, 78, 0.55); }
+}
+.hand-section.your-turn .card.playable { translate: 0 -10px; box-shadow: 0 0 0 2px var(--gold), -2px 6px 10px rgba(0, 0, 0, 0.4); }
+.turn-pill { position: absolute; top: -14px; left: 50%; translate: -50% 0; z-index: 3; background: var(--gold); color: var(--ink); font-size: 18px; font-weight: 900; padding: 4px 16px; border-radius: 999px; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) {
+  .seat-quiet.turn .seat-disc, .me-pill.turn-me, .hand-section.your-turn { animation: none; }
+}
 .seat-quiet.away .seat-disc { box-shadow: 0 0 0 3px var(--danger); }
 .seat-quiet.out .seat-disc { opacity: 0.5; }
 .seat-label {
@@ -992,6 +1094,11 @@ button.table-seat { cursor: pointer; }
   background: var(--gold); color: var(--ink); font-size: 0.75em; font-weight: 800; line-height: 1;
 }
 .seat-away { color: var(--danger); font-weight: 700; font-size: 0.85em; }
+/* 9ai.3 (2.36): a flipping gold hourglass by a busy player's name (no words). */
+.seat-busy { display: inline-flex; color: var(--gold); font-size: 0.9em; animation: busy-flip 2.4s ease-in-out infinite; }
+.seat-busy .icon { width: 1em; height: 1em; }
+@keyframes busy-flip { 0%, 40% { rotate: 0deg; } 50%, 90% { rotate: 180deg; } 100% { rotate: 180deg; } }
+@media (prefers-reduced-motion: reduce) { .seat-busy { animation: none; } }
 /* Your own seat: a small pill at the bottom centre of the felt. */
 .me-pill {
   translate: -50% -50%; box-sizing: border-box;

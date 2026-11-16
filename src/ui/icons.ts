@@ -25,6 +25,7 @@ const PATHS = {
   flag: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
   take: '<path d="M12 3v11M7 9l5 5 5-5M4 17v3h16v-3"/>',
   check: '<path d="M5 12l4 4 10-10"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
   hand: '<path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12M11 11V4a1.5 1.5 0 0 1 3 0v7M14 11V5.5a1.5 1.5 0 0 1 3 0V13M17 9.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1.5a6 6 0 0 1-5-2.7L4.6 14.4a1.5 1.5 0 0 1 2.4-1.8L8 14"/>',
   trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M9 21h6M10 17h4"/>',
   vote: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/>',

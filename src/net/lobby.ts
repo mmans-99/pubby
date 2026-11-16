@@ -12,8 +12,8 @@ import { readGameUpdate, type GameRefused, type GameUpdate } from './netgame.ts'
 import { joinNames } from '../session/names.ts';
 import type { Level, Speed } from '../ai/persona.ts';
 
-/** Bumped when the messages change, so mixed phones refuse each other. 2: game messages (slice 2). 3: reactions, host adding (2.4). 4: online rooms (2.18). 5: ready at the table (2.19). 6: cards seen after the swap (2.20). 7: away seats and the away/back messages (2.25). 8: computer players in the lobby (2.26). 9: typed messages (2.34). */
-export const LOBBY_PROTOCOL = 9; // 9: typed messages (2.34).
+/** Bumped when the messages change, so mixed phones refuse each other. 2: game messages (slice 2). 3: reactions, host adding (2.4). 4: online rooms (2.18). 5: ready at the table (2.19). 6: cards seen after the swap (2.20). 7: away seats and the away/back messages (2.25). 8: computer players in the lobby (2.26). 9: typed messages (2.34). 10: busy, a pop-up open (2.36). */
+export const LOBBY_PROTOCOL = 10; // 10: busy (2.36).
 export const NAME_MAX = 16;
 
 export interface LobbySeat {
@@ -29,6 +29,8 @@ export interface LobbySeat {
   ready: boolean;
   /** CODE.md 9u Part A: the phone left the screen (or lost its link) at this host time (ms). The seat is kept for AWAY_MS. */
   awaySince?: number;
+  /** CODE.md 9ai.3 (2.36): this phone has a pop-up open, so the game waits for it (not set for computer players). */
+  busy?: boolean;
   /** CODE.md 9u Part C (2.26): a computer player, on the host's phone only. Its id is "b1", "b2"… */
   bot?: { level: Level };
 }
@@ -68,7 +70,9 @@ export type ToHost =
   | { t: 'ready' }
   /** CODE.md 9u A5: this phone left the screen, and is back. */
   | { t: 'away' }
-  | { t: 'back' };
+  | { t: 'back' }
+  /** CODE.md 9ai.3 (2.36): this phone has a pop-up open (on) or has closed them all (off). */
+  | { t: 'busy'; on: boolean };
 
 /** Host → joining phone. */
 export type ToJoiner =
@@ -121,6 +125,7 @@ export function readToHost(raw: unknown): ToHost | null {
     case 'ready': return { t: 'ready' };
     case 'away': return { t: 'away' };
     case 'back': return { t: 'back' };
+    case 'busy': return typeof raw['on'] === 'boolean' ? { t: 'busy', on: raw['on'] } : null;
     case 'act': return { t: 'act', actions: raw['actions'] };
     case 'sync': return { t: 'sync' };
     case 'react': return Number.isInteger(raw['r']) ? { t: 'react', r: raw['r'] as number } : null;
@@ -141,6 +146,7 @@ export function readToJoiner(raw: unknown): ToJoiner | null {
         if (!isObj(s) || !isStr(s['id']) || !isStr(s['profileName']) || !isStr(s['sessionName'])) return null;
         const seat: LobbySeat = { id: s['id'], profileName: s['profileName'], sessionName: s['sessionName'], isHost: s['isHost'] === true, connected: s['connected'] !== false, ready: s['ready'] === true };
         if (typeof s['awaySince'] === 'number') seat.awaySince = s['awaySince'];
+        if (s['busy'] === true) seat.busy = true;
         const bot = s['bot'];
         if (isObj(bot) && (bot['level'] === 'easy' || bot['level'] === 'normal' || bot['level'] === 'hard')) seat.bot = { level: bot['level'] };
         seats.push(seat);
@@ -255,9 +261,14 @@ export function setConnected(lobby: Lobby, id: string, connected: boolean): Lobb
   return { ...lobby, seats: lobby.seats.map((s) => (s.id === id ? { ...s, connected } : s)) };
 }
 
-/** CODE.md 9u A5: a phone left the screen (or lost its link) at host time `at`. The seat is kept. */
+/** CODE.md 9u A5: a phone left the screen (or lost its link) at host time `at`. The seat is kept. 9ai.3: an away phone is not busy. */
 export function setAway(lobby: Lobby, id: string, at: number): Lobby {
-  return { ...lobby, seats: lobby.seats.map((s) => (s.id === id && !s.isHost && s.awaySince === undefined ? { ...s, awaySince: at } : s)) };
+  return { ...lobby, seats: lobby.seats.map((s) => (s.id === id && !s.isHost && s.awaySince === undefined ? { ...s, awaySince: at, busy: undefined } : s)) };
+}
+
+/** CODE.md 9ai.3 (2.36): a phone has (on) or has not got (off) a pop-up open. The host's own seat counts too. */
+export function setBusy(lobby: Lobby, id: string, on: boolean): Lobby {
+  return { ...lobby, seats: lobby.seats.map((s) => (s.id === id && (s.busy === true) !== on ? { ...s, busy: on || undefined } : s)) };
 }
 
 /** CODE.md 9u A5: the phone is back. */

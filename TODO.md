@@ -352,16 +352,25 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [x] Pushed as 35db1aa (2.34.6)
 - [ ] **Not planned yet:** rejoining a multiplayer game after a drop (Nearby slice 4, Online O3); needs an Opus plan
 
-## Phase 4s — Clearer pop-ups, votes, take-cards and whose turn (plan 2026-11-16 08:17, `PROJECT.md` 12u, build guide `CODE.md` 9ai, mockups https://claude.ai/artifact/2KAaj6Lkc2aCDsM3os6TXo; target 2.36.0; NOT BUILT)
+## Phase 4s — Clearer pop-ups, votes, take-cards and whose turn (plan 2026-11-16 08:17, `PROJECT.md` 12u, build guide `CODE.md` 9ai, mockups https://claude.ai/artifact/2KAaj6Lkc2aCDsM3os6TXo; target 2.36.0; BUILT 2026-11-16 as 2.36.0, not committed or pushed)
 
 - [x] Plan approved (user 2026-11-16 08:17: "Yes, 1 and 3… the pop ups are now fine… Write up the plan so I can code with haiku")
-- [ ] Part A: no pop-up timers, tap anywhere to close, no OK buttons where there's no decision (9ai.1)
-- [ ] Part B: "Amy came 1st!" / "You came 2nd!" instead of "is out" (9ai.2)
-- [ ] Part C: network games wait while anyone has a pop-up open; flipping hourglass by busy names; protocol 10 (9ai.3)
-- [ ] Part D: vote alert with Vote now, vote card with one row per player and YES/NO under it, result with who voted what (9ai.4)
-- [ ] Part E: take-cards: list to pick from, solid private card when asked, solid status cards (9ai.5)
-- [ ] Part F: whose turn: pulsing gold ring and "Ben's turn" with others faded; your turn: table and hand glow, cards lift, pill, one buzz (9ai.6)
-- [ ] bot.js closes pop-ups; `testbed/popups_check.py`; tests; version 2.36.0; test build and checklist (9ai.7, 9ai.8)
+- [x] Part A: no pop-up timers, tap anywhere to close, no OK buttons where there's no decision (9ai.1)
+- [x] Part B: "Amy came 1st!" / "You came 2nd!" instead of "is out" (9ai.2)
+- [x] Part C: network games wait while anyone has a pop-up open; flipping hourglass by busy names; protocol 10 (9ai.3)
+- [x] Part D: vote alert with Vote now, vote card with one row per player and YES/NO under it, result with who voted what (9ai.4)
+- [x] Part E: take-cards: list to pick from, solid private card when asked, solid status cards (9ai.5)
+- [x] Part F: whose turn: pulsing gold ring and "Ben's turn" with others faded; your turn: table and hand glow, cards lift, pill, one buzz (9ai.6)
+- [x] bot.js closes pop-ups and holds votes and takes; `testbed/popups_check.py`; unit tests 462 of 462; tsc clean; version 2.36.0 (9ai.7)
+- [ ] `popups_check.py` vote-card and take-card items: not yet seen in a game (computer players did not reach them; see DEVLOG 2026-11-16 build entry)
+- [x] First phone test (user 2026-11-16 09:32): problems found; fixes planned in `CODE.md` 9aj (user chose target option A and hand option 1, 09:47; "write the plan", 09:49)
+- [ ] 9aj Part A: hand never shows through the take sheet / take card (one layer for the hand)
+- [ ] 9aj Part B: Stop fast forward works while pop-ups show
+- [ ] 9aj Part C: tie vote: readable line, "It's a tie · you decide", tie band, clear host buttons
+- [ ] 9aj Part D: your turn: glow under the fan (one or two rows), name pill becomes "Your turn · …", no box
+- [ ] 9aj Part E: target button in the top bar, solid target sheet, gold target badge on the round button
+- [ ] 9aj Part F: old checks updated to tap-to-close (`netvotes_check`, `netgame_check` SLAP! counts, `sound_check` fanfare; approved with the plan), new `popups_check` items, full check run
+- [ ] Test build approved by user on a phone (9ai.8 + 9aj.7 checklists), then commit and push on "push"
 - [ ] Push on "push"
 
 ## Phase 5 — Polish

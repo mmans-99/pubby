@@ -27,12 +27,14 @@ import { h, type Child } from './dom.ts';
 import type { GameStage, LastTrick, SavedGame, TrickPlay } from './storage.ts';
 import { getState, say, update, type Popup } from './store.ts';
 import { saveFinishedGame } from './history.ts';
-import { reshuffleStage, resetTap, roundStartHolder, roundStartScreen, voteOutcome } from './roundstart.ts';
+import { reshuffleStage, resetTap, roundStartHolder, roundStartScreen, voteAlertBody, voteOutcome, voteResultBody } from './roundstart.ts';
 import { lockedSeats } from '../rules/deal.ts';
 import { cardSound, eventSounds, sfx } from '../audio/sfx.ts';
+import { soundSettings } from '../audio/settings.ts';
 import { icon, type IconName } from './icons.ts';
 import { botsOnlyFor, botsTick, startFastForward, startSkip, stopFastForward } from './bots.ts';
 import { fastForwardOn, hostIsSkipping, instantSkipping, skipNote, skipping } from '../ai/fastforward.ts';
+import { anyoneBusy, reportMyBusy } from '../net/busy.ts';
 import { hostBroadcast, joinSend, sendMessage, sendReaction } from './netplay.ts';
 import { cleanMessage } from '../net/lobby.ts';
 import { handH, roundTable, wastePile } from './table.ts';
@@ -354,6 +356,8 @@ function absorb(g: SavedGame, session: Session, events: readonly SessionEvent[],
   // The round-over one names the round's winner (1st in the finishing order).
   const quiet = skipping() || instantSkipping();
   const fresh = popupsFor(session, events)
+    // 9ai.4: the asker doesn't get the vote alert (they already said YES).
+    .filter((p) => !(p.kind === 'voteAlert' && p.by === seat))
     .filter((p) => !quiet || p.kind === 'lastTwo' || (p.kind === 'slap' && p.over !== undefined))
     .map((p) => (quiet && p.kind === 'lastTwo' && !p.shared ? { ...p, winner: p.order[0] } : p));
   const popups = [...getState().popups, ...fresh];
@@ -448,14 +452,9 @@ function popupsFor(s: Session, events: readonly SessionEvent[]): Popup[] {
         out.push({ kind: 'lastTwo', order: e.finishingOrder, shared: e.sharedSecondLast, forfeitedBy: e.forfeitedBy });
         break;
       case 'voteCalled': {
+        // 9ai.4 (2.36): the alert; the asker's own phone doesn't get it (filtered where the seat is known).
         if (!e.by) break;
-        const what = e.kind === 'reshuffle' ? 'a reshuffle' : e.kind === 'target' ? `a target of ${e.value} points` : 'the Ultimate Round';
-        if (s.order.length === 2) {
-          const other = s.order.find((p) => p !== e.by)!;
-          out.push({ kind: 'info', icon: 'vote', title: 'Do you agree?', text: `${nameOf(s, e.by)} wants ${what}. ${nameOf(s, other)} decides.` });
-        } else {
-          out.push({ kind: 'info', icon: 'vote', title: 'Vote', text: `${nameOf(s, e.by)} wants ${what}` });
-        }
+        out.push({ kind: 'voteAlert', by: e.by, vote: e.kind, value: e.value, dealer: s.dealer, twoPlayers: s.order.length === 2 });
         break;
       }
       case 'drawAtEnd':
@@ -474,7 +473,7 @@ function popupsFor(s: Session, events: readonly SessionEvent[]): Popup[] {
         out.push({ kind: 'info', icon: 'equal', title: 'No majority', text: `${nameOf(s, s.hostId)} decides` });
         break;
       case 'voteResolved':
-        out.push({ kind: 'vote', decidedBy: s.order.length === 2 ? 'both' : e.decidedBy, result: e.result, text: voteOutcome(s, e.kind, e.result, e.value) });
+        out.push({ kind: 'vote', decidedBy: s.order.length === 2 ? 'both' : e.decidedBy, result: e.result, text: voteOutcome(s, e.kind, e.result, e.value), kindOf: e.kind, value: e.value, ballots: e.ballots ?? {} });
         break;
       case 'jokersDiscarded':
         out.push({
@@ -1125,11 +1124,32 @@ function playHandoffStage(g: SavedGame): Child {
  * `opts.all` makes every card tappable (hidden swap); `opts.picked` marks cards
  * as raised; `opts.mark` puts a star on them instead (new cards after a swap).
  */
+/** 9ai.6 (2.36): the gold pill above your hand on your turn: "lead", "play a ♥", or "Your turn". */
+function turnPill(s: Session, v: PlayerView): HTMLElement {
+  const led = v.ledSuit;
+  let label: Child = 'Your turn';
+  if (v.trick.length === 0 && !jokerLed(s)) label = 'Your turn · lead';
+  else if (led && v.myHand.some((c) => c.kind === 'standard' && c.suit === led)) {
+    const red = led === 'hearts' || led === 'diamonds';
+    label = ['Your turn · play a ', h('span', { class: red ? 'play-red' : '' }, SUIT_SYMBOL[led])];
+  }
+  return h('div', { class: 'turn-pill', role: 'status' }, label);
+}
+
+/** 9ai.6 (2.36): the phone buzzes once when a turn comes to this player (where it can, with sound effects on). */
+let lastTurnKey = '';
+function buzzForTurn(g: SavedGame, v: PlayerView): void {
+  const key = `${g.session.round}:${g.trickLog.length}:${v.me}`;
+  if (key === lastTurnKey) return;
+  lastTurnKey = key;
+  if (soundSettings().sfxOn) navigator.vibrate?.(60);
+}
+
 export function handBlock(
   s: Session,
   v: PlayerView,
   onTap: ((c: Card) => void) | null,
-  opts: { picked?: ReadonlySet<string>; all?: boolean; mark?: boolean; head?: boolean; fit?: number; width?: number } = {},
+  opts: { picked?: ReadonlySet<string>; all?: boolean; mark?: boolean; head?: boolean; fit?: number; width?: number; yourTurn?: boolean; turnPill?: HTMLElement | null } = {},
 ): HTMLElement {
   const hand = sortHand(v.myHand);
   // The fanned hand (CODE.md 9u Part D): card size and place from the phone's width (portrait only).
@@ -1148,7 +1168,9 @@ export function handBlock(
   const key = `${s.round}:${v.me}:${s.phase}`;
   const fresh = key !== shownHandKey;
   shownHandKey = key;
-  return h('section', { class: 'hand-section', 'aria-label': `${nameOf(s, v.me)}'s cards` },
+  // 9ai.6 (2.36): on your turn the hand is framed in gold, with the turn pill above it.
+  return h('section', { class: opts.yourTurn ? 'hand-section your-turn' : 'hand-section', 'aria-label': `${nameOf(s, v.me)}'s cards` },
+    opts.turnPill ?? null,
     opts.head === false ? null : h('div', { class: 'hand-head' },
       h('h2', null, nameOf(s, v.me)),
       h('span', { class: 'count' }, String(hand.length)),
@@ -1208,9 +1230,11 @@ export function playHandStage(g: SavedGame): Child {
   const lay = stageLayout(true, 52);
   // 2.31 (CODE.md 9aa Part B): with no cards left, Fast forward and Skip take the hand area.
   const fastItems = v.myHand.length === 0 ? handFastItems(g) : [];
+  // 9ai.3 (2.36): a pop-up open on any phone holds the game: Play shows only the hourglass until it is closed.
+  const busyWait = anyoneBusy();
   const playButton = myTurn && !playBlocked
-    ? h('button', { class: 'big grow', disabled: !selCard, onclick: () => selected && play(selected) },
-      selCard ? ['Play ', h('span', { class: selCard.kind === 'standard' && (selCard.suit === 'hearts' || selCard.suit === 'diamonds') ? 'play-red' : '' }, shortLabel(selCard))]
+    ? h('button', { class: 'big grow', disabled: !selCard || busyWait, onclick: () => selected && !busyWait && play(selected) },
+      busyWait ? icon('wait') : selCard ? ['Play ', h('span', { class: selCard.kind === 'standard' && (selCard.suit === 'hearts' || selCard.suit === 'diamonds') ? 'play-red' : '' }, shortLabel(selCard))]
         : v.trick.length || jokerLed(s) ? 'Pick a card' : 'Pick a card to lead')
     : null;
   // Panels that come and go float over the table (2.29), so the rows never move.
@@ -1242,11 +1266,15 @@ export function playHandStage(g: SavedGame): Child {
       ? passOnButton(g)
       : null,
   ];
+  if (myTurn && ownSeat(g)) buzzForTurn(g, v);
   return gameFrame(lay, {
     table: trickArea(s, g, v, v.me, actor ?? v.me, lay),
     hand: fastItems.length
       ? h('div', { class: 'hand-actions' }, ...fastItems)
-      : handBlock(s, v, playBlocked ? null : onTap, { head: false, fit: lay.handH, width: lay.handW }),
+      : handBlock(s, v, playBlocked ? null : onTap, {
+        head: false, fit: lay.handH, width: lay.handW,
+        yourTurn: myTurn, turnPill: myTurn ? turnPill(s, v) : null,
+      }),
     action: playButton,
     extra,
   });
@@ -1265,9 +1293,23 @@ function slapElapsed(p: Popup): number {
   return Math.min(popupMs(p), now - slapShownAt.get(p)!);
 }
 
-/** The countdown bar under a pop-up that closes by itself. */
-function popupTimer(p: Popup): HTMLElement {
+/**
+ * 9ai.1 (2.36): pop-ups close by themselves only while Fast forward or Skip runs
+ * (only computer players are left, so no person is waiting). Otherwise they wait for a tap.
+ */
+function autoClosing(): boolean {
+  return fastForwardOn() || skipping() || instantSkipping();
+}
+
+/** The countdown bar under a pop-up that closes by itself (only while autoClosing). */
+function popupTimer(p: Popup): HTMLElement | null {
+  if (!autoClosing()) return null;
   return h('div', { class: 'slap-timer', 'aria-hidden': 'true' }, h('span', { style: `animation-duration:${popupMs(p)}ms;animation-delay:-${slapElapsed(p)}ms` }));
+}
+
+/** 9ai.1: the line at the bottom of a pop-up that closes on a tap (hidden while it closes by itself). */
+function tapHint(): HTMLElement | null {
+  return autoClosing() ? null : h('div', { class: 'tap-hint' }, 'Tap anywhere to close');
 }
 
 /** Coloured place badge: 1st gold, 2nd silver, 3rd bronze, Last red. */
@@ -1325,20 +1367,25 @@ export function popupLayer(): HTMLElement | null {
       popupTimer(p),
     ];
   } else if (p.kind === 'out') {
+    // 9ai.2 (2.36): where the player came, not "is out". On your own phone: "You came 2nd!".
+    const mine = ownSeat(g) === p.player;
+    const tier = p.place <= 3 ? `place-${p.place}` : 'place-rest';
     body = [
-      h('div', { class: 'popup-icon' }, icon(p.place === 1 ? 'trophy' : 'out')),
-      h('div', { class: 'popup-title' }, `${nameOf(s, p.player)} is out`),
-      placeBadge(p.place),
+      h('div', { class: `place-icon ${tier}` }, icon('trophy')),
+      h('div', { class: 'popup-title' }, `${mine ? 'You' : nameOf(s, p.player)} came ${ordinal(p.place)}!`),
+      h('div', { class: `place-big ${tier}` }, ordinal(p.place)),
+      h('div', { class: 'small' }, mine ? 'Sit back and watch the rest.' : 'No cards left.'),
     ];
   } else if (p.kind === 'lastTwo') {
     body = lastTwoBody(s, p);
+  } else if (p.kind === 'voteAlert') {
+    // 9ai.4 (2.36): solid, no timer; "Vote now" or a tap anywhere closes it.
+    cls += ' vote-alert';
+    body = voteAlertBody(s, p, next);
   } else if (p.kind === 'vote') {
+    // 9ai.4 (2.36): the result, with the YES and NO rows; counts only on one phone (secret vote).
     cls += ' vote-pop';
-    body = [
-      h('div', { class: 'vote-says' }, p.decidedBy === 'host' ? 'Host says…' : p.decidedBy === 'both' ? (p.result ? 'Both agree…' : 'Not agreed…') : 'Majority says…'),
-      h('div', { class: p.result ? 'vote-word yes' : 'vote-word no' }, p.result ? 'YES!' : 'NO!'),
-      h('div', { class: 'popup-title small-title' }, p.text),
-    ];
+    body = voteResultBody(s, p, !!ownSeat(g));
   } else {
     body = [
       h('div', { class: 'popup-icon' }, icon(p.icon)),
@@ -1347,16 +1394,10 @@ export function popupLayer(): HTMLElement | null {
     ];
   }
   shownPopups.add(p);
-  // 2.34.6: the Badboy pop-up closes by itself after 4 s (countdown bar) or on a tap.
-  if (p.kind === 'badboy' || p.kind === 'pathetic') {
-    return h('div', { class: 'overlay popup-overlay', 'data-skip': 'true', onclick: next }, h('div', { class: cls, role: 'alert' }, body));
-  }
-  // Every pop-up closes by itself (afterRender). SLAP! and HAHAHA! stay their full time; the others can be tapped away.
-  if (p.kind === 'slap' || p.kind === 'haha') {
-    return h('div', { class: 'overlay popup-overlay' }, h('div', { class: cls, role: 'alert' }, body));
-  }
+  // 9ai.1 (2.36): every pop-up has no timer and closes on a tap anywhere (except during Fast forward or Skip).
+  // The vote alert has its own "Vote now" button and no tap line (9ai.4).
   return h('div', { class: 'overlay popup-overlay', 'data-skip': 'true', onclick: next },
-    h('div', { class: cls, role: 'alert' }, body, popupTimer(p)));
+    h('div', { class: cls, role: 'alert' }, body, p.kind === 'voteAlert' ? null : tapHint()));
 }
 
 function lastTwoBody(s: Session, p: Extract<Popup, { kind: 'lastTwo' }>): Child[] {
@@ -1534,7 +1575,8 @@ export function afterRender(): void {
   pauseTick();
   driveTrickAnim();
   const top = trickAnim && trickAnim.step !== 'wait' ? undefined : getState().popups[0];
-  if (top && slapTimer?.popup !== top) {
+  // 9ai.1 (2.36): only Fast forward or Skip closes a pop-up by itself; otherwise no timer at all.
+  if (top && autoClosing() && slapTimer?.popup !== top) {
     if (slapTimer) window.clearTimeout(slapTimer.id);
     const id = window.setTimeout(() => {
       slapTimer = null;
@@ -1542,6 +1584,9 @@ export function afterRender(): void {
       if (cur[0] === top) update({ popups: cur.slice(1) });
     }, Math.max(300, popupMs(top) - slapElapsed(top)));
     slapTimer = { popup: top, id };
+  } else if (slapTimer && (!top || !autoClosing() || slapTimer.popup !== top)) {
+    window.clearTimeout(slapTimer.id);
+    slapTimer = null;
   }
   if (pendingFly) {
     flyCard(pendingFly);
@@ -1549,7 +1594,9 @@ export function afterRender(): void {
   }
   const st = getState();
   const s = st.game?.session;
-  const dealing = st.screen === 'game' && st.game?.net?.role !== 'join' && s?.phase === 'dealing' && s.deal?.mode === 'auto' && s.deal.nextSeat !== null && !s.vote && !s.paused && !shuffling();
+  // 9ai.3 (2.36): this phone reports whether a pop-up of its own is up (not while Fast forward or Skip runs).
+  reportMyBusy(st.popups.length > 0 && !autoClosing() && !(trickAnim && trickAnim.step !== 'wait'));
+  const dealing = st.screen === 'game' && st.game?.net?.role !== 'join' && s?.phase === 'dealing' && s.deal?.mode === 'auto' && s.deal.nextSeat !== null && !s.vote && !s.paused && !shuffling() && !anyoneBusy();
   if (!dealing) {
     if (dealTimer !== null) { window.clearTimeout(dealTimer); dealTimer = null; }
   } else if (dealTimer === null) {

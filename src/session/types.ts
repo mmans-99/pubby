@@ -243,6 +243,8 @@ export type SessionEvent =
       readonly result: boolean;
       readonly decidedBy: 'majority' | 'host';
       readonly value: number | null;
+      /** 9ai.4 (2.36): the ballots as they stood when the vote was decided (optional: older saved games lack it). */
+      readonly ballots?: Readonly<Record<PlayerId, Ballot>>;
     }
   | { readonly type: 'reshuffled'; readonly dealer: PlayerId }
   | { readonly type: 'reshuffleWindowClosed' }

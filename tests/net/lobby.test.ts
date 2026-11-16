@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   addSeat, cleanName, joinProblem, jokerLine, LOBBY_PROTOCOL, lobbyProblems, moveSeat, newLobby,
   readToHost, readToJoiner, removeSeat, renameSeat, seatName, sessionPlayers, setConnected,
-  setAway, setBack, isAway, waitingText, addSeat as addSeatAway, setReady, newLobby as newLobbyAway,
+  setAway, setBack, setBusy, isAway, waitingText, addSeat as addSeatAway, setReady, newLobby as newLobbyAway,
   addBot, setBotLevel, nextBotId,
 } from '../../src/net/lobby.ts';
 import { botNamesProblem, pickNames } from '../../src/ai/names.ts';
@@ -156,8 +156,8 @@ test('away: the host seat cannot go away, and an away seat counts as missing (St
   assert.equal(setAway(l, 'host', 1).seats[0]!.awaySince, undefined);
 });
 
-test('typed messages (9ad.5, 2.34): good ones are read, cut to 60 characters, the rest refused; the protocol is 9', () => {
-  assert.equal(LOBBY_PROTOCOL, 9);
+test('typed messages (9ad.5, 2.34): good ones are read, cut to 60 characters, the rest refused; the protocol is 10', () => {
+  assert.equal(LOBBY_PROTOCOL, 10);
   assert.deepEqual(readToHost({ t: 'say', text: '  hi there  ' }), { t: 'say', text: 'hi there' });
   assert.deepEqual(readToHost({ t: 'say', text: 'a   b' }), { t: 'say', text: 'a b' });
   assert.equal(readToHost({ t: 'say', text: '   ' }), null);
@@ -173,8 +173,8 @@ test('typed messages (9ad.5, 2.34): good ones are read, cut to 60 characters, th
   assert.equal(emoji?.t === 'say' ? Array.from(emoji.text).length : -1, 60);
 });
 
-test('away messages are read both ways; the protocol is 7', () => {
-  assert.equal(LOBBY_PROTOCOL, 9);
+test('away messages are read both ways; the protocol is 10', () => {
+  assert.equal(LOBBY_PROTOCOL, 10);
   assert.deepEqual(readToHost({ t: 'away' }), { t: 'away' });
   assert.deepEqual(readToHost({ t: 'back' }), { t: 'back' });
   assert.deepEqual(readToJoiner({ t: 'hostAway' }), { t: 'hostAway' });
@@ -234,4 +234,17 @@ test('a computer player seat and the host options survive a lobby message (proto
     assert.equal(back.lobby.botSpeed, 'fast');
     assert.equal(back.lobby.botReactions, false);
   }
+});
+
+test('busy (9ai.3, 2.36): a phone with a pop-up open is read both ways; setBusy sets and clears; away clears busy', () => {
+  assert.deepEqual(readToHost({ t: 'busy', on: true }), { t: 'busy', on: true });
+  assert.deepEqual(readToHost({ t: 'busy', on: false }), { t: 'busy', on: false });
+  assert.equal(readToHost({ t: 'busy', on: 'yes' }), null);
+  const seated = addSeat(newLobby('Mo'), 'c1', 'Ben', '');
+  const busy = setBusy(seated, 'c1', true);
+  assert.equal(busy.seats.find((s) => s.id === 'c1')!.busy, true);
+  const clear = setBusy(busy, 'c1', false);
+  assert.equal(clear.seats.find((s) => s.id === 'c1')!.busy, undefined);
+  const away = setAway(busy, 'c1', 1000);
+  assert.equal(away.seats.find((s) => s.id === 'c1')!.busy, undefined);
 });

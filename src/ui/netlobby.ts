@@ -25,6 +25,7 @@ import type { Link } from '../net/link.ts';
 import { HostRoom, createRoom, joinRoom, joinSocket, watchRooms, type OnlineLink, type RoomInfo } from '../net/online.ts';
 import { AWAY_MS, PASSCODE_RE, ROOM_ID_RE, ROOM_NAME_MAX } from '../net/relayproto.ts';
 import { setAwayPlayers } from '../net/away.ts';
+import { onMyBusyChange, setBusyPlayers } from '../net/busy.ts';
 import { BOT_NAME_MAX, botNamesProblem, pickNames } from '../ai/names.ts';
 import { randomPersona, type Level, type Personality, type Speed } from '../ai/persona.ts';
 import type { BotsInfo } from './storage.ts';
@@ -34,7 +35,7 @@ import { canScan, startScanner, type Scanner } from '../net/scan.ts';
 import {
   addSeat, cleanName, joinProblem, jokerLine, LOBBY_PROTOCOL, lobbyProblems, moveSeat, NAME_MAX, newLobby,
   readToHost, readToJoiner, removeSeat, renameSeat, seatName, sessionPlayers, setConnected, setReady, waitingText,
-  setAway, setBack, isAway, addBot, setBotLevel, nextBotId,
+  setAway, setBack, setBusy, isAway, addBot, setBotLevel, nextBotId,
   type Lobby, type LobbySeat, type ToHost, type ToJoiner,
 } from '../net/lobby.ts';
 import { MAX_PLAYERS } from '../rules/cards.ts';
@@ -160,6 +161,7 @@ let drawLater = false;
 export function netLobbyScreen(back: () => void): HTMLElement {
   onBack = back;
   watchVisibility();
+  watchBusy();
   if (!root) {
     root = h('main', { class: 'screen netlobby' });
     exposeTestHook();
@@ -330,6 +332,30 @@ type View = (HTMLElement | null)[];
 function syncAway(): void {
   const l = role === 'host' ? lobby : seen;
   setAwayPlayers((l?.seats ?? []).flatMap((s, i) => (s.awaySince !== undefined && !s.isHost ? [`p${i + 1}`] : [])));
+  // 9ai.3 (2.36): a person with a pop-up open holds the game (the host counts too). Away phones and computer players don't.
+  setBusyPlayers((l?.seats ?? []).flatMap((s, i) => (s.busy && s.awaySince === undefined && !s.bot ? [`p${i + 1}`] : [])));
+}
+
+/** 9ai.3 (2.36): this phone's pop-up state changes go to the host (a joining phone) or into the host's lobby (the host's phone). */
+let busyWatched = false;
+function watchBusy(): void {
+  if (busyWatched) return;
+  busyWatched = true;
+  onMyBusyChange((on) => {
+    // The game screen reports this during its draw, so the change waits until that draw is done.
+    window.setTimeout(() => {
+      if (role === 'join') {
+        if (peer?.isOpen) peer.send({ t: 'busy', on } satisfies ToHost);
+      } else if (role === 'host' && lobby) {
+        const mine = lobby.seats.find((s) => s.isHost);
+        if (!mine) return;
+        lobby = setBusy(lobby, mine.id, on);
+        broadcast();
+        draw();
+        netChanged();
+      }
+    }, 0);
+  });
 }
 
 /** A phone tells the host it left the screen (and is back), and the host's phone tells its phones (CODE.md 9u A5). Best effort. */
@@ -1085,6 +1111,15 @@ function hostGot(id: string, raw: unknown): void {
   if (m.t === 'away' || m.t === 'back') {
     if (!link.seated) return;
     lobby = m.t === 'away' ? setAway(lobby, id, Date.now()) : setBack(lobby, id);
+    broadcast();
+    draw();
+    netChanged();
+    return;
+  }
+  // 9ai.3 (2.36): a seated phone has, or has closed, its pop-ups.
+  if (m.t === 'busy') {
+    if (!link.seated) return;
+    lobby = setBusy(lobby, id, m.on);
     broadcast();
     draw();
     netChanged();

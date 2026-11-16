@@ -62,12 +62,16 @@
     // Votes.
     const yes = buttons().find((b) => b.textContent.trim() === 'YES');
     const no = buttons().find((b) => b.textContent.trim() === 'NO');
+    // 9ai.7 (2.36): popups_check.py answers votes and take-cards itself when cfg.holdVotes / cfg.holdTakes is set.
+    if (yes && no && cfg.holdVotes) return 'wait';
     if (yes && no) return cfg.voteYes ? click(yes, 'vote yes') : click(no, 'vote no');
 
     // Take-cards request asking the person (PROJECT.md 4.2): answer like a person would, half the time each way.
-    if (visible(document.querySelector('.take-ask'))) {
-      const give = buttons().filter((b) => b.classList.contains('vote-yes'));
-      const refuse = buttons().find((b) => b.classList.contains('vote-no'));
+    // 9ai.5 (2.36): the take-cards card is a solid overlay with Give buttons and an outline Refuse.
+    if (visible(document.querySelector('.take-overlay')) && cfg.holdTakes) return 'wait';
+    if (visible(document.querySelector('.take-overlay'))) {
+      const give = buttons().filter((b) => b.classList.contains('take-give') || b.classList.contains('take-give-small'));
+      const refuse = buttons().find((b) => b.classList.contains('btn-outline-no'));
       if (give.length && Math.random() < 0.5) return click(pick(give), 'take request: give cards');
       if (refuse) return click(refuse, 'take request: refuse');
     }
@@ -92,7 +96,7 @@
       const round = m ? Number(m[1]) : 0;
       if (round < cfg.rounds) return click(next, `next round after ${round}`);
       if (cfg.ultimate && !st.ultCalled) {
-        const callers = [...document.querySelectorAll('.name-chip')].filter((b) => /Called by/.test(b.getAttribute('aria-label') || ''));
+        const callers = [...document.querySelectorAll('.name-chip')].filter((b) => /Called by/.test(b.getAttribute('aria-label') || '') && (!cfg.callerNot || !(b.getAttribute('aria-label') || '').includes(cfg.callerNot)));
         if (callers.length) { st.ultCalled = true; return click(callers[0], 'ultimate vote called'); }
         const call = byLabel('Ultimate Round')[0];
         if (call && !call.classList.contains('on')) return click(call, 'call ultimate vote');
@@ -174,7 +178,8 @@
 
     // Reshuffle phase.
     if (cfg.reshuffle && !st.reshuffleCalled) {
-      const callers = byLabel('Called by');
+      // 9ai.7 (2.36): cfg.callerNot keeps the person from calling, so they get to vote (popups_check.py).
+      const callers = byLabel('Called by').filter((b) => !cfg.callerNot || !(b.getAttribute('aria-label') || '').includes(cfg.callerNot));
       if (callers.length) { st.reshuffleCalled = true; return click(callers[0], 'reshuffle vote called'); }
       const call = byLabel('Deal again? Call')[0];
       if (call) return click(call, 'call reshuffle vote');

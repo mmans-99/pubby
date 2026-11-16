@@ -26,6 +26,7 @@ import { reactionFor } from '../ai/react.ts';
 import { rebuild, remember, type Memory } from '../ai/memory.ts';
 import { thinkMs, type Persona } from '../ai/persona.ts';
 import { seenBy, type AiSeen } from '../ai/seen.ts';
+import { anyoneBusy } from '../net/busy.ts';
 import {
   botsOnlyNow, fastForwardMs, fastForwardOn, personsOut, resetFastForward, setFastForward,
   setInstantSkipping, setSkipNote, setSkipping, skipping,
@@ -85,14 +86,15 @@ function canMove(g: SavedGame): boolean {
   const st = getState();
   const s = g.session;
   if (st.screen !== 'game' || s.paused || s.ended || s.phase === 'gameOver') return false;
-  if (st.popups.length || trickAnimating() || shuffling()) return false;
+  if (st.popups.length || trickAnimating() || shuffling() || anyoneBusy()) return false;
   if (s.phase === 'dealing' && s.deal?.mode === 'auto' && s.deal.nextSeat !== null) return false;
   return true;
 }
 
-/** Something on screen (or a request) is waiting for a person (CODE.md 9v.2). */
+/** Something on screen (or a request) is waiting for a person (CODE.md 9v.2). 9ai.3: a busy phone counts too. */
 function waitingForPerson(s: Session): boolean {
   return getState().popups.length > 0
+    || anyoneBusy()
     || s.vote !== null
     || s.tap !== null
     || s.pauseRequests.length > 0

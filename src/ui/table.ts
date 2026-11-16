@@ -16,6 +16,7 @@ import { h, type Child } from './dom.ts';
 import { cardFaceFromId, fanLayout, ordinal, SUIT_SYMBOL } from './cards.ts';
 import { thinkingSeat } from './thinking.ts';
 import { isAwayPlayer } from '../net/away.ts';
+import { isBusyPlayer } from '../net/busy.ts';
 import { icon } from './icons.ts';
 import type { PlayerId, Session } from '../session/types.ts';
 import type { PlayerView } from '../session/view.ts';
@@ -375,6 +376,8 @@ function seatTags(id: PlayerId, p: PlayerRow, o: TableOpts, thinking: boolean, p
     o.dealer === id ? h('span', { class: 'seat-dealer', 'aria-label': 'Deals' }, 'D') : null,
     // CODE.md 9u A5: a phone that left the screen; its seat is kept for 10 minutes.
     isAwayPlayer(id) ? h('span', { class: 'seat-away' }, 'Away') : null,
+    // 9ai.3 (2.36): a phone with a pop-up open. A flipping hourglass, no words.
+    isBusyPlayer(id) && !isAwayPlayer(id) ? h('span', { class: 'seat-busy', role: 'img', 'aria-label': 'Busy' }, icon('wait')) : null,
     place && p.place !== null ? h('span', { class: 'place-badge' }, ordinal(p.place)) : null,
     // Computer player choosing its move (CODE.md 9m.5, 9w.1): three dots, no word.
     thinking ? h('span', { class: 'think-dots', 'aria-label': 'Thinking' }, [0, 1, 2].map((i) => h('span', { class: 'dot', style: `--i:${i}`, 'aria-hidden': 'true' }, '•'))) : null,
@@ -402,7 +405,9 @@ export function roundTable(s: Session, v: PlayerView, o: TableOpts): HTMLElement
   // The pile's look is fixed by the round and the trick's first card, so it never reshuffles mid-trick.
   const spots = pileSpots(plays.map((p) => p.card), `${s.round}:${plays[0]?.card ?? ''}`);
   const felt = `width:${box.w.toFixed(1)}px;height:${box.h.toFixed(1)}px;--u:${box.u.toFixed(2)}px;--bw:${bw}px;--bh:${bh}px`;
-  return h('section', { class: `round-table n${n}${box.landscape ? ' landscape' : ' portrait'}`, 'aria-label': 'Table', style: felt },
+  // 9ai.6 (2.36): your own turn at your own table: the felt glows (idea 3). Someone else's: their seat rings (idea 1).
+  const yourTurn = !!o.you && o.highlight != null && o.highlight === o.bottom;
+  return h('section', { class: `round-table n${n}${box.landscape ? ' landscape' : ' portrait'}${yourTurn ? ' your-turn' : ''}`, 'aria-label': 'Table', style: felt },
     h('div', { class: 'table-oval', 'aria-hidden': 'true' },
       o.ledSuit ? h('span', { class: red ? 'led-mark red' : 'led-mark' }, SUIT_SYMBOL[o.ledSuit]) : null),
     h('div', { class: 'table-middle' }, o.middle ?? null),
@@ -424,9 +429,12 @@ export function roundTable(s: Session, v: PlayerView, o: TableOpts): HTMLElement
       const thinking = thinkingSeat() === id;
       const turn = id === o.highlight;
       const computer = s.players.find((x) => x.id === id)?.computer ?? false;
+      // 9ai.6 (2.36): someone else's turn: their seat rings and reads "Ben's turn"; the others fade.
+      const someoneElse = o.highlight != null && o.highlight !== o.bottom;
+      const turnText = turn && someoneElse;
       // A computer player gets a small computer icon, so it is never taken for a person (PROJECT.md 12c).
-      const nameKids: Child[] = [computer ? icon('bot', 'seat-bot') : null, h('span', { class: 'table-name' }, o.you && k === 0 ? 'You' : p.sessionName)];
-      const cls = (extra: string): string => ['table-seat', extra, turn ? 'turn' : '', out ? 'out' : '', isAwayPlayer(id) ? 'away' : '', o.onTap ? 'tappable' : '', thinking ? 'thinking' : ''].filter(Boolean).join(' ');
+      const nameKids: Child[] = [computer ? icon('bot', 'seat-bot') : null, h('span', { class: 'table-name' }, turnText ? `${p.sessionName}’s turn` : o.you && k === 0 ? 'You' : p.sessionName)];
+      const cls = (extra: string): string => ['table-seat', extra, turn ? 'turn' : '', turn && !turnText ? 'turn-me' : '', someoneElse && !turn ? 'not-turn' : '', out ? 'out' : '', isAwayPlayer(id) ? 'away' : '', o.onTap ? 'tappable' : '', thinking ? 'thinking' : ''].filter(Boolean).join(' ');
 
       if (k === 0) {
         // Your own seat: a small pill "You · 6" at the bottom centre of the felt (9w.1).
@@ -451,7 +459,7 @@ export function roundTable(s: Session, v: PlayerView, o: TableOpts): HTMLElement
       kids.push(h('span', { class: `seat-disc${out ? ' out-disc' : ''}`, 'aria-hidden': 'true', style: `${rel(L.bubble.x, L.bubble.y)}` },
         h('span', { class: `seat-initial${tag.length >= 3 ? ' three' : tag.length === 2 ? ' two' : ''}` }, tag),
         !out ? h('span', { class: `disc-count ${L.edge === 'right' ? 'at-left' : 'at-right'}` }, String(p.cardCount)) : null));
-      kids.push(h('span', { class: `seat-label al-${align}`, style: `${rel(L.name.x, L.name.y)};translate:${tx} 0` }, [...nameKids, ...tags]));
+      kids.push(h('span', { class: `seat-label al-${align}${turnText ? ' turn-name' : ''}`, style: `${rel(L.name.x, L.name.y)};translate:${tx} 0` }, [...nameKids, ...tags]));
       const seatCls = cls(`seat-quiet edge-${L.edge}`);
       const hitStyle = `left:${L.hit.x.toFixed(1)}px;top:${L.hit.y.toFixed(1)}px;width:${L.hit.w.toFixed(1)}px;height:${L.hit.h.toFixed(1)}px`;
       return seatEl(o, id, seatCls, hitStyle, p.sessionName, kids);

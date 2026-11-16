@@ -3404,7 +3404,9 @@ Save a screenshot of each to `/tmp/tablet/` and send them to the user with the t
 3. **Deal again:** after the deal, vote "Deal again?" and pass it: after the new deal you're back on the screen with Look at cards / Deal again? / Start, and Deal again? works again. A failed vote starts the round. Try it in round 2 and 3 too, and on two phones.
 4. **Badboy:** hard to get by chance (about 1 in 400 hands with 4 players); use the test link's "four aces" test game (the build guide's check sets one up) to see it: the pop-up and the fanfare on your screen only; the other phone shows nothing.
 
-## 9ai. Clearer pop-ups, votes, take-cards and whose turn (PLAN, user 2026-11-16 07:54 to 08:17; spec `PROJECT.md` 12u; mockups https://claude.ai/artifact/2KAaj6Lkc2aCDsM3os6TXo; written for Haiku; target **2.36.0**; NOT BUILT)
+## 9ai. Clearer pop-ups, votes, take-cards and whose turn (BUILT 2026-11-16 as 2.36.0, not committed; user 2026-11-16 07:54 to 08:17; spec `PROJECT.md` 12u; mockups https://claude.ai/artifact/2KAaj6Lkc2aCDsM3os6TXo; written for Haiku)
+
+**Built notes (2.36.0):** Part A's pop-up timer is gone except during Fast forward or Skip (`autoClosing()` in `game.ts`). The vote alert has no tap line (the Vote now button closes it), so it also covers the table while open. The "your turn" table glow is on `.table-oval` (the felt), not `.round-table`. The NO pill uses the new `x` icon in `icons.ts`. Network checks that expected the old timers fail now; see DEVLOG 2026-11-16 build entry.
 
 ### 9ai.0 Read first
 - Spec: `PROJECT.md` 12u. Open the mockup link and match it: colours are the app's own (`--cream`, `--gold`, `--ink`, YES `#2e7d32`, NO `#c62828`, muted text on cream `#5d5646`). Row 1 = votes, row 2 = take-cards, row 3 = pop-ups, row 4 = turn ideas 1 and 3 (ideas 2 and 4 were **not** chosen).
@@ -3498,6 +3500,64 @@ Files: `src/ui/table.ts` (`TableOpts.highlight`, seat classes, `seatTags`), `src
 5. **Take cards:** ask from the list (card counts shown). The asked player sees a solid card with Give / Refuse that's easy to read; others see a solid "Amy asked Ben…" card; you can Withdraw. Try two people asking the same player.
 6. **Turns:** someone else's turn: their disc is bigger with a pulsing gold ring and "Ben's turn", others faded. Your turn: the table edge and your hand glow, playable cards lift, "Your turn · …" shows, Android buzzes once.
 7. iPad landscape: nothing overlaps; check with 8 players.
+
+## 9aj. Fixes after the first 2.36.0 phone test (PLAN, user 2026-11-16 09:32 to 09:49; spec `PROJECT.md` 12u item 7; mockups https://claude.ai/artifact/LB2XMzmUPUB6oJuCEic4uG rows 1 to 4; written for Haiku; still **2.36.0** (not pushed yet); NOT BUILT)
+
+### 9aj.0 Read first
+- Builds on top of the uncommitted 9ai work in the working tree. Don't change the version: 2.36.0 was never pushed.
+- Five parts, in this order, each testable alone: **A** take-cards layering, **B** Stop fast forward above pop-ups, **C** tie vote, **D** your-turn glow, **E** target button. Then **F** checks.
+- Rules (`src/rules/`) and session don't change. No network message changes.
+- Match the mockup (colours: `--cream`, `--gold`, `--ink`, muted on cream `#5d5646`). Every new animation gets a reduced-motion rule.
+- If a part fights the code twice, stop and write "🔁 Switch to Opus".
+
+### 9aj.1 Part A: the hand never shows through sheets and pop-ups
+**Cause:** `handBlock` sets `el.style.zIndex = spot.z` on every fan card (`game.ts` ~1187), 0 to n. Sheets and the take card live in `.game-extra` (`z-index: 6`, `styles.css` ~1243), so cards 7 and up paint over them.
+- `styles.css`: `.game-hand-slot { position: relative; z-index: 1; … }` (one stacking layer for the whole hand, below `.game-extra`). Keep the per-card z (it orders the fan).
+- Check: one-phone `askToTake` sheet, network `takeControls` sheet, `takePrompts` overlay, the vote card with the hand under it (deal again), landscape layout (`.game-hand-slot` in the grid). Playable-card lift and the fan still overlap in the right order.
+
+### 9aj.2 Part B: Stop fast forward works while pop-ups show
+**Cause:** while Fast forward runs, pop-ups come back to back; `.popup-overlay` (`z-index: 35`, full screen, `onclick: next`) covers the Stop button in `.game-action-slot`, so the tap closes a pop-up.
+- `game.ts` `popupLayer()`: while `fastForwardOn()`, append to the overlay (after the card) `h('button', { class: 'secondary big ff-stop', onclick: (e) => { e.stopPropagation(); stopFastForward(); } }, 'Stop fast forward')`.
+- CSS `.ff-stop { position: fixed; left: 50%; translate: -50% 0; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 36; box-shadow: 0 0 0 3px var(--gold); min-width: 220px; }`. In landscape put it where the action slot's Stop is (bottom of the side column); check with `tablet_check.py` sizes.
+- Also `instantSkipping()` / Skip: Skip shows no pop-ups but the round-over one; no change.
+- After Stop, pop-ups wait for a tap again (Part A of 9ai); the one on screen stays.
+
+### 9aj.3 Part C: tie vote is clear
+Files: `src/ui/roundstart.ts` (`voteWho`, `hostDecidesStage`, `voteWaitStage`), `src/ui/styles.css`.
+1. **Readable line:** `.vote-card .muted { color: #5d5646; }` (the global `--muted` is cream at 72%, made for the felt). Check every `.muted` / `.small` inside `.vote-card`, `.take-card`, `.take-sheet`, `.take-status`: on cream they use `#5d5646`.
+2. `voteWho`: when `v.awaitingHost`: `It's a tie · you're the host, you decide` if the viewer is the host, else `It's a tie · ${host} decides`. (Viewer: pass `me` in.)
+3. `hostDecidesStage`: under the list, a band `.tie-band` (`background: #fff3cf; border: 1.5px solid var(--gold); border-radius: 12px; padding: 8px 10px; font-weight: 700; text-align: center;`): `${yes} YES · ${no} NO: it's a tie` (counts from `v.ballots`). Buttons (still `hostDecides` yes/no): reshuffle **Deal again** / **Keep these cards**; target **Play to ${value}** / **No target**; ultimate **Play it** / **No**. The host's row name reads `${name} (you)` when it's this phone's seat.
+4. On one phone (`open` false) the host decides on the shared screen: same card; the tie band shows only "It's a tie" (no counts: the vote is secret there). Check what `voteNeedsHost` already shows as a pop-up ("No majority · Mo decides"): change its text to `It's a tie · ${host} decides`.
+5. Other phones (`voteWaitStage` with `awaitingHost`): head line from step 2, the same tie band, footer `hostLine(... is deciding)` unchanged.
+
+### 9aj.4 Part D: your turn: glow under the fan, one pill
+Files: `src/ui/game.ts` (`turnPill`, `handBlock`, `playHandStage`, `trickArea`), `src/ui/table.ts` (me pill label), `src/ui/styles.css`.
+1. Remove the frame: `.hand-section.your-turn` loses `border`, `border-radius`, `background`. Add `::before` behind the cards: `content: ''; position: absolute; left: -8%; right: -8%; bottom: -4%; height: 85%; border-radius: 50%; background: radial-gradient(ellipse at 50% 60%, rgba(242,193,78,.7), rgba(242,193,78,.28) 45%, rgba(242,193,78,0) 70%); pointer-events: none; z-index: 0; animation: hand-glow 1.8s ease-in-out infinite;` with `hand-glow` now changing `opacity` 0.75 ↔ 1. The `.hand.fan` gets `position: relative; z-index: 1` so cards sit over the glow. With two rows (`n > 15`) `height: 85%` of the section already covers both curves; check with 16 and 21 cards.
+2. Remove the separate `.turn-pill` element from `handBlock` (drop the `turnPill` opt). Keep the `turnPill` text logic as `turnLabel(s, v): Child`.
+3. Table: add `TableOpts.meLabel?: Child`. In `roundTable` the me pill (`cls('me-pill')`, `table.ts` ~445) shows `meLabel` instead of `name · count` when given, and gets class `turn-label` (gold background, ink text, weight 900, the existing `turn-ring` pulse). `playHandStage` passes `meLabel: myTurn ? turnLabel(s, v) : undefined` through `trickArea` to `roundTable`. The card count goes from the pill on your turn (your hand shows it).
+4. Keep: playable cards lift with a gold edge, table edge glow (`.table-oval`), one buzz, reduced motion (no pulse, glow stays).
+5. Pass-and-play: the private hand screen shows the same; the shared table unchanged.
+
+### 9aj.5 Part E: target button in the top bar, solid sheet, badge
+Files: `src/ui/between.ts` (`targetRow` → `targetButton`, `targetSheet`), `src/ui/game.ts` (game bar ~581), `src/ui/roundstart.ts` (~415), `src/ui/netscreens.ts` (~121, ~162), `src/ui/styles.css`.
+1. **Button:** `targetButton(s)`: shown when `targetVoteAllowed(s) && s.phase !== 'dealing'`. `h('button', { class: 'icon-btn target-btn', 'aria-label': 'Target score: propose one', onclick: () => update({ armed: 'target' }) }, icon('target'))`. CSS: same size as `.icon-btn`; `box-shadow: inset 0 0 0 2px rgba(242,193,78,.85); color: var(--gold);`. Put it in the game bar after the pause button (before `takeButton`, which never shows at the same time).
+2. **Sheet** (`armed === 'target'` or `'targetcaller'`): reuse the take sheet look: `h('div', { class: 'overlay take-sheet-overlay' }, h('section', { class: 'sheet take-sheet target-sheet' }, grab, head, …))`. Head: gold circle with `target`, "Target score", muted "First to reach it wins the game". Then the existing stepper (− value +; value 34px weight 900, ink), quick chips 5/10/15/20 (≥ `minimumTarget`), full-width gold **Propose N points**, muted "Everyone votes. First to N points wins.", ghost **Cancel** (`armed: null`). One phone: Propose → `targetcaller` → same sheet shows "Who is proposing?" with the name rows (`.sheet-row`, like `askSheet`) instead of the stepper. Network: Propose sends `callVote` for `me` and closes. Render the sheet from the game screen (like `lastSheet`), not inside a panel.
+3. **Remove** the `targetRow` calls (between.ts results ~248, roundstart.ts ~415, netscreens.ts ~121 and ~162) and the `.slim-panel` target styles if nothing else uses them. Keep `targetPanel` export only if something still imports it.
+4. **Badge once agreed:** when `s.target !== null`, the round chip gets `h('span', { class: 'round-badge', 'aria-hidden': 'true' }, icon('target'), String(s.target))` (CSS: absolute, top -5px, right -9px, gold, ink, 10px weight 900, radius 99px, 1.5px dark border; icon 10px) and its aria-label becomes `Round 3, first to 10 points`. The round chip becomes a button: tap toggles `armed: 'roundinfo'`, which shows a small cream note under the bar `Round 3 · first to 10 points` (no target: `Round 3 · no target`), closed by any tap. During the Ultimate Round (bolt icon) the badge stays.
+5. Check 320 px wide: before round 1 the bar is menu, R1, pause, target, sound, help; nothing wraps.
+
+### 9aj.6 Part F: checks and tests
+- `node --test` (all), `tsc`, `node build.mjs`.
+- Bot (`testbed/bot.js`): the target is now proposed from the sheet: tap `.target-btn`, then Propose (and the name row on one phone). Host-decides buttons have new words: tap the first or second button in `.vote-buttons` by position, not text.
+- **Old checks updated to tap-to-close (approved with this plan, test code only):** `netvotes_check.py` (close the vote alert / pop-ups before reading ballots), `netgame_check.py` (SLAP! counts: count pop-ups as they are closed on each phone, not timed), `sound_check.py` (round-end fanfare: close the round-over pop-up first). Then `run_checks.py --all` and compare with the known failures (lobby 3 "away" items, netgame "own seat at the bottom"); those stay as they are.
+- `popups_check.py`: add (8) the take sheet: the hand's cards are under the sheet (`document.elementFromPoint` at a sheet row's centre is inside the sheet); (9) with Fast forward on and a pop-up up, `.ff-stop` stops it; (10) a tie vote (force with the bot: half yes, half no) shows `.tie-band`; (11) target button opens `.target-sheet`; after a target is agreed `.round-badge` shows it. Screenshot 390×844 and iPad landscape.
+
+### 9aj.7 Phone checklist (add to 9ai.8, same 2.36.0 build)
+8. **Target:** before round 1, a gold-ringed target button in the top bar. Tap: solid sheet, pick 10, Propose. Once agreed, R1 has a small gold "10" badge; tap R1 for "Round 1 · first to 10 points". On the results screen the button is back if no target is set.
+9. **Your turn:** no box; gold glow under the cards; your name pill says "Your turn · lead" / "play a ♠". Try a hand with more than 15 cards (two rows).
+10. **Tie:** with 4 players, get 2 YES and 2 NO. The host sees "It's a tie · you decide" with Deal again / Keep these cards; others see "It's a tie · H decides".
+11. **Fast forward:** go out, start Fast forward, tap Stop while pop-ups come: it stops.
+12. **Take cards:** open "Take whose cards?": no cards show through the sheet.
 
 ## 8a. Playable test builds (required before every commit)
 

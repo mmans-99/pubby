@@ -70,7 +70,10 @@ test('reshuffle vote: any player calls, majority passes, dealer deals again, and
   s = act(s, { type: 'castVote', by: 'p4', ballot: 'yes' }, rng);
   assert.equal(s.vote, null);
   const resolved = [...s.log].reverse().find((e) => e.event.type === 'voteResolved')!.event;
-  assert.deepEqual(resolved, { type: 'voteResolved', kind: 'reshuffle', result: true, decidedBy: 'majority', value: null });
+  // 9ai.7 (2.36): the event also carries the final ballots; the rest is as before.
+  const { ballots, ...restResolved } = resolved as typeof resolved & { ballots?: Record<string, string> };
+  assert.deepEqual(restResolved, { type: 'voteResolved', kind: 'reshuffle', result: true, decidedBy: 'majority', value: null });
+  assert.ok(Object.values(ballots ?? {}).includes('yes'));
   assert.equal(s.phase, 'dealing');
   assert.equal(s.dealer, 'p1');
   s = dealAll(s, rng);

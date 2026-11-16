@@ -5,7 +5,8 @@
 
 import type { ProfileStats } from '../session/record.ts';
 import type { CsvSheet } from './history.ts';
-import type { PlayerId } from '../session/types.ts';
+import type { PlayerId, VoteKind } from '../session/types.ts';
+import type { Ballot } from '../rules/voting.ts';
 import { loadGame, saveGame, type SavedGame } from './storage.ts';
 import type { IconName } from './icons.ts';
 import type { SetupLevel, Speed } from '../ai/persona.ts';
@@ -59,7 +60,10 @@ export type Popup =
       /** 2.32.1: set only for the round-over pop-up of a Skip to end of round: the round's winner (1st). */
       winner?: PlayerId;
     }
-  | { kind: 'vote'; decidedBy: 'majority' | 'host' | 'both'; result: boolean; text: string }
+  /** 9ai.4 (2.36): a vote was called. Shown on every phone except the asker's. Tap "Vote now" or anywhere to close. */
+  | { kind: 'voteAlert'; by: PlayerId; vote: VoteKind; value: number | null; dealer: PlayerId; twoPlayers: boolean }
+  /** The result. `kindOf` and `value` give the question; `ballots` the YES and NO rows (9ai.4). */
+  | { kind: 'vote'; decidedBy: 'majority' | 'host' | 'both'; result: boolean; text: string; kindOf?: VoteKind; value?: number | null; ballots?: Readonly<Record<PlayerId, Ballot>> }
   /** `ms`: how long it stays up (default POP_MS in game.ts). */
   | { kind: 'info'; icon: IconName; title: string; text: string; ms?: number };
 

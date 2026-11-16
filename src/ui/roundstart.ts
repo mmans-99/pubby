@@ -18,7 +18,8 @@ import { handBlock, handoffBlock, nameOf, nextClockwise, ownSeat, publicView, se
 import { hostLine } from './netscreens.ts';
 import { icon, type IconName } from './icons.ts';
 import type { SavedGame } from './storage.ts';
-import { getState, update } from './store.ts';
+import { getState, update, type Popup } from './store.ts';
+import { seatInitials } from './initials.ts';
 import { targetRow } from './between.ts';
 import { sfx } from '../audio/sfx.ts';
 
@@ -121,23 +122,38 @@ export function netRoundStart(g: SavedGame, me: PlayerId): Child | null {
 /** Network game: this phone has answered; waiting for the others. */
 function waitStage(g: SavedGame, me: PlayerId, what: 'vote' | 'swap' | 'tap' | 'cards', waitingFor: readonly PlayerId[]): Child {
   const s = g.session;
-  const v = s.vote;
+  if (what === 'vote' && s.vote) return voteWaitStage(g, me);
   const [ic, title]: [IconName, string] =
-    what === 'vote' ? [voteIcon(v!.kind), voteShort(s, v!.kind, v!.value)]
-    : what === 'swap' ? ['swap', 'Hidden swap']
+    what === 'swap' ? ['swap', 'Hidden swap']
     : what === 'cards' ? ['hand', 'New hands']
     : ['hand', 'Reaction Tap'];
   const who = joinNames(waitingFor.map((p) => nameOf(s, p)));
-  // 2.32: the asker's YES is automatic, so they see it stated and get no YES/NO buttons.
-  const askedByMe = what === 'vote' && !!v && v.calledBy === me && !v.awaitingHost;
   return h('div', { class: 'stack' },
     h('div', { class: 'step-head' }, h('div', { class: 'step-title' }, icon(ic), ` ${title}`),
       h('div', { class: 'muted small' }, `Waiting for ${who}`)),
-    askedByMe ? h('p', { class: 'muted small center' }, 'You asked: your vote is YES') : null,
-    v?.awaitingHost ? hostLine(`${nameOf(s, s.hostId)} (host) is deciding the vote`) : null,
-    what === 'vote' && v ? ballotChips(s) : null,
     seatStrip(s, publicView(s), {}),
-    what === 'vote' && me === s.hostId && v && !v.awaitingHost && Object.keys(v.ballots).length > 0 ? countNowButton(s) : null,
+    s.phase === 'results' ? null : handBlock(s, playerView(s, me), null, { head: false }),
+  );
+}
+
+/**
+ * 9ai.4 (2.36): the vote, after this phone has voted (or while the host decides).
+ * The same card as the vote itself, with no YES/NO buttons: a line says what happens next.
+ */
+function voteWaitStage(g: SavedGame, me: PlayerId): Child {
+  const s = g.session;
+  const v = s.vote!;
+  const waitingFor = s.order.filter((p) => !v.ballots[p]);
+  const names = joinNames(waitingFor.map((p) => nameOf(s, p)));
+  const mine = v.ballots[me];
+  let foot: Child;
+  if (v.awaitingHost) foot = hostLine(`${nameOf(s, s.hostId)} (host) is deciding the vote`);
+  else if (v.calledBy === me) foot = h('p', { class: 'vote-said-line asked' }, `You asked: your vote is YES · waiting for ${names || 'the count'}`);
+  else if (mine) foot = h('p', { class: `vote-said-line ${mine}` }, `You voted ${mine === 'yes' ? 'YES' : 'NO'} · waiting for ${names || 'the count'}`);
+  else foot = null;
+  return h('div', { class: 'stack' },
+    voteCard(s, me, !!ownSeat(g), voteWho(s, v, !!ownSeat(g)), [foot]),
+    me === s.hostId && !v.awaitingHost && Object.keys(v.ballots).length > 0 ? countNowButton(s) : null,
     s.phase === 'results' ? null : handBlock(s, playerView(s, me), null, { head: false }),
   );
 }
@@ -177,36 +193,126 @@ function countNowButton(s: Session): HTMLElement {
     : armed ? `Tap again: ${nameOf(s, s.hostId)} counts the votes now` : 'Host: count the votes now');
 }
 
-/**
- * Network game (2.5): every ballot as it is cast, on every phone. One chip per
- * player in seat order: YES, NO, or waiting; the player who called the vote says "asked".
- */
-function ballotChips(s: Session): HTMLElement {
-  const v = s.vote!;
-  return h('div', { class: 'ballots', role: 'group', 'aria-label': 'Votes' }, s.order.map((p) => {
-    const b = v.ballots[p];
-    const asked = v.calledBy === p;
-    const word = b === 'yes' ? 'YES' : b === 'no' ? 'NO' : 'waiting';
-    return h('span', {
-      class: `ballot ${b ?? 'wait'}`,
-      'aria-label': `${nameOf(s, p)} ${word}${asked ? ', asked' : ''}`,
-    },
-      b === 'yes' ? icon('check') : null,
-      h('b', null, nameOf(s, p)),
-      h('small', null, asked ? ' asked' : b === 'no' ? ' NO' : b === 'yes' ? '' : ' waiting'));
-  }));
-}
-
 // ---------------------------------------------------------------------------
 // Votes
 // ---------------------------------------------------------------------------
 
-function voteIcon(kind: VoteKind): IconName {
+export function voteIcon(kind: VoteKind): IconName {
   return kind === 'reshuffle' ? 'shuffle' : kind === 'target' ? 'target' : 'bolt';
 }
 
+/** 9ai.4: the short tag on each seat's disc, the same tags the table uses. */
+function discTags(s: Session): Record<string, string> {
+  return seatInitials(s.players.map((p) => ({ id: p.id, name: p.sessionName ?? p.profileName })));
+}
+
+/** 9ai.4: a player's small cream disc with their tag. */
+export function miniDisc(s: Session, id: PlayerId, size: string): HTMLElement {
+  return h('span', { class: 'vote-disc', style: `--d:${size}`, role: 'img', 'aria-label': nameOf(s, id) }, discTags(s)[id] ?? '?');
+}
+
+/** 9ai.4: the vote's question under the card, e.g. "Amy asked · majority decides". */
+function voteWho(s: Session, v: NonNullable<Session['vote']>, open: boolean): string {
+  if (v.draw) return 'Top score is a draw';
+  if (v.calledBy && s.order.length === 2) return `${nameOf(s, v.calledBy)} asked · you decide`;
+  const secret = open ? '' : ' · secret vote';
+  if (v.calledBy) return `${nameOf(s, v.calledBy)} asked · majority decides${secret}`;
+  return `Target reached${secret}`;
+}
+
+/**
+ * 9ai.4 (2.36): one solid card for every vote step: the question, who asked, one row
+ * per player in seat order, a progress bar, then what the player does (`after`).
+ * On one phone (`open` false) the rows show only Voted or Waiting: the vote is secret.
+ */
+function voteCard(s: Session, me: PlayerId | null, open: boolean, who: string, after: Child[]): HTMLElement {
+  const v = s.vote!;
+  const cast = Object.keys(v.ballots).length;
+  const pct = Math.round((cast / s.order.length) * 100);
+  return h('section', { class: 'vote-card', 'aria-label': 'Vote' },
+    h('div', { class: 'vote-head' },
+      h('span', { class: 'vote-icon' }, icon(voteIcon(v.kind))),
+      h('div', { class: 'vote-head-text' },
+        h('h2', { class: 'vote-q' }, voteShort(s, v.kind, v.value)),
+        h('p', { class: 'muted small' }, who))),
+    ballotList(s, me, open),
+    h('div', { class: 'vote-progress' },
+      h('span', { class: 'bar', 'aria-hidden': 'true' }, h('i', { style: `width:${pct}%` })),
+      h('small', null, `${cast} of ${s.order.length} voted`)),
+    ...after);
+}
+
+/** 9ai.4: every player in seat order with their ballot, as it is cast, on every phone. */
+function ballotList(s: Session, me: PlayerId | null, open: boolean): HTMLElement {
+  const v = s.vote!;
+  return h('div', { class: 'ballot-list', role: 'list', 'aria-label': 'Votes' }, s.order.map((p) => {
+    const b = v.ballots[p];
+    const asked = v.calledBy === p;
+    const mine = open && me === p && !b;
+    let pill: HTMLElement;
+    if (!open) pill = b ? h('span', { class: 'pill voted' }, icon('check'), ' Voted') : h('span', { class: 'pill wait' }, icon('wait'), ' Waiting');
+    else if (asked) pill = h('span', { class: 'pill yes' }, icon('check'), ' Asked · YES');
+    else if (b === 'yes') pill = h('span', { class: 'pill yes' }, icon('check'), ' YES');
+    else if (b === 'no') pill = h('span', { class: 'pill no' }, icon('x'), ' NO');
+    else if (mine) pill = h('span', { class: 'pill mine' }, 'Your vote');
+    else pill = h('span', { class: 'pill wait' }, icon('wait'), ' Waiting');
+    return h('div', { class: `ballot-row${mine ? ' mine' : ''}`, role: 'listitem', 'aria-label': `${nameOf(s, p)}${asked ? ', asked' : ''}` },
+      miniDisc(s, p, '36px'),
+      h('div', { class: 'ballot-name' },
+        h('b', null, nameOf(s, p)),
+        v.kind === 'reshuffle' && p === s.dealer ? h('small', null, 'Dealer') : null),
+      pill);
+  }));
+}
+
+/** 9ai.4: the question as a short phrase (the result pop-up's small line). */
+export function resultQuestion(kind: VoteKind, value: number | null): string {
+  return kind === 'reshuffle' ? 'Deal again?' : kind === 'target' ? `Play to ${value}?` : 'Ultimate Round?';
+}
+
+/**
+ * 9ai.4 (2.36): the alert, shown on every phone except the asker's. Solid, no timer;
+ * "Vote now" or a tap anywhere closes it.
+ */
+export function voteAlertBody(s: Session, p: Extract<Popup, { kind: 'voteAlert' }>, next: () => void): Child[] {
+  const who = nameOf(s, p.by);
+  const title = p.vote === 'reshuffle' ? `${who} wants to deal again`
+    : p.vote === 'target' ? `${who} wants a target of ${p.value} points`
+    : `${who} wants the Ultimate Round`;
+  const line = p.vote === 'reshuffle'
+    ? (p.twoPlayers ? 'You decide.' : `Everyone votes. ${nameOf(s, p.dealer)} would shuffle and deal a new hand.`)
+    : 'Everyone votes.';
+  return [
+    h('div', { class: 'vote-alert-icon' }, icon(voteIcon(p.vote))),
+    h('div', { class: 'popup-title' }, title),
+    h('div', { class: 'popup-text' }, line),
+    h('div', { class: 'vote-said' }, miniDisc(s, p.by, '28px'), h('span', null, `${who} has voted YES`)),
+    h('button', { class: 'big vote-now', onclick: (e: Event) => { e.stopPropagation(); next(); } }, 'Vote now'),
+  ];
+}
+
+/**
+ * 9ai.4 (2.36): the result. A small question, big YES! or NO!, what happens, then one
+ * row each for YES and NO with the discs of who said so. On one phone only the counts.
+ */
+export function voteResultBody(s: Session, p: Extract<Popup, { kind: 'vote' }>, seeDiscs: boolean): Child[] {
+  const ballots = p.ballots ?? {};
+  const row = (word: string, ids: PlayerId[], cls: string): HTMLElement =>
+    h('div', { class: `vote-row ${cls}` },
+      h('b', null, `${word} ${ids.length}`),
+      seeDiscs ? h('span', { class: 'vote-discs' }, ids.map((id) => miniDisc(s, id, '28px'))) : null);
+  return [
+    h('div', { class: 'vote-says' }, p.kindOf ? resultQuestion(p.kindOf, p.value ?? null) : 'Vote'),
+    h('div', { class: p.result ? 'vote-word yes' : 'vote-word no' }, p.result ? 'YES!' : 'NO!'),
+    h('div', { class: 'popup-title small-title' }, p.text),
+    h('div', { class: 'vote-rows' },
+      row('YES', s.order.filter((id) => ballots[id] === 'yes'), 'yes'),
+      row('NO', s.order.filter((id) => ballots[id] === 'no'), 'no')),
+  ];
+}
+
 /** V1: the vote as a short question. */
-function voteShort(s: Session, kind: VoteKind, value: number | null): string {
+export function voteShort(s: Session, kind: VoteKind, value: number | null): string {
   if (kind === 'ultimate' && s.vote?.draw === 1) return 'Draw: Ultimate Round?';
   if (kind === 'ultimate' && s.vote?.draw === 2) return 'Coward! Last chance: Ultimate Round?';
   if (kind === 'reshuffle') return 'Deal again?';
@@ -250,23 +356,15 @@ function voteStage(g: SavedGame, me: PlayerId): Child {
   const view = playerView(s, me);
   // Network votes and single-player votes are open (PROJECT.md 12), so no "secret vote" there.
   const open = !!ownSeat(g);
-  const secret = open ? '' : ' · secret vote';
-  const who =
-    v.draw ? 'Top score is a draw'
-    : v.calledBy && s.order.length === 2 ? `${nameOf(s, v.calledBy)} asked · you decide`
-    : v.calledBy ? `${nameOf(s, v.calledBy)} asked${secret}`
-    : `Target reached${secret}`;
   const cast = (yes: boolean): void => { send([{ type: 'castVote', by: me, ballot: yes ? 'yes' : 'no' }]); };
+  // 9ai.4 (2.36): the solid card with the list; YES and NO sit under it, side by side.
   return h('div', { class: 'stack' },
-    h('section', { class: 'panel vote-panel' },
-      h('h2', { class: 'vote-q' }, icon(voteIcon(v.kind)), ` ${voteShort(s, v.kind, v.value)}`),
-      h('p', { class: 'muted small center' }, who),
-      open ? ballotChips(s) : null,
+    voteCard(s, me, open, voteWho(s, v, open), [
       h('div', { class: 'vote-buttons' },
         h('button', { class: 'big vote-yes', onclick: () => cast(true) }, 'YES'),
         h('button', { class: 'big vote-no', onclick: () => cast(false) }, 'NO'),
       ),
-    ),
+    ]),
     open && me === s.hostId && Object.keys(v.ballots).length > 0 ? countNowButton(s) : null,
     v.kind === 'reshuffle' ? handBlock(s, view, null) : null,
   );
@@ -278,15 +376,12 @@ function hostDecidesStage(g: SavedGame): Child {
   const host = nameOf(s, s.hostId);
   const decide = (yes: boolean): void => { send([{ type: 'hostDecides', by: s.hostId, yes }]); };
   return h('div', { class: 'stack' },
-    h('section', { class: 'panel vote-panel' },
-      h('h2', { class: 'vote-q' }, icon(voteIcon(v.kind)), ` ${voteShort(s, v.kind, v.value)}`),
-      h('p', { class: 'muted small center' }, `No majority · ${host} decides`),
-      ownSeat(g) ? ballotChips(s) : null,
+    voteCard(s, ownSeat(g), !!ownSeat(g), `No majority · ${host} decides`, [
       h('div', { class: 'vote-buttons' },
         h('button', { class: 'big vote-yes', onclick: () => decide(true) }, 'YES'),
         h('button', { class: 'big vote-no', onclick: () => decide(false) }, 'NO'),
       ),
-    ),
+    ]),
   );
 }
 

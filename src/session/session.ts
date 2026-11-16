@@ -565,7 +565,7 @@ function needHost(s: Session, out: Out): Session {
 
 function resolveVote(s: Session, result: boolean, decidedBy: 'majority' | 'host', rng: Rng, out: Out): Session {
   const v = s.vote!;
-  out.emit(s, { type: 'voteResolved', kind: v.kind, result, decidedBy, value: v.value });
+  out.emit(s, { type: 'voteResolved', kind: v.kind, result, decidedBy, value: v.value, ballots: { ...v.ballots } });
   const s2: Session = { ...s, vote: null };
   switch (v.kind) {
     case 'reshuffle': {

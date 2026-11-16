@@ -4,6 +4,40 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-16 (09:50) — Plan: fixes after the first 2.36.0 phone test (docs only, version stays 2.36.0)
+
+**User (09:32 to 09:49), testing https://claude.ai/artifact/Y1JNdxGygufkeadczZEiUV:** didn't like where the target score Propose sits or how it looks; after everyone voted on deal again, it went back to YES/NO before the result; the gold box doesn't fit the fanned hand, and what about two rows; Stop fast forward didn't work; the hand showed through the "Take whose cards?" sheet.
+
+**Found (Opus):**
+- Vote: it was a 2–2 tie, so the host (the user) decides, as the rules say. The card's "No majority · H decides" line was cream (`--muted`) on the cream card, so it was invisible and the card looked like the vote again.
+- Stop: during Fast forward the pop-ups come back to back, and `.popup-overlay` (z 35, full screen, tap closes) covers the Stop button.
+- Hand box: a rectangle around a curved fan; the middle cards and the lift stick out and the turn pill sits under the cards. Over 15 cards the fan is already two rows (`fanLayout`).
+- Take sheet: fan cards each get `z-index` 0..n; the sheet lives in `.game-extra` (z 6), so cards 7+ paint over it.
+
+**Mockups:** https://claude.ai/artifact/LB2XMzmUPUB6oJuCEic4uG. User chose target option A (round target button in the top bar, solid sheet, gold badge on the round button once agreed; take-cards never shares the bar with it) and hand option 1 (glow under the fan, name pill becomes the turn pill).
+
+**Plan written:** `PROJECT.md` 12u item 7, `CODE.md` 9aj (Parts A to F, checklist 9aj.7), `TODO.md` Phase 4s. Includes updating the three old checks to tap-to-close (asked earlier; covered by the plan approval). Same version 2.36.0, since 2.36.0 isn't pushed.
+
+---
+
+## 2026-11-16 (build) — Build: clearer pop-ups, votes, take-cards and whose turn (2.36.0, NOT committed or pushed)
+
+**Built:** Parts A to F of `CODE.md` 9ai, in order: A pop-ups have no timer (except Fast forward and Skip) and close on a tap; B "came 1st!" / "You came 2nd!"; C network games hold while a pop-up is open, with a flipping hourglass by the name (protocol 10, `src/net/busy.ts`); D vote alert, vote card with one row per player, result with who voted what (`voteResolved` carries `ballots`); E take-cards as a list, solid private card, solid status cards; F whose turn (gold ring, faded others; your turn: glow, lifted playable cards, pill, one buzz).
+
+**Checks:** unit tests 462 of 462; `tsc` clean for the app config; `node build.mjs` ok (version 2.36.0). Test bot: `bot.js` closes the new pop-ups and holds votes and takes when asked. `testbed/popups_check.py` (new): pop-up timer/close, hint, places, and turn items pass; the vote-card and take-card items are **not yet seen** because the computer players did not reach a vote or take in the game the check sets up (the check reports them as failing; rerun).
+
+**Browser suite (`run_checks.py --all`), against this build:** pass: playthrough 53 of 53, drawer 9 of 9, back 14 of 14, offline 20 of 20, online 37 of 37. Fail: `solo_check` (timeout on a click), `netvotes_check` (the target vote's pop-up covers the table, "every phone shows three ballots"), `netgame_check` 91 of 97 (SLAP! pop-up counts differ between phones, 2/3/5 players; plus the known "own seat at the bottom" items), `lobby_check` (the three "phone goes away" items), `sound_check` 43 of 44 (round-end fanfare).
+
+**Compared against HEAD (0611386, clean worktree):** `lobby_check` fails the same three items, so those are pre-existing. `sound_check` passes 44 of 44 on HEAD, so the fanfare item is new. `netgame_check` on HEAD passes all SLAP! counts (12/12, 15/15/15, 16×5) and fails only the three "own seat" items. `netvotes_check` on HEAD fails "reshuffle: the vote shows on every phone" instead, so the target-vote item is also new.
+
+**Likely cause (not yet fixed):** 9ai.1 makes pop-ups wait for a tap. The old checks expect SLAP!, the round-end pop-up and the vote pop-up to clear by themselves, so they stall or count differently. `CODE.md` 9ai.7 asks for these checks to be reported against the known list, not fixed here. Updating them is testbed code, so it needs approval first.
+
+**Not done:** test build to the user's phone (checklist 9ai.8 in `CODE.md`), user test, commit and push. Nothing committed or pushed.
+
+**MD files updated:** `TODO.md` Phase 4s, `CODE.md` 9ai (built notes), `PROJECT.md` 12u (built).
+
+---
+
 ## 2026-11-16 (08:20) — Plan: clearer pop-ups, votes, take-cards and whose turn (docs only, no version bump)
 
 **User (07:54 to 08:17):** votes, deal again and take-cards aren't clear; wants no timer on "x wants to shuffle", an alert on every phone, then a list with the buttons underneath; the take-cards pop-up solid, not see-through. Then: every pop-up makes everyone wait until all have closed it, shown by a little flipping hourglass by the name (no "waiting" text); places ("came 1st") instead of "is out"; no big OK buttons where there's nothing to decide, tap anywhere to close; better "whose turn" highlight.
