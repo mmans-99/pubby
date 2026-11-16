@@ -4,6 +4,18 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-16 (12:00) — Plan: tidy-ups, landscape B and results B (docs only, version stays 2.36.0)
+
+**User (11:49), testing 2.36.0 on an Android phone:** target sheet flashes on each number change; the gold target badge covers R1; the menu pushes the table down; the host star covers "lead" on your pill; Cancel on the take sheet looks off; drop "turn" from "Zainab's turn"; landscape doesn't look pro; Forfeit floats in the middle; results jump to the top when someone readies, and no un-ready; the "0 D" pill isn't one height; results too text heavy. **(12:00):** chose landscape B and results B.
+
+**Found (Opus):** flash = every `update({})` rebuilds the page, replaying `.overlay`/`.sheet` animations; menu = in the column flow; star = `seat-host` on the me pill; Forfeit = a ghost button in `extra` over the felt. Results jump: not reproduced headless (scroll place kept across computer ready-ups); likely a rebuild during a finger scroll on the phone, so the plan holds redraws while scrolling.
+
+**Mockups:** https://claude.ai/artifact/H3ByTnjYM9haJE5sTLJpbY (landscape A/B, results A/B, two fix boards).
+
+**Plan written:** `PROJECT.md` 12v, `CODE.md` 9ak (Parts A to G, checklist 9ak.8), `TODO.md` Phase 4t. Target 2.37.0. Claude's calls: tablets keep the current landscape; host star stays on other seats; the host has no un-ready.
+
+---
+
 ## 2026-11-16 (build 9aj, Haiku) — Fixes after the first 2.36.0 phone test, Parts A to F (2.36.0)
 
 **Built** `CODE.md` 9aj, in order: **A** the hand has one stacking layer, so it never shows through the take sheet or pop-ups; **B** Stop fast forward is drawn above the pop-ups; **C** tie vote: readable line, "It's a tie · you're the host, you decide", tie band with the counts (one phone: "It's a tie"), host buttons say Deal again / Keep these cards, Play to N / No target, Play it / No, host's own row reads "(you)"; **D** your turn: no frame, gold glow under the fan, the name pill on the table says the turn words; **E** target button in the top bar with a solid sheet, gold badge on the round chip once agreed, round note on tap; **F** checks.

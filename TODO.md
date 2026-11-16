@@ -374,6 +374,17 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [ ] Test build approved by user on a phone (9ai.8 + 9aj.7 checklists), then commit and push on "push"
 - [ ] Push on "push"
 
+## Phase 4t — Tidy-ups, landscape B and results B (plan 2026-11-16 12:00, `PROJECT.md` 12v, build guide `CODE.md` 9ak, mockups https://claude.ai/artifact/H3ByTnjYM9haJE5sTLJpbY; target 2.37.0)
+
+- [x] Plan approved (user 2026-11-16 12:00: "Landscape b and results b")
+- [ ] Part A: target sheet no flash, "First to N" chip, menu floats, no star on your pill, D badge one height, plain Cancel, "Zainab •••" (9ak.1)
+- [ ] Part B: Forfeit in the action bar (9ak.2)
+- [ ] Part C: un-ready (session `unready`, protocol 11) (9ak.3)
+- [ ] Part D: results screen B: winner card, tabs, fixed ready panel (9ak.4)
+- [ ] Part E: hold redraws while scrolling (9ak.5)
+- [ ] Part F: landscape B on phones (rail, full-height table, Play bottom right) (9ak.6)
+- [ ] Part G: checks, test build, phone checklist 9ak.8 (9ak.7)
+
 ## Phase 5 — Polish
 
 - [ ] Animations for slap and trick resolution
