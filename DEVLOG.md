@@ -4,6 +4,23 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-16 (build 9aj, Haiku) — Fixes after the first 2.36.0 phone test, Parts A to F (2.36.0)
+
+**Built** `CODE.md` 9aj, in order: **A** the hand has one stacking layer, so it never shows through the take sheet or pop-ups; **B** Stop fast forward is drawn above the pop-ups; **C** tie vote: readable line, "It's a tie · you're the host, you decide", tie band with the counts (one phone: "It's a tie"), host buttons say Deal again / Keep these cards, Play to N / No target, Play it / No, host's own row reads "(you)"; **D** your turn: no frame, gold glow under the fan, the name pill on the table says the turn words; **E** target button in the top bar with a solid sheet, gold badge on the round chip once agreed, round note on tap; **F** checks.
+
+**Decision:** the target button is not hidden while dealing (the plan's `phase !== 'dealing'` would hide it before round 1, which 9aj.7 item 8 asks for). PROJECT 12u item 7 says so.
+**Fix found while checking:** at 320 px the bar wrapped and the jokers chip sat under the sound button; narrow phones now get tighter gaps (measured, 2 px clear).
+
+**Checks (this session):** `npm run check` clean; unit tests 462 of 462; `node build.mjs` ok. `popups_check.py`: vote card, target sheet, round badge pass; take sheet, Fast forward Stop and tie band not seen in three random games (need phone test or forced run). `netvotes_check.py` 30 of 30 (test code updated to tap-to-close, `.top-bar` target flow, `.ballot-row`, "See the results", take `.take-give`). `netgame_check.py`: SLAP! counts now come from each phone's own closes (bot's included), passes; own-seat items fail as known. `sound_check.py` 44 of 44. `run_checks.py --all`: playthrough, drawer, back, offline, online, sound, netvotes pass; `solo_check` ("the new name shows at the table", `.seat-name`) and `lobby_check` ("phone goes away", 3 items) fail the same on the baseline 0611386, so they predate this work. `netgame_check` card-count mismatch (2 players) is a flake seen on the baseline too. `tablet_check.py` 57 of 57.
+
+**Test-only changes (approved with 9aj):** `netvotes_check.py`, `netgame_check.py`, `sound_check.py`, `popups_check.py` (items 8 to 11), `bot.js` (counts SLAP! pop-ups it closes).
+
+**Environment:** `node_modules` is a symlink to the shared tools folder (installs are blocked on this account; esbuild 0.28.2 used for the build).
+
+**Open:** phone test of `CODE.md` 9aj.7 items 8 to 12 (target, your turn, tie, Fast forward Stop, take sheet) before the next change.
+
+---
+
 ## 2026-11-16 (09:50) — Plan: fixes after the first 2.36.0 phone test (docs only, version stays 2.36.0)
 
 **User (09:32 to 09:49), testing https://claude.ai/artifact/Y1JNdxGygufkeadczZEiUV:** didn't like where the target score Propose sits or how it looks; after everyone voted on deal again, it went back to YES/NO before the result; the gold box doesn't fit the fanned hand, and what about two rows; Stop fast forward didn't work; the hand showed through the "Take whose cards?" sheet.

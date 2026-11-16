@@ -27,6 +27,8 @@ export interface TableOpts {
   bottom: PlayerId;
   /** The glowing seat (whose turn it is). */
   highlight?: PlayerId | null;
+  /** 9aj.4 (2.36): on your turn, your name pill says this instead of "name · count" (e.g. "Your turn · lead"). */
+  meLabel?: Child;
   /** Seats become buttons (dealing, picking who leads). */
   onTap?: (id: PlayerId) => void;
   tapLabel?: string;
@@ -442,8 +444,12 @@ export function roundTable(s: Session, v: PlayerView, o: TableOpts): HTMLElement
         const at = seatSpot(n, 0);
         const count = out ? h('span', { class: 'place-badge' }, ordinal(p.place!)) : h('span', { class: 'pill-count' }, String(p.cardCount));
         // 2.32.1: the pill's centre stays at least 14px above the bottom of the table area, so it is never cut off.
-        return seatEl(o, id, cls('me-pill'), `left:${at.x.toFixed(2)}%;top:min(${at.y.toFixed(2)}%, calc(100% - 14px))`, p.sessionName,
-          [h('span', { class: 'pill-label' }, ...nameKids, ' · ', count), ...seatTags(id, p, o, thinking, false)]);
+        // 9aj.4 (2.36): on your turn the same pill is gold and says the turn words (the card count is on your hand).
+        const label = o.meLabel
+          ? h('span', { class: 'pill-label', role: 'status' }, o.meLabel)
+          : h('span', { class: 'pill-label' }, ...nameKids, ' · ', count);
+        return seatEl(o, id, cls('me-pill') + (o.meLabel ? ' turn-label' : ''), `left:${at.x.toFixed(2)}%;top:min(${at.y.toFixed(2)}%, calc(100% - 14px))`, p.sessionName,
+          [label, ...seatTags(id, p, o, thinking, false)]);
       }
       const tags = seatTags(id, p, o, thinking, true);
 

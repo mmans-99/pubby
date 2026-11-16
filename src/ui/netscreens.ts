@@ -18,7 +18,7 @@ import { joinNames } from '../session/names.ts';
 import { getState, update } from './store.ts';
 import { chooseLeaderStage, dealingStage, fastForwardMenuItems, gameFrame, handBlock, isHostSeat, nameOf, noticeStage, ownSeat, playHandStage, publicView, send, stageLayout } from './game.ts';
 import { netRoundStart } from './roundstart.ts';
-import { awardsRow, gameOverStage, scoreSheet, targetRow } from './between.ts';
+import { awardsRow, gameOverStage, scoreSheet } from './between.ts';
 import { playerView } from '../session/view.ts';
 import { netSeats } from './netlobby.ts';
 import { roundTable, wastePile } from './table.ts';
@@ -117,8 +117,8 @@ function beforeRound(g: SavedGame): Child {
         ? h('button', { class: 'big grow', onclick: () => send([{ type: 'startRound', by: s.hostId }]) }, icon('play'), ' Start')
         : null,
     ),
-    // 2.31 (CODE.md 9aa Part C item 5): the target row sits at the top of the table, off the "You" pill.
-    extra: [targetRow(s, { me }), host ? null : hostDeciding(s, 'when to start the round')],
+    // 9aj.5 (2.36): the target is proposed from the top bar (targetButton), not a row here.
+    extra: [host ? null : hostDeciding(s, 'when to start the round')],
     extraAt: 'top',
   });
 }
@@ -159,7 +159,6 @@ function results(g: SavedGame): Child {
     s.ultimateRound ? h('p', { class: 'center' }, h('span', { class: 'chip-info gold' }, icon('bolt'), ' Next: Ultimate Round')) : null,
     scoreSheet(s, { me }),
     awardsRow(s),
-    targetRow(s, { me }),
     readyRow(s, me),
     // Every phone can ask for the Ultimate Round (2.5); the host moves on.
     s.ultimateRound

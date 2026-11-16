@@ -20,7 +20,6 @@ import { icon, type IconName } from './icons.ts';
 import type { SavedGame } from './storage.ts';
 import { getState, update, type Popup } from './store.ts';
 import { seatInitials } from './initials.ts';
-import { targetRow } from './between.ts';
 import { sfx } from '../audio/sfx.ts';
 
 // ---------------------------------------------------------------------------
@@ -152,7 +151,7 @@ function voteWaitStage(g: SavedGame, me: PlayerId): Child {
   else if (mine) foot = h('p', { class: `vote-said-line ${mine}` }, `You voted ${mine === 'yes' ? 'YES' : 'NO'} · waiting for ${names || 'the count'}`);
   else foot = null;
   return h('div', { class: 'stack' },
-    voteCard(s, me, !!ownSeat(g), voteWho(s, v, !!ownSeat(g)), [foot]),
+    voteCard(s, me, !!ownSeat(g), voteWho(s, v, !!ownSeat(g), me), [v.awaitingHost ? tieBand(s, v, !!ownSeat(g)) : null, foot]),
     me === s.hostId && !v.awaitingHost && Object.keys(v.ballots).length > 0 ? countNowButton(s) : null,
     s.phase === 'results' ? null : handBlock(s, playerView(s, me), null, { head: false }),
   );
@@ -212,7 +211,9 @@ export function miniDisc(s: Session, id: PlayerId, size: string): HTMLElement {
 }
 
 /** 9ai.4: the vote's question under the card, e.g. "Amy asked · majority decides". */
-function voteWho(s: Session, v: NonNullable<Session['vote']>, open: boolean): string {
+function voteWho(s: Session, v: NonNullable<Session['vote']>, open: boolean, me: PlayerId | null = null): string {
+  // 9aj.3 (2.36): a tie goes to the host. The host's phone says so to the host; everyone else gets the host's name.
+  if (v.awaitingHost) return me === s.hostId ? "It's a tie · you're the host, you decide" : `It's a tie · ${nameOf(s, s.hostId)} decides`;
   if (v.draw) return 'Top score is a draw';
   if (v.calledBy && s.order.length === 2) return `${nameOf(s, v.calledBy)} asked · you decide`;
   const secret = open ? '' : ' · secret vote';
@@ -259,7 +260,8 @@ function ballotList(s: Session, me: PlayerId | null, open: boolean): HTMLElement
     return h('div', { class: `ballot-row${mine ? ' mine' : ''}`, role: 'listitem', 'aria-label': `${nameOf(s, p)}${asked ? ', asked' : ''}` },
       miniDisc(s, p, '36px'),
       h('div', { class: 'ballot-name' },
-        h('b', null, nameOf(s, p)),
+        // 9aj.3 (2.36): the host's own row on the host's phone while the host decides: "Mo (you)".
+        h('b', null, nameOf(s, p) + (v.awaitingHost && open && me === p && p === s.hostId ? ' (you)' : '')),
         v.kind === 'reshuffle' && p === s.dealer ? h('small', null, 'Dealer') : null),
       pill);
   }));
@@ -359,7 +361,7 @@ function voteStage(g: SavedGame, me: PlayerId): Child {
   const cast = (yes: boolean): void => { send([{ type: 'castVote', by: me, ballot: yes ? 'yes' : 'no' }]); };
   // 9ai.4 (2.36): the solid card with the list; YES and NO sit under it, side by side.
   return h('div', { class: 'stack' },
-    voteCard(s, me, open, voteWho(s, v, open), [
+    voteCard(s, me, open, voteWho(s, v, open, me), [
       h('div', { class: 'vote-buttons' },
         h('button', { class: 'big vote-yes', onclick: () => cast(true) }, 'YES'),
         h('button', { class: 'big vote-no', onclick: () => cast(false) }, 'NO'),
@@ -370,16 +372,32 @@ function voteStage(g: SavedGame, me: PlayerId): Child {
   );
 }
 
+/** 9aj.3 (2.36): the tie band: "2 YES · 2 NO: it's a tie". On one phone the vote is secret, so only "It's a tie". */
+function tieBand(s: Session, v: NonNullable<Session['vote']>, open: boolean): HTMLElement {
+  const yes = Object.values(v.ballots).filter((b) => b === 'yes').length;
+  const no = Object.values(v.ballots).filter((b) => b === 'no').length;
+  return h('div', { class: 'tie-band', role: 'status' }, open ? `${yes} YES · ${no} NO: it's a tie` : "It's a tie");
+}
+
+/** 9aj.3 (2.36): the words on the host's two buttons, by what is being decided. */
+function hostButtonWords(s: Session, v: NonNullable<Session['vote']>): [string, string] {
+  if (v.kind === 'reshuffle') return ['Deal again', 'Keep these cards'];
+  if (v.kind === 'target') return [`Play to ${v.value}`, 'No target'];
+  return ['Play it', 'No'];
+}
+
 function hostDecidesStage(g: SavedGame): Child {
   const s = g.session;
   const v = s.vote!;
-  const host = nameOf(s, s.hostId);
+  const me = ownSeat(g);
   const decide = (yes: boolean): void => { send([{ type: 'hostDecides', by: s.hostId, yes }]); };
+  const [yesWords, noWords] = hostButtonWords(s, v);
   return h('div', { class: 'stack' },
-    voteCard(s, ownSeat(g), !!ownSeat(g), `No majority · ${host} decides`, [
+    voteCard(s, me, !!me, voteWho(s, v, !!me, me), [
+      tieBand(s, v, !!me),
       h('div', { class: 'vote-buttons' },
-        h('button', { class: 'big vote-yes', onclick: () => decide(true) }, 'YES'),
-        h('button', { class: 'big vote-no', onclick: () => decide(false) }, 'NO'),
+        h('button', { class: 'big vote-yes', onclick: () => decide(true) }, yesWords),
+        h('button', { class: 'big vote-no', onclick: () => decide(false) }, noWords),
       ),
     ]),
   );
@@ -412,7 +430,6 @@ export function reshuffleStage(g: SavedGame): Child {
         h('button', { class: 'ghost', onclick: () => update({ armed: null }) }, 'Cancel'),
       )
       : null,
-    targetRow(s),
   );
 }
 

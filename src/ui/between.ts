@@ -168,53 +168,70 @@ let targetDraft = 10;
 const TARGET_MAX = 99;
 
 /**
- * T1: the target score as one slim row ("Target score · none · Propose"),
- * on the before-the-round screen in round 1 and on the results screen.
- * Propose opens the points picker, then "who is proposing?".
+ * 9aj.5 (2.36): the target score is proposed from a gold-ringed button in the top bar, which opens a
+ * solid sheet (not a row on the screen). Shown wherever a target can be proposed, including before round 1
+ * (round 1 starts in the dealing phase, so this must not hide it).
  */
-export function targetRow(s: Session, opts: { me?: PlayerId } = {}): HTMLElement | null {
-  const allowed = targetVoteAllowed(s);
-  if (!allowed && s.target === null) return null;
+export function targetButton(s: Session): HTMLElement | null {
+  if (!targetVoteAllowed(s)) return null;
+  return h('button', {
+    class: 'icon-btn target-btn',
+    'aria-label': 'Target score: propose one',
+    onclick: () => update({ armed: 'target', menuOpen: false }),
+  }, icon('target'));
+}
+
+/**
+ * 9aj.5 (2.36): the target sheet, drawn from the game screen like the take sheet.
+ * Network: Propose sends the vote for this phone's player. One phone: Propose, then "Who is proposing?".
+ */
+export function targetSheet(s: Session, opts: { me?: PlayerId } = {}): HTMLElement | null {
   const st = getState();
-  const open = allowed && (st.armed === 'target' || st.armed === 'targetcaller');
-  // Network game (2.5): every phone proposes for its own player, so there's no "who is proposing?" step.
+  const open = targetVoteAllowed(s) && (st.armed === 'target' || st.armed === 'targetcaller');
+  if (!open) return null;
   const me = opts.me;
   const choosing = me === undefined && st.armed === 'targetcaller';
   const min = minimumTarget(s);
   if (targetDraft < min) targetDraft = Math.min(TARGET_MAX, min);
   const set = (n: number): void => { targetDraft = Math.max(min, Math.min(TARGET_MAX, n)); update({}); };
-  return h('section', { class: open ? 'slim-panel open' : 'slim-panel' },
-    h('div', { class: 'slim' },
-      icon('target'), h('span', null, 'Target score'),
-      h('span', { class: 'v' }, s.target !== null ? `${s.target} points` : 'none'),
-      allowed && !open ? h('button', { class: 'act', onclick: () => update({ armed: 'target' }) }, 'Propose') : null,
-      open ? h('button', { class: 'act ghost-act', onclick: () => update({ armed: null }) }, 'Cancel') : null,
-    ),
-    open
-      ? [
-        h('div', { class: 'stepper' },
-          h('button', { class: 'secondary step', 'aria-label': 'One less', onclick: () => set(targetDraft - 1) }, '−'),
-          h('span', { class: 'step-value', 'aria-live': 'polite' }, `${targetDraft}`),
-          h('button', { class: 'secondary step', 'aria-label': 'One more', onclick: () => set(targetDraft + 1) }, '+'),
-        ),
-        h('div', { class: 'chips center-chips' }, [5, 10, 15, 20].filter((n) => n >= min).map((n) =>
-          h('button', { class: n === targetDraft ? 'quick on' : 'quick', onclick: () => set(n) }, String(n)))),
-        me !== undefined
-          ? h('button', {
-            class: 'secondary',
-            onclick: () => { send([{ type: 'callVote', by: me, kind: 'target', value: targetDraft }]); update({ armed: null }); },
-          }, `Propose ${targetDraft} points`)
-          : choosing
-            ? [h('p', { class: 'small center' }, 'Who is proposing?'),
-              nameChips(s, (id) => send([{ type: 'callVote', by: id, kind: 'target', value: targetDraft }]), { label: 'Proposed by' })]
-            : h('button', { class: 'secondary', onclick: () => update({ armed: 'targetcaller' }) }, `Propose ${targetDraft} points`),
-      ]
-      : null,
-  );
+  const close = (): void => update({ armed: null });
+  const propose = (by: PlayerId): void => {
+    send([{ type: 'callVote', by, kind: 'target', value: targetDraft }]);
+    update({ armed: null });
+  };
+  const body: Child = choosing
+    ? [
+      h('p', { class: 'small center' }, 'Who is proposing?'),
+      h('div', { class: 'sheet-rows' }, s.order.map((id) =>
+        h('button', { class: 'sheet-row', onclick: () => propose(id), 'aria-label': nameOf(s, id) },
+          miniDisc(s, id, '40px'),
+          h('span', { class: 'sheet-name' }, h('b', null, nameOf(s, id))),
+          h('span', { class: 'ask-chip' }, 'Pick', icon('arrow'))))),
+    ]
+    : [
+      h('div', { class: 'stepper' },
+        h('button', { class: 'secondary step', 'aria-label': 'One less', onclick: () => set(targetDraft - 1) }, '−'),
+        h('span', { class: 'step-value', 'aria-live': 'polite' }, `${targetDraft}`),
+        h('button', { class: 'secondary step', 'aria-label': 'One more', onclick: () => set(targetDraft + 1) }, '+'),
+      ),
+      h('div', { class: 'chips center-chips' }, [5, 10, 15, 20].filter((n) => n >= min).map((n) =>
+        h('button', { class: n === targetDraft ? 'quick on' : 'quick', onclick: () => set(n) }, String(n)))),
+      h('button', {
+        class: 'big target-propose',
+        onclick: () => (me === undefined ? update({ armed: 'targetcaller' }) : propose(me)),
+      }, `Propose ${targetDraft} points`),
+      h('p', { class: 'muted small center' }, `Everyone votes. First to ${targetDraft} points wins.`),
+    ];
+  return h('div', { class: 'overlay take-sheet-overlay' },
+    h('section', { class: 'sheet take-sheet target-sheet', role: 'dialog', 'aria-label': 'Target score' },
+      h('span', { class: 'take-grab', 'aria-hidden': 'true' }),
+      h('div', { class: 'sheet-head' },
+        h('span', { class: 'take-icon-circle target-circle' }, icon('target')),
+        h('div', null, h('h2', { class: 'take-title' }, 'Target score'), h('p', { class: 'take-sub' }, 'First to reach it wins the game'))),
+      body,
+      h('button', { class: 'ghost big', onclick: close }, 'Cancel'),
+    ));
 }
-
-/** Kept for older callers: the target row. */
-export const targetPanel = targetRow;
 
 // ---------------------------------------------------------------------------
 // Results screen
@@ -245,7 +262,6 @@ export function resultsStage(g: SavedGame): Child {
     s.ultimateRound ? h('p', { class: 'center' }, h('span', { class: 'chip-info gold' }, icon('bolt'), ' Next: Ultimate Round')) : null,
     scoreSheet(s),
     awardsRow(s),
-    targetRow(s),
     h('div', { class: 'ready-row', 'aria-label': 'Ready' }, h('span', { class: 'muted small' }, 'Ready'), nameChips(s, ready, { on: s.ready, label: 'Ready:' })),
     ultimateCall(s),
     h('div', { class: 'row' },

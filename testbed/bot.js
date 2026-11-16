@@ -37,7 +37,13 @@
     // Pop-ups first.
     // Pop-ups close by themselves; the ones that can be tapped away are skipped.
     const skip = document.querySelector('.popup-overlay[data-skip]');
-    if (skip) return click(skip, 'popup ' + (document.querySelector('.popup-title, .vote-word')?.textContent || ''));
+    // 2.36 (CODE.md 9aj.6): count the SLAP! pop-ups this phone closes (the check reads window.__botSlapClosed).
+    if (skip) {
+      const pop = skip.querySelector('.popup');
+      const cls = pop ? pop.className : '';
+      if (/\bslap\b/.test(cls) && !/\bhaha\b/.test(cls)) window.__botSlapClosed = (window.__botSlapClosed || 0) + 1;
+      return click(skip, 'popup ' + (document.querySelector('.popup-title, .vote-word')?.textContent || ''));
+    }
     if (document.querySelector('.popup-overlay')) return 'wait';
     // End-of-trick animation and the shuffle before the deal: nothing to tap yet.
     if (document.querySelector('.anim-block, .deck.shuffling')) { st.anims = (st.anims || 0) + 1; return 'wait'; }

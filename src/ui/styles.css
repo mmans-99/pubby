@@ -448,6 +448,9 @@ table.results { width: 100%; border-collapse: collapse; }
 
 /* Pop-ups */
 .popup-overlay { align-items: center; z-index: 35; background: rgba(8, 20, 10, 0.72); }
+/* 9aj.2 (2.36): Stop fast forward stays on screen while pop-ups come back to back; it sits above the overlay. */
+.ff-stop { position: fixed; left: 50%; translate: -50% 0; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 36; box-shadow: 0 0 0 3px var(--gold); min-width: 220px; }
+@media (prefers-reduced-motion: reduce) { .ff-stop { transition: none; } }
 /* 9ai.2 (2.36): "Amy came 1st!" with a place badge (1st gold, 2nd silver, 3rd bronze, then cream). */
 .place-icon { width: 68px; height: 68px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #e8e1cf; }
 .place-icon .icon { width: 36px; height: 36px; }
@@ -587,6 +590,10 @@ table.results { width: 100%; border-collapse: collapse; }
 .vote-head-text { min-width: 0; }
 .vote-head .vote-q { justify-content: flex-start; text-align: left; font-size: 22px; font-weight: 900; margin: 0; }
 .vote-head .muted { margin: 2px 0 0; }
+/* 9aj.3 (2.36): the global --muted is cream (made for the felt); on the cream cards it was invisible. */
+.vote-card .muted, .take-card .muted, .take-sheet .muted, .take-status .muted { color: #5d5646; }
+/* 9aj.3 (2.36): the tie band: the counts, or "It's a tie" on one phone (where the vote is secret). */
+.tie-band { background: #fff3cf; border: 1.5px solid var(--gold); border-radius: 12px; padding: 8px 10px; font-weight: 700; text-align: center; color: var(--ink); }
 .vote-icon { width: 48px; height: 48px; border-radius: 50%; background: var(--gold); display: flex; align-items: center; justify-content: center; flex: none; }
 .vote-icon .icon { width: 26px; height: 26px; }
 .ballot-list { display: flex; flex-direction: column; gap: 6px; }
@@ -878,7 +885,22 @@ table.trivia-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; 
   width: 42px; min-width: 42px; height: 42px; min-height: 42px; padding: 0; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
   background: rgba(0, 0, 0, 0.25); font-weight: 800; white-space: nowrap;
+  position: relative; /* 9aj.5 (2.36): the target badge sits on the chip's corner */
 }
+.round-chip.on { background: var(--cream); color: var(--ink); }
+/* 9aj.5 (2.36): the target badge: a small gold "10" on the round chip once a target is agreed. */
+.round-badge {
+  position: absolute; top: -5px; right: -9px; display: inline-flex; align-items: center; gap: 2px;
+  background: var(--gold); color: var(--ink); font-size: 10px; font-weight: 900; line-height: 1;
+  padding: 3px 5px; border-radius: 99px; border: 1.5px solid var(--ink); pointer-events: none;
+}
+.round-badge .icon { width: 10px; height: 10px; }
+/* 9aj.5 (2.36): the round note under the top bar. */
+.round-note { display: block; width: 100%; margin: 0 0 6px; padding: 8px 12px; border-radius: 12px; background: var(--cream); color: var(--ink); font-weight: 700; text-align: center; min-height: 0; }
+/* 9aj.5 (2.36): the target button: gold ring in the top bar, gold icon. */
+.target-btn { box-shadow: inset 0 0 0 2px rgba(242, 193, 78, 0.85); color: var(--gold); }
+.target-circle { background: var(--gold); color: var(--ink); }
+.target-propose { background: var(--gold); color: var(--ink); width: 100%; }
 
 /* D1 to D3: dealing */
 .info-chips { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
@@ -1065,15 +1087,23 @@ button.table-seat { cursor: pointer; }
 }
 /* 9ai.6, idea 3: your own turn. The table edge glows, your hand is framed and glows, playable cards lift, a pill says what to do. */
 .round-table.your-turn .table-oval { box-shadow: 0 0 0 4px var(--gold), 0 0 30px 8px rgba(242, 193, 78, 0.4); }
-.hand-section.your-turn { position: relative; border: 2px solid var(--gold); border-radius: 18px; background: rgba(242, 193, 78, 0.12); animation: hand-glow 1.8s ease-in-out infinite; }
-@keyframes hand-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(242, 193, 78, 0); }
-  50% { box-shadow: 0 0 18px 4px rgba(242, 193, 78, 0.55); }
+/* 9aj.4 (2.36): no frame. A gold glow sits under the fan, and the cards stay on top of it. */
+.hand-section.your-turn { position: relative; }
+.hand-section.your-turn::before {
+  content: ''; position: absolute; left: -8%; right: -8%; bottom: -4%; height: 85%; border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 60%, rgba(242, 193, 78, 0.7), rgba(242, 193, 78, 0.28) 45%, rgba(242, 193, 78, 0) 70%);
+  pointer-events: none; z-index: 0; animation: hand-glow 1.8s ease-in-out infinite;
 }
+.hand-section.your-turn .hand.fan { z-index: 1; }
+@keyframes hand-glow {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+/* 9aj.4 (2.36): your name pill on your turn: gold, with the turn words. */
+.me-pill.turn-label { background: var(--gold); color: var(--ink); font-weight: 900; }
 .hand-section.your-turn .card.playable { translate: 0 -10px; box-shadow: 0 0 0 2px var(--gold), -2px 6px 10px rgba(0, 0, 0, 0.4); }
-.turn-pill { position: absolute; top: -14px; left: 50%; translate: -50% 0; z-index: 3; background: var(--gold); color: var(--ink); font-size: 18px; font-weight: 900; padding: 4px 16px; border-radius: 999px; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35); white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) {
-  .seat-quiet.turn .seat-disc, .me-pill.turn-me, .hand-section.your-turn { animation: none; }
+  .seat-quiet.turn .seat-disc, .me-pill.turn-me, .hand-section.your-turn::before { animation: none; }
 }
 .seat-quiet.away .seat-disc { box-shadow: 0 0 0 3px var(--danger); }
 .seat-quiet.out .seat-disc { opacity: 0.5; }
@@ -1220,7 +1250,8 @@ button.me-pill { background: var(--cream); color: var(--ink); }
   pointer-events: none; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 /* 2.31.1: visible overflow, so a raised (selected) card at the top of the fan is not cut off. */
-.game-hand-slot { position: relative; min-height: 0; overflow: visible; }
+/* 9aj.1 (2.36): one stacking layer for the whole hand, below .game-extra (sheets, take card, pop-ups); the per-card z only orders the fan. */
+.game-hand-slot { position: relative; z-index: 1; min-height: 0; overflow: visible; }
 .game-hand-slot > .hand-section { height: 100%; justify-content: center; }
 /* 2.34.5 (CODE.md 9ag.3 fix 3): portrait keeps the bottom 8 px of the hand row clear for the 😂 button. */
 @media (orientation: portrait) { .game-hand-slot > .hand-section { box-sizing: border-box; padding-bottom: 8px; } }
@@ -1316,6 +1347,12 @@ button.ultimate-btn { align-self: center; white-space: nowrap; flex: none; min-h
 
 /* Top bar (2.10): the menu button and the round chip keep their round shape; they never shrink in the row. */
 .game-bar > .icon-btn, .game-bar > .round-chip { flex: none; }
+/* 9aj.5 (2.36), checked at 320 px: before round 1 the bar holds menu, R1, pause, target and the jokers chip, and the
+   fixed sound and help buttons sit over its right end. On narrow phones the gaps and the dealing chips shrink to a button's width. */
+@media (max-width: 380px) {
+  .game-bar { gap: 2px; padding-left: 4px; }
+  .game-bar .bar-chip { width: 36px; min-width: 36px; padding: 0; justify-content: center; }
+}
 
 /* Vote ballots (2.11.1): one chip per player, with room between them; the word after each name keeps its space. */
 .ballots { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 6px 0; }

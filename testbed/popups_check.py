@@ -13,8 +13,12 @@ rerun to get a different game.
 4. places: "X came 1st!" shows, and "is out" never does;
 5. the vote card lists one row per player, with YES and NO under the list;
 6. the take-cards card is solid (background alpha >= 0.8) with Give and Refuse;
-7. whose turn: the turn seat rings and the others fade, or your turn glows (frame and pill).
-Screenshots go to /tmp/popups-*.png.
+7. whose turn: the turn seat rings and the others fade, or your turn glows (glow and your gold name pill);
+8. take-cards sheet: the hand's cards are under the sheet (elementFromPoint at a sheet button is inside the sheet);
+9. Fast forward: with a pop-up up, the Stop fast forward button (.ff-stop) stops it;
+10. tie vote: the tie band (.tie-band) shows when the vote is a tie;
+11. target: the top-bar target button opens the target sheet; Propose 10 (then Sam) agrees it, and the round chip shows a gold "10" badge.
+Screenshots go to /tmp/popups-*.png. Checks 9 and 10 depend on the random game (rerun if "not seen").
 
 Not covered here: Fast forward closing pop-ups by itself, and the two-phone waiting
 (busy hourglass). Those are in testbed/netgame_check.py and the fast-forward checks.
@@ -82,7 +86,8 @@ def overlay_alpha(page, selector):
 
 def main():
     seen = {'vote': False, 'take': False, 'turn': False, 'your_turn': False, 'places': False, 'bad_out': False,
-            'vote_answered': False, 'take_answered': False}
+            'vote_answered': False, 'take_answered': False, 'sheet_under': False, 'ff_stop': False, 'tie': False,
+            'target_sheet': False, 'badge': False}
     titles = set()
     timer_done = False
     with sync_playwright() as p:
@@ -93,7 +98,32 @@ def main():
         cfg = {'players': PLAYERS, 'rounds': 1, 'manualDeal': False, 'swap': False, 'reshuffle': False,
                'ultimate': True, 'voteYes': True, 'forfeitChance': 0.2, 'jokers': True, 'stayAtEnd': True,
                'holdVotes': True, 'holdTakes': True, 'callerNot': 'Sam'}
+        # 11 (before round 1): the top-bar target button opens the sheet; Sam proposes 10 and the vote is agreed.
+        if count(page, '.target-btn'):
+            page.locator('.target-btn').first.click()
+            page.clock.run_for(100)
+            seen['target_sheet'] = count(page, '.target-sheet') > 0
+            if seen['target_sheet']:
+                page.screenshot(path='/tmp/popups-target.png')
+                page.get_by_role('button', name='10', exact=True).click()
+                page.get_by_role('button', name='Propose 10 points', exact=True).click()
+                # On one phone Propose asks "Who is proposing?" first; a phone that knows its player sends the vote at once.
+                if count(page, '.target-sheet .sheet-row[aria-label="Sam"]'):
+                    page.locator('.target-sheet .sheet-row[aria-label="Sam"]').first.click()
+                page.clock.run_for(100)
         for _ in range(MAX_STEPS):
+            # 11: the round chip shows the agreed target as a gold badge.
+            if not seen['badge'] and count(page, '.round-badge'):
+                seen['badge'] = page.locator('.round-badge').first.inner_text().strip().endswith('10')
+            # 9: Fast forward: Stop fast forward stops it while a pop-up is up (the pop-up is not closed by the Stop tap).
+            if not seen['ff_stop'] and count(page, '.ff-stop') and count(page, '.popup-overlay'):
+                page.locator('.ff-stop').first.click()
+                page.clock.run_for(200)
+                seen['ff_stop'] = count(page, '.fast-banner') == 0 or 'Fast forward on' not in page.locator('.fast-banner').first.inner_text()
+            # 10: a tie shows the tie band.
+            if not seen['tie'] and count(page, '.tie-band'):
+                seen['tie'] = True
+                page.screenshot(path='/tmp/popups-tie.png')
             # 1 to 3: the first pop-up on screen. It must stay after 10 s, show the tap line, and close on a tap.
             if not timer_done and count(page, '.popup-overlay[data-skip]'):
                 first = page.locator('.popup-overlay[data-skip] .popup').first.inner_text()
@@ -136,7 +166,9 @@ def main():
             if not seen['vote'] and count(page, '.vote-card') and count(page, '.vote-card .ballot-row'):
                 rows = count(page, '.vote-card .ballot-row')
                 buttons = count(page, '.vote-card .vote-yes') and count(page, '.vote-card .vote-no')
-                seen['vote'] = rows == PLAYERS and bool(buttons)
+                # A phone that has already voted (or asked) shows the waiting card: one row per player, no buttons.
+                waiting = count(page, '.vote-card .vote-said-line')
+                seen['vote'] = rows == PLAYERS and bool(buttons or waiting)
                 if seen['vote']:
                     page.screenshot(path='/tmp/popups-vote.png')
             # 6: the take-cards card (solid, with Give and Refuse).
@@ -151,7 +183,16 @@ def main():
             if not seen['turn'] and count(page, '.round-table .table-seat.turn') and count(page, '.round-table .table-seat.not-turn'):
                 seen['turn'] = True
                 page.screenshot(path='/tmp/popups-turn.png')
-            if not seen['your_turn'] and count(page, '.hand-section.your-turn') and count(page, '.turn-pill'):
+            # 8: the take sheet is above the hand's cards (a sheet button's centre is hit-tested inside the sheet).
+            if not seen['sheet_under'] and count(page, '.take-overlay button') and count(page, '.hand-section'):
+                seen['sheet_under'] = bool(page.evaluate("""() => {
+                  const b = [...document.querySelectorAll('.take-overlay button')].find(x => x.getClientRects().length);
+                  if (!b) return false;
+                  const r = b.getBoundingClientRect();
+                  const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+                  return !!(el && el.closest('.take-overlay'));
+                }"""))
+            if not seen['your_turn'] and count(page, '.hand-section.your-turn') and count(page, '.me-pill.turn-label'):
                 seen['your_turn'] = True
                 page.screenshot(path='/tmp/popups-your-turn.png')
             action = page.evaluate('cfg => window.pubbyBot.step(cfg)', cfg)
@@ -172,7 +213,12 @@ def main():
     record('vote', seen['vote'], 'vote card: one row per player, YES and NO under the list' if seen['vote'] else 'vote card: not seen in this game (votes are random; rerun)')
     record('take', seen['take'], 'take-cards card is solid with Give and Refuse' if seen['take'] else 'take-cards card: not seen in this game (requests are random; rerun)')
     record('turn', seen['turn'] or seen['your_turn'], 'whose turn: the turn seat rings and others fade, or your turn glows')
-    failed = [k for k in ('timer', 'hint', 'close', 'places', 'vote', 'take', 'turn') if not results.get(k)]
+    record('sheet_under', seen['sheet_under'], 'take sheet: the hand\'s cards are under the sheet' if seen['sheet_under'] else 'take sheet: not seen in this game (rerun)')
+    record('ff_stop', seen['ff_stop'], 'Fast forward: Stop fast forward stops it with a pop-up up' if seen['ff_stop'] else 'Fast forward: not seen in this game (rerun)')
+    record('tie', seen['tie'], 'tie vote: the tie band shows' if seen['tie'] else 'tie vote: not seen in this game (rerun)')
+    record('target_sheet', seen['target_sheet'], 'target: the top-bar button opens the target sheet' if seen['target_sheet'] else 'target: the top-bar button is missing before round 1')
+    record('badge', seen['badge'], 'target: the round chip shows a gold "10" badge once agreed' if seen['badge'] else 'target: no badge seen (the vote may not have passed; rerun)')
+    failed = [k for k in ('timer', 'hint', 'close', 'places', 'vote', 'take', 'turn', 'sheet_under', 'ff_stop', 'tie', 'target_sheet', 'badge') if not results.get(k)]
     print('RESULT ' + ('PASS' if not failed else 'FAIL: ' + ', '.join(failed)), flush=True)
     return 0 if not failed else 1
 

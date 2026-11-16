@@ -3501,7 +3501,7 @@ Files: `src/ui/table.ts` (`TableOpts.highlight`, seat classes, `seatTags`), `src
 6. **Turns:** someone else's turn: their disc is bigger with a pulsing gold ring and "Ben's turn", others faded. Your turn: the table edge and your hand glow, playable cards lift, "Your turn · …" shows, Android buzzes once.
 7. iPad landscape: nothing overlaps; check with 8 players.
 
-## 9aj. Fixes after the first 2.36.0 phone test (PLAN, user 2026-11-16 09:32 to 09:49; spec `PROJECT.md` 12u item 7; mockups https://claude.ai/artifact/LB2XMzmUPUB6oJuCEic4uG rows 1 to 4; written for Haiku; still **2.36.0** (not pushed yet); NOT BUILT)
+## 9aj. Fixes after the first 2.36.0 phone test (user 2026-11-16 09:32 to 09:49; spec `PROJECT.md` 12u item 7; mockups https://claude.ai/artifact/LB2XMzmUPUB6oJuCEic4uG rows 1 to 4; still **2.36.0**; BUILT 2026-11-16 by Haiku, Parts A to F, see 9aj.8)
 
 ### 9aj.0 Read first
 - Builds on top of the uncommitted 9ai work in the working tree. Don't change the version: 2.36.0 was never pushed.
@@ -3558,6 +3558,13 @@ Files: `src/ui/between.ts` (`targetRow` → `targetButton`, `targetSheet`), `src
 10. **Tie:** with 4 players, get 2 YES and 2 NO. The host sees "It's a tie · you decide" with Deal again / Keep these cards; others see "It's a tie · H decides".
 11. **Fast forward:** go out, start Fast forward, tap Stop while pop-ups come: it stops.
 12. **Take cards:** open "Take whose cards?": no cards show through the sheet.
+
+### 9aj.8 Built notes (2026-11-16, Haiku)
+- Parts A to F built as written, in order. Deviation: the top-bar target button is **not** hidden while dealing. Round 1 starts in the `dealing` phase, so `targetButton` only checks `targetVoteAllowed(s)` (9aj.7 item 8 needs the button before round 1).
+- Narrow phones (≤ 380 px): the top bar tightens (gap 2 px, dealing chip 36 px). At 320 px, before round 1, menu, R1, pause, target and the jokers chip fit on one row, 2 px clear of the sound button (measured).
+- Part F checks: `testbed/netvotes_check.py` (30 of 30, after the tap-to-close and new-selector updates), `netgame_check.py` (SLAP! counts now taken from each phone's closes, bot-closed ones included via `window.__botSlapClosed`; the own-seat items stay as known), `sound_check.py` (44 of 44), `popups_check.py` (new items 8 to 11; target and badge and vote card pass; take sheet, Fast forward stop and tie band were **not seen** in the three random games and need a phone test or a forced run).
+- Full `run_checks.py --all`: playthrough, drawer, back, offline, online, sound, netvotes all pass. `solo_check` (the "new name shows at the table" item) and `lobby_check` (three "phone goes away" items) fail; both fail the same way on the baseline 0611386, so they predate this work. `netgame_check` also has the card-count mismatch flake on the baseline.
+- Build: `npm run check` clean, 462 of 462 unit tests, `node build.mjs` ok. `node_modules` is a link to the shared tools folder (no installs; package installs are blocked on this account).
 
 ## 8a. Playable test builds (required before every commit)
 

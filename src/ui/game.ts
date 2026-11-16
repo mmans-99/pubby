@@ -43,7 +43,7 @@ import { gameLayout, type GameLayout } from './layout.ts';
 import { netGameBody, netMenu } from './netscreens.ts';
 import {
   askPausePanel, askToTake, gameOverStage, netPauseButton, notesPanel, passOnButton, pauseButton, pausePanel, pauseRequestsBanner,
-  pauseTick, resultsStage, takeButton, takeControls, takeHolder, takePrompts, takeStatus,
+  pauseTick, resultsStage, takeButton, takeControls, takeHolder, takePrompts, takeStatus, targetButton, targetSheet,
 } from './between.ts';
 
 const rng = defaultRng();
@@ -470,7 +470,8 @@ function popupsFor(s: Session, events: readonly SessionEvent[]): Popup[] {
         });
         break;
       case 'voteNeedsHost':
-        out.push({ kind: 'info', icon: 'equal', title: 'No majority', text: `${nameOf(s, s.hostId)} decides` });
+        // 9aj.3 (2.36): the words say it is a tie, and who decides.
+        out.push({ kind: 'info', icon: 'equal', title: 'No majority', text: `It's a tie · ${nameOf(s, s.hostId)} decides` });
         break;
       case 'voteResolved':
         out.push({ kind: 'vote', decidedBy: s.order.length === 2 ? 'both' : e.decidedBy, result: e.result, text: voteOutcome(s, e.kind, e.result, e.value), kindOf: e.kind, value: e.value, ballots: e.ballots ?? {} });
@@ -579,20 +580,46 @@ export function gameScreen(g: SavedGame): HTMLElement {
   return h('main', { class: framed ? 'screen game fixed framed' : 'screen game fixed' },
     h('div', { class: 'game-bar' },
       h('button', { class: 'icon-btn', 'aria-label': 'Menu', 'aria-expanded': st.menuOpen ? 'true' : 'false', onclick: () => update({ menuOpen: !st.menuOpen, armed: null }) }, icon('menu')),
-      h('span', { class: 'round-chip', 'aria-label': s.phase === 'gameOver' ? 'Game over' : s.ultimateRound && s.phase !== 'results' ? 'Ultimate Round' : `Round ${s.round}` }, label),
+      roundChip(s, label),
       ownSeat(g) ? netPauseButton(g) : pauseButton(s),
+      // 9aj.5 (2.36): the target score, proposed from here (gold ring); it never shares the bar with Take cards.
+      targetButton(s),
       // 2.31 (CODE.md 9aa Part C item 3): the jokers and hidden-deck chips sit in the top bar while dealing.
       s.phase === 'dealing' ? dealChips(s) : null,
       takeButton(g),
     ),
+    st.armed === 'roundinfo' ? roundNote(s) : null,
     st.menuOpen ? (g.net ? netMenu(g) : gameMenu(g)) : null,
     st.lastOpen && s.phase !== 'gameOver' && g.lastTrick ? lastSheet(s, g.lastTrick) : null,
+    targetSheet(s, { me: ownSeat(g) ?? undefined }),
     fastBanner(g),
     pausePanel(g),
     askPausePanel(g),
     pauseRequestsBanner(g),
     content,
   );
+}
+
+/**
+ * 9aj.5 (2.36): the round chip. Once a target is agreed a small gold badge shows it on the chip.
+ * A tap opens the round's note under the bar ("Round 3 · first to 10 points").
+ */
+function roundChip(s: Session, label: Child): HTMLElement {
+  const open = getState().armed === 'roundinfo';
+  const word = s.phase === 'gameOver' ? 'Game over' : s.ultimateRound && s.phase !== 'results' ? 'Ultimate Round' : `Round ${s.round}`;
+  const badge = s.target !== null ? h('span', { class: 'round-badge', 'aria-hidden': 'true' }, icon('target'), String(s.target)) : null;
+  return h('button', {
+    class: open ? 'round-chip on' : 'round-chip',
+    'aria-label': s.target !== null && s.phase !== 'gameOver' ? `${word}, first to ${s.target} points` : word,
+    'aria-expanded': open ? 'true' : 'false',
+    onclick: () => update({ armed: open ? null : 'roundinfo', menuOpen: false }),
+  }, label, badge);
+}
+
+/** 9aj.5 (2.36): the small cream note under the bar; any tap closes it. */
+function roundNote(s: Session): HTMLElement {
+  return h('button', { class: 'round-note', onclick: () => update({ armed: null }) },
+    `Round ${s.round} · ${s.target !== null ? `first to ${s.target} points` : 'no target'}`);
 }
 
 /** 9v.1: the Fast forward / Skip items, shown only while the game waits on computer players. */
@@ -691,11 +718,12 @@ function bottomSeat(g: SavedGame, holder: PlayerId): PlayerId {
  * The table during play: players around it and this trick's cards in front of
  * them. The last trick is a small stack in the felt's corner (CODE.md 9x.2 rule 3).
  */
-function trickArea(s: Session, g: SavedGame, v: PlayerView, bottom: PlayerId, highlight: PlayerId | null, lay: GameLayout): Child {
+function trickArea(s: Session, g: SavedGame, v: PlayerView, bottom: PlayerId, highlight: PlayerId | null, lay: GameLayout, meLabel?: Child): Child {
   const plays = g.trickLog;
   const table = roundTable(s, v, {
     bottom: bottomSeat(g, bottom),
     highlight,
+    meLabel,
     plays,
     newFrom: shownTrickCount,
     waste: wastePile(v.wastePileCount),
@@ -1124,8 +1152,11 @@ function playHandoffStage(g: SavedGame): Child {
  * `opts.all` makes every card tappable (hidden swap); `opts.picked` marks cards
  * as raised; `opts.mark` puts a star on them instead (new cards after a swap).
  */
-/** 9ai.6 (2.36): the gold pill above your hand on your turn: "lead", "play a ♥", or "Your turn". */
-function turnPill(s: Session, v: PlayerView): HTMLElement {
+/**
+ * 9ai.6 (2.36) / 9aj.4 (2.36): the words for your name pill on your turn: "Your turn · lead", "Your turn · play a ♥".
+ * The pill sits on the table (it used to be a separate pill above the hand).
+ */
+function turnLabel(s: Session, v: PlayerView): Child {
   const led = v.ledSuit;
   let label: Child = 'Your turn';
   if (v.trick.length === 0 && !jokerLed(s)) label = 'Your turn · lead';
@@ -1133,7 +1164,7 @@ function turnPill(s: Session, v: PlayerView): HTMLElement {
     const red = led === 'hearts' || led === 'diamonds';
     label = ['Your turn · play a ', h('span', { class: red ? 'play-red' : '' }, SUIT_SYMBOL[led])];
   }
-  return h('div', { class: 'turn-pill', role: 'status' }, label);
+  return label;
 }
 
 /** 9ai.6 (2.36): the phone buzzes once when a turn comes to this player (where it can, with sound effects on). */
@@ -1149,7 +1180,7 @@ export function handBlock(
   s: Session,
   v: PlayerView,
   onTap: ((c: Card) => void) | null,
-  opts: { picked?: ReadonlySet<string>; all?: boolean; mark?: boolean; head?: boolean; fit?: number; width?: number; yourTurn?: boolean; turnPill?: HTMLElement | null } = {},
+  opts: { picked?: ReadonlySet<string>; all?: boolean; mark?: boolean; head?: boolean; fit?: number; width?: number; yourTurn?: boolean } = {},
 ): HTMLElement {
   const hand = sortHand(v.myHand);
   // The fanned hand (CODE.md 9u Part D): card size and place from the phone's width (portrait only).
@@ -1168,9 +1199,8 @@ export function handBlock(
   const key = `${s.round}:${v.me}:${s.phase}`;
   const fresh = key !== shownHandKey;
   shownHandKey = key;
-  // 9ai.6 (2.36): on your turn the hand is framed in gold, with the turn pill above it.
+  // 9aj.4 (2.36): on your turn the hand gets a gold glow under the cards (no frame); the turn words are on your name pill.
   return h('section', { class: opts.yourTurn ? 'hand-section your-turn' : 'hand-section', 'aria-label': `${nameOf(s, v.me)}'s cards` },
-    opts.turnPill ?? null,
     opts.head === false ? null : h('div', { class: 'hand-head' },
       h('h2', null, nameOf(s, v.me)),
       h('span', { class: 'count' }, String(hand.length)),
@@ -1268,12 +1298,12 @@ export function playHandStage(g: SavedGame): Child {
   ];
   if (myTurn && ownSeat(g)) buzzForTurn(g, v);
   return gameFrame(lay, {
-    table: trickArea(s, g, v, v.me, actor ?? v.me, lay),
+    table: trickArea(s, g, v, v.me, actor ?? v.me, lay, myTurn ? turnLabel(s, v) : undefined),
     hand: fastItems.length
       ? h('div', { class: 'hand-actions' }, ...fastItems)
       : handBlock(s, v, playBlocked ? null : onTap, {
         head: false, fit: lay.handH, width: lay.handW,
-        yourTurn: myTurn, turnPill: myTurn ? turnPill(s, v) : null,
+        yourTurn: myTurn,
       }),
     action: playButton,
     extra,
@@ -1396,8 +1426,13 @@ export function popupLayer(): HTMLElement | null {
   shownPopups.add(p);
   // 9ai.1 (2.36): every pop-up has no timer and closes on a tap anywhere (except during Fast forward or Skip).
   // The vote alert has its own "Vote now" button and no tap line (9ai.4).
+  // 9aj.2 (2.36): during Fast forward the pop-ups come back to back and cover the bottom Stop button,
+  // so the Stop button is drawn here, above the overlay, and its tap does not also close the pop-up.
   return h('div', { class: 'overlay popup-overlay', 'data-skip': 'true', onclick: next },
-    h('div', { class: cls, role: 'alert' }, body, p.kind === 'voteAlert' ? null : tapHint()));
+    h('div', { class: cls, role: 'alert' }, body, p.kind === 'voteAlert' ? null : tapHint()),
+    fastForwardOn()
+      ? h('button', { class: 'secondary big ff-stop', onclick: (e: Event) => { e.stopPropagation(); stopFastForward(); } }, 'Stop fast forward')
+      : null);
 }
 
 function lastTwoBody(s: Session, p: Extract<Popup, { kind: 'lastTwo' }>): Child[] {

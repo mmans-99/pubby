@@ -21,6 +21,7 @@ import functools
 import http.server
 import json
 import pathlib
+import re
 import threading
 import time
 
@@ -235,6 +236,7 @@ def play(cfg, browser, base):
     diag = []
     leaks = []
     mismatch = []
+    closed_slaps = [0] * n  # SLAP! pop-ups each phone closed (counted in the loop below)
     turns_by = set()
     t0 = time.time()
     last_progress = time.time()
@@ -246,6 +248,19 @@ def play(cfg, browser, base):
     shot_dir = pathlib.Path('/tmp/pubby-net-shots')
     shot_dir.mkdir(exist_ok=True)
     while time.time() - t0 < 900:
+        # 2.36 (CODE.md 9aj.6): pop-ups close on a tap (9ai.1). Each phone closes its own, and the SLAP! pop-ups
+        # it actually closed are counted here (not timed), so the SLAP! check compares what every phone showed.
+        for i, p in enumerate(pages):
+            for _ in range(3):
+                if not p.locator('.popup-overlay').count():
+                    break
+                cls = p.evaluate("() => (document.querySelector('.popup-overlay .popup') || {}).className || ''")
+                try:
+                    p.locator('.popup-overlay').first.click(timeout=1000)
+                except Exception:  # it closed by itself between the look and the tap
+                    break
+                if re.search(r'\bslap\b', cls) and 'haha' not in cls:
+                    closed_slaps[i] += 1
         for i, p in enumerate(pages):
             act = p.evaluate('cfg => window.pubbyBot.step(cfg)', cfg)
             key = act.split(' ')[0]
@@ -325,7 +340,8 @@ def play(cfg, browser, base):
     check(f'{n} players: same final standings on every phone', all(s['ended'] == snaps[0]['ended'] for s in snaps) and snaps[0]['ended'], str([s['ended'] for s in snaps]))
     pops = [p.evaluate('window.__pops') for p in pages]
     check(f'{n} players: pop-ups shown on every phone', all(x['other'] > 0 for x in pops), json.dumps(pops))
-    slaps = [x['slap'] for x in pops]
+    # Taps the check made itself, plus the ones the bot closed on each phone (bot.js counts them).
+    slaps = [closed_slaps[i] + (pages[i].evaluate('window.__botSlapClosed || 0')) for i in range(n)]
     check(f'{n} players: SLAP! pop-ups shown on every phone alike', len(set(slaps)) == 1, str(slaps))
     recs = [json.loads(p.evaluate("localStorage.getItem('pubby.gameRecords') || '[]'")) for p in pages]
     check(f'{n} players: the game is saved on every phone', all(len(r) == 1 for r in recs), str([len(r) for r in recs]))

@@ -62,33 +62,51 @@ def play_scenario(browser, base):
     ng.check('before the round: every phone reaches the round-start step',
              ng.wait_for(lambda: all(phase(p) == 'reshuffle' for p in pages), 20))
 
-    # Target score proposed by Ben (round 1, before the round): every phone votes, live.
-    pages[1].get_by_role('button', name='Propose', exact=True).click()
+    # Target score proposed by Ben (round 1, before the round), from the top-bar target button (CODE.md 9aj.5).
+    # The pop-ups close on a tap (9ai.1): close them on every phone before reading the ballots.
+    def close_popups(p):
+        for _ in range(5):
+            if p.locator('.popup-overlay').count() == 0:
+                break
+            try:
+                p.locator('.popup-overlay').first.click(timeout=2000)
+            except Exception:  # it closed by itself between the look and the tap
+                break
+    pages[1].locator('.target-btn').click()
+    pages[1].get_by_role('button', name='10', exact=True).click()
     pages[1].get_by_role('button', name='Propose 10 points', exact=True).click()
+    for p in pages:
+        close_popups(p)
     ng.check('target vote: every phone shows three ballots',
-             ng.wait_for(lambda: all(p.locator('.ballot').count() == 3 for p in pages), 10))
+             ng.wait_for(lambda: all(p.locator('.ballot-row').count() == 3 for p in pages), 10))
     pages[0].get_by_role('button', name='YES', exact=True).click()
     ng.check('target vote: Amy\'s YES shows live on Cat\'s phone',
-             ng.wait_for(lambda: pages[2].locator('.ballot.yes').count() >= 1, 5))
+             ng.wait_for(lambda: pages[2].locator('.ballot-row .pill.yes').count() >= 1, 5))
     pages[2].get_by_role('button', name='YES', exact=True).click()
-    ng.check('target vote: agreed, so every phone shows 10 points',
-             ng.wait_for(lambda: all(p.locator('.slim .v', has_text='10 points').count() == 1 for p in pages), 10))
-    ng.check('target vote: no Propose once the target is agreed',
-             pages[1].get_by_role('button', name='Propose', exact=True).count() == 0)
+    for p in pages:
+        close_popups(p)
+    ng.check('target vote: agreed, so every phone shows the gold 10 badge on the round chip',
+             ng.wait_for(lambda: all(p.locator('.round-badge', has_text='10').count() == 1 for p in pages), 10))
+    ng.check('target vote: no target button once the target is agreed',
+             pages[1].locator('.target-btn').count() == 0)
 
     # Reshuffle called by Ben from his own phone: Amy and Cat vote no.
     pages[1].get_by_role('button', name='Deal again? Call a reshuffle vote', exact=True).click()
+    for p in pages:
+        close_popups(p)
     ng.check('reshuffle: the vote shows on every phone',
-             ng.wait_for(lambda: all(p.locator('.vote-panel').count() == 1 for p in pages), 10))
+             ng.wait_for(lambda: all(p.locator('.vote-card').count() == 1 for p in pages), 10))
     pages[0].get_by_role('button', name='NO', exact=True).click()
     pages[2].get_by_role('button', name='NO', exact=True).click()
     # Turned down: the round goes on to the hidden swap (3 players), with no new deal.
     ng.check('reshuffle: turned down, so the round goes on (hidden swap, no new deal)',
-             ng.wait_for(lambda: all(p.locator('.vote-panel').count() == 0 for p in pages), 10)
+             ng.wait_for(lambda: all(p.locator('.vote-card').count() == 0 for p in pages), 10)
              and all(phase(p) == 'swap' for p in pages), str([phase(p) for p in pages]))
     ng.check('reshuffle: Ben\'s session shows the reshuffle as used this round',
              pages[1].evaluate('() => window.pubbyNet.session().reshuffleUsed') is True)
-    # Hidden swap: everyone keeps their hand.
+    # Hidden swap: everyone keeps their hand (the reshuffle result pop-up is closed by a tap first, 9ai.1).
+    for p in pages:
+        close_popups(p)
     for p in pages:
         if ng.wait_for(lambda: p.get_by_role('button', name='Keep', exact=True).count() == 1, 10):
             p.get_by_role('button', name='Keep', exact=True).click()
@@ -96,37 +114,47 @@ def play_scenario(browser, base):
     for p in pages:
         if ng.wait_for(lambda: p.get_by_role('button', name='Done', exact=True).count() == 1, 10):
             p.get_by_role('button', name='Done', exact=True).click()
+    # A missing-suit notice (random): every phone taps OK, since the notice waits for every person.
+    for p in pages:
+        if ng.wait_for(lambda: p.get_by_role('button', name='OK', exact=True).count() == 1, 5):
+            p.get_by_role('button', name='OK', exact=True).click()
     ng.check('round 1 starts after the swap on every phone',
              ng.wait_for(lambda: all(phase(p) == 'playing' for p in pages), 20), str([phase(p) for p in pages]))
 
-    # Take-cards: Ben asks Cat (or Cat asks Ben if Ben leads).
+    # Take-cards: Ben asks Cat (or Cat asks Ben if Ben leads). Pop-ups are closed by a tap first (9ai.1).
+    for p in pages:
+        close_popups(p)
     turn = (sess(pages[0]) or {}).get('play', {}).get('turn')
     requester, target = (BEN, CAT) if turn != BEN else (CAT, BEN)
     rp = pages[int(requester[1]) - 1]
     tp = pages[int(target[1]) - 1]
     names = {'p1': 'Amy', 'p2': 'Ben', 'p3': 'Cat'}
     rp.get_by_role('button', name='Ask to take someone’s cards').click()
-    rp.get_by_role('button', name=f'Ask {names[target]}', exact=True).click()
+    # 9ai.5 (2.36): the sheet row's label carries the card count ("Ask Cat for 5 cards").
+    rp.get_by_role('button', name=re.compile(rf'^Ask {names[target]} for \d+ cards$')).click()
     ng.check('take-cards: every other phone sees who asked whom',
-             ng.wait_for(lambda: pages[0].locator('.host-line', has_text=f'{names[requester]} asked {names[target]}').count() == 1, 8))
+             ng.wait_for(lambda: pages[0].locator('.take-status-text', has_text=f'{names[requester]} asked {names[target]}').count() == 1, 8))
     turn_page = pages[int(turn[1]) - 1] if turn else pages[0]
     if turn != target:
         ng.check('take-cards: the player whose turn it is sees the play held back',
                  ng.wait_for(lambda: 'Waiting for' in body(turn_page), 5))
-    ng.check('take-cards: the asked player gets Agree and Refuse',
-             ng.wait_for(lambda: tp.get_by_role('button', name='Agree', exact=True).count() == 1, 5))
-    tp.get_by_role('button', name='Agree', exact=True).click()
+    # 9ai.5 (2.36): the asked player's answer is "Give my cards to X" (.take-give) or Refuse.
+    ng.check('take-cards: the asked player gets Give and Refuse',
+             ng.wait_for(lambda: tp.locator('.take-card .take-give').count() == 1 and tp.locator('.take-card .btn-outline-no').count() == 1, 5))
+    tp.locator('.take-card .take-give').click()
     # Agreed: the cards move at the gap between tricks, shown to every phone as "Cards taken!"
     # (or, if they move later, the asker's private note says they agreed).
     ng.check('take-cards: the answer shows on every phone (Cards taken! or the asker\'s note)',
              ng.wait_for(lambda: all('Cards taken' in body(p) for p in pages)
                          or pages[int(requester[1]) - 1].locator('.private-note', has_text='agreed').count() == 1, 8))
     ng.check('take-cards: the status line goes away once answered',
-             ng.wait_for(lambda: pages[0].locator('.host-line', has_text='asked').count() == 0, 5))
+             ng.wait_for(lambda: pages[0].locator('.take-status-text', has_text='asked').count() == 0, 5))
     ng.check('take-cards: the play is back on every phone',
              ng.wait_for(lambda: 'Waiting for' not in body(turn_page), 8))
 
-    # Pause: Ben asks the host, Amy approves.
+    # Pause: Ben asks the host, Amy approves (pop-ups closed by a tap first, 9ai.1).
+    for p in pages:
+        close_popups(p)
     pages[1].get_by_role('button', name='Ask the host to pause').click()
     pages[1].get_by_role('button', name='Ask to pause', exact=True).click()
     ng.check('pause: Amy sees the request',
@@ -165,7 +193,21 @@ def play_scenario(browser, base):
     ng.check('round 1 reaches the results screen', phase(pages[0]) == 'results', phase(pages[0]) or '')
 
     # Ready-up: each phone readies its own player; everyone sees who is ready.
+    # The results screen draws after the last trick's animation on each phone, so wait for it and close pop-ups by a tap (9ai.1).
+    t_end = time.time() + 40
+    while time.time() < t_end:
+        for p in pages:
+            # The round's last trick waits on the felt until tapped ("See the results", 2.34.6).
+            if p.get_by_role('button', name='See the results', exact=True).count() == 1:
+                p.get_by_role('button', name='See the results', exact=True).click()
+            close_popups(p)
+        if all(p.get_by_role('button', name="I'm ready", exact=True).count() == 1 and p.locator('.popup-overlay').count() == 0
+               for p in (pages[1], pages[2])):
+            break
+        time.sleep(0.3)
     pages[1].get_by_role('button', name="I'm ready", exact=True).click()
+    for p in pages:
+        close_popups(p)
     ng.check('ready-up: every phone shows 1 of 3 ready',
              ng.wait_for(lambda: all(p.locator('.ready-row', has_text='1 of 3 ready').count() == 1 for p in pages), 8))
     ng.check('ready-up: Ben sees his own Ready as done',
@@ -175,12 +217,17 @@ def play_scenario(browser, base):
 
     # Ultimate Round vote called by Cat: live ballots on every phone; Amy and Ben turn it down.
     pages[2].get_by_role('button', name='Ultimate Round vote', exact=True).click()
+    for p in pages:
+        close_popups(p)
     ng.check('ultimate vote: every phone shows three ballots',
-             ng.wait_for(lambda: all(p.locator('.ballot').count() == 3 for p in pages), 10))
-    pages[0].get_by_role('button', name='NO', exact=True).click()
-    pages[1].get_by_role('button', name='NO', exact=True).click()
+             ng.wait_for(lambda: all(p.locator('.ballot-row').count() == 3 for p in pages), 10))
+    for p in (pages[0], pages[1]):
+        close_popups(p)
+        p.get_by_role('button', name='NO', exact=True).click()
+    for p in pages:
+        close_popups(p)
     ng.check('ultimate vote: turned down, back to the results screen on every phone',
-             ng.wait_for(lambda: all(p.locator('.vote-panel').count() == 0 for p in pages), 10) and phase(pages[0]) == 'results')
+             ng.wait_for(lambda: all(p.locator('.vote-card').count() == 0 for p in pages), 10) and phase(pages[0]) == 'results')
 
     ng.check('no page errors', not errors, '; '.join(errors[:3]))
 
