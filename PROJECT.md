@@ -798,7 +798,7 @@ User (network game test of 2.33, three screenshots) asked for:
 4. Fair play is unchanged: only missing suits shown by slaps are used (never the secret declaration).
 5. **Pass bars:** Hard and Normal lead into a known missing suit while holding a suit no one is known to be missing: 0 times in the check games. Hard still beats Normal in the arena. All old arena bars pass.
 
-### 12s. Forfeit any time in the last two, jokers kept when slapped, iPad landscape fixes (PLAN, user 2026-11-15 22:55, answers 23:00; build guide `CODE.md` 9ag; target **2.34.5**; BUILT in 2.34.6, test build, not pushed)
+### 12s. Forfeit any time in the last two, jokers kept when slapped, iPad landscape fixes (PLAN, user 2026-11-15 22:55, answers 23:00; build guide `CODE.md` 9ag; target **2.34.5**; BUILT and PUSHED in 2.34.6, 35db1aa)
 
 **User (22:55):** "Need a forfeit in the last two, because sometime one player might not have a suit then get trapped in getting slapped the whole match if the other player plays it right." "If you have two cards left, one is a joker, and you play your normal card and then get slapped, joker should stay in hand, not disappear." "There's some UI issues in iPad on landscape mode." Photos: the hand covers the Play button and the waste pile label, the 😂 button sits on the cards, the Manual / Auto / Deal buttons and a side player's cards are cut off.
 
@@ -816,7 +816,7 @@ User (network game test of 2.33, three screenshots) asked for:
 
 **This is a bug fix for the joker (it was found in the code: the jokers were thrown away the moment the last normal card was played, before the slap), a rule addition for the forfeit, and a layout fix.**
 
-### 12t. Last trick shown before the results, Deal again more than once, "Ultimate Badboy" for four aces (PLAN, user 2026-11-15 23:11, answers 23:12; build guide `CODE.md` 9ah; target **2.34.6**, after 12s; BUILT, test build, not pushed)
+### 12t. Last trick shown before the results, Deal again more than once, "Ultimate Badboy" for four aces (PLAN, user 2026-11-15 23:11, answers 23:12; build guide `CODE.md` 9ah; target **2.34.6**, after 12s; BUILT and PUSHED as 2.34.6, 35db1aa)
 
 **Added 2026-11-15 23:54 (user, mid-build):**
 - **"PATHETIC!!!"** (capitals) pop-up on every phone when a player forfeits: SLAP!-style, "<name> forfeited · Last place." Shown with the round-over pop-up.
@@ -838,6 +838,42 @@ User (network game test of 2.33, three screenshots) asked for:
 - On one phone (pass-and-play) it shows on that player's own private hand screen, never on the shared table. Computer players never get it.
 
 **Asked, not part of this plan (23:12): rejoining a multiplayer game after a dropped connection.** Not built yet: Nearby slice 4 and Online slice O3 (`TODO.md`). What exists: a phone that leaves the screen or loses signal for a short while is "Away" and its seat is kept for 10 minutes while Pubby stays open (online reconnects by itself). A phone that closes Pubby or drops for good can't get back into the game. Needs its own plan (Opus).
+
+### 12u. Clearer pop-ups, votes, take-cards and whose turn (PLAN, user 2026-11-16 07:54 to 08:17; mockups https://claude.ai/artifact/2KAaj6Lkc2aCDsM3os6TXo; build guide `CODE.md` 9ai; target **2.36.0**; NOT BUILT)
+
+**User (07:54):** "when clicking on voting, or deal again or take cards etc, it's not clear enough what's going… get rid of timer where it says x wanted to shuffle… pops up on everyone's screen then they can click off of it, then give in a list rather than next to one another with the buttons underneath. Taking cards off someone, the pop up needs to be solid rather than transparent." **(08:07):** "each time a pop up comes up, until everyone has clicked off screen, it should make everyone wait… a little waiting symbol next to player name… Keep the alert… get rid of the timer, and when someone gets rid of their cards, don't say x player is out, just have what position they've come in." **(08:13):** "I don't like the big ok buttons on some of those pop ups that have no decision… clicking on the screen should make it disappear… rather than having a [line] saying x is waiting, just put a little hourglass symbol next to the name… turning upside down… how can I highlight better who's turn it is?" **(08:17):** turn ideas "1 and 3"; "the pop ups are now fine".
+
+**1. Pop-ups: no timers, tap anywhere to close**
+- Every pop-up stays until it is tapped. No countdown bars. A tap anywhere on the screen closes it. A small "Tap anywhere to close" line sits at the bottom of the pop-up.
+- No OK buttons on pop-ups that need no decision. Pop-ups with a decision keep their buttons (the vote alert's **Vote now**, YES/NO, Give/Refuse).
+- This covers every pop-up: SLAP!, HAHAHA!, PATHETIC!!!, Ultimate Badboy, "picked up", who leads, places, round over, vote result, jokers thrown away, and the rest.
+- **Exception (Claude's call, tell the user):** with Fast forward or Skip on (only computer players left), pop-ups still close by themselves after their old time, because there is no person to wait for.
+
+**2. Everyone waits until everyone has closed their pop-up (network games)**
+- While any person still has a pop-up open, nobody can play a card and computer players don't move.
+- A small gold **hourglass** sits next to that player's name on the table and slowly flips over. No "Waiting for…" line or card.
+- **Claude's calls (tell the user):** computer players are never "busy"; a player marked **Away** doesn't hold the table up (otherwise one closed phone would freeze the game). On one phone (pass-and-play) and in single player nothing changes: your own pop-up is already in your way.
+
+**3. Places instead of "is out"**
+- When a player gets rid of all their cards the pop-up says **"Amy came 1st!"** with the place badge (1st gold, 2nd silver, 3rd bronze, then plain). On your own phone: **"You came 2nd!"**. The round-over pop-up for last place is unchanged.
+
+**4. Votes (Deal again, Target, Ultimate Round)**
+- **Alert (kept):** when someone asks, a solid card pops up on every other phone: icon, "Amy wants to deal again" (or "…a target of 300 points", "…the Ultimate Round"), one line on what happens, "Amy has voted YES" with her disc, and a gold **Vote now** button. No timer; tapping anywhere also closes it. Not shown to the asker.
+- **Vote card:** a solid cream card (not see-through) with the question and "Amy asked · majority decides" (2 players: "Amy asked · you decide"). Under it **everyone in a list, one row each**: disc with initials, name, and a pill: **Asked · YES**, **YES**, **NO**, **Waiting**, or **Your vote** (gold). A bar says "3 of 5 voted". **YES** and **NO** sit underneath, side by side, full width. For Deal again your hand stays visible and bright under the card.
+- On one phone (secret vote) the rows show only **Voted** or **Waiting**, never YES or NO.
+- **After you vote:** the buttons are replaced by "You voted YES · waiting for Ben" (green). The host still has "Host: count the votes now".
+- **Result pop-up:** "Deal again?", a big **YES!** or **NO!**, what happens ("Ben shuffles and deals again"), then a row "YES 4" with the discs of who said yes and a row "NO 1" with who said no. Tap anywhere to close. On one phone: counts only, no discs.
+
+**5. Taking cards**
+- **Asking:** a solid panel slides up from the bottom: "Take whose cards?" and a **list** of the players you may ask, one row each with disc, name, card count and an **Ask** button; Cancel at the bottom.
+- **Being asked:** a solid cream card with a gold border over a much darker screen: the asker's disc, "Amy wants your cards", "Give them and you go out 3rd.", a "Private · only you see this" tag, then full-width **Give my cards to Amy** (green) and **Refuse** (red outline). Asked by two or more: one row per asker with its own **Give** button, then **Refuse everyone**.
+- **Everyone else:** solid cream status cards near the top: "Amy asked Ben for his cards" with a Waiting pill. Your own request shows "You asked Dev · waiting for an answer" with **Withdraw**.
+- The rules of asking don't change.
+
+**6. Whose turn it is (user chose ideas 1 and 3)**
+- **Someone else's turn (idea 1):** their seat disc is bigger with a slowly pulsing gold ring, their name tag turns gold and says **"Ben's turn"**, and the other seats fade to half brightness.
+- **Your turn (idea 3):** the edge of the table glows gold, your hand sits in a softly pulsing gold frame, the cards you may play lift up a little with a gold edge, and a gold pill above the hand says **"Your turn · lead"**, **"Your turn · play a ♥"** (when you have that suit), or just **"Your turn"**. The phone buzzes once when it becomes your turn, where the phone supports it and sound effects are on (iPhones don't buzz from a web page).
+- With "reduce motion" on, nothing pulses or flips; the gold stays.
 
 ## 13. Quick rules (in-game help)
 

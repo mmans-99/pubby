@@ -4,6 +4,18 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-16 (08:20) — Plan: clearer pop-ups, votes, take-cards and whose turn (docs only, no version bump)
+
+**User (07:54 to 08:17):** votes, deal again and take-cards aren't clear; wants no timer on "x wants to shuffle", an alert on every phone, then a list with the buttons underneath; the take-cards pop-up solid, not see-through. Then: every pop-up makes everyone wait until all have closed it, shown by a little flipping hourglass by the name (no "waiting" text); places ("came 1st") instead of "is out"; no big OK buttons where there's nothing to decide, tap anywhere to close; better "whose turn" highlight.
+
+**Mockups:** https://claude.ai/artifact/2KAaj6Lkc2aCDsM3os6TXo (4 rows: votes, take-cards, pop-ups, four turn ideas). User chose turn ideas 1 (pulsing gold ring, "Ben's turn", others faded) and 3 (your turn: table and hand glow, cards lift, pill). A save of the canvas between two of Claude's updates turned out to change nothing (all files matched).
+
+**Plan written:** `PROJECT.md` 12u; `CODE.md` 9ai; `TODO.md` Phase 4s. Target 2.36.0 (2.35.0 stays with Phase 4k). Claude's calls, flagged in 12u: Fast forward keeps self-closing pop-ups; computer players and Away players never hold the table up; one phone and single player have no waiting change.
+
+**Also:** TODO and PROJECT headers for 4q/4r updated to pushed (35db1aa, 2.34.6).
+
+---
+
 ## 2026-11-16 (version 2.34.6, test build, NOT committed or pushed)
 
 **Built Phase 4q (CODE.md 9ag, 2.34.5) and Phase 4r (CODE.md 9ah, 2.34.6) together, as one version (2.34.6).** Test build: https://claude.ai/artifact/SgksbF3avr6NTg5uWUfth8

@@ -3404,6 +3404,101 @@ Save a screenshot of each to `/tmp/tablet/` and send them to the user with the t
 3. **Deal again:** after the deal, vote "Deal again?" and pass it: after the new deal you're back on the screen with Look at cards / Deal again? / Start, and Deal again? works again. A failed vote starts the round. Try it in round 2 and 3 too, and on two phones.
 4. **Badboy:** hard to get by chance (about 1 in 400 hands with 4 players); use the test link's "four aces" test game (the build guide's check sets one up) to see it: the pop-up and the fanfare on your screen only; the other phone shows nothing.
 
+## 9ai. Clearer pop-ups, votes, take-cards and whose turn (PLAN, user 2026-11-16 07:54 to 08:17; spec `PROJECT.md` 12u; mockups https://claude.ai/artifact/2KAaj6Lkc2aCDsM3os6TXo; written for Haiku; target **2.36.0**; NOT BUILT)
+
+### 9ai.0 Read first
+- Spec: `PROJECT.md` 12u. Open the mockup link and match it: colours are the app's own (`--cream`, `--gold`, `--ink`, YES `#2e7d32`, NO `#c62828`, muted text on cream `#5d5646`). Row 1 = votes, row 2 = take-cards, row 3 = pop-ups, row 4 = turn ideas 1 and 3 (ideas 2 and 4 were **not** chosen).
+- Six parts, build and check in this order; each is testable alone: **A** pop-ups tap to close, **B** places, **C** everyone waits (hourglass), **D** votes, **E** take-cards, **F** whose turn.
+- **Rules (`src/rules/`) don't change.** Session: only one optional field on an event (D3). Network: one new message (C).
+- Version: `package.json` → **2.36.0** (2.35.0 stays reserved for Phase 4k). If 4k is built first, still 2.36.0.
+- Icons: use `icon(...)` from `src/ui/icons.ts`; the hourglass is the existing `wait` icon. No emoji in UI chrome (12a).
+- Every new animation gets a `@media (prefers-reduced-motion: reduce)` rule that turns it off.
+- Building and browser checks here: as in 9ag.0 (esbuild from `/opt/npm-tools`, Playwright with `/usr/bin/google-chrome`).
+- If a step fights the existing code twice (for example the SLAP! pop-up and the end-of-trick animation in A2), stop and write "🔁 Switch to Opus".
+
+### 9ai.1 Part A: pop-ups have no timer and close on a tap anywhere
+Files: `src/ui/game.ts` (`popupLayer`, `popupTimer`, `afterRender`, `popupMs`), `src/ui/styles.css`.
+1. `afterRender()`: the `slapTimer` block that closes the top pop-up after `popupMs` runs **only** when `fastForwardOn() || skipping() || instantSkipping()`. Otherwise no timer at all. Clear any running `slapTimer` when fast forward stops.
+2. `popupLayer()`: every kind returns `h('div', { class: 'overlay popup-overlay', 'data-skip': 'true', onclick: next }, h('div', { class: cls, role: 'alert' }, body, tapHint()))`. Remove the separate SLAP!/HAHAHA! branch that had no `onclick` (they now close on a tap too). Remove every `popupTimer(p)` call; keep the function only for fast-forward mode (show the bar only then) or delete it and the `.slap-timer` CSS.
+   - Check with the end-of-trick animation: a round-ending SLAP! pop-up shows at step `wait` (9ah.1 step 5). After this change it waits for a tap; tapping it must let the animation continue (it moves on when `popups[0]` changes; confirm in `driveTrickAnim`).
+3. `tapHint()`: `h('div', { class: 'tap-hint' }, 'Tap anywhere to close')`. CSS: `.tap-hint { font-size: 0.8rem; color: #5d5646; margin-top: 4px; }`; on `.popup.slap` give it the cream chip like `.popup.slap .small`.
+4. The pop-up card is solid: `.popup` already has `background: var(--cream)`. Make the overlay darker: `.popup-overlay { background: rgba(8, 20, 10, 0.72); }`.
+5. Not changed: the missing-suit notice (`notice-overlay`, already waits for OK, 9y), the vote alert's Vote now button (D1), and anything with YES/NO or Give/Refuse.
+6. `bots.ts` already holds computer players while `popups.length` (line ~88): keep.
+
+### 9ai.2 Part B: places instead of "is out"
+File: `src/ui/game.ts` `popupLayer`, kind `out`.
+- Title: `${nameOf(s, p.player)} came ${ordinal(p.place)}!`; when `p.player === ownSeat(g)` (or the single-player person): `You came ${ordinal(p.place)}!`.
+- Under it a big place pill (new class `.place-big`: 22px, weight 900, padding 6px 18px, radius 999px): 1st `--gold` with ink text, 2nd `#c9ced6`, 3rd `#cd8b4e`, others cream-dark `#e8e1cf`. Icon above: `trophy` in a 68px circle of the same colour.
+- One small line: "No cards left." (others) or "Sit back and watch the rest." (you).
+- `lastTwo` (round over) is unchanged.
+
+### 9ai.3 Part C: everyone waits for open pop-ups (network games), hourglass on busy players
+**Meaning:** a phone is **busy** while `getState().popups.length > 0` (the vote alert counts; the vote card itself and the missing-suit notice don't, they already wait). Only network games (Nearby and Online). Never in fast-forward/skip mode (send not-busy then).
+1. **New module `src/net/busy.ts`**, copy the shape of `src/net/away.ts`: `setBusyPlayers(ids)`, `isBusyPlayer(id)`, `anyoneBusy(): boolean`.
+2. **Messages (`src/net/lobby.ts`):** `ToHost` gains `{ t: 'busy'; on: boolean }` (parse it like `away`: `on` must be a boolean). Lobby seats gain `busy?: boolean` (like `awaySince`). Helper `setBusy(lobby, id, on)`. **`LOBBY_PROTOCOL` 9 → 10** (comment: "10: busy (2.36)").
+3. **Joining phone (`src/ui/netlobby.ts`):** after each draw, work out `busy = popups.length > 0 && !fastForwardOn() && !skipping() && !instantSkipping()`; when it changes, `peer.send({ t: 'busy', on: busy })` (same place as the `away`/`back` send, line ~342). Send `false` when leaving the game screen.
+4. **Host:** on `{t:'busy'}` from a seat, `lobby = setBusy(lobby, id, m.on)` and broadcast the lobby the same way as `away` (line ~1087). The host's own phone sets its own seat's `busy` directly when its own value changes. When a seat goes Away or leaves, clear its `busy`.
+5. **Everyone:** where `setAwayPlayers(...)` is called from the lobby (line ~332), also `setBusyPlayers(seats that have busy && no awaySince && not a computer player)` as player ids `p1…`.
+6. **Effects:**
+   - `game.ts` hand screen: `const playBlocked = !!takeWaiting || anyoneBusy();`. When blocked only by busy, the Play button is disabled and shows `icon('wait')` and no words. Picking a card still works.
+   - Host's computer players (`bots.ts`): add `anyoneBusy()` to the "nothing moves while…" check (line ~88 and ~95).
+   - Auto deal timer (`afterRender`, `dealing`): also wait while `anyoneBusy()`.
+   - Redraw when the busy set changes (the lobby update already triggers `update`; check).
+7. **Hourglass (`src/ui/table.ts` `seatTags`):** after the Away tag: `isBusyPlayer(id) && !isAwayPlayer(id) ? h('span', { class: 'seat-busy', role: 'img', 'aria-label': 'Busy' }, icon('wait')) : null`. CSS: gold, 0.9em, `display: inline-flex`, `animation: busy-flip 2.4s ease-in-out infinite` with `@keyframes busy-flip { 0%, 40% { rotate: 0deg; } 50%, 90% { rotate: 180deg; } 100% { rotate: 180deg; } }` (same timing as `host-wait`). Reduced motion: no animation.
+8. No "Waiting for…" text anywhere for this.
+9. One phone (pass-and-play) and single player: no change (`busy.ts` stays empty).
+
+### 9ai.4 Part D: votes
+Files: `src/ui/game.ts` (`voteCalled` and `voteResolved` pop-ups, `popupLayer`), `src/ui/roundstart.ts` (`voteStage`, `waitStage`, `passStage`, `hostDecidesStage`, `ballotChips`), `src/ui/store.ts` (Popup kinds), `src/session/types.ts` + `session.ts` (one field), `src/ui/styles.css`. Use the seat-disc initials from `src/ui/initials.ts` `seatInitials` and the seat colours the table uses.
+1. **Alert:** `voteCalled` (more than 2 players and 2 players alike) pushes a new Popup kind `voteAlert` `{ by, kind, value }` on every phone **except the asker's**. Drawn: 64px gold circle with the vote icon (`shuffle` / `target` / `bolt`); title "Amy wants to deal again" / "Amy wants a target of 300 points" / "Amy wants the Ultimate Round" (2 players: same title); one muted line: deal again "Everyone votes. Ben would shuffle and deal a new hand." (2 players: "You decide."), target "Everyone votes.", ultimate "Everyone votes."; a row with the asker's 28px disc and "Amy has voted YES"; a full-width gold **Vote now** button (closes the pop-up, same as `next`); no tap hint, no timer. Tap anywhere also closes it.
+2. **Vote card** (`voteStage`): replace the panel with a solid card `.vote-card` (`background: var(--cream); color: var(--ink); border-radius: 20px; box-shadow: 0 18px 44px rgba(0,0,0,0.55); padding: 18px 16px 16px`):
+   - Head: 48px gold circle with the icon, the short question (`voteShort`, 22px weight 900) and under it "Amy asked · majority decides" (2 players: "Amy asked · you decide"; draw: "Top score is a draw").
+   - `ballotList(s, me, open)` (replaces `ballotChips`): one row per player in seat order: 36px disc, name (16px bold), dealer note "Dealer" for deal again, and a pill on the right: asker → green "Asked · YES"; `yes` → green "YES" with check; `no` → red "NO" with x; me with no ballot → gold "Your vote" and the row gets a gold border on `#fff6dc`; others → `#e8e1cf` "Waiting" with the `wait` icon. When `open` is false (one phone, secret vote): pills are only "Voted" (`#e8e1cf` with check) or "Waiting", and no "Your vote".
+   - Progress: a bar and "3 of 5 voted".
+   - YES and NO buttons (existing `vote-yes`/`vote-no`, grid of two, 56px).
+   - Deal again: `handBlock` stays under the card, not dimmed.
+3. **After voting** (`waitStage` for `what === 'vote'`): the same card, the list, then instead of the buttons a green line `#eef6ee` / `#1b5e20`: "You voted YES · waiting for Ben" (or "…NO…"; names joined with `joinNames`). The asker sees "You asked: your vote is YES · waiting for …". The host's "count the votes now" button stays under it. Keep `seatStrip` out of the vote version (the list replaces it).
+4. **Host decides** (`hostDecidesStage`): same card style, head line "No majority · Mo decides".
+5. **Result pop-up:** add optional `readonly ballots?: Readonly<Record<PlayerId, Ballot>>` to the `voteResolved` event in `src/session/types.ts` and fill it in `session.ts` where the event is made (the final ballots). Popup kind `vote` gains `ballots` and `kindOf` (the vote kind). Drawn: small muted question ("Deal again?"), big YES!/NO! (existing `.vote-word`), the outcome text (`voteOutcome`), then two rows: green `#eef6ee` "YES 4" + 28px discs of the yes voters, red `#fdecea` "NO 1" + discs. One phone (secret): the two rows show only the counts, no discs. No OK button; tap hint.
+6. Saved games from 2.34.x still load (the new event field is optional).
+
+### 9ai.5 Part E: take-cards
+File: `src/ui/between.ts` (`takePrompts`, `takeStatus`, `takeControls`, `askToTake`), `src/ui/styles.css`.
+1. **Being asked** (`takePrompts`): return an overlay, not a panel: `h('div', { class: 'overlay take-overlay' }, card)` with `.take-overlay { align-items: center; background: rgba(8, 20, 10, 0.82); }` (no tap-to-close). Card `.take-card`: cream, `border: 3px solid var(--gold)`, radius 20px, centred text. One asker: the asker's 56px disc overlapping a 56px gold circle with the `take` icon; title "Amy wants your cards" (26px, 900); "Give them and you go out **3rd**." (`ordinal(nextPlace)`); a small tag with the `eye` or a lock-style icon "Private · only you see this"; full-width buttons stacked: green **Give my cards to Amy** (`check` icon) and white **Refuse** with red text and border (`x`-style, reuse `vote-no` colours as an outline class `.btn-outline-no`). Two or more askers: title "2 players want your cards", "Pick one and you go out 3rd.", one white row per asker (disc, name, green **Give** button 44px), then **Refuse everyone** (outline), then the private tag.
+2. **Asking** (`takeControls` while choosing, and `askToTake` on one phone): a bottom sheet `h('div', { class: 'overlay' }, h('section', { class: 'sheet take-sheet' }, …))` (cream, radius 22px top corners, a small grab bar): head with the gold `take` circle, "Take whose cards?" and "Before the trick · one ask at a time"; one `<button>` row per allowed target: disc, name, "6 cards" (from `publicView(s)` / `cardCount`), and a gold "Ask" chip with `arrow`; a muted line "Only you see their answer."; **Cancel** (ghost, full width). On one phone `askToTake` lists the askers with the label "Who is asking?" in the same sheet style.
+3. **Your own request** (`takeControls`, `mine`): a solid cream card near the top `.take-status.mine` (gold border): your disc, "You asked Dev", muted "Waiting for an answer" (or "Agreed"), **Withdraw** button.
+4. **Everyone else** (`takeStatus`): replace each `host-line` with a solid cream card `.take-status` (radius 14px, shadow): asker's 34px disc, "Amy asked Ben for his cards", grey "Waiting" pill with the `wait` icon. Keep it near the top of the hand screen.
+5. The `.take-ask` and `.take-panel` see-through styles go.
+
+### 9ai.6 Part F: whose turn
+Files: `src/ui/table.ts` (`TableOpts.highlight`, seat classes, `seatTags`), `src/ui/game.ts` (hand screen, `handBlock`), `src/ui/styles.css`.
+1. **Someone else's turn** (`highlight` set and not `bottom`): the turn seat gets `.turn` (exists). New CSS: `.seat-quiet.turn .seat-disc { transform: scale(1.25); animation: turn-ring 1.6s ease-in-out infinite; }` with `@keyframes turn-ring { 0%,100% { box-shadow: 0 0 0 4px rgba(242,193,78,.9), 0 0 18px 6px rgba(242,193,78,.55); } 50% { box-shadow: 0 0 0 6px var(--gold), 0 0 30px 12px rgba(242,193,78,.35); } }`. The name tag gets class `turn-name` (gold background, ink text) and reads `${name}'s turn` (keep the thinking dots after it for computer players). Every other seat gets `.not-turn { opacity: 0.5; }` while a turn is shown. Check the bigger disc doesn't collide with fans on 8 players and on the iPad layout (`tablet_check.py`).
+2. **Your turn** (`highlight === bottom`, i.e. `myTurn` on the hand screen):
+   - Table: class `your-turn` on `.round-table` → `box-shadow: 0 0 0 4px var(--gold), 0 0 30px 8px rgba(242,193,78,.4)` on the felt.
+   - Hand: class `your-turn` on `.hand-section` → gold 2px border, radius 18px, `background: rgba(242,193,78,.12)`, `animation: hand-glow 1.8s ease-in-out infinite` (gold glow in and out).
+   - Playable cards: while `myTurn`, `.card.playable { transform: translateY(-10px); box-shadow: 0 0 0 2px var(--gold), -2px 6px 10px rgba(0,0,0,.4); }` (selected cards keep their stronger `.selected` look).
+   - Pill above the hand: `.turn-pill` (gold, ink, 18px, weight 900, radius 999px, shadow): "Your turn · lead" when leading; "Your turn · play a ♥" when following and you hold the led suit (suit symbol red for ♥/♦); else "Your turn".
+   - Buzz: when it becomes your turn (track the last turn key `${round}:${trickIndex}:${player}` in a module variable), call `navigator.vibrate?.(60)` once if sound effects are on (`src/audio/settings.ts`). Not on one phone's shared table screen.
+3. Reduced motion: no pulse, no glow animation; the gold stays.
+4. Pass-and-play: the shared table shows idea 1 for the player whose turn it is; their private hand screen shows idea 3.
+
+### 9ai.7 Tests and checks
+- `node --test` (all), both `tsc` configs, `node build.mjs`.
+- `tests/net/`: `parseToHost` accepts `{t:'busy',on:true}`, refuses `on:'yes'`; `setBusy` sets and clears; protocol is 10.
+- `tests/session/`: `voteResolved` carries `ballots` equal to the final ballots (more than 2 players, 2 players, host decides).
+- **Test bot (`testbed/bot.js`) must close pop-ups now:** if `.popup-overlay[data-skip]` is on screen, click it; if the vote alert's Vote now is there, click it. Without this every browser check stalls. Then run `playthrough.py` (2, 3, 5, 8 players), `solo_check.py`, `lasttrick_check.py`, `tablet_check.py`, `netvotes_check.py`, `netgame_check.py` and report results against the known failures listed in the 2026-11-16 DEVLOG entry (don't fix those here).
+- New `testbed/popups_check.py`: (1) single player: a pop-up stays after advancing the fake clock 10 s; a tap closes it; (2) Fast forward on: pop-ups still close by themselves; (3) two-phone network game (as `netgame_check.py` does): while phone B has a pop-up open, phone A's seat for B shows `.seat-busy`, A's Play button is disabled, and after B taps, both clear; (4) the "came 1st" text; (5) vote alert then vote card rows (one per player) and YES/NO under the list; (6) take-cards: the asked player's `.take-overlay` is opaque (computed background alpha ≥ 0.8) and has Give/Refuse; (7) turn: the turn seat has `.turn` and others `.not-turn`; on your turn `.hand-section.your-turn` and `.turn-pill`. Screenshot each on a phone size (390×844) and the iPad landscape size.
+
+### 9ai.8 Phone checklist (2.36.0)
+1. **Pop-ups:** play a game vs computer. No pop-up has a countdown bar or closes by itself; a tap anywhere closes each one. SLAP!, HAHAHA!, Badboy and PATHETIC!!! too. With only computer players left, Fast forward still runs on its own.
+2. **Places:** when someone gets rid of their cards: "Amy came 1st!" with a gold 1st; your own: "You came 2nd!".
+3. **Waiting (two phones):** leave a pop-up open on phone B. Phone A shows a flipping hourglass by B's name and can't play; computer players wait. Tap on B: play carries on. Put B in the background: B shows Away and doesn't hold the game up.
+4. **Votes:** ask to deal again on one phone. The other phones get "… wants to deal again" with Vote now. The vote card lists everyone, one per line, YES/NO underneath; after voting you see "You voted YES · waiting for …". The result shows who said yes and no; tap to close. On one phone the vote stays secret (Voted / Waiting only).
+5. **Take cards:** ask from the list (card counts shown). The asked player sees a solid card with Give / Refuse that's easy to read; others see a solid "Amy asked Ben…" card; you can Withdraw. Try two people asking the same player.
+6. **Turns:** someone else's turn: their disc is bigger with a pulsing gold ring and "Ben's turn", others faded. Your turn: the table edge and your hand glow, playable cards lift, "Your turn · …" shows, Android buzzes once.
+7. iPad landscape: nothing overlaps; check with 8 players.
+
 ## 8a. Playable test builds (required before every commit)
 
 `CLAUDE.md` rule 5: the user tests every change on their phone before approving a commit.
