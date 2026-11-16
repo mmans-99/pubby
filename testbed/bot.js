@@ -139,16 +139,18 @@
     const pickUp = byText('Pick up the waste pile');
     if (pickUp) {
       if (Math.random() < cfg.forfeitChance) {
-        const f = byText('Tap again to forfeit') || byText('Forfeit');
+        // 9ak.2 (2.37): Forfeit is the .forfeit-btn (red outline; "Tap again" once armed).
+        const f = document.querySelector('.forfeit-btn');
         if (f) return click(f, 'forfeit');
       }
       return click(pickUp, 'pick up waste pile');
     }
 
     // 2.34.5 (CODE.md 9ag.1): either of the last two can forfeit at any time (two taps).
-    const armed = byText('Tap again to forfeit');
+    // 9ak.2 (2.37): the bottom action row holds Forfeit; .armed means the first tap has been made.
+    const armed = document.querySelector('.forfeit-btn.armed');
     if (armed) return click(armed, 'forfeit (any time)');
-    const anyF = buttons().find((b) => b.textContent.trim() === 'Forfeit');
+    const anyF = document.querySelector('.forfeit-btn:not(.armed)');
     if (anyF && Math.random() < (cfg.anyForfeitChance || 0)) return click(anyF, 'forfeit armed');
 
     // Playing a card.

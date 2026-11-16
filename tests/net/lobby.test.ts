@@ -157,7 +157,7 @@ test('away: the host seat cannot go away, and an away seat counts as missing (St
 });
 
 test('typed messages (9ad.5, 2.34): good ones are read, cut to 60 characters, the rest refused; the protocol is 10', () => {
-  assert.equal(LOBBY_PROTOCOL, 10);
+  assert.equal(LOBBY_PROTOCOL, 11);
   assert.deepEqual(readToHost({ t: 'say', text: '  hi there  ' }), { t: 'say', text: 'hi there' });
   assert.deepEqual(readToHost({ t: 'say', text: 'a   b' }), { t: 'say', text: 'a b' });
   assert.equal(readToHost({ t: 'say', text: '   ' }), null);
@@ -174,7 +174,7 @@ test('typed messages (9ad.5, 2.34): good ones are read, cut to 60 characters, th
 });
 
 test('away messages are read both ways; the protocol is 10', () => {
-  assert.equal(LOBBY_PROTOCOL, 10);
+  assert.equal(LOBBY_PROTOCOL, 11);
   assert.deepEqual(readToHost({ t: 'away' }), { t: 'away' });
   assert.deepEqual(readToHost({ t: 'back' }), { t: 'back' });
   assert.deepEqual(readToJoiner({ t: 'hostAway' }), { t: 'hostAway' });

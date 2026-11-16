@@ -139,24 +139,33 @@ export function awardsRow(s: Session): HTMLElement {
   );
 }
 
-export function triviaPanel(s: Session): HTMLElement {
-  const t = computeTrivia(s.log, s.order);
-  const rows: [string, string][] = awards(s).map((a) => [a.label, a.long]);
+/** 9ak.4 (2.37): the award cards as plain labels and values (the results screen's Awards tab). */
+export function awardCards(s: Session): { label: string; short: string }[] {
+  return awards(s).map((a) => ({ label: a.label, short: a.short }));
+}
 
+/** 9ak.4 (2.37): the slapped-by table (who slapped each player most, and who they slapped most). */
+export function slappedByTable(s: Session): HTMLElement {
+  const t = computeTrivia(s.log, s.order);
   const who = (top: Top | null): Child => (top ? `${names(s, top.players)} ×${top.count}` : h('span', { class: 'muted' }, '—'));
+  return h('table', { class: 'trivia-table' },
+    h('thead', null, h('tr', null, h('th', null, 'Player'), h('th', null, 'Slapped by most'), h('th', null, 'Slapped most'))),
+    h('tbody', null, s.order.map((id) => {
+      const p = t.perPlayer[id]!;
+      return h('tr', null, h('td', null, nameOf(s, id)), h('td', null, who(p.slappedByMost)), h('td', null, who(p.slappedMost)));
+    })),
+  );
+}
+
+export function triviaPanel(s: Session): HTMLElement {
+  const rows: [string, string][] = awards(s).map((a) => [a.label, a.long]);
   return h('section', { class: 'panel trivia' },
     h('h2', null, 'Trivia'),
     rows.length
       ? h('ul', { class: 'trivia-list' }, rows.map(([label, text]) =>
         h('li', null, h('span', null, h('b', null, `${label}: `), text))))
       : h('p', { class: 'muted' }, 'No slaps yet. Suspiciously peaceful.'),
-    h('table', { class: 'trivia-table' },
-      h('thead', null, h('tr', null, h('th', null, 'Player'), h('th', null, 'Slapped by most'), h('th', null, 'Slapped most'))),
-      h('tbody', null, s.order.map((id) => {
-        const p = t.perPlayer[id]!;
-        return h('tr', null, h('td', null, nameOf(s, id)), h('td', null, who(p.slappedByMost)), h('td', null, who(p.slappedMost)));
-      })),
-    ),
+    slappedByTable(s),
   );
 }
 
@@ -181,6 +190,21 @@ export function targetButton(s: Session): HTMLElement | null {
   }, icon('target'));
 }
 
+/** Sheets that were on screen at the last redraw (9ak.1). */
+const sheetsOpen = new Set<string>();
+
+/**
+ * 9ak.1 (2.37): every redraw rebuilds the page, so an open sheet would replay its entrance animation on each
+ * − / + / quick-chip tap. Returns true when this sheet was already open at the last redraw (the caller adds
+ * the `seen` class, which turns the animation off). Call it on every redraw, open or not, so it resets.
+ */
+export function sheetSeen(key: string, open: boolean): boolean {
+  if (!open) { sheetsOpen.delete(key); return false; }
+  const seen = sheetsOpen.has(key);
+  sheetsOpen.add(key);
+  return seen;
+}
+
 /**
  * 9aj.5 (2.36): the target sheet, drawn from the game screen like the take sheet.
  * Network: Propose sends the vote for this phone's player. One phone: Propose, then "Who is proposing?".
@@ -188,6 +212,7 @@ export function targetButton(s: Session): HTMLElement | null {
 export function targetSheet(s: Session, opts: { me?: PlayerId } = {}): HTMLElement | null {
   const st = getState();
   const open = targetVoteAllowed(s) && (st.armed === 'target' || st.armed === 'targetcaller');
+  const seen = sheetSeen('target', open);
   if (!open) return null;
   const me = opts.me;
   const choosing = me === undefined && st.armed === 'targetcaller';
@@ -222,8 +247,8 @@ export function targetSheet(s: Session, opts: { me?: PlayerId } = {}): HTMLEleme
       }, `Propose ${targetDraft} points`),
       h('p', { class: 'muted small center' }, `Everyone votes. First to ${targetDraft} points wins.`),
     ];
-  return h('div', { class: 'overlay take-sheet-overlay' },
-    h('section', { class: 'sheet take-sheet target-sheet', role: 'dialog', 'aria-label': 'Target score' },
+  return h('div', { class: seen ? 'overlay take-sheet-overlay seen' : 'overlay take-sheet-overlay' },
+    h('section', { class: seen ? 'sheet take-sheet target-sheet seen' : 'sheet take-sheet target-sheet', role: 'dialog', 'aria-label': 'Target score' },
       h('span', { class: 'take-grab', 'aria-hidden': 'true' }),
       h('div', { class: 'sheet-head' },
         h('span', { class: 'take-icon-circle target-circle' }, icon('target')),
@@ -394,10 +419,10 @@ export function takeStatus(s: Session, me: PlayerId): HTMLElement | null {
  * 9ai.5 (2.36): the sheet for picking someone to ask (or who is asking, on one phone).
  * A solid bottom sheet with one row per player; a tap on a row (or its Ask chip) does it.
  */
-function askSheet(s: Session, title: string, ids: readonly PlayerId[], onPick: (id: PlayerId) => void, onCancel: () => void, showCards: boolean): HTMLElement {
+function askSheet(s: Session, title: string, ids: readonly PlayerId[], onPick: (id: PlayerId) => void, onCancel: () => void, showCards: boolean, seen = false): HTMLElement {
   const counts = publicView(s).players;
-  return h('div', { class: 'overlay take-sheet-overlay' },
-    h('section', { class: 'sheet take-sheet', role: 'dialog', 'aria-label': title },
+  return h('div', { class: seen ? 'overlay take-sheet-overlay seen' : 'overlay take-sheet-overlay' },
+    h('section', { class: seen ? 'sheet take-sheet seen' : 'sheet take-sheet', role: 'dialog', 'aria-label': title },
       h('span', { class: 'take-grab', 'aria-hidden': 'true' }),
       h('div', { class: 'sheet-head' },
         h('span', { class: 'take-icon-circle' }, icon('take')),
@@ -424,10 +449,12 @@ function takeTargets(s: Session, p: PlayerId): PlayerId[] {
 /** Ask to take someone's cards (before a trick only, one at a time), and see or withdraw my request. */
 export function takeControls(s: Session, me: PlayerId): HTMLElement | null {
   const play = s.play;
-  if (s.phase !== 'playing' || !play || play.over || !betweenTricks(play)) return null;
   const mine = s.takeRequests.filter((r) => r.requester === me);
   const targets = takeTargets(s, me);
   const choosing = getState().armed === 'take' && targets.length > 0;
+  // 9ak.1: the sheet's `seen` state is tracked on every redraw, so it resets when the sheet closes.
+  const seen = sheetSeen('take', choosing && s.phase === 'playing' && !!play && !play.over && betweenTricks(play));
+  if (s.phase !== 'playing' || !play || play.over || !betweenTricks(play)) return null;
   if (!mine.length && !choosing) return null;
   // 9ai.5 (2.36): your own request is a solid card with Withdraw; picking someone is a bottom sheet.
   return h('div', { class: 'stack' },
@@ -440,7 +467,7 @@ export function takeControls(s: Session, me: PlayerId): HTMLElement | null {
     choosing
       ? askSheet(s, 'Take whose cards?', targets,
         (id) => send([{ type: 'requestTake', by: me, target: id }]),
-        () => update({ armed: null }), true)
+        () => update({ armed: null }), true, seen)
       : null,
   );
 }
@@ -449,10 +476,12 @@ export function takeControls(s: Session, me: PlayerId): HTMLElement | null {
 export function askToTake(g: SavedGame): HTMLElement | null {
   const s = g.session;
   const askers = s.order.filter((p) => takeTargets(s, p).length > 0);
-  if (!askers.length || getState().armed !== 'asker') return null;
+  const open = !!askers.length && getState().armed === 'asker';
+  const seen = sheetSeen('asker', open);
+  if (!open) return null;
   return askSheet(s, 'Who is asking?', askers,
     (id) => update({ game: { ...g, stage: 'hand', holder: id }, armed: 'take' }),
-    () => update({ armed: null }), false);
+    () => update({ armed: null }), false, seen);
 }
 
 /** H6: the take-cards button in the top bar (before a trick, when someone can ask). */

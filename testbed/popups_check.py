@@ -17,7 +17,7 @@ rerun to get a different game.
 8. take-cards sheet: the hand's cards are under the sheet (elementFromPoint at a sheet button is inside the sheet);
 9. Fast forward: with a pop-up up, the Stop fast forward button (.ff-stop) stops it;
 10. tie vote: the tie band (.tie-band) shows when the vote is a tie;
-11. target: the top-bar target button opens the target sheet; Propose 10 (then Sam) agrees it, and the round chip shows a gold "10" badge.
+11. target: the top-bar target button opens the target sheet; Propose 10 (then Sam) agrees it, and the gold "First to 10" target chip shows in the top bar (2.37).
 Screenshots go to /tmp/popups-*.png. Checks 9 and 10 depend on the random game (rerun if "not seen").
 
 Not covered here: Fast forward closing pop-ups by itself, and the two-phone waiting
@@ -112,9 +112,9 @@ def main():
                     page.locator('.target-sheet .sheet-row[aria-label="Sam"]').first.click()
                 page.clock.run_for(100)
         for _ in range(MAX_STEPS):
-            # 11: the round chip shows the agreed target as a gold badge.
-            if not seen['badge'] and count(page, '.round-badge'):
-                seen['badge'] = page.locator('.round-badge').first.inner_text().strip().endswith('10')
+            # 11: the target chip shows the agreed target as a gold "First to 10" chip (9ak.1, 2.37; was the round badge).
+            if not seen['badge'] and count(page, '.target-chip'):
+                seen['badge'] = page.locator('.target-chip').first.inner_text().strip().endswith('10')
             # 9: Fast forward: Stop fast forward stops it while a pop-up is up (the pop-up is not closed by the Stop tap).
             if not seen['ff_stop'] and count(page, '.ff-stop') and count(page, '.popup-overlay'):
                 page.locator('.ff-stop').first.click()

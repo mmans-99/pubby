@@ -377,13 +377,26 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 ## Phase 4t — Tidy-ups, landscape B and results B (plan 2026-11-16 12:00, `PROJECT.md` 12v, build guide `CODE.md` 9ak, mockups https://claude.ai/artifact/H3ByTnjYM9haJE5sTLJpbY; target 2.37.0)
 
 - [x] Plan approved (user 2026-11-16 12:00: "Landscape b and results b")
-- [ ] Part A: target sheet no flash, "First to N" chip, menu floats, no star on your pill, D badge one height, plain Cancel, "Zainab •••" (9ak.1)
-- [ ] Part B: Forfeit in the action bar (9ak.2)
-- [ ] Part C: un-ready (session `unready`, protocol 11) (9ak.3)
-- [ ] Part D: results screen B: winner card, tabs, fixed ready panel (9ak.4)
-- [ ] Part E: hold redraws while scrolling (9ak.5)
-- [ ] Part F: landscape B on phones (rail, full-height table, Play bottom right) (9ak.6)
-- [ ] Part G: checks, test build, phone checklist 9ak.8 (9ak.7)
+- [x] Part A: target sheet no flash, "First to N" chip, menu floats, no star on your pill, D badge one height, plain Cancel, "Zainab •••" (9ak.1; built 2.37.0)
+- [x] Part B: Forfeit in the action bar (9ak.2; built 2.37.0)
+- [x] Part C: un-ready (session `unready`, protocol 11) (9ak.3; built 2.37.0)
+- [x] Part D: results screen B: winner card, tabs, fixed ready panel (9ak.4; built 2.37.0)
+- [x] Part E: hold redraws while scrolling (9ak.5; built 2.37.0)
+- [x] Part F: landscape B on phones (rail, full-height table, Play bottom right) (9ak.6; built 2.37.0)
+- [x] Part G: checks, version 2.37.0, test build, phone checklist 9ak.8 (9ak.7)
+- [x] Phone test of 2.37.0 (user 13:15: fixes listed, planned as Phase 4u); pushed 13:18 on "Push it"
+
+## Phase 4u — Fixes after the 2.37.0 phone test (plan 2026-11-16 13:15, `PROJECT.md` 12w, build guide `CODE.md` 9al; target 2.37.1)
+
+- [x] Plan written (user 13:15 list; 😂 in the bottom row chosen 13:15)
+- [ ] Part A: round note floats (9al.1)
+- [ ] Part B: target sheet: no quick chips, visible − / +, header (9al.2)
+- [ ] Part C: solid lead notice pop-up (9al.3)
+- [ ] Part D: "You forfeited" on your own phone (9al.4)
+- [ ] Part E: 😂 in the bottom row and results footer (9al.5)
+- [ ] Part F: last two: Forfeit + Play on one line, check (9al.6)
+- [ ] Part G: checks, `run_checks.py` table, test build, checklist 9al.8 (9al.7)
+- [ ] Phone test of 2.37.1, then approval to commit and push
 
 ## Phase 5 — Polish
 

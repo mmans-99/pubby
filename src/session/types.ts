@@ -219,6 +219,7 @@ export type SessionAction =
   | { type: 'tick'; at: number } // clock: ends a timed pause
   // Results screen
   | { type: 'readyUp'; by: PlayerId }
+  | { type: 'unready'; by: PlayerId } // 9ak.3 (2.37): take back "I'm ready" before the host moves on
   | { type: 'advance'; by: PlayerId } // host: next round
   | { type: 'endSession'; by: PlayerId }; // host
 
@@ -288,6 +289,7 @@ export type SessionEvent =
   | { readonly type: 'resumed'; readonly reason: 'host' | 'timeLimit' }
   | { readonly type: 'pauseTimeLimitSet'; readonly seconds: number | null }
   | { readonly type: 'playerReady'; readonly player: PlayerId }
+  | { readonly type: 'playerUnready'; readonly player: PlayerId } // 9ak.3 (2.37): no pop-up, no log line
   | ({ readonly type: 'sessionEnded' } & SessionEnd);
 
 export interface LogEntry {

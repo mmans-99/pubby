@@ -3640,6 +3640,73 @@ Files: `src/ui/layout.ts`, `src/ui/game.ts` (`gameScreen`, `gameFrame`), `src/ui
 8. **Landscape (Android phone):** turn the phone sideways during a game: thin rail on the left with all the buttons and 😂 at the bottom; table above, hand along the bottom, Play bottom right. Try dealing, playing, Take cards, the target sheet, the menu and the results screen sideways.
 9. **iPad landscape:** looks as in 2.36.0.
 
+### 9ak.9 Built notes (2.37.0, Haiku; pushed 2026-11-16 13:18 on the user's "Push it", with the 9al fixes still to build)
+- Parts A to G built in order. Unit tests 473 of 473; `npm run check` clean; `node build.mjs` ok.
+- Part A: `sheetSeen(key, open)` in `between.ts` marks a sheet that was already open at the last redraw (target, take and asker sheets). Deviation: the whole bar gets the class `menu-open` (z 33) while the menu is open, because the menu button alone could not rise above the dim layer (the rail is its own stacking context, found by `landscape_check.py`).
+- Part B: Forfeit is `.forfeit-btn` in `.action-row` (left of the main button; in the rail, above it, full width). Final-two card keeps its own Forfeit. `testbed/bot.js` now finds `.forfeit-btn`.
+- Part C: `unready` (session, `phoneActions` allowlist, protocol 11). The host can't unready (rule). Tests: `tests/session/unready.test.ts` (6).
+- Part D: the footer count is always "N of M ready" (`.rstatus`); the waiting names are on the Next round button, as before. The non-host line is "X (host) starts the next round" with class `host-line` (the netgame check reads that class). Un-ready button is `.ready-undo`. `results-frame` counts as a framed screen (`hasFrame`). Checks updated: `netvotes_check.py`, `netgame_check.py`.
+- Part E: deviation: a scroll counts only while a finger is on a box, or within 1.5 s after it lifts (`FLING_MS`). The page's own restoring of each box's place also fires scroll events; counting those stalled redraws in the fake-clock checks. Pop-ups, a new screen and Fast forward are never held. `testbed/results_check.py` 8 of 8.
+- Part F: `gameLayout` gets `rail` (landscape and height 500 or less): table `viewH - 20 - hand`, hand `clamp(0.32 vH, 96, 150)`, action column 150 px. `data-rail` is set by `gameFrame` and cleared on every non-game screen (also `data-side`, which had the same gap). Sound, quick rules and 😂 sit at the bottom of the rail (fixed positions), not moved into the bar. Tablets keep the old layout. `tests/ui/layout.test.ts` (22 of 22). `testbed/landscape_check.py` 24 of 24 (844×390 and 740×360).
+- Extra fix found by `tablet_check` at 844×390: a long hand (about 50 cards after a waste-pile pick-up) dropped past the bottom of the hand slot, because the fan's curve (`0.9 × d²`) is not capped. Pre-existing, exposed by the landscape hand. The curve drop is now capped at 30 px for long rows (short hands unchanged). Test added to `tests/ui/fan.test.ts`.
+- Checks: `run_checks.py --all` (before the text and fan fixes): solo 36 of 37 (the known "new name shows at the table"), playthrough 53 of 53, drawer 9 of 9, back 14 of 14, offline 20 of 20, online 37 of 37, sound 44 of 44. After the fixes: netvotes 30 of 30, netgame 94 of 97 (only the known own-seat items), tablet 56 of 56, lasttrick 20 of 20 (one earlier flake, passes on rerun), results 8 of 8, landscape 24 of 24, popups: every check passes except take card, take sheet, Fast forward stop and tie band, which were not seen in the random games (same gap as 9aj.8). Lobby: the three "away" items fail as before.
+- Not covered by the checks, for the phone test: the take sheet and Fast forward Stop on screen; the tie band; and portrait menu and target chip at 320, 360 and 390 px.
+- `run_checks.py --all` does not list `tablet_check`, `popups_check`, `lasttrick_check`, `landscape_check` or `results_check`. Add them to its table before the next build.
+- `node_modules` is a link to `/opt/npm-tools/node_modules` (gitignored; no installs).
+
+## 9al. Fixes after the 2.37.0 phone test (user 2026-11-16 13:15; spec `PROJECT.md` 12w; target **2.37.1**, still not pushed)
+
+### 9al.0 Read first
+- Builds on the uncommitted 2.37.0 work (9ak). Bump `package.json` to **2.37.1**.
+- Parts in order, each testable alone: **A** round note floats, **B** target sheet tidy, **C** solid lead notice, **D** "You" in your own pop-ups, **E** 😂 in the bottom row (this also fixes the crushed Play button), **F** last-two check, **G** checks and test build.
+- Rules and session don't change. No protocol change.
+- If a part fights the code twice, stop and write "🔁 Switch to Opus".
+
+### 9al.1 Part A: the round note floats
+- Cause: `roundNote` (game.ts) is a block in the column flow under `.game-bar`, so it pushes the table down (as the menu did).
+- Fix: render it inside a layer like the menu: `h('div', { class: 'note-layer', onclick: () => update({ armed: null }) }, roundNote(s))`. CSS: `.note-layer { position: fixed; inset: 0; z-index: 31; }` (no dim), `.note-layer > .round-note { position: absolute; left: 12px; right: 12px; top: calc(56px + env(safe-area-inset-top)); width: auto; max-width: 520px; margin: 0 auto; box-shadow: 0 8px 20px rgba(0,0,0,.35); }`. Rail: `left: 64px; top: 8px`. The table must not move: check `.game-table-slot` top is the same with the note open and closed.
+
+### 9al.2 Part B: target sheet tidy
+1. Remove the quick chips (5 / 10 / 15 / 20) from `targetSheet` entirely (user). Delete the `.chips.center-chips` row; the stepper and Propose stay.
+2. Header: the old `.sheet-head` rule (styles.css ~322, `justify-content: space-between; position: sticky`) pushes the title to the far right. Add `.take-sheet .sheet-head { justify-content: flex-start; position: static; padding: 0; }` so the title sits next to the gold circle (as on the take sheet mockup).
+3. − and + are invisible (secondary on cream). `.target-sheet .step { width: 56px; height: 56px; min-height: 56px; border-radius: 50%; background: #efe6cf; color: var(--ink); border: 0; box-shadow: none; font-size: 1.6rem; font-weight: 900; }`, `:disabled { opacity: .35 }` and disable − at the minimum, + at 99.
+4. Keep the `seen` no-replay behaviour (9ak.1).
+
+### 9al.3 Part C: the lead notice is a solid pop-up
+- "Tariq is missing a suit / Tariq leads first / OK" today is a see-through `.panel` over a 28% dim limited to the table, so seat names show through.
+- `.notice-overlay`: `position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.55);` (whole screen). `.notice-card`: `background: var(--cream); color: var(--ink); border-radius: 18px; padding: 20px 18px; box-shadow: 0 12px 30px rgba(0,0,0,.45);` title ink 22px weight 800, text `#5d5646`, OK gold full width. Same for every notice that uses `noticeCard` (one-phone `noticeStage` too). Rail: overlay `padding-left: 64px`.
+
+### 9al.4 Part D: "You" in your own pop-ups
+- On the phone whose player it is (`ownSeat(g) === p.player`), the PATHETIC pop-up reads **"You forfeited"** (game.ts ~1415), and the last-two pop-up's line reads "You forfeited" (~1494). Everyone else still sees the name. One-phone mode (no own seat) keeps names.
+- Test (`tests/ui/` if the text builder can be pulled out as a pure function `forfeitLine(name, isMe)`; else cover in the browser check).
+
+### 9al.5 Part E: 😂 in the bottom row
+Cause of the crushed Play button (screenshot: Forfeit + "Pick a card to lead" in four lines): `.game-action-slot` keeps `padding: 0 76px` on both sides for the floating 😂, so on a 360 px phone the row is ~190 px for Forfeit (112) and Play.
+1. `game.ts`: export `reactionsToggle(): HTMLElement | null` (the button now made in `reactionsLayer`; null on game over). `reactionsLayer` keeps the sheet and the message bar, and renders the floating toggle **only** when the page has no inline one (app.ts: after building `screen`, `screen.querySelector('.react-inline')`; pass a flag to `reactionsLayer(inline)`).
+2. `gameFrame`: the action slot becomes `h('div', { class: 'game-action-slot' }, rail ? null : reactionsToggle() with class `react-inline`, h('div', { class: 'action-main' }, <today's contents>))`. CSS: `.game-action-slot { flex-direction: row; align-items: center; padding: 0; gap: 8px; }`, `.action-main { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }`. Move every `.game-action-slot > X` rule to `.action-main > X` and drop the ±64 / ±76 px margin hacks (`.round-buttons`, `.deal-bar`, `.game .play-bar` margins). `.react-inline { position: static; width: 48px; height: 48px; min-height: 48px; flex: none; font-size: 1.4rem; border-width: 2px; }`.
+3. Tablet landscape (`data-side`, not rail): the slot is a column; 😂 sits at its top, centred, above the buttons (as in 2.36); remove the `padding-top: 58px` and the fixed `html[data-side="1"] .reactions-toggle` position.
+4. Rail: unchanged (😂 fixed in the rail; no inline one).
+5. Results footer (9ak.4): 😂 (`react-inline`) is the first item of `.results-actions`, then Ultimate vote, then End the game.
+6. Screens with no frame (waiting screens) keep the floating toggle.
+7. The reactions sheet opens above the 😂 wherever it is: anchor it to the bottom of the screen above the action row (`bottom: calc(var(--bar-h, 64px) + 12px + env(safe-area-inset-bottom))`, `left: 8px`); check it doesn't cover the 😂 itself.
+
+### 9al.6 Part F: the last two (Forfeit + two rows of cards)
+- With Part E the row is [😂 48][Forfeit 112][Play flex]: at 360 px Play gets ~160 px. Buttons in `.action-row` get `white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`. When Forfeit shows, the hint reads "Pick a card" (not "Pick a card to lead").
+- Browser check (new `testbed/lasttwo_check.py`, or extend `lasttrick_check.py`): force the last two with a big hand (single player, play until two are left; the bot can pick up the waste pile to grow the hand), at 360×740 and 390×844: Forfeit and Play inside the window, Play ≥ 140 px wide and one line tall (height ≤ 56), the hand's lowest card above the action row's top, 😂 doesn't overlap any button.
+
+### 9al.7 Part G: checks
+- `npm test`, `npm run check`, `node build.mjs`; `landscape_check.py`, `results_check.py`, `tablet_check.py`, `popups_check.py`, `netgame_check.py`, `netvotes_check.py`, `playthrough.py`, `drawer_check.py` (the reactions sheet moved: update its selectors if needed). Add `tablet_check`, `popups_check`, `lasttrick_check`, `landscape_check`, `results_check` and the new check to `run_checks.py`'s table (9ak.9 note).
+- Publish the test build and give the 9al.8 checklist.
+
+### 9al.8 Phone checklist (2.37.1)
+1. **Round note:** tap R1: "Round 1 · no target" floats under the bar; the table doesn't move; tap anywhere to close.
+2. **Target sheet:** no 5 / 10 / 15 chips; − and + are visible round buttons; the title sits beside the gold circle; no flash.
+3. **Missing a suit:** a solid cream pop-up with OK; nothing shows through.
+4. **Forfeit pop-up:** your own forfeit says "PATHETIC!!! You forfeited".
+5. **😂:** sits at the left of the bottom row and of the results footer; it never covers a button; the reactions sheet still opens and works.
+6. **Last two with a big hand:** Forfeit and "Pick a card" / "Play 7♠" side by side on one line, nothing cut off, cards above the buttons.
+7. **Still to check from 2.37.0:** results un-ready (tap I'm ready twice — needs a network game or another phone as host), landscape sideways, take sheet Cancel, iPad.
+
 ## 8a. Playable test builds (required before every commit)
 
 `CLAUDE.md` rule 5: the user tests every change on their phone before approving a commit.

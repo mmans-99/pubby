@@ -434,6 +434,14 @@ function reduce(s: Session, a: SessionAction, rng: Rng, out: Out): Session {
       if (s.ready.includes(a.by)) return s;
       out.emit(s, { type: 'playerReady', player: a.by });
       return { ...s, ready: [...s.ready, a.by] };
+    case 'unready':
+      // 9ak.3 (2.37): a player takes back "I'm ready" while the host has not moved on. The host's own ready
+      // is not taken back: the host starts the next round.
+      assertPhase(s, 'results');
+      if (!s.ready.includes(a.by)) return s;
+      if (a.by === s.hostId) fail('The host starts the next round');
+      out.emit(s, { type: 'playerUnready', player: a.by });
+      return { ...s, ready: s.ready.filter((p) => p !== a.by) };
     case 'advance':
       assertHost(s, a.by, 'start the next round');
       assertPhase(s, 'results');

@@ -372,9 +372,10 @@ function edgeFan(count: number, edge: Edge, at: string): HTMLElement {
 type PlayerRow = PlayerView['players'][number];
 
 /** Everything after a seat's name: host, dealer, away, place, thinking dots (CODE.md 9w.1). */
-function seatTags(id: PlayerId, p: PlayerRow, o: TableOpts, thinking: boolean, place: boolean): Child[] {
+function seatTags(id: PlayerId, p: PlayerRow, o: TableOpts, thinking: boolean, place: boolean, mine = false): Child[] {
   return [
-    p.isHost ? h('span', { class: 'seat-host', 'aria-label': 'Host' }, '★') : null,
+    // 9ak.1 (2.37): your own pill has no host star (the pill is for your cards, not for the seat's roles).
+    p.isHost && !mine ? h('span', { class: 'seat-host', 'aria-label': 'Host' }, '★') : null,
     o.dealer === id ? h('span', { class: 'seat-dealer', 'aria-label': 'Deals' }, 'D') : null,
     // CODE.md 9u A5: a phone that left the screen; its seat is kept for 10 minutes.
     isAwayPlayer(id) ? h('span', { class: 'seat-away' }, 'Away') : null,
@@ -435,7 +436,8 @@ export function roundTable(s: Session, v: PlayerView, o: TableOpts): HTMLElement
       const someoneElse = o.highlight != null && o.highlight !== o.bottom;
       const turnText = turn && someoneElse;
       // A computer player gets a small computer icon, so it is never taken for a person (PROJECT.md 12c).
-      const nameKids: Child[] = [computer ? icon('bot', 'seat-bot') : null, h('span', { class: 'table-name' }, turnText ? `${p.sessionName}’s turn` : o.you && k === 0 ? 'You' : p.sessionName)];
+      // 9ak.1 (2.37): the turn label is just the name (the gold ring already says it is their turn).
+      const nameKids: Child[] = [computer ? icon('bot', 'seat-bot') : null, h('span', { class: 'table-name' }, turnText ? p.sessionName : o.you && k === 0 ? 'You' : p.sessionName)];
       const cls = (extra: string): string => ['table-seat', extra, turn ? 'turn' : '', turn && !turnText ? 'turn-me' : '', someoneElse && !turn ? 'not-turn' : '', out ? 'out' : '', isAwayPlayer(id) ? 'away' : '', o.onTap ? 'tappable' : '', thinking ? 'thinking' : ''].filter(Boolean).join(' ');
 
       if (k === 0) {
@@ -449,7 +451,7 @@ export function roundTable(s: Session, v: PlayerView, o: TableOpts): HTMLElement
           ? h('span', { class: 'pill-label', role: 'status' }, o.meLabel)
           : h('span', { class: 'pill-label' }, ...nameKids, ' · ', count);
         return seatEl(o, id, cls('me-pill') + (o.meLabel ? ' turn-label' : ''), `left:${at.x.toFixed(2)}%;top:min(${at.y.toFixed(2)}%, calc(100% - 14px))`, p.sessionName,
-          [label, ...seatTags(id, p, o, thinking, false)]);
+          [label, ...seatTags(id, p, o, thinking, false, true)]);
       }
       const tags = seatTags(id, p, o, thinking, true);
 

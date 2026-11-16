@@ -130,7 +130,7 @@ const PHONE_ACTIONS = new Set<string>([
   'playCard', 'pickUpWastePile', 'forfeit',
   'requestTake', 'answerTake', 'withdrawTake',
   'requestPause', 'respondPause', 'pause', 'resume', 'setPauseTimeLimit',
-  'readyUp', 'advance', 'endSession',
+  'readyUp', 'unready', 'advance', 'endSession',
 ]);
 
 /**

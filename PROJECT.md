@@ -898,6 +898,19 @@ User (network game test of 2.33, three screenshots) asked for:
 10. **Landscape on phones (option B).** On a phone held sideways (window height 500 px or less): the top bar becomes a thin dark rail down the left edge (menu, round, pause, target or take-cards, sound, help, and 😂 at the bottom). The table gets the full height above the hand; the hand runs along the bottom; the turn pill sits on the table; **Play** (gold) and the second action (Take cards, Forfeit, Deal again…) are stacked at the bottom right beside the hand. **Claude's call:** tablets in landscape keep the 2.34.5 layout (it passed the iPad checks); say if you want B there too.
 11. **Results screen (option B).** Top: a winner card (trophy, "Round 1 · Diego wins", "You came 4th · −1"). Under it three tabs: **Places** (default: one row per player, place, disc, name, this round's points and total; your row outlined gold), **Points** (the points table), **Awards** (the award cards and the slapped-by table). One short line under Places names the award that involves you, if any. A dark panel fixed at the bottom: discs of every player with a gold tick when ready and a dashed ring when not, "3 of 4 ready" / "Waiting for Arjun"; your **I'm ready** button (turns into "You're ready · tap to undo"); **Ultimate vote** and, for the host, **Next round** (waits for everyone, as now) and **End the game**. The panel never scrolls; only the tab content does. This is for network games and single player (the hidden one-phone mode keeps its screen).
 
+
+### 12w. Fixes after the 2.37.0 phone test (PLAN, user 2026-11-16 13:15; build guide `CODE.md` 9al; target **2.37.1**)
+
+**User (13:15), Android phone, 2.37.0 test build:** tapping the round chip pushes everything down (like the menu did); the target sheet's 5 / 10 / 15 chips are invisible until selected, remove them; "X is missing a suit" should be a pop-up that isn't see-through; the last two with Forfeit and two rows of cards looks wrong (Play squeezed into four lines); the PATHETIC pop-up should say "You" not your name; the 😂 button covers buttons on the results screen and elsewhere.
+
+1. **Round note** floats under the top bar; nothing moves.
+2. **Target sheet:** no quick chips; − and + clearly visible; title beside the icon.
+3. **Lead notice** ("missing a suit", "leads first"): a solid cream pop-up over a dimmed screen.
+4. **Your own pop-ups say "You"** ("You forfeited"), on your phone only.
+5. **😂 button (user chose 13:15):** sits in the bottom row, at the left of the action buttons and of the results footer, so it never covers anything. Landscape phones keep it in the rail; tablets above the action column.
+6. **Last two:** Forfeit and Play side by side on one line, nothing cut off.
+Claude's calls: the target sheet's header and stepper fixes; "Pick a card" (not "to lead") when Forfeit is shown; the notice dims the whole screen. No rule changes.
+
 ## 13. Quick rules (in-game help)
 
 - **What it is:** A short, simplified rules guide inside the app.

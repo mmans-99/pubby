@@ -97,9 +97,12 @@ export function fanLayout(n: number, width: number, maxCardW?: number, minCardW 
     const x0 = (width - (cardW + step * (m - 1))) / 2;
     const ang = Math.min(3, 30 / Math.max(1, m));
     const mid = (m - 1) / 2;
+    // 2.37 (9ak.6): the curve's drop at the ends is capped at 30 px (the height's room). A long hand (a pick-up of the
+    // waste pile, up to about 50 cards) used to drop past the bottom of the hand slot; short hands keep the 0.9 curve.
+    const curve = Math.min(0.9, 30 / Math.max(1, mid * mid));
     for (let i = 0; i < m; i++) {
       const d = i - mid;
-      spots.push({ x: x0 + i * step, y: ri * cardH * 0.55 + d * d * 0.9, rot: d * ang, z: spots.length + 1 });
+      spots.push({ x: x0 + i * step, y: ri * cardH * 0.55 + d * d * curve, rot: d * ang, z: spots.length + 1 });
     }
   });
   return { cardW, height: cardH + (rows.length > 1 ? cardH * 0.55 : 0) + 30, spots };

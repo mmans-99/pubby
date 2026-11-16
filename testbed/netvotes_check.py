@@ -86,7 +86,7 @@ def play_scenario(browser, base):
     for p in pages:
         close_popups(p)
     ng.check('target vote: agreed, so every phone shows the gold 10 badge on the round chip',
-             ng.wait_for(lambda: all(p.locator('.round-badge', has_text='10').count() == 1 for p in pages), 10))
+             ng.wait_for(lambda: all(p.locator('.target-chip', has_text='10').count() == 1 for p in pages), 10))
     ng.check('target vote: no target button once the target is agreed',
              pages[1].locator('.target-btn').count() == 0)
 
@@ -209,9 +209,10 @@ def play_scenario(browser, base):
     for p in pages:
         close_popups(p)
     ng.check('ready-up: every phone shows 1 of 3 ready',
-             ng.wait_for(lambda: all(p.locator('.ready-row', has_text='1 of 3 ready').count() == 1 for p in pages), 8))
-    ng.check('ready-up: Ben sees his own Ready as done',
-             pages[1].get_by_role('button', name='Ready', exact=True).count() == 1)
+             ng.wait_for(lambda: all(p.locator('.rstatus', has_text='1 of 3 ready').count() == 1 for p in pages), 8))
+    # 9ak.3 (2.37): Ben's own ready is a button that takes it back ("tap to undo").
+    ng.check('ready-up: Ben sees his own Ready as done (tap to undo)',
+             pages[1].locator('.ready-undo').count() == 1)
     ng.check('ready-up: Cat\'s phone can still ready Cat only (no one else\'s button)',
              pages[2].get_by_role('button', name="I'm ready", exact=True).count() == 1)
 

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fanBounds, fanLayout, fitFan } from '../../src/ui/cards.ts';
-import { CHROME_PORTRAIT, gameLayout, MIN_TABLE_H, sideBarW } from '../../src/ui/layout.ts';
+import { CHROME_PORTRAIT, CHROME_RAIL, gameLayout, MIN_TABLE_H, RAIL_GAP, RAIL_MAX_H, RAIL_SIDE_W, RAIL_W, sideBarW } from '../../src/ui/layout.ts';
 import { fitBox, seatCollisions, tableBoxFor, lastBox, lastStep } from '../../src/ui/table.ts';
 
 /** The 16 screen sizes from CODE.md 9w.7, plus the test phone (384 × 730, CODE.md 9x.5). */
@@ -49,9 +49,9 @@ test('the table box is the size of the row it sits in', () => {
   assert.deepEqual(lay.box, tableBoxFor(lay.tableW, lay.tableH, false));
 });
 
-test('landscape: the action bar is a column of sideBarW px beside the hand; the table is at least 96 px', () => {
+test('landscape (taller than 500 px): the action bar is a column of sideBarW px beside the hand; the table is at least 96 px', () => {
   for (const [w, h] of SIZES) {
-    if (w <= h) continue;
+    if (w <= h || h <= RAIL_MAX_H) continue;
     const lay = gameLayout(w, h, { bar: 92 });
     assert.equal(lay.sideW, sideBarW(w));
     assert.equal(lay.barH, 0);
@@ -61,10 +61,45 @@ test('landscape: the action bar is a column of sideBarW px beside the hand; the 
   }
 });
 
-test('landscape: 568 × 320 keeps a table of about 160 px (close to 2.28)', () => {
-  const lay = gameLayout(568, 320, { bar: 52 });
-  assert.equal(lay.handH, 96);
-  assert.equal(lay.tableH, 320 - 60 - 96);
+// 9ak.6 (2.37): landscape phones (height 500 or less) use the rail: a column of buttons down the left.
+const RAIL_PHONES: [number, number][] = [[568, 320], [667, 375], [740, 360], [844, 390], [932, 430]];
+
+test('rail (landscape, height 500 or less): the rail flag is on, the action column is 150 px, the hand is 96 to 150 px', () => {
+  for (const [w, h] of RAIL_PHONES) {
+    const lay = gameLayout(w, h, { bar: 52 });
+    assert.equal(lay.rail, true, `${w}x${h}`);
+    assert.equal(lay.sideW, RAIL_SIDE_W, `${w}x${h}`);
+    assert.equal(lay.barH, 0, `${w}x${h}`);
+    assert.ok(lay.handH >= 96 && lay.handH <= 150, `${w}x${h}: hand ${lay.handH}`);
+  }
+});
+
+test('rail: 844 × 390 fills the window (table + hand + 20 px chrome = 390), the hand row is beside its column', () => {
+  const lay = gameLayout(844, 390, { bar: 52 });
+  assert.equal(lay.rail, true);
+  assert.equal(lay.tableH + lay.handH + CHROME_RAIL, 390);
+  assert.equal(lay.tableW, 844 - RAIL_W - RAIL_GAP - RAIL_GAP);
+  assert.equal(lay.handW, lay.tableW - RAIL_SIDE_W - RAIL_GAP);
+});
+
+test('rail: the table is at least 96 px on every phone size', () => {
+  for (const [w, h] of RAIL_PHONES) {
+    const lay = gameLayout(w, h, { bar: 52 });
+    assert.ok(lay.tableH >= 96, `${w}x${h}: table ${lay.tableH}`);
+  }
+});
+
+test('rail: no action column when there is no bar (a round with no buttons)', () => {
+  const lay = gameLayout(844, 390, { bar: 0 });
+  assert.equal(lay.sideW, 0);
+  assert.equal(lay.handW, lay.tableW);
+});
+
+test('tablet landscape (1180 × 820) keeps the old layout: no rail, the old action column', () => {
+  const lay = gameLayout(1180, 820, { bar: 92 });
+  assert.equal(lay.rail, false);
+  assert.equal(lay.handH, 200);
+  assert.equal(lay.tableH, 820 - 60 - 200);
 });
 
 test('fanLayout with maxH: the fan fits its height for every card count 1 to 27 and every hand row', () => {

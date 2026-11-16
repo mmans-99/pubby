@@ -4,6 +4,32 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-16 (13:15, Opus) — Plan: fixes after the 2.37.0 phone test (docs only)
+
+**User (13:15)** tested 2.37.0 on Android and sent screenshots: the round note pushes the screen down; target quick chips invisible (remove them); "missing a suit" should be a solid pop-up; last two with Forfeit and a two-row hand squeezes Play into four lines; PATHETIC says "U forfeited" (should be "You"); 😂 covers buttons.
+
+**Found:** round note is in the column flow; quick chips and − / + are cream on cream, and an old `.sheet-head` rule pushes the title right; the notice is a see-through `.panel`; the action slot keeps 76 px empty on each side for the floating 😂, so Play gets ~70 px beside Forfeit; the pop-up uses the player's name ("U") on their own phone.
+
+**Pushed (13:18):** user said "Push it": 2.37.0 and this plan pushed together; the 9al fixes come as 2.37.1.
+
+**Decided:** 😂 moves into the bottom row (user's choice). Plan: `PROJECT.md` 12w, `CODE.md` 9al (Parts A to G, checklist 9al.8), `TODO.md` Phase 4u. Target 2.37.1 (2.37.0 not pushed).
+
+---
+
+## 2026-11-16 (build 9ak, Haiku) — Phase 4t, Parts A to G (2.37.0, pushed 13:18)
+
+**Built** from `CODE.md` 9ak, in order: A small fixes (target sheet no replay, "First to N" chip, floating menu, no star on your pill, D badge, plain Cancel, "Zainab •••"); B Forfeit in the action row; C un-ready (`unready`, protocol 11); D results screen B (winner card, Places / Points / Awards tabs, fixed footer); E hold redraws during a finger scroll; F landscape rail on phones (height 500 or less); G checks, version 2.37.0.
+
+**Checks:** unit 473 of 473; `npm run check` and build clean. Browser: landscape_check 24 of 24, results_check 8 of 8, tablet 56 of 56, netvotes 30 of 30, netgame 94 of 97 (the known own-seat items), lasttrick 20 of 20, playthrough 53, online 37, sound 44, drawer 9, back 14, offline 20. Lobby's three "away" items and solo's "new name" fail as before. Not seen in the random games: the take sheet, Fast forward Stop and the tie band (phone test).
+
+**Found on the way:** the menu's dim layer covered its own close button (the bar now rises with `menu-open`); the scroll hold counted the page's own scroll restoring (now only finger scrolls and a 1.5 s fling); a 50-card hand dropped past the hand slot in landscape (fan curve capped at 30 px for long rows); the `data-rail` and `data-side` flags stuck to other screens (now cleared).
+
+**Test build:** https://claude.ai/artifact/T3Vd2cT4yPEVkLkRLduC3w (checklist: `CODE.md` 9ak.8).
+
+**Next:** the user tests on the phone; then approval to commit and push.
+
+---
+
 ## 2026-11-16 (12:00) — Plan: tidy-ups, landscape B and results B (docs only, version stays 2.36.0)
 
 **User (11:49), testing 2.36.0 on an Android phone:** target sheet flashes on each number change; the gold target badge covers R1; the menu pushes the table down; the host star covers "lead" on your pill; Cancel on the take sheet looks off; drop "turn" from "Zainab's turn"; landscape doesn't look pro; Forfeit floats in the middle; results jump to the top when someone readies, and no un-ready; the "0 D" pill isn't one height; results too text heavy. **(12:00):** chose landscape B and results B.

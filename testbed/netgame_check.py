@@ -292,7 +292,7 @@ def play(cfg, browser, base):
             swap_hold_on = False
         # Start the hold once the results screen (its ready row) is on the host's phone, not at the phase change:
         # the round-end animations come first and take a while.
-        if ready_hold_on and hold_ready_at is None and pages[0].locator('.ready-row').count():
+        if ready_hold_on and hold_ready_at is None and pages[0].locator('.results-footer').count():
             hold_ready_at = time.time()
         if ready_hold_on and hold_ready_at is not None:
             if len(diag) < 12:
@@ -333,7 +333,8 @@ def play(cfg, browser, base):
     if cfg['players'] <= 3:
         check(f'{n} players: hidden swap on each phone', acts.get('keep', 0) + acts.get('swap', 0) >= n, json.dumps(acts))
     print('   bot actions:', json.dumps(acts), flush=True)
-    want = [f'{NAMES[0]} (host) is deciding: when to start the round', f'{NAMES[0]} (host) is deciding: next round or end the game']
+    # 9ak.4 (2.37): the results footer says "<host> (host) starts the next round" on the other phones.
+    want = [f'{NAMES[0]} (host) is deciding: when to start the round', f'{NAMES[0]} (host) starts the next round']
     check(f'{n} players: other phones see the host deciding (start the round, next round)', all(any(w in x for x in host_lines) for w in want) if cfg['rounds'] > 1 else any(want[0] in x for x in host_lines), str(sorted(host_lines)))
     check(f'{n} players: no reactions button on game over', all(p.locator('.reactions-toggle').count() == 0 for p in pages))
     snaps = [p.evaluate(SNAP_JS) for p in pages]
@@ -350,7 +351,16 @@ def play(cfg, browser, base):
     check(f'{n} players: each phone adds the game to its own profile', own)
     saved = [p.evaluate("localStorage.getItem('pubby.currentGame')") for p in pages]
     check(f'{n} players: a network game is not saved as the one-phone game', all(x in (None, 'null') for x in saved), str(saved))
-    # Host goes home first: a phone still on game over keeps its screen.
+    # Host goes home first: a phone still on game over keeps its screen. A pop-up still open is tapped away
+    # first (as a person would); its text is printed, so a pop-up that sticks shows up in the log.
+    for p in pages:
+        for _ in range(30):
+            pop = p.locator('.popup-overlay[data-skip]')
+            if not pop.count():
+                break
+            print('  note: a pop-up was still open at game over:', pop.first.inner_text()[:80].replace(chr(10), ' | '), flush=True)
+            pop.first.click()
+            time.sleep(0.3)
     pages[0].get_by_role('button', name='Back to home').click()
     time.sleep(1.5)
     check(f'{n} players: phones keep the game over screen when the host leaves', all(p.get_by_text('Final standings').count() for p in pages[1:]))

@@ -12,8 +12,8 @@ import { readGameUpdate, type GameRefused, type GameUpdate } from './netgame.ts'
 import { joinNames } from '../session/names.ts';
 import type { Level, Speed } from '../ai/persona.ts';
 
-/** Bumped when the messages change, so mixed phones refuse each other. 2: game messages (slice 2). 3: reactions, host adding (2.4). 4: online rooms (2.18). 5: ready at the table (2.19). 6: cards seen after the swap (2.20). 7: away seats and the away/back messages (2.25). 8: computer players in the lobby (2.26). 9: typed messages (2.34). 10: busy, a pop-up open (2.36). */
-export const LOBBY_PROTOCOL = 10; // 10: busy (2.36).
+/** Bumped when the messages change, so mixed phones refuse each other. 2: game messages (slice 2). 3: reactions, host adding (2.4). 4: online rooms (2.18). 5: ready at the table (2.19). 6: cards seen after the swap (2.20). 7: away seats and the away/back messages (2.25). 8: computer players in the lobby (2.26). 9: typed messages (2.34). 10: busy, a pop-up open (2.36). 11: un-ready on the results screen (2.37). */
+export const LOBBY_PROTOCOL = 11; // 11: unready (2.37).
 export const NAME_MAX = 16;
 
 export interface LobbySeat {

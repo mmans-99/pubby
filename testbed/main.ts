@@ -269,6 +269,7 @@ function logLine(entry: LogEntry): string | null {
     case 'resumed': return `Game resumed${e.reason === 'timeLimit' ? ' (time limit)' : ''}.`;
     case 'pauseTimeLimitSet': return `Pause time limit: ${e.seconds ? `${e.seconds}s` : 'none'}.`;
     case 'playerReady': return `${nm(e.player)} is ready.`;
+    case 'playerUnready': return `${nm(e.player)} is not ready.`;
     case 'sessionEnded': return `Session over (${e.reason}). Winner: ${names(e.winners)}.`;
   }
 }

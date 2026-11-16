@@ -25,6 +25,7 @@ import { csvSheetLayer, pastGamesScreen, profileDetails } from './history.ts';
 import { renderMarkdown } from './markdown.ts';
 import { joinLobbyFromLink, joinRoomFromLink, netLobbyScreen, stopNetLobby } from './netlobby.ts';
 import { screenKey } from './scrollkeep.ts';
+import { fastForwardOn } from '../ai/fastforward.ts';
 import { addProfile, deleteProfile, findProfile, keepStorage, loadGame, loadProfiles, loadRecords, loadVsProfiles, saveProfiles, saveVsProfiles } from './storage.ts';
 import { backUpStats, restoreFromBackup } from './backup.ts';
 import { getState, initState, say, update, type SetupSeat, type SetupState, type State } from './store.ts';
@@ -87,6 +88,7 @@ export function startApp(target: HTMLElement): void {
   if (link) { joinLobbyFromLink(link); render(); }
   if (room) { joinRoomFromLink(room); render(); }
   setupBack();
+  setupScrollHold();
   // CODE.md 9w.4 rule 5: turning the phone or resizing re-fits the table and hand. Debounced (150 ms);
   // not while a trick flies or the deck shuffles: those end with their own redraw.
   let resizeTimer = 0;
@@ -132,7 +134,63 @@ function freshSetup(): SetupState {
 // Render
 // ---------------------------------------------------------------------------
 
+// 9ak.5 (2.37): hold redraws while a finger scrolls a box (data-scroll). A rebuild mid-fling drops the fling and
+// can jump the box, so the redraw waits until the finger lifts and the box has been still for a moment.
+// Never held: a new screen (screenKey changes), a pop-up waiting, Fast forward (those must show at once).
+const SCROLL_QUIET_MS = 150;
+let touching = false;
+let lastScrollAt = 0;
+let heldRedraw = false;
+let flushTimer = 0;
+
 function render(): void {
+  const st = getState();
+  const mustShow = screenKey(st) !== lastPageKey || st.popups.length > 0 || fastForwardOn();
+  if (!mustShow && (touching || performance.now() - lastScrollAt < SCROLL_QUIET_MS)) {
+    heldRedraw = true;
+    return;
+  }
+  heldRedraw = false;
+  paint();
+}
+
+/** After a held redraw: paint once the finger has lifted and the box has been still for SCROLL_QUIET_MS. */
+function flushSoon(): void {
+  window.clearTimeout(flushTimer);
+  flushTimer = window.setTimeout(() => {
+    if (!heldRedraw || touching) return; // touchend calls flushSoon again
+    if (performance.now() - lastScrollAt >= SCROLL_QUIET_MS) { heldRedraw = false; render(); } else flushSoon();
+  }, SCROLL_QUIET_MS + 10);
+}
+
+/** A fling (the box keeps moving after the finger lifts) lasts about this long at most. */
+const FLING_MS = 1500;
+
+/**
+ * The scroll and touch listeners for the hold (set up once, in startApp). Only a finger's scroll counts:
+ * the page's own restoring of each box's place also fires scroll events, and those must not hold a redraw.
+ */
+function setupScrollHold(): void {
+  const inBox = (el: EventTarget | null): boolean => el instanceof Element && el.closest('[data-scroll]') !== null;
+  let touchEndAt = -Infinity;
+  const endTouch = (): void => {
+    if (!touching) return;
+    touching = false;
+    touchEndAt = performance.now();
+    flushSoon();
+  };
+  document.addEventListener('touchstart', (e) => { if (inBox(e.target)) touching = true; }, { capture: true, passive: true });
+  document.addEventListener('touchend', endTouch, { capture: true, passive: true });
+  document.addEventListener('touchcancel', endTouch, { capture: true, passive: true });
+  document.addEventListener('scroll', (e) => {
+    if (!(e.target instanceof HTMLElement) || e.target.dataset['scroll'] === undefined) return;
+    if (!touching && performance.now() - touchEndAt >= FLING_MS) return; // not a finger: the page's own restoring
+    lastScrollAt = performance.now();
+    flushSoon();
+  }, { capture: true, passive: true });
+}
+
+function paint(): void {
   const st = getState();
   const screen =
     st.screen === 'profiles' ? profilesScreen()
@@ -143,6 +201,8 @@ function render(): void {
     : st.screen === 'netlobby' ? netLobbyScreen(() => update({ screen: 'home' }))
     : st.screen === 'bye' ? byeScreen()
     : homeScreen();
+  // 9ak.6 (2.37): the game's landscape flags (rail, side column) only apply while a game screen is on show.
+  if (st.screen !== 'game' || !st.game) { delete document.documentElement.dataset['rail']; delete document.documentElement.dataset['side']; }
   // The lobby's links carry a network game, so they stay open while it's on screen.
   if (st.screen !== 'netlobby' && !(st.screen === 'game' && st.game?.net)) stopNetLobby();
   const parts: (HTMLElement | null)[] = [

@@ -578,10 +578,18 @@ export function gameScreen(g: SavedGame): HTMLElement {
   // 2.31 (CODE.md 9aa Part A): the scrolling box is named, so a redraw keeps its place (app.ts render).
   const content: Child = framed ? body : h('div', { class: 'game-scroll', 'data-scroll': `game-${s.phase}-${s.round}` }, body);
   return h('main', { class: framed ? 'screen game fixed framed' : 'screen game fixed' },
-    h('div', { class: 'game-bar' },
-      h('button', { class: 'icon-btn', 'aria-label': 'Menu', 'aria-expanded': st.menuOpen ? 'true' : 'false', onclick: () => update({ menuOpen: !st.menuOpen, armed: null }) }, icon('menu')),
+    h('div', { class: st.menuOpen ? 'game-bar menu-open' : 'game-bar' },
+      // 9ak.1 (2.37): while the menu is open the button reads as a close (×) and stays above the menu layer.
+      h('button', {
+        class: st.menuOpen ? 'icon-btn menu-btn open' : 'icon-btn menu-btn',
+        'aria-label': st.menuOpen ? 'Close menu' : 'Menu',
+        'aria-expanded': st.menuOpen ? 'true' : 'false',
+        onclick: () => update({ menuOpen: !st.menuOpen, armed: null }),
+      }, icon(st.menuOpen ? 'x' : 'menu')),
       roundChip(s, label),
       ownSeat(g) ? netPauseButton(g) : pauseButton(s),
+      // 9ak.1 (2.37): once a target is agreed, a gold "First to N" chip sits right after the pause button.
+      s.target !== null ? targetChip(s) : null,
       // 9aj.5 (2.36): the target score, proposed from here (gold ring); it never shares the bar with Take cards.
       targetButton(s),
       // 2.31 (CODE.md 9aa Part C item 3): the jokers and hidden-deck chips sit in the top bar while dealing.
@@ -589,7 +597,8 @@ export function gameScreen(g: SavedGame): HTMLElement {
       takeButton(g),
     ),
     st.armed === 'roundinfo' ? roundNote(s) : null,
-    st.menuOpen ? (g.net ? netMenu(g) : gameMenu(g)) : null,
+    // 9ak.1 (2.37): the menu floats as a card over the table; a tap outside it closes it.
+    st.menuOpen ? menuLayer(g.net ? netMenu(g) : gameMenu(g)) : null,
     st.lastOpen && s.phase !== 'gameOver' && g.lastTrick ? lastSheet(s, g.lastTrick) : null,
     targetSheet(s, { me: ownSeat(g) ?? undefined }),
     fastBanner(g),
@@ -607,13 +616,38 @@ export function gameScreen(g: SavedGame): HTMLElement {
 function roundChip(s: Session, label: Child): HTMLElement {
   const open = getState().armed === 'roundinfo';
   const word = s.phase === 'gameOver' ? 'Game over' : s.ultimateRound && s.phase !== 'results' ? 'Ultimate Round' : `Round ${s.round}`;
-  const badge = s.target !== null ? h('span', { class: 'round-badge', 'aria-hidden': 'true' }, icon('target'), String(s.target)) : null;
+  // 9ak.1 (2.37): the round chip no longer carries a target badge; the target chip sits beside the bar's buttons.
   return h('button', {
     class: open ? 'round-chip on' : 'round-chip',
     'aria-label': s.target !== null && s.phase !== 'gameOver' ? `${word}, first to ${s.target} points` : word,
     'aria-expanded': open ? 'true' : 'false',
     onclick: () => update({ armed: open ? null : 'roundinfo', menuOpen: false }),
-  }, label, badge);
+  }, label);
+}
+
+/**
+ * 9ak.1 (2.37): the gold "First to 10" chip in the top bar, once a target is agreed. A tap shows the round note.
+ * On narrow phones the word "First to" hides (CSS `.tc-word`), so the chip keeps the number.
+ */
+function targetChip(s: Session): HTMLElement {
+  const open = getState().armed === 'roundinfo';
+  return h('button', {
+    class: open ? 'target-chip on' : 'target-chip',
+    'aria-label': `First to ${s.target} points`,
+    'aria-expanded': open ? 'true' : 'false',
+    onclick: () => update({ armed: open ? null : 'roundinfo', menuOpen: false }),
+  }, icon('target'), h('span', { class: 'target-chip-text' }, h('span', { class: 'tc-word' }, 'First to '), String(s.target)));
+}
+
+/**
+ * 9ak.1 (2.37): the menu as a floating card. The layer dims the table; a tap on the dim closes the menu.
+ * Landscape (the rail, 9ak.6) moves the card to the right of the rail (CSS).
+ */
+function menuLayer(menu: HTMLElement): HTMLElement {
+  return h('div', {
+    class: 'menu-layer',
+    onclick: (e: Event) => { if (e.target === e.currentTarget) update({ menuOpen: false, armed: null }); },
+  }, menu);
 }
 
 /** 9aj.5 (2.36): the small cream note under the bar; any tap closes it. */
@@ -884,7 +918,8 @@ function lastSheet(s: Session, t: LastTrick): HTMLElement {
 
 /** True when a body is (or holds) a fixed game frame, so the screen must not scroll (2.29). */
 function hasFrame(c: Child): boolean {
-  if (c instanceof HTMLElement) return c.classList.contains('game-frame');
+  // 9ak.4 (2.37): the results screen B is a framed column too (its own scrolling body and fixed footer).
+  if (c instanceof HTMLElement) return c.classList.contains('game-frame') || c.classList.contains('results-frame');
   if (Array.isArray(c)) return (c as readonly Child[]).some(hasFrame);
   return false;
 }
@@ -908,6 +943,8 @@ export function gameFrame(lay: GameLayout, parts: { table: Child; hand?: Child; 
   root.style.setProperty('--side-w', `${lay.sideW.toFixed(1)}px`);
   root.style.setProperty('--hand-h', `${lay.handH.toFixed(1)}px`);
   if (lay.landscape && lay.sideW > 0) root.dataset['side'] = '1'; else delete root.dataset['side'];
+  // 9ak.6 (2.37): the rail (landscape phones): the top bar is a column down the left.
+  if (lay.rail) root.dataset['rail'] = '1'; else delete root.dataset['rail'];
   return h('div', { class: 'game-frame', style: `--hand-h:${lay.handH.toFixed(1)}px;--bar-h:${lay.barH.toFixed(1)}px;--side-w:${lay.sideW.toFixed(1)}px` },
     h('div', { class: 'game-table-slot' }, parts.table,
       parts.extra ? h('div', { class: parts.extraAt === 'top' ? 'game-extra at-top' : 'game-extra', 'data-scroll': 'extra' }, parts.extra) : null),
@@ -1241,15 +1278,17 @@ export function playHandStage(g: SavedGame): Child {
   const onTap = myTurn
     ? (c: Card) => { if (selected === c.id) play(c.id); else update({ selected: c.id }); }
     : null;
+  // 9ak.2 (2.37): Forfeit is a red outline button in the bottom action row (flag icon); tap twice to forfeit.
   const forfeitArmed = st.armed === 'forfeit';
   const forfeitBtn = v.canForfeit
     ? h('button', {
-      class: forfeitArmed ? 'danger' : 'ghost',
+      class: forfeitArmed ? 'forfeit-btn armed' : 'forfeit-btn',
+      'aria-label': forfeitArmed ? 'Tap again to forfeit, you finish last' : 'Forfeit',
       onclick: () => {
         if (!forfeitArmed) { update({ armed: 'forfeit' }); return; }
         send([{ type: 'forfeit', by: v.me }]);
       },
-    }, forfeitArmed ? 'Tap again to forfeit (last place)' : 'Forfeit')
+    }, icon('flag'), forfeitArmed ? ' Tap again' : ' Forfeit')
     : null;
 
   // Network game (2.5): the leader can't play while a take-cards request waits; the trick waits for the answer.
@@ -1290,13 +1329,19 @@ export function playHandStage(g: SavedGame): Child {
       ? h('p', { class: 'note warn' }, `Careful: if you play this joker, ${nameOf(s, jokerGivesWin(s, v.me))} ${
         (s.play?.hands[jokerGivesWin(s, v.me)!]?.length ?? 0) === 0 ? 'goes out with their last card unopposed and wins' : 'can play their last card unopposed and win'} the round.`)
       : null,
-    !choosing ? forfeitBtn : null,
     takeControls(s, v.me),
     !ownSeat(g) && !myTurn && !choosing && !s.takeRequests.some((r) => r.target === v.me && !r.agreed)
       ? passOnButton(g)
       : null,
   ];
   if (myTurn && ownSeat(g)) buzzForTurn(g, v);
+  // 9ak.2 (2.37): the action row: Forfeit on the left, the main button (or the "Wait for" hint) on the right.
+  // The final-two decision card has its own Forfeit, so the row leaves it out while choosing.
+  const waitHint = !myTurn && actor && !choosing ? h('span', { class: 'action-hint' }, `Wait for ${nameOf(s, actor)}`) : null;
+  const barForfeit = choosing ? null : forfeitBtn;
+  const action: Child = barForfeit || playButton || waitHint
+    ? h('div', { class: 'action-row' }, barForfeit, playButton ?? waitHint)
+    : null;
   return gameFrame(lay, {
     table: trickArea(s, g, v, v.me, actor ?? v.me, lay, myTurn ? turnLabel(s, v) : undefined),
     hand: fastItems.length
@@ -1305,7 +1350,7 @@ export function playHandStage(g: SavedGame): Child {
         head: false, fit: lay.handH, width: lay.handW,
         yourTurn: myTurn,
       }),
-    action: playButton,
+    action,
     extra,
   });
 }

@@ -20,6 +20,15 @@ export const CHROME_LANDSCAPE = 60;
 export const MIN_TABLE_LANDSCAPE = 96;
 /** Landscape: the action bar's column beside the hand on a phone (CODE.md 9x.3). */
 export const SIDE_BAR_W = 170;
+/** 9ak.6 (2.37): a landscape phone (height 500 or less) keeps its buttons in a rail down the left. */
+export const RAIL_MAX_H = 500;
+/** The rail's width, and the gap the screen keeps after it (the screen's left padding is their sum). */
+export const RAIL_W = 56;
+export const RAIL_GAP = 8;
+/** Rail: top padding 8, row gap 4, margins 8 (no top bar row, CODE.md 9ak.6). */
+export const CHROME_RAIL = 20;
+/** Rail: the action column beside the hand. */
+export const RAIL_SIDE_W = 150;
 
 /**
  * Landscape: the action column's width (CODE.md 9ag.3 fix 2, 2.34.5). 17% of the
@@ -52,6 +61,8 @@ export interface GameLayout {
   sideW: number;
   /** The table's scale number and box for drawing. */
   box: TableBox;
+  /** 9ak.6 (2.37): landscape phones (height 500 or less): the top bar is a rail down the left (RAIL_W wide). */
+  rail: boolean;
 }
 
 /**
@@ -67,17 +78,27 @@ export function gameLayout(viewW: number, viewH: number, opts: LayoutOpts = {}):
   const inner = Math.min(viewW, 1100) - 16;
   const wantHand = opts.hand ?? true;
   const bar = opts.bar ?? 52;
+  const rail = landscape && viewH <= RAIL_MAX_H;
   if (!landscape) {
     const room = viewH - CHROME_PORTRAIT - bar; // for the table and the hand together
     let handH = wantHand ? clamp(0.2 * viewH, 120, 190) : 0;
     if (wantHand && room - handH < MIN_TABLE_H) handH = Math.max(120, room - MIN_TABLE_H);
     const tableW = Math.min(viewW - 16, 760);
     const tableH = room - handH;
-    return { landscape, tableW, tableH, handH, handW: inner, barH: bar, sideW: 0, box: tableBoxFor(tableW, tableH, false) };
+    return { landscape, tableW, tableH, handH, handW: inner, barH: bar, sideW: 0, box: tableBoxFor(tableW, tableH, false), rail: false };
+  }
+  // 9ak.6 (2.37): a short landscape phone: the rail, the table and the hand are taller, and the action column is 150 px.
+  if (rail) {
+    const railInner = viewW - RAIL_W - RAIL_GAP - RAIL_GAP; // the screen pads RAIL_W + RAIL_GAP on the left, RAIL_GAP on the right
+    const sideRailW = bar > 0 ? RAIL_SIDE_W : 0;
+    const handRailH = wantHand || bar > 0 ? clamp(0.32 * viewH, 96, 150) : 0;
+    const tableRailH = Math.max(MIN_TABLE_LANDSCAPE, viewH - CHROME_RAIL - handRailH);
+    const handRailW = railInner - (sideRailW ? sideRailW + RAIL_GAP : 0);
+    return { landscape, tableW: railInner, tableH: tableRailH, handH: handRailH, handW: handRailW, barH: 0, sideW: sideRailW, box: tableBoxFor(railInner, tableRailH, true), rail: true };
   }
   const sideW = bar > 0 ? sideBarW(viewW) : 0;
   const handH = wantHand || bar > 0 ? clamp(0.3 * viewH, 96, 200) : 0;
   const tableW = inner;
   const tableH = Math.max(MIN_TABLE_LANDSCAPE, viewH - CHROME_LANDSCAPE - handH);
-  return { landscape, tableW, tableH, handH, handW: inner - sideW, barH: 0, sideW, box: tableBoxFor(tableW, tableH, true) };
+  return { landscape, tableW, tableH, handH, handW: inner - sideW, barH: 0, sideW, box: tableBoxFor(tableW, tableH, true), rail: false };
 }

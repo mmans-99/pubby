@@ -17,8 +17,10 @@ import type { PlayerId, Session, SessionAction } from '../session/types.ts';
 import { joinNames } from '../session/names.ts';
 import { getState, update } from './store.ts';
 import { chooseLeaderStage, dealingStage, fastForwardMenuItems, gameFrame, handBlock, isHostSeat, nameOf, noticeStage, ownSeat, playHandStage, publicView, send, stageLayout } from './game.ts';
-import { netRoundStart } from './roundstart.ts';
-import { awardsRow, gameOverStage, scoreSheet } from './between.ts';
+import { miniDisc, netRoundStart } from './roundstart.ts';
+import { awardCards, gameOverStage, scoreSheet, slappedByTable } from './between.ts';
+import { ordinal } from './cards.ts';
+import { scoreRows } from './scores.ts';
 import { playerView } from '../session/view.ts';
 import { netSeats } from './netlobby.ts';
 import { roundTable, wastePile } from './table.ts';
@@ -123,73 +125,143 @@ function beforeRound(g: SavedGame): Child {
   });
 }
 
-/** Ready-up (2.5): who is ready, on every phone; each phone readies only its own player. */
-function readyRow(s: Session, me: PlayerId): HTMLElement {
-  const iReady = s.ready.includes(me);
-  // 2.20 (Part C): on every phone except the host's and the player's own, say who the host is waiting for.
-  const waitingFor = s.waitForAll ? s.order.filter((p) => p !== s.hostId && p !== me && !s.ready.includes(p)) : [];
-  const hostPhone = me === s.hostId;
-  return h('section', { class: 'ready-row', 'aria-label': 'Ready' },
-    h('div', { class: 'name-chips' }, s.order.map((p) => {
-      const on = s.ready.includes(p);
-      return h('span', {
-        class: on ? 'name-chip on' : 'name-chip',
-        'aria-label': `${nameOf(s, p)} ${on ? 'ready' : 'not ready'}`,
-      }, on ? [icon('check'), ` ${nameOf(s, p)}`] : nameOf(s, p));
-    })),
-    h('p', { class: 'muted small center' }, `${s.ready.length} of ${s.order.length} ready`),
-    waitingFor.length && !hostPhone ? h('p', { class: 'warn center' }, `Waiting for ${joinNames(waitingFor.map((p) => nameOf(s, p)))}`) : null,
-    iReady
-      ? h('button', { class: 'secondary', disabled: true }, icon('check'), ' Ready')
-      : h('button', { class: 'big', onclick: () => send([{ type: 'readyUp', by: me }]) }, "I'm ready"),
-  );
-}
+/** 9ak.4 (2.37): the results tab (Places, Points or Awards). Back to Places when the round changes. */
+type ResultsTab = 'places' | 'points' | 'awards';
+let resultsTab: ResultsTab = 'places';
+let resultsTabRound = -1;
 
+const signedPts = (n: number): string => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0');
+
+/**
+ * 9ak.4 (2.37): results screen B. A column: the winner card, three tabs and the scrolling body on top;
+ * a fixed footer (ready discs, the ready button, Next round, Ultimate vote and End the game) below.
+ * The footer stays put while the body scrolls, so the buttons never move under a finger.
+ */
 function results(g: SavedGame): Child {
   const s = g.session;
   const me = ownSeat(g)!;
   const rec = s.rounds[s.rounds.length - 1];
   if (!rec) return h('p', null, 'No results yet.');
+  if (resultsTabRound !== rec.round) { resultsTab = 'places'; resultsTabRound = rec.round; }
   const host = isHostSeat(g);
   const armed = getState().armed === 'endsession';
   // 2.20 (Part C): the host's button waits for every other player to be ready.
   const missingOthers = s.waitForAll ? s.order.filter((p) => p !== s.hostId && !s.ready.includes(p)) : [];
-  return h('div', { class: 'stack' },
-    h('h2', { class: 'center results-head' }, icon('trophy'), ` ${nameOf(s, rec.finishingOrder[0])} wins ${rec.ultimate ? 'the Ultimate Round' : `round ${rec.round}`}`),
-    s.ultimateRound ? h('p', { class: 'center' }, h('span', { class: 'chip-info gold' }, icon('bolt'), ' Next: Ultimate Round')) : null,
-    scoreSheet(s, { me }),
-    awardsRow(s),
-    readyRow(s, me),
-    // Every phone can ask for the Ultimate Round (2.5); the host moves on.
-    s.ultimateRound
-      ? null
-      : h('button', {
-        class: 'secondary',
-        onclick: () => send([{ type: 'callVote', by: me, kind: 'ultimate' }]),
-      }, icon('bolt'), s.order.length === 2 ? ' Ask for the Ultimate Round' : ' Ultimate Round vote'),
-    host
-      ? [
-        h('button', {
-          class: 'big',
-          disabled: missingOthers.length > 0,
-          onclick: () => {
-            // One tap for the host: ready the host (if not yet) and move on.
-            const acts: SessionAction[] = s.ready.includes(s.hostId) ? [] : [{ type: 'readyUp', by: s.hostId }];
-            send([...acts, { type: 'advance', by: s.hostId }]);
-          },
-        }, icon('play'), missingOthers.length
-          ? ` Waiting for ${joinNames(missingOthers.map((p) => nameOf(s, p)))}`
-          : s.ultimateRound ? ' Start the Ultimate Round' : ` Next round · ${nameOf(s, s.hostId)}`),
-        h('button', {
-          class: armed ? 'danger' : 'ghost',
-          onclick: () => {
-            if (!armed) { update({ armed: 'endsession' }); return; }
-            send([{ type: 'endSession', by: s.hostId }]);
-          },
-        }, armed ? 'Tap again to end the game' : 'End the game'),
-      ]
-      : hostDeciding(s, s.ultimateRound ? 'when to start the Ultimate Round' : 'next round or end the game'),
-  );
+  const winner = rec.finishingOrder[0];
+  const myIndex = rec.finishingOrder.indexOf(me);
+  const myRow = scoreRows(s).find((r) => r.id === me);
+  // Points only count for normal rounds (the Ultimate Round is outside the score).
+  const myPts = !rec.ultimate && myRow ? myRow.points[myRow.points.length - 1] : undefined;
+  const youCame = myIndex >= 0 ? `You came ${ordinal(myIndex + 1)}${myPts !== undefined ? ` · ${signedPts(myPts)}` : ''}` : '';
+
+  const winCard = h('div', { class: 'win-card' },
+    h('span', { class: 'win-trophy', 'aria-hidden': 'true' }, icon('trophy')),
+    h('div', { class: 'win-text' },
+      h('small', { class: 'win-kicker' }, `Round ${rec.round}`),
+      h('b', { class: 'win-name' }, rec.ultimate ? `${nameOf(s, winner)} wins the Ultimate Round` : `${nameOf(s, winner)} wins`),
+      youCame ? h('span', { class: 'win-you' }, youCame) : null));
+
+  const tabLabels: [ResultsTab, string][] = [['places', 'Places'], ['points', 'Points'], ['awards', 'Awards']];
+  const tabs = h('div', { class: 'results-tabs', role: 'tablist', 'aria-label': 'Results' },
+    tabLabels.map(([t, label]) => h('button', {
+      class: resultsTab === t ? 'results-tab on' : 'results-tab',
+      role: 'tab',
+      'aria-selected': resultsTab === t ? 'true' : 'false',
+      onclick: () => { resultsTab = t; update({}); },
+    }, label)));
+
+  const placesBody = (): Child => {
+    const scores = s.scores;
+    const mine = awardCards(s).find((a) => a.short.includes(nameOf(s, me)));
+    return h('div', { class: 'stack' },
+      h('div', { class: 'place-list' }, rec.finishingOrder.map((id, i) => {
+        const pts = rec.points[id] ?? 0;
+        return h('div', { class: id === me ? 'place-row mine' : 'place-row' },
+          h('span', { class: i === 0 ? 'place-word gold' : 'place-word' }, ordinal(i + 1)),
+          miniDisc(s, id, '38px'),
+          h('span', { class: 'place-name' }, nameOf(s, id), id === me ? ' (you)' : '',
+            s.ultimateLabels?.winner === id ? h('span', { class: 'tag gold' }, 'Ultimate Winner') : null,
+            s.ultimateLabels?.losers.includes(id) ? h('span', { class: 'tag' }, 'Ultimate Loser') : null),
+          h('span', { class: 'place-pts' },
+            rec.ultimate ? null : h('b', null, signedPts(pts)),
+            h('small', null, `total ${scores[id] ?? 0}`)));
+      })),
+      mine ? h('p', { class: 'award-mine small' }, icon('trophy'), ` ${mine.label}: ${mine.short}`) : null);
+  };
+
+  const pointsBody = (): Child => scoreSheet(s, { me }) ?? h('p', { class: 'muted small center' }, 'No points yet.');
+
+  const awardsBody = (): Child => {
+    const cards = awardCards(s);
+    return h('div', { class: 'stack' },
+      cards.length
+        ? h('div', { class: 'awards-grid' }, cards.map((a) => h('div', { class: 'award-card' },
+          h('span', { class: 'award-icon', 'aria-hidden': 'true' }, icon('trophy')),
+          h('small', { class: 'award-label' }, a.label),
+          h('b', { class: 'award-value' }, a.short))))
+        : h('p', { class: 'muted small center' }, 'No slaps yet. Suspiciously peaceful.'),
+      slappedByTable(s));
+  };
+
+  const body = resultsTab === 'places' ? placesBody() : resultsTab === 'points' ? pointsBody() : awardsBody();
+
+  // Footer: who is ready, then the ready button (every phone), then the host's Next round.
+  const readyCount = s.ready.length;
+  const iReady = s.ready.includes(me);
+  const readyStrip = h('div', { class: 'ready-strip', 'aria-label': 'Ready' },
+    h('div', { class: 'rdiscs' }, s.order.map((p) => {
+      const on = s.ready.includes(p);
+      return h('span', { class: on ? 'rdisc on' : 'rdisc', 'aria-label': `${nameOf(s, p)} ${on ? 'ready' : 'not ready'}` },
+        miniDisc(s, p, '40px'),
+        on ? h('span', { class: 'rtick', 'aria-hidden': 'true' }, icon('check')) : null);
+    })),
+    h('p', { class: 'rstatus' }, `${readyCount} of ${s.order.length} ready`));
+  const readyButton: Child = host
+    ? null
+    : iReady
+      ? h('button', { class: 'ready-undo', onclick: () => send([{ type: 'unready', by: me }]) }, icon('check'), " You're ready · tap to undo")
+      : h('button', { class: 'big ready-big', onclick: () => send([{ type: 'readyUp', by: me }]) }, "I'm ready");
+  const nextButton: Child = host
+    ? h('button', {
+      class: 'big gold-big',
+      disabled: missingOthers.length > 0,
+      onclick: () => {
+        // One tap for the host: ready the host (if not yet) and move on.
+        const acts: SessionAction[] = s.ready.includes(s.hostId) ? [] : [{ type: 'readyUp', by: s.hostId }];
+        send([...acts, { type: 'advance', by: s.hostId }]);
+      },
+    }, icon('play'), missingOthers.length
+      ? ` Waiting for ${joinNames(missingOthers.map((p) => nameOf(s, p)))}`
+      : s.ultimateRound ? ' Start the Ultimate Round' : ` Next round · ${nameOf(s, s.hostId)}`)
+    : h('p', { class: 'rhost host-line muted small center' }, `${nameOf(s, s.hostId)} (host) starts the next round`);
+  const ultimateButton: Child = s.ultimateRound
+    ? null
+    : h('button', {
+      class: 'secondary ultimate-btn',
+      onclick: () => send([{ type: 'callVote', by: me, kind: 'ultimate' }]),
+    }, icon('bolt'), s.order.length === 2 ? ' Ask for the Ultimate Round' : ' Ultimate Round vote');
+  const endButton: Child = host
+    ? h('button', {
+      class: armed ? 'danger end-btn' : 'ghost end-btn',
+      onclick: () => {
+        if (!armed) { update({ armed: 'endsession' }); return; }
+        send([{ type: 'endSession', by: s.hostId }]);
+      },
+    }, armed ? 'Tap again to end the game' : 'End the game')
+    : null;
+
+  return h('div', { class: 'results-frame' },
+    h('div', { class: 'results-scroll', 'data-scroll': `results-${rec.round}-${resultsTab}` },
+      winCard,
+      s.ultimateRound ? h('p', { class: 'center' }, h('span', { class: 'chip-info gold' }, icon('bolt'), ' Next: Ultimate Round')) : null,
+      tabs,
+      body),
+    h('div', { class: 'results-footer' },
+      readyStrip,
+      readyButton,
+      nextButton,
+      h('div', { class: 'row results-actions' }, ultimateButton, endButton),
+    ));
 }
 
 /** Game menu in a network game: the host closes the game for everyone; others leave. */

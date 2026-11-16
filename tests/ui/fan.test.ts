@@ -42,3 +42,16 @@ test('cards rise left to right, later cards on top', () => {
     assert.ok(spots[i]!.x > spots[i - 1]!.x);
   }
 });
+
+// 2.37 (CODE.md 9ak.6): a long hand (a pick-up of the waste pile can give about 50 cards) stays inside its height.
+test('a long hand (50 cards) in the landscape rail: every card stays inside the fan height', () => {
+  for (const maxH of [125, 146]) {
+    for (const width of [614, 658]) {
+      const fan = fanLayout(50, width, undefined, 64, maxH);
+      const cardH = fan.cardW * 1.4;
+      const lowest = Math.max(...fan.spots.map((s) => s.y)) + cardH;
+      assert.ok(lowest <= fan.height + 0.01, `maxH ${maxH} width ${width}: lowest ${lowest.toFixed(1)} over ${fan.height.toFixed(1)}`);
+      assert.ok(fan.height <= maxH + 0.01, `maxH ${maxH} width ${width}: height ${fan.height.toFixed(1)}`);
+    }
+  }
+});
