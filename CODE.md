@@ -4088,6 +4088,84 @@ Mockups: https://claude.ai/artifact/YaDGaLmzRAkyucWD9hiH37. Whichever is picked:
 3. Landscape: the left icon rail is dark green; the results footer is dark green.
 4. During the deal, tap the target chip and ask for a target: the vote shows with no cards under it, on every phone. After the deal, a reshuffle vote still shows your hand.
 
+### 9ap Fixes after watching and computer-player play (plan 2026-11-18 18:22, Parts G and H added 19:07, Opus; target 2.38.2, for Haiku; APPROVED 19:13, build A to E, G, H; Part F parked)
+
+**User (18:22, phone screenshot of single player, watching Tommy):** "When viewing cards, it's not in order or like that fan style." "When clicking on ask and the pop up comes up, it flashes every time someone plays a card." "They ask for others' cards too many times… they get slapped once, then ask. Sometimes, they ask a second person right away." "Sometimes, they should also choose deal again if their cards are rubbish."
+
+**Found:**
+- `watchingBlock` (`src/ui/watch.ts`) shows `v.watching.cards` in hand order in a flat `.watch-fan` row (54 px cards, overlapping). Your own hand uses `sortHand` and `fanLayout` / `fitFan` (`handBlock`, `game.ts`).
+- The flash is the "Watch whose hand?" sheet (its button says **Ask**). Every redraw rebuilds it, so `.overlay` (fade) and `.sheet` (slide-up) replay each time a card is played. The take sheet and target sheet already use `sheetSeen` (9ak.1); `watch.ts` and `removesheet.ts` don't. The "X wants to watch your hand" card (`watchAskCard`) has the same problem.
+- Asking (`chooseTakeAsk`, `src/ai/moves.ts`): the stuck test is `pickups >= 2 && (slapped twice by one player || my cards >= 1.5 × average)`, from trick 3. Late in a round the others hold few cards, so one slap plus one pick-up of the waste pile is enough. Hard may ask twice a round with no gap: after a refusal the asker still leads, so it asks a second player at once.
+- Deal again: `chooseCallVote` calls when `handBadness > 0.5 × reshuffleBar` (about 0.5). A simulation of 20,000 deals gives that in about 0.1% of hands (4 to 6 players), so computers almost never call. Voting yes needs `> 0.35 × reshuffleBar`, about 1%, so a call would nearly always fail too.
+
+**Part A: the watched hand in order, as a fan (`src/ui/watch.ts`, `game.ts`, `styles.css`).**
+1. `watchingBlock(s, v, opts: { fit: number; width: number })`: cards through `sortHand` (same order as your own hand), laid out with the same fan code as `handBlock` (portrait `fitFan(n, width, fit - 8 - headH, false)`, landscape `fitFan(n, width, fit - headH, true)`, where `headH` is the height of the "Tommy's cards / Stop watching" line, about 40 px). Cards placed with `--x / --y / --rot / z-index` exactly as in `handBlock`, inside `div.hand.fan`; not tappable (no role, no click, `pointer-events: none`), not dimmed.
+2. `game.ts` passes `{ fit: lay.handH, width: lay.handW }` (the values `handBlock` gets).
+3. Easiest: pull the card-placing loop out of `handBlock` into a small helper `fanCards(cards, fan, decorate?)` in `game.ts` (or `cards.ts`) and use it in both, so the two fans can't drift apart.
+4. `styles.css`: remove `.watch-fan` rules; keep `.watching-hand` and its head line.
+
+**Part B: no flash on the watch pop-ups (`src/ui/watch.ts`, `removesheet.ts`).**
+1. `watchSheet`: `const seen = sheetSeen('watch', open)` (import from `between.ts`), called on every redraw, open or not (so call it before the early `return null`; open = `armed === 'watch' && canAskToWatch`). Add class `seen` to the overlay and the sheet when true (as `askSheet` does). Keep separate keys for the list and the confirm view (`'watch'` and `'watch-confirm'`) so switching between them still animates once.
+2. `watchAskCard`: same, key `'watch-ask'`; add `seen` to the overlay and the `.take-card`. Add CSS `.take-card.seen { animation: none; }` if `.take-card` has its own animation (check).
+3. `removesheet.ts`: same pattern, key `'remove'` / `'remove-confirm'` (the host's sheet can stay open while others play).
+4. Search `src/ui` for any other `overlay` built during `playing` without `seen` or `popup seen` and list it in 9ap.6 (fix only if it can stay open while cards are played).
+
+**Part C: computer players ask less, and only after really trying (`src/ai/moves.ts`, `src/ai/memory.ts`).**
+1. Memory gains `lastAskTrick: number` (trick count when I last asked, `-99` at round start; set on `takeRequested` with `requester === me`, with `m.trickCount`) and `pickupsSinceAsk: number` (reset to 0 on that event; `+1` wherever `pickups` goes up).
+2. New stuck test (all levels), all of these:
+   - `m.trickCount >= 6` (was 3): they play a few tricks first. (User 19:07 / 19:13: "wait a few tricks", so trick 6 stands.)
+   - `m.pickups >= 3` (was 2).
+   - and either someone has slapped me at least **twice**, or I hold **at least 2 × the average** of the others **and at least 8 cards** (was 1.5 ×, no minimum).
+3. **Gap between asks:** no ask unless `m.trickCount - m.lastAskTrick >= 5` and, after an earlier ask this round, `m.pickupsSinceAsk >= 2`. So a refused computer never asks a second player straight away.
+4. **Not every chance:** when all the above pass, ask with chance `ASK_CHANCE[level]`: easy 0.15 (replaces `EASY_ASK_CHANCE` 0.3), normal 0.4, hard 0.6. A failed roll means it plays a card this trick and can try again on a later lead.
+5. `ASK_BAR` up: easy 4.0, normal 3.0, hard 2.5 (was 3.5 / 2.5 / 2.0).
+6. Hard keeps 2 asks a round at most; Normal and Easy 1 (unchanged).
+7. Tests (`tests/ai/`): one slap then a pick-up → no ask; asked and refused → no second ask on the next lead; asks wait until trick 6; with `rng` fixed below the chance it asks when stuck, above it doesn't. Update the existing 9an.2 tests to the new numbers.
+8. Arena: Normal vs Hard as before; "Hard beats Normal" must still pass. Also log asks per round (average, all levels) before and after and put both in 9ap.6. Aim: well under 1 ask per round per computer.
+
+**Part D: computer players call Deal again with a rubbish hand (`src/ai/moves.ts`).**
+1. `chooseCallVote`: call when `handBadness(hand) > 0.25 × reshuffleBar` (was 0.5). From the simulation, about 5% of hands per computer (4 to 6 players), so with 4 computers about 1 deal in 5 gets a call. Easy: also needs `rng() < 0.5` (pass `rng` in; update `decide.ts`).
+2. `chooseVote` for a reshuffle: yes when `handBadness > 0` (a worse-than-average hand; about 30 to 45% of hands), was `> 0.35 × reshuffleBar`. So a call by a computer passes some of the time, not never.
+3. Unchanged: one call per deal (`canCallReshuffle`), and a computer that doesn't call keeps its cards (`chooseKeep`), so the table never waits.
+4. Test: a hand of high cards (for example A, K, Q, J of mixed suits plus 10s) calls; a hand of low cards doesn't; votes follow `handBadness > 0`.
+5. Optional, only if `react.ts` already has a hook for calling a vote: one line like "These cards are rubbish!!" (must be in `catch-phrases.md`). Skip if not.
+
+**Part E: version, checks, test build (do this last, after G and H).** Build order: A, B, C, D, G, H, then E.
+1. `package.json` 2.38.2. If the moves fixture test (`tests/ai/fixtures/moves-*.json`) fails from the new AI numbers, regenerate it as 9an Part J did and say so.
+2. `npm run check`, `npm test`, `node build.mjs`; browser: single player vs 4 computers, go out early, tap the eye, leave the sheet open while computers play (no flash); watch a player: cards sorted like your own hand, in a fan.
+3. Publish the private test build and give the user 9ap.7.
+
+**Part G (user 19:07): pop-ups close by themselves after 5 seconds, at the same time on every phone (replaces "tap anywhere to close", 9ai.1).**
+Only pop-ups with **no decision** (SLAP!, HAHAHA!, Pathetic, Ultimate Badboy, came 1st / 2nd, vote called alert, vote result, take result, "Ben said no", lead notice, last two, info). Pop-ups that need an answer (votes, Give / Refuse, Show my cards / Refuse, final-two choice, choose leader) are unchanged.
+1. `game.ts`: `POPUP_SHOW_MS = 5000` for every no-decision pop-up (`popupMs`, and `LEAD_MS` for the lead notice). `autoClosing()` is true for them always, not only during Fast forward / Skip, so the countdown bar shows and the timer in `afterRender` closes them. Fast forward keeps its shorter times.
+2. No tap to close: remove the "Tap anywhere to close" line (`tapHint`) and the tap handler on those pop-ups.
+3. **Same moment everywhere:** each pop-up gets `at`, the host's time of the event (the host stamps `hostNow` on every update; a joining phone uses `hostNow()` with `clockOffset`, already in `netplay.ts`). A pop-up closes at `at + 5000` host time, so phones close together (within the clock error). A pop-up queued behind another starts when the one before it ends (`at` = previous end). One phone and single player: `at` = when it was made.
+4. The game still holds while pop-ups show (9an.5 gate), so play resumes for everyone when the 5 s end. `phoneBusyNow()` stays true until the timer closes the last one, as now.
+5. A phone that joins late or catches up after a gap skips pop-ups whose end time has passed (no 5 s each for old ones).
+6. `PROJECT.md` 12u item 1 updated (done in the plan).
+7. Checks: `popups_check.py` and `netvotes_check.py` expect taps today: change them to wait for the auto close; add a check that two phones close a SLAP! within 0.5 s of each other.
+
+**Part H (user 19:07): Deal again once per round (reverses 2.34.6 / 9ah.2 "once per deal, as many deals as wanted").**
+1. `session.ts` `afterDealStep`: keep `reshuffleUsed` when the deal is a redeal; reset it only for a round's first deal (`newRound` / `startRoundDeal`, where it is already `false`). So after one vote (passed or failed), "Deal again?" is gone for the rest of the round.
+2. Fail message stays "Only one reshuffle vote per round" (was "…per deal").
+3. After a passed vote, the before-the-round screen still comes back (Look at cards / Keep / Start), without "Deal again?".
+4. Computer players: no change needed (`canCallReshuffle` already uses `reshuffleUsed`).
+5. Tests: the 9ah.2 "deal again twice" tests become "second call refused in the same round; allowed again next round". `testbed/deal_again_check.ts` the same.
+
+**Part F (18:26, user: "When messages are sent during AI deal, it stops the deal until messages stop"): PARKED (user 19:13: "leave the deal, if it happens again, I'll let you know"). Haiku: do not build anything for Part F.**
+Tried in a browser (2.38.1 build, 390x844, single player vs 3 computers): auto deal with the person dealing, and with a computer dealing (dealer set to a computer, game carried on), while sending a typed message every 0.5 s or tapping catch-phrases every 0.5 s. The deal kept its normal speed in every case (about 7 cards a second, finished in about 8 s). Messages and reactions are not pop-ups and don't touch `anyoneBusy`. Waiting for the user: single player or a network game, and who was sending the messages. Suspects for a network game: the host's `pending` set (9an.5 E-c) or a joining phone's busy report.
+
+### 9ap.6 Built notes
+(Haiku: arena results, asks per round before and after, anything that didn't match the plan.)
+
+### 9ap.7 Phone checklist (2.38.2)
+1. Go out, tap the eye and leave the "Watch whose hand?" sheet open while others play: it doesn't flash.
+2. Watch someone: their cards are sorted like your own hand (by suit, low to high) and spread in the same fan.
+3. Over a few rounds, computers don't ask for cards after one slap, don't ask in the first few tricks, and never ask a second player straight after a refusal.
+4. Over a few deals, a computer sometimes calls "Deal again?" and sometimes votes yes.
+5. Pop-ups with no choice (SLAP!, came 1st, vote result…) show a 5-second bar, can't be tapped away, and close at the same moment on every phone; play carries on after.
+6. After one "Deal again?" vote (yes or no), the button doesn't come back until the next round.
+
 ## 8a. Playable test builds (required before every commit)
 
 `CLAUDE.md` rule 5: the user tests every change on their phone before approving a commit.

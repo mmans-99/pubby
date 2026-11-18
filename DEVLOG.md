@@ -4,6 +4,22 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-18 (18:22, Opus) — Plan 9ap: watched hand fan, no flash on the watch sheet, computers ask less, computers deal again (docs only)
+
+**User (18:22, phone screenshot, single player, watching Tommy):** watched cards not in order and not in the fan; the "Ask" pop-up flashes every time a card is played; computers ask for cards after one slap and sometimes ask a second player straight away; computers should sometimes deal again with rubbish cards.
+
+**Found:** `watchingBlock` shows the cards unsorted in a flat row; the watch sheet (and the watch ask card and remove sheet) don't use `sheetSeen`, so each redraw replays the entrance animation; the computer stuck test is easy to pass late in a round and Hard can ask again right after a refusal; the deal-again bar is so high computers call in about 0.1% of hands (simulated), and vote yes about 1%.
+
+**Plan:** `CODE.md` 9ap (Parts A to E, target 2.38.2), for Haiku. Not built, waiting for approval.
+
+**18:32 (user):** the deal stop happens online, computer dealing, whenever anyone sends a message. Reproduced the setup with the local relay (host, joiner, computer player): with the host dealing and the computer dealing, messages every 0.4 s from the joiner did not slow the deal. Still looking (Part F).
+
+**19:07 (user):** no-choice pop-ups back to a 5-second timer, closing together on every phone (Part G); Deal again once per round (Part H); computers should wait "a few rounds" before asking (asked whether that means tricks or rounds).
+
+**19:13 (user):** "a few tricks" (trick 6 stands); park the deal stop (Part F) until it happens again; approved the plan and asked to commit and push it for Haiku. Pushed as docs only (no version change).
+
+---
+
 ## 2026-11-18 (16:30, Haiku) — Build 9ao: 2.38.1, green felt back, no hand while dealing (not committed)
 
 **User (16:24):** picked A for the dark background; "build". Plan `CODE.md` 9ao.
