@@ -3931,7 +3931,7 @@ What the relay already gives: a used join token always gets its old link id back
 **Opus review of Part H (2026-11-18, before building): these decisions replace items 1–9 where they differ.**
 Read against `session.ts` (reduce, every gate, `finishRound`, `startNextRound`, `finalStandings`), `play.ts` (`finishTurn`, `resolveTrick`, `resolveFinalTwo`, `endRound`, `canForfeit`), `deal.ts`, `round.ts` (`dealerFor`, `decideLeader`), `view.ts`, `record.ts`, `netgame.ts` (`redactSession`, `PHONE_ACTIONS`), `netlobby.ts` (`kick`, `dropLink`, `addOnlineLink`, `forgetLink`, the away timer), `netplay.ts` (`linkOf`, `sendUpdate`, `hostGotAct`), `netscreens.ts` (`connectionNotice`), `table.ts` (seat ring from `s.order`, `onTap`), and the relay (`server/src/core/room.ts` `kick`: marks the join token kicked, so it is refused with 4003 from then on, even if the phone was away).
 
-**The build waits for the user's answers to H-q (seven questions).** H-a to H-k are written with the suggested answers; if the user picks something else, only the lines marked *(H-q n)* change.
+**User answered H-q 2026-11-18 13:18: every suggested answer accepted (1: both hints, 2 min and 90 s). H-a to H-k stand as written; build from them.**
 
 - **H-a. Out of `order` at once (replaces item 3's "from the next round").** Every gate reads `s.order`: `swapDone`, `handSeen`, the notice's persons, the Keep gate, `ready`, vote totals (`s.order.length`), `assertPlayer`; so do `view.ts`, the table's seat ring (`table.ts` line ~70) and the computer players. A removed player left in `order` until the round ends would make every gate wait for them. So:
   - `Session.order` and `play.order` lose the player straight away. Their seat leaves the table with no extra code (item 8).
@@ -4019,7 +4019,7 @@ Read against `session.ts` (reduce, every gate, `finishRound`, `startNextRound`, 
   - `tests/ui/popupevents.test.ts`: covers `playerRemoved` (automatic once the case exists).
   - Browser (Part J): `testbed/online_check.py` new phase: host removes a joining page mid-trick → that page shows the removed screen, its reload gets no Rejoin card (key deleted) and the relay refuses the old token; the other pages lose the seat and carry on; with two people left the game ends.
 
-**H-q. Questions for the user (not decided; the build waits for these):**
+**H-q. Questions for the user, answered 2026-11-18 13:18: all yes as suggested (1: "why not both?" = keep both hints, 2 min away and 90 s idle).**
 1. **The host hints** *(PROJECT.md 12y.6, Claude's call)*: show the Remove hint after someone has been **Away for 2 minutes**, or has had **their turn for 90 seconds** without moving (time while a pop-up, vote or pause holds the game doesn't count). Keep 2 min / 90 s, or other times?
 2. **One player left holding cards** *(12y.6, Claude's call)*: the round ends; that player counts as the round's **loser** (second-last place points, deals the next round, and in the Ultimate Round is the Ultimate Loser); the removed player gets **last** place points. More generally: the round's "loser" is always the last player holding cards, never a removed player. Yes, or should the removed player count as the loser?
 3. **Cards they already played in the current trick:** suggested: they **leave the felt too** ("their cards leave the game"), so the trick goes on as if they hadn't played. Otherwise (the old plan line: they stay on the felt) a slap could leave the removed player as the one who must pick up. Leave too, or stay?

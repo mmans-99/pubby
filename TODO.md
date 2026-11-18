@@ -429,7 +429,7 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
   - [ ] Not checked: the 10-minute expiry in the browser (needs a backdated save; optional `--long-away`)
 - [~] Part H: host removes a player; cards leave the game (9an.8)
   - [x] Opus review written 2026-11-18 (9an.8 H-a to H-k): out of `order` at once, `removed`/`gone`, `removeFromPlay` per phase, finishing order and `previous.loser`, seat marked (not deleted) in a started game, host clocks, tests
-  - [ ] User answers the seven questions in 9an.8 H-q (two were Claude's calls in 12y.6, five found in the review)
+  - [x] User answered the seven questions in 9an.8 H-q (2026-11-18 13:18: all as suggested, both hints)
   - [ ] Build Part H from 9an.8 using the Opus review
 - [ ] Part I: card table look (9an.9)
 - [ ] Part J: version 2.38.0, checks, test build, phone checklist 9an.12; regenerate the AI regression fixture (moves-2.38.0), the 2.34.5 one fails by design since Part A
