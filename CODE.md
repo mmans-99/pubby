@@ -3754,6 +3754,169 @@ Cause of the crushed Play button (screenshot: Forfeit + "Pick a card to lead" in
 3. During play: the sheet and typing bar sit above the bottom row; nothing covers ✕ or the buttons.
 4. The rest of 9al.8 still to check (items 1 to 7).
 
+## 9an. Take-cards on your lead, watching a hand, Keep or Deal again, pop-up gate, missing felt card, online rejoin, removing a player, card table (PLAN, user 2026-11-18 11:34 and 11:38; spec `PROJECT.md` 12y; target **2.38.0**; written for Haiku)
+
+### 9an.0 Read first
+- Spec: `PROJECT.md` 12y (rules) and 4.2 (take-cards, updated). Build in the order of the Parts below; each Part ends with `npm run check` and `npm test` clean before the next.
+- **Plan approved by the user 2026-11-18 11:49. Table: option B** (stadium felt, dark leather rail, stitched line) from https://claude.ai/artifact/YaDGaLmzRAkyucWD9hiH37 (artboard "B · Stadium, leather rail"). In Part I follow only the B lines.
+- Protocol: Parts C, D, E, H change network messages: bump `LOBBY_PROTOCOL` in `src/net/lobby.ts` **once**, 11 → **12** (comment: "12: peeks, keep cards, update seq, remove player, rejoin (2.38)").
+- Rule 6 of `CLAUDE.md`: anything not written here or in 12y is not decided. Stop and ask (Switch to Opus line) rather than guess.
+- One version for the whole phase: **2.38.0** in `package.json` (Part J). If the build is split over sessions, use 2.38.0, 2.38.1… per test build.
+
+### 9an.1 Part A: take-cards only by the leader, with a confirm step; everyone sees it; the taker leads
+**Rules (`src/rules/play.ts`, `src/session/session.ts`):**
+1. `takeAllowed(state, requester, target)`: add, after the existing checks, `if (state.turn !== requester) return 'Only the player about to lead can ask for cards';` (keep `betweenTricks` checked in the session as now).
+2. `takeCards`: the taker leads: replace the `let leader = …` lines with `const leader = requester;`. Update the doc comment ("The requester leads the next trick").
+3. `requestTake` in `session.ts`: unchanged apart from the new `takeAllowed` message. "Asked by more than one player" can no longer happen (only one leader); leave the code that handles it (old saved games), but add a comment.
+4. The leader can't play while their own request waits (already true: `decide.ts` and `game.ts` block play while `takeRequests` has one not agreed). If the asked player refuses or the request is withdrawn, the leader plays as normal.
+5. Tests (`tests/rules/` and `tests/session/`, find the existing take tests with `grep -rn takeCards tests`): a non-leader is refused with the new message; after a take the requester has `turn` and leads; the old "target was about to lead" test changes (the target can't be the leader any more: the leader is the asker); 2-player and two-left refusals unchanged.
+
+**Screens:**
+6. `takeTargets` in `src/ui/between.ts`: return `[]` unless `play.turn === p`. The take button (`takeButton`) only shows on the leader's own hand screen. On one phone, the "Someone wants to take cards" button on the hand-off screen goes (search `Someone wants to take cards` in `src/ui/`), since only the leader can ask and they ask from their own hand screen.
+7. Sheet subtitle: "Before the trick · one ask at a time" → **"Your lead · ask instead of playing"**.
+8. **Confirm step:** tapping a row in "Take whose cards?" no longer sends at once. The sheet swaps to a confirm view in the same sheet: big disc of the target, **"Take all of Ben's cards?"**, a muted line "Ben has 7 cards. If he agrees he goes out and you lead the next trick.", then **Ask Ben** (gold, full width) and **Back** (ghost). Keep the picked id in store state (`armed: 'take'` plus a new `takePick: PlayerId | null` in `src/ui/store.ts`). Back returns to the list; Cancel / tap-off closes everything and clears `takePick`.
+9. **Everyone sees it (network games and single player):** when a `takeRequested` event arrives, every phone other than the asker and the asked gets a pop-up (the normal tap-anywhere kind, 9ai.1): asker's disc, **"Amy is asking Ben for his cards"** → use **"for their cards"** everywhere (also in `takeStatus`, line ~413). Under it "Waiting for Ben". The existing status card (`takeStatus`) stays under the table until it is answered. When it is answered, the existing answer pop-up shows on every phone ("Ben gave Amy his cards" / "Ben said no"); check it exists for third parties in `absorb` (search `takeAnswered`) and add it if not: "Ben said no to Amy" / "Ben gave Amy their cards · Ben came 3rd".
+   - Single player: the person sees computer players' requests between computers the same way (it's one person, nothing secret from them except cards).
+   - One phone pass-and-play: unchanged (private).
+10. Quick rules (`src/content/quick-rules.md`, take-cards lines): "Only the player about to lead can ask, instead of playing their first card. If they get the cards, they lead the next trick."
+
+### 9an.2 Part B: computer players ask with a reason, and sometimes say no to annoy you
+**Memory (`src/ai/memory.ts`):** add, cleared in `emptyRound`:
+- `slappedMe: Record<PlayerId, number>`: times a slap by that player made **me** pick up the trick this round (from the `slapped` event: `e.slapped === me` → `slappedMe[e.slapper]++`).
+- `iSlapped: Record<PlayerId, number>`: times **my** slap made that player pick up (`e.slapper === me` → `iSlapped[e.slapped]++`).
+- `pickups: number`: times I picked up a trick this round.
+All three come from public events only (fair-play rule, `PROJECT.md` 12c). Add them to the fair-play test if it lists memory fields.
+
+**Asking (`chooseTakeAsk` in `src/ai/moves.ts`):**
+1. Only when `seen.view.turn === seen.me`, between tricks, ≥ 3 holders, `m.asks === 0` (Hard: `m.asks < 2`), and `m.trickCount >= 3`.
+2. **Stuck test** (all levels): `m.pickups >= 2` and (some player has `slappedMe ≥ 2`, or my count ≥ 1.5 × the average of the others). Not stuck → `null`.
+3. **Score each allowed target** T (`takeAllowed(play, me, T) === null`):
+   `score = 2 * slappedMe[T] + 1.5 * (number of suits T is known void in, m.voids[T].size) + (avg - count(T)) / avg`.
+   (Taking the hand of the player I can't get past stops them slapping me; a hand with missing suits gives me slaps; a small hand adds few cards.)
+4. Ask the best T if `score >= ASK_BAR[level]`: Easy 3.5 (and only with chance 0.3), Normal 2.5, Hard 2.0. Put `ASK_BAR` as a named constant at the top of `moves.ts`. Ties: `pickRandom`.
+5. **`decide.ts`:** the leader now decides to ask **before** choosing a card: in the `v.turn === me` branch, if `betweenTricks(s.play)` and no request waits, first `const ask = chooseTakeAsk(seen, m, rng); if (ask) return one(ask, 'hard');`. Remove the later "between tricks" ask branch (non-leaders can't ask any more).
+6. The arena (`testbed/arena` or `src/ai/arena*`, find with `grep -rn chooseTakeAsk testbed src`): run Normal vs Hard as before; the "Hard beats Normal" bar must still pass. Note the numbers in 9an.11.
+
+**Answering (`chooseTakeAnswer`):** gains `m`, `persona`, `rng` (update the call in `decide.ts`).
+7. Refuse "to annoy" only when the asker is a **person** (not a computer), `m.iSlapped[asker] >= 2`, and I still hold ≥ 3 cards. Then refuse with chance `REFUSE_RATE[personality]`: windup 0.7, reckless 0.5, counter 0.4, careful 0.25; Easy level × 0.5. Otherwise agree as now.
+8. **Taunt on refusal (`src/ai/react.ts`):** on a `takeAnswered` event with `target === me` and `accepted === false`, send (chance `reactRate`, at least 0.6 for windup) one of: "Not a chance!!", "Keep picking up!!", "Nope, I'm having fun!!". Add those three to `src/content/catch-phrases.md` if bot taunts must come from that list (check `phraseIndex`: it returns null for unknown text, so they must be in the list).
+9. Tests (`tests/ai/`): stuck vs not stuck; prefers the player who slapped me twice; Easy rarely asks; a computer never refuses a computer; refusal only after `iSlapped ≥ 2`; with a fixed rng the windup refuses more often than careful.
+
+### 9an.3 Part C: watching a hand after you finish (network games and single player)
+**Session (`src/session/types.ts`, `session.ts`, `view.ts`):**
+1. `Session` gains `peeks: readonly Peek[]` (default `[]` when loading old saved games: search where `takeRequests` gets its default and do the same). `interface Peek { viewer: PlayerId; target: PlayerId; showing: boolean }`.
+2. Actions: `{ type: 'requestPeek'; by; target }`, `{ type: 'answerPeek'; by; viewer; accept: boolean }`, `{ type: 'stopPeek'; by; other: PlayerId }` (either the viewer or the target may stop).
+3. `requestPeek` is allowed when: phase `playing`, not paused, the game is not pass-and-play (`s.waitForAll` true, or the session has computer players and exactly one person; add a helper `peeksOn(s)`), `by` holds no cards this round, `target` holds cards, and `by` has no other peek (asked or showing). Computers never ask. Fail messages: "Only players who are out can watch", "You can watch one player at a time", "That player is out".
+4. `answerPeek` by the target: accept → `showing: true`; refuse → removed. Events: `peekRequested`, `peekAnswered {viewer, target, accepted}`, `peekStopped {viewer, target, by}`.
+5. Peeks end by themselves (remove + `peekStopped` with `by: null`) when the target goes out, and all are cleared at `roundEnded`.
+6. **What the viewer gets:** `playerView(s, me)` gains `watching: { target: PlayerId; cards: Card[] } | null` (cards in hand order) when a showing peek has `viewer === me`. `redactSession(s, me)` in `src/net/netgame.ts` must keep the target's hand for that viewer only (do not blank `play.hands[target]` when `s.peeks` has `{viewer: me, target, showing: true}`). Test: nobody else ever receives it (extend the existing "player views never include other hands" test).
+7. **Computer players** never ask. Asked by a person, a computer agrees with chance 0.75 (windup 0.5) after its thinking time (`moves.ts` `choosePeekAnswer`, wired in `decide.ts` next to the take answer). The fair-play rule is unchanged: a computer never reads `watching`.
+
+**Screens:**
+8. Once you're out and the round is still being played, the action row shows an **eye** button (new line icon `eye` in `src/ui/icons.ts`, `aria-label` "Watch a hand"). It opens a solid bottom sheet like "Take whose cards?": **"Watch whose hand?"**, one row per holder (disc, name, cards), tap → confirm view (**"Ask Ben to show you his cards?"**, **Ask** / **Back**, the same pattern as 9an.1 item 8).
+9. Asked player: a solid cream card over a dim (like the Give/Refuse card): "Amy wants to watch your hand", "She's out, so she can't play. She'll see your cards until the end of the round.", **Show my cards** (green) / **Refuse** (red outline). It does not stop play for others; it waits only for the target (it is not a pop-up for the busy gate).
+10. Viewer while showing: under the table, where your hand was, a fan of the target's cards (face up, not tappable), with a label **"Ben's cards"** and an **✕ Stop watching** button. Updates live. If refused: a pop-up "Ben said no". Then the eye button works again (one at a time).
+11. Target while showing: a small pill above their hand: eye icon + **"Amy is watching"** + **Stop** (sends `stopPeek`).
+12. Everyone else: a small eye badge on the target's seat (next to the hourglass place in `seatTags`, `table.ts`) with `aria-label` "Amy is watching". No pop-up.
+13. Quick rules line: "Out of the round? Tap the eye to ask one player to show you their hand. They can say no, or stop showing it any time."
+
+### 9an.4 Part D: Keep my cards or Deal again before the round starts (network games)
+**Session:**
+1. `Session` gains `kept: readonly PlayerId[]` (default `[]`), cleared whenever a new deal finishes (where the phase becomes `reshuffle`).
+2. Action `{ type: 'keepCards'; by }`: phase `reshuffle`, `by` a person, not already in `kept`. Event `cardsKept { player }`.
+3. Voting in a reshuffle vote (either way) also adds the voter to `kept` (they have made their choice). A YES result redeals and clears `kept`.
+4. `startRound`: when `s.waitForAll`, fail **"Waiting for everyone to keep their cards"** unless every person in `s.order` is in `kept`. The host's own Start counts as the host's keep (add the host before the check). `startRound` gains an optional `skip: PlayerId[]`: the host's phone fills it with players who are Away (the session doesn't know who is away), and they count as kept. Test both.
+5. Computer players: `chooseCallVote` as now; if it returns null, send `keepCards` (`moves.ts` `chooseKeep`), so they never hold the table up.
+6. One phone and single player: `waitForAll` is false → nothing changes.
+
+**Screens (`src/ui/roundstart.ts`, the reshuffle screen):**
+7. Each person sees two buttons under their hand: **Keep my cards** (gold) and **Deal again?** (outline, starts the vote as now). After Keep: "You kept your cards" (green line), the buttons go.
+8. Seats: an hourglass (the 9ai.3 `seat-busy` icon) beside each person who hasn't chosen; a small check when they have.
+9. Host: **Start the round** stays greyed with "Waiting for Ben, Cat" until everyone has chosen; if any of them is Away, a second small button **Start without Ben** appears.
+10. The round-start lead notices, swap and the rest are unchanged.
+
+### 9an.5 Part E: pop-ups really hold the game, and a calm catch-up
+**Cause (found 2026-11-18):** the busy flag (9ai.3) is sent by each phone **after** its pop-up opens, so for the network round trip (100–600 ms online) the host still thinks the phone is free: a computer player whose thinking time ends in that gap plays, and the next update lands while the pop-up is still open. The phone then replays the backlog all at once: sounds overlap and animations race.
+**Fix: the host knows a pop-up is coming before the phone does.**
+1. **One list of pop-up events.** In `src/ui/game.ts` (`absorb`), the code that turns events into pop-ups: pull the test into an exported pure function `makesPopup(e: SessionEvent, me: PlayerId, s: Session): boolean` in `src/ui/popuptext.ts` (or a new `src/ui/popupevents.ts`), used by `absorb` itself. Unit test: every event type `absorb` makes a pop-up for returns true.
+2. **Sequence numbers.** `GameUpdate` (`src/net/netgame.ts`) gains `seq: number`. `netplay.ts` keeps `let seq = 0` on the host; every `sendUpdate` sets `seq: ++seq` per link (store `lastSeq[link]`), and if any of the events sent to that phone `makesPopup` for that player, sets `waitSeq[player] = that seq`.
+3. **The busy message** `{ t: 'busy'; on: boolean; seq: number }` (add `seq` to the parser; old field kept). The joining phone sends the seq of the last update it has drawn.
+4. **Host's busy set** (`setBusyPlayers` in `netlobby.ts`): a player is busy if their seat has `busy` **or** `waitSeq[p] > ackSeq[p]` (the seq in their last busy message). Computer players and away seats never busy (as now). Export from `netplay.ts`: `pendingPopup(p): boolean`.
+5. The host's own pop-ups: unchanged (its own screen already blocks it).
+6. **Lost message guard:** if a phone hasn't acked within 8 s while its link is open, the host sends it a full `hostSync` and stops waiting for that seq (prevents a freeze). Log it with `console.warn` in test builds.
+7. **Calm catch-up (joining phone, `absorb`):** if an update arrives while this phone still has pop-ups open (it can still happen: Away players, Fast forward):
+   - don't stack: for pop-ups of the same kind (two SLAP!s), keep the newest and add "+1 more" under it;
+   - the felt jumps to the current trick without flying each missed card (set `shownTrickCount` so only the newest card animates);
+   - sounds: a new `sfxCalm()` gate in `src/audio/sfx.ts` (or `src/ui/sound.ts`): while catching up, play only the **last** sound of the batch, and never the same sound twice within 400 ms.
+   - When the last pop-up closes, redraw once with a 180 ms fade on the table (CSS class `catching-up` on `.round-table`, removed after the fade). No replay of the missed moves.
+8. Checks: extend `testbed/netvotes_check.py` or `netgame_check.py` (whichever opens a slap pop-up on a joining page) with a 400 ms delay on the joining link (`page.route` won't do for WebRTC: add a test hook `pubbyNet.delayMs = 400` in `src/net/link.ts` that delays `onMessage` delivery) and check: while the joiner's SLAP! is open, the host's computer player does **not** play (trick card count unchanged for 3 s), and after the tap it plays.
+
+### 9an.6 Part F: a played card missing from the felt on one phone
+**User 2026-11-18:** a computer player's card showed in the game but not on everyone's screen. Not reproduced yet; one real cause found in the code:
+- The felt draws the trick from `g.trickLog` (`trickArea` in `game.ts`), and joining phones build `trickLog` **only from events**. A full update (`full: true`, sent after a `sync`, a reconnect or an away) has `events: []`, so any card played in that gap never reaches `trickLog`; also `sendUpdate` drops the events of a send that failed (link briefly down).
+**Fix:**
+1. In `absorb`, after the event loop: if `session.play` exists and the round isn't over, compare `trickLog` with `session.play.trick.plays` (`TrickState` in `src/rules/play.ts`: the cards played so far this trick, jokers included). If they differ, rebuild `trickLog` from `session.play.trick.plays` (same `{player, card, label}` shape; joker → `'joker'`, `'Joker'`). The session is the truth; events only drive animation.
+2. Same for `lastTrick` after a full update: if `trickLog` was rebuilt and a trick ended in the gap, leave `lastTrick` as it is (no guess).
+3. `joinGotGame`: with Part E's `seq`, if `m.seq !== lastSeq + 1` and not `full`, apply it and then ask for `{ t: 'sync' }` once (seq gap = a lost update).
+4. Unit test (`tests/ui/` or a pure helper `trickFromPlay(play)` in `src/ui/cards.ts` so it can be tested without the DOM): a session with 3 cards on the trick and an empty `trickLog` → rebuilt with 3.
+5. Browser: in `netgame_check.py`, drop one update to a joining page (test hook `pubbyNet.dropNext = 1`), play on: the joiner's felt still shows every card of the trick.
+
+### 9an.7 Part G: rejoining an online game (brings slice O3 forward; Nearby unchanged)
+What already works (2.25, 9u A2 to A5): while Pubby stays open, a dropped socket reconnects with the same token and the seat is kept 10 minutes. What's missing: coming back **after Pubby was closed or reloaded**, on either phone.
+**Joining phone:**
+1. When an online game starts, save `localStorage['pubby.rejoin'] = { roomId, joinToken, roomName, playerId, savedAt }` (find where `joinSocket` gets `roomId` and the token in `src/net/online.ts` / `src/ui/online.ts`). Update `savedAt` every minute while in the game; delete it when the game ends, when you Leave, or when the host closes the room.
+2. On app start (`src/ui/app.ts`), if `pubby.rejoin` exists and `Date.now() - savedAt < 10 min`: the home screen shows a gold card at the top: **"Your online game is still on"** · room name · **Rejoin** / **Not now** (Not now keeps it until it expires). Rejoin → `joinSocket` with the saved token → the relay gives the same link id (server already does, 9r.8 build notes) → the host's `addOnlineLink` sees a known seated id (9u A2) → `hostSync` → the game screen.
+3. If the relay refuses (room gone, kicked, 4003): "That game has ended" and delete the key.
+**Host's phone:**
+4. While an online game runs, save the whole host state every 5 s and after each round to `localStorage['pubby.hostGame']`: the `SavedGame` (it already holds the full session), the lobby (seats, link ids), `linkOf`, `roomId`, `hostToken`, `savedAt`. Same 10-minute limit (the room's host grace, `AWAY_MS`).
+5. On app start with `pubby.hostGame` under 10 minutes old: home shows **"Your online game is still on"** · **Carry on** / **End it**. Carry on → `HostRoom` reconnects with `hostToken` (A2 path) → restore lobby and game → every phone gets `hostSync` (A2 `onBack`). End it → close the room (`close()` frame) and delete the key.
+6. While the host is away the others already see "The host stepped away" (A3); keep it.
+7. Not for Nearby (a closed WebRTC link needs new QR scans; `PROJECT.md` 12 slice 4 stays planned).
+8. Checks: `testbed/online_check.py` new phase "reload": (a) reload a joining page mid-trick → Rejoin card → back in the game with the same hand and the felt correct; (b) reload the host page → Carry on → both phones carry on; the trick and scores match; (c) after 10 minutes (`--long-away`) the cards are gone.
+
+### 9an.8 Part H: the host removes a player (away or not playing)
+**Rules (`PROJECT.md` 12, "Dropped phone", already decided; details in 12y.6):**
+1. Session action `{ type: 'removePlayer'; by; player }`, host only, network games only, in any phase before `gameOver` (on the results screen it takes effect from the next round). Event `playerRemoved { player, cards: number }`.
+2. During a round: the player's cards leave the game (not the waste pile; `play.hands[player] = []`, and `hands`/`deal.hands` likewise in deal phases), their open take requests and peeks are cancelled, votes they cast stay counted but they're no longer counted in the total. They take **last place** in this round: add `removed: PlayerId[]` to the session (round-level, cleared each round) and when the round ends, `finishingOrder` puts removed players at the end (later removed = lower). If it was their turn: the turn passes clockwise to the next holder (cards they already played in this trick stay on the felt). If they were in the final two: the other player wins that place and the round ends. If only one holder is left after removal: the round ends, that holder is the loser of the round (second-last overall, the removed player last).
+3. From the next round: they're gone from `order` (`gone: PlayerId[]` on the session, kept for the game record and totals). Scoring uses the table for the new player count. One player left → the game ends (game over screen).
+4. Their phone: gets `{ t: 'removed' }` then the relay `kick` (already exists, `hostRoom.kick`): screen "The host removed you from the game" · **Home**. Their saved `pubby.rejoin` is deleted. They can't rejoin.
+5. Tests: removal mid-trick (their turn and not), in the final two, in dealing/reshuffle/swap (deal phases: their cards just go), leaving one holder, next round's order and scoring table, game record keeps their earlier points.
+**Screens:**
+6. Host: tap a seat on the table → a small solid sheet for that player: name, "Away 3:12" or "Last move 1:40 ago", **Remove from game** (red), Cancel. Second tap to confirm: "Remove Ben? His cards leave the game and he comes last this round."
+7. Host hint: when a person has been Away over 2 minutes, or it has been their turn for over 90 s with no move (and nothing else is open), a small host-only band over the table: "Ben hasn't moved for 1:30 · **Remove**". Never on other phones. Never for computer players.
+8. Everyone: pop-up "Ben was removed by the host" (tap anywhere). The seat disappears from the table at once (cards gone, no flying to the pile).
+9. The 9u "lost connection: close the game" text (`connectionNotice` in `netscreens.ts`) changes for the host to "Ben lost connection · **Remove**" (opens the sheet); joining phones: "Ben lost connection · waiting for the host".
+
+### 9an.9 Part I: a real card table (user picked **B**, stadium felt with a leather rail, 2026-11-18 11:49)
+Mockups: https://claude.ai/artifact/YaDGaLmzRAkyucWD9hiH37. Whichever is picked:
+1. The page background stops being felt: `html, body` in `styles.css` get the dark room background from the mockup (`radial-gradient(90% 60% at 50% 45%, #2b2219, #17110c 70%, #0d0906)`), so the table stands out. Menus and other screens keep their cream/gold UI; check contrast of `--muted` text on the darker ground (4.5:1).
+2. `.round-table` becomes two layers: the **rail** (the element itself: wood / leather / black-gold, per the pick) and the **felt** (a new inner `.table-felt` at an inset of `--rail` = 18 px (A), 16 px (B), 14 px (C)), with the stitched or gold line as `.table-felt::after`. Shape: A `border-radius: 50%`; B `border-radius: min(48vw, 180px)`; C a circle (`aspect-ratio: 1`, width from `tableBox`).
+3. **Fit (the user's "fits everyone's cards properly"):** `seatLayout` in `table.ts` places fans on the rail line: for A and C compute positions on the ellipse/circle (`x = cx + (w/2 - rail/2)·cos θ`, `y = cy + (h/2 - rail/2)·sin θ`, with θ from `edgeListFor`'s order spread over the top 220°); for B keep the current edges but pull each fan in by `rail/2`. Fans never leave the table's box; `seatCollisions` must stay empty for 2 to 8 players in portrait (390×844, 360×740) and landscape (844×390): add these sizes to the existing collision unit test.
+4. Your hand overlaps the bottom of the rail by about a third of a card (A, B); for C it sits under the table.
+5. The trick pile, waste pile, led-suit mark and last-trick corner stay inside the felt (recompute `lastBox` against the felt inset).
+6. Your-turn glow (9aj) moves to the rail's inner edge: `.round-table.your-turn .table-felt { box-shadow: inset 0 0 0 3px var(--gold), inset 0 0 26px rgba(242,193,78,.35) }`.
+7. Landscape rail layout (9ak Part F) and tablet (9ag) still work: run `landscape_check.py`, `tablet_check.py`.
+
+### 9an.10 Part J: version, checks, test build
+1. `package.json` 2.38.0.
+2. `npm run check`, `npm test`, `node build.mjs`, then `python3 testbed/run_checks.py --since origin/main` (playthrough, netgame, netvotes, online, lobby, landscape, tablet, results, lasttwo, popups at least). The test bot (`testbed/bot.js`) must learn: Keep my cards on the reshuffle screen; the take confirm step; skip the eye button.
+3. Publish the test build (private link) and give the user 9an.12.
+
+### 9an.11 Built notes
+(Haiku fills this in: what was built, numbers from the arena, anything left open.)
+
+### 9an.12 Phone checklist (2.38.0)
+1. Take-cards: only on your lead does the take button show; tap a player: the confirm view names them; Back works; Ask sends.
+2. On other phones (and in single player), a pop-up says "Amy is asking Ben for their cards", then the answer.
+3. After a take, the taker leads the next trick.
+4. Computer players: they ask only after being slapped a lot, usually the player who keeps slapping them; when you're the one getting slapped by a computer and you ask it, it sometimes says no with a taunt.
+5. Go out, tap the eye, ask a player: they see Show / Refuse; on Show you see their cards live with "Ben's cards"; Stop on either phone ends it; only one at a time.
+6. Deal again: everyone sees Keep my cards / Deal again?; the host can't start until all have chosen (hourglass on the others); Start without Ben shows for an away player.
+7. Pop-ups: leave a SLAP! open on one phone: nothing moves on any phone until you tap it, computer players included; then play carries on smoothly (no burst of sounds).
+8. Online: close Pubby on a joining phone mid-game and open it again within 10 minutes: Rejoin puts you back. Do the same on the host: Carry on.
+9. Host: tap a player's seat → Remove from game: their cards vanish (not into the pile), they come last this round, the next round has one player fewer; their phone says they were removed.
+10. The table looks like the picked mockup and every fan fits on it with 2, 5 and 8 players, upright and sideways.
+
 ## 8a. Playable test builds (required before every commit)
 
 `CLAUDE.md` rule 5: the user tests every change on their phone before approving a commit.

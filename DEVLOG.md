@@ -4,6 +4,18 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-18 (11:45, Opus) — Plan: take-cards on your lead, watching a hand, Keep or Deal again, pop-up gate, rejoin, removing a player, card table (docs only)
+
+**User (11:34):** ten requests (see `PROJECT.md` 12y). **Answers (11:38):** take-cards by the leader only; watch a hand until the round ends, the shown player can stop; everyone taps Keep or Deal again; table: mockups first (made: https://claude.ai/artifact/YaDGaLmzRAkyucWD9hiH37, options A oval wood, B stadium leather, C round gold).
+
+**Found in the code:** (1) the busy flag (9ai.3) is sent after a phone's pop-up opens, so for one network round trip the host's computer players can still move; that backlog is what then plays all at once. Fix: the host marks a phone busy when it sends a pop-up event (update `seq`). (2) Joining phones build the felt's trick only from events; a full update (after sync or away) has no events, and a failed send drops them, so a card can be missing from one phone's felt. Fix: rebuild from `session.play.trick.plays`. (3) The take-cards status already shows on other phones in network games, as a card under the table; it becomes a pop-up too. (4) The relay already gives a rejoining token its old link id; what's missing is saving the token (joiner) and the game (host) so a closed Pubby can come back.
+
+**Plan:** `PROJECT.md` 12y (and 4.2 updated), `CODE.md` 9an Parts A to J, `TODO.md` Phase 4w. Target 2.38.0. Waiting for approval and the table pick. No code changed.
+
+**11:49:** user approved the plan and chose table **B** (stadium felt, leather rail).
+
+---
+
 ## 2026-11-16 (16:35, Opus) — Fix: the ✕ of reactions cut off in play (2.37.3, not pushed)
 
 **User (16:33):** 2.37.2 all good except the small ✕ of the reactions during play (cut off at the top). **Cause:** the open ✕ inherited the floating button's `bottom: 14px` once it became `position: relative`, so it rose out of the clipped action row. **Fix:** `.react-inline { inset: auto; }`; `react_check` checks it (32/32). Test build published.
