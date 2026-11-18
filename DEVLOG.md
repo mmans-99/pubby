@@ -4,6 +4,12 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-18 (13:06, Opus) — Part H reviewed (docs only)
+
+**Opus review of Part H (`CODE.md` 9an.8 H-a to H-k), read against the session, rules, deal, record, net and table code.** Main findings: a removed player must leave `order` at once (every gate, the vote total, the table and the computer players read it), with `removed` (this round, for the bottom places) and `gone` (whole game); the round's `previous.loser` must be the last holder, not the last place, or the next round's dealer would be a gone player; a trick that started with three must finish under normal rules after a removal (new `TrickState.size`); in a started network game the lobby seat is marked `removed`, never deleted (player ids come from seat order); the host drops the link before applying the action; Part G's rejoin path must refuse a removed seat. Votes: the removed player's ballot is dropped (replaces the plan line). Seven questions for the user (H-q, also in `PROJECT.md` Open questions): the 2 min / 90 s hints, one holder left = round loser, their felt cards, a player already out, dealer or chooser removed on the results screen, dealer removed mid-deal, the removed player's game result. No code.
+
+---
+
 ## 2026-11-18 (12:30, Haiku then Opus) — Build: 9an Parts A to D (code not committed); Part E reviewed (docs pushed)
 
 **Built (Haiku), not committed or pushed:** A take-cards by the leader only, confirm step, pop-up on other phones, the asker leads; B computer players ask when stuck and sometimes refuse a person who keeps slapping them; C watching a hand once out (network games and single player), the watched hand only on the viewer's copy, eye on the seat; D Keep my cards: `kept` list, `keepCards`, reshuffle votes count, `startRound` gate with `skip` for away players, computers keep (`chooseKeep`), seat hourglass/check, host Start greyed "Waiting for …", "Start without …". Keep is on for `waitForAll` with two or more people (single player also sets `waitForAll`, so it is excluded by the people count). `LOBBY_PROTOCOL` 12.
