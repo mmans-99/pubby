@@ -7,7 +7,7 @@ The same icons you see in the game.
 
 | Icon | Name | What it does |
 |---|---|---|
-| {take} | Take | Ask to take all of another player's cards. Only before a trick starts. |
+| {take} | Take | Ask to take all of another player's cards. Only the player about to lead can ask, instead of playing. |
 | {pause} | Pause | Pause the game, or ask the host to pause it. |
 | {bolt} | Ultimate Round | The final round, worth no points. |
 | {swap} | Swap | The hidden swap at the start of a round (2 and 3 players). |
@@ -53,7 +53,9 @@ Either of the last two can forfeit at any time (tap Forfeit twice): you take las
 Jokers are always allowed. If one of you leads a joker, it's still the same trick: the other plays any card. Both play a joker? Missed round: the first player leads again. A last card that only meets a joker wins.
 
 ## {take} Taking cards
-Tap the {take} Take button at the top (it shows only before a trick starts). Before a trick starts, you can ask to take all of another player's cards (unseen). One request at a time. They agree or refuse; if several players ask the same person, they choose who gets them. The giver goes out and takes the next place. Not when only two players are left. On several phones, everyone sees who asked whom and the answer, but never which cards moved.
+Tap the {take} Take button at the top (it shows only for the player about to lead, on their own hand screen). Only the player about to lead can ask, instead of playing their first card: pick a player, check the confirm view, then Ask. They agree or refuse. If they agree, they go out and take the next place, and the player who asked leads the next trick. Not when only two players are left. On several phones, everyone sees who asked whom and the answer, but never which cards moved.
+
+Out of the round? Tap the eye to ask one player to show you their hand. They can say no, or stop showing it any time.
 
 ## {swap} Hidden decks and the swap (2 and 3 players)
 With 2 or 3 players, some cards are dealt face down into hidden decks before the deal, so nobody can work out what everyone holds: 2 hidden decks with 2 players, 1 with 3. Each hidden deck gets about one player's share. Nobody sees them, ever, and they can hold jokers.

@@ -5,14 +5,14 @@ import { seededRng } from '../../src/rules/rng.ts';
 import { createSession } from '../../src/session/session.ts';
 import type { Session, SessionSetup } from '../../src/session/types.ts';
 import { phoneActions } from '../../src/net/netgame.ts';
-import { act, dealAll, playRound, setupFor } from './helpers.ts';
+import { act, dealAll, playRound, setupFor, startedRound } from './helpers.ts';
 
 /** A game played to the results screen of round 1, with the wait-for-everyone rule on. */
 function toResults(n: number, seed: number): Session {
   const rng = seededRng(seed);
   const setup: SessionSetup = { ...setupFor(n), waitForAll: true };
   let s = dealAll(createSession(setup, rng).session, rng);
-  s = act(s, { type: 'startRound', by: 'p1' }, rng);
+  s = startedRound(s, rng, 'p1');
   return playRound(s, rng);
 }
 

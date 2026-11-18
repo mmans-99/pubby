@@ -52,6 +52,11 @@ export type Popup =
   /** 2.34.6: someone forfeited the round (last place). Shown on every phone. */
   | { kind: 'pathetic'; player: PlayerId }
   | { kind: 'out'; player: PlayerId; place: number }
+  /**
+   * 9an.1 (2.38): a take-cards request on every phone except the asker's and the asked player's.
+   * `answer` null: "Amy is asking Ben for their cards" (waiting). Else the answer, and the place if they went out.
+   */
+  | { kind: 'take'; requester: PlayerId; target: PlayerId; answer: { accepted: boolean; place: number | null } | null }
   | {
       kind: 'lastTwo';
       order: readonly PlayerId[];
@@ -78,6 +83,10 @@ export interface State {
   rulesOpen: boolean;
   /** Quick rules card to open at ("Dealing", "Hidden decks"…); null = the top. */
   rulesTopic?: string | null;
+  /** 9an.1 (2.38): the player the taker picked on the take sheet, before "Ask" is tapped. */
+  takePick?: PlayerId | null;
+  /** 9an.3 (2.38): the player picked on the "Watch whose hand?" sheet, before "Ask" is tapped. */
+  watchPick?: PlayerId | null;
   /** Sound sheet (music and effects switches and volumes). */
   soundOpen: boolean;
   menuOpen: boolean;

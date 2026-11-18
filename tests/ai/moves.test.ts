@@ -143,7 +143,7 @@ test('swap: keeps a good hand (no short suit with a high top card, no Q, K or A)
   assert.deepEqual((chooseSwap(p.seen, normal, seededRng(3)) as unknown as { cardIds: string[] }).cardIds, []);
 });
 
-test('take-cards: always agrees to a request, answering the first asker in seat order', () => {
+test('take-cards: agrees to a request with no slap history, answering the first asker in seat order', () => {
   const p = position({
     order: ORDER,
     me: 'p3',
@@ -156,7 +156,7 @@ test('take-cards: always agrees to a request, answering the first asker in seat 
       { requester: 'p1', target: 'p3', agreed: false },
     ],
   });
-  assert.deepEqual(chooseTakeAnswer(p.seen), { type: 'answerTake', by: 'p3', requester: 'p1', accept: true });
+  assert.deepEqual(chooseTakeAnswer(p.seen, p.memory, p.persona, seededRng(1)), { type: 'answerTake', by: 'p3', requester: 'p1', accept: true });
 });
 
 test('final two: picks up a small pile, forfeits a big one, and is a chance in between', () => {

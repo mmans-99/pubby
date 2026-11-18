@@ -6,14 +6,14 @@ import type { Session, SessionSetup } from '../../src/session/types.ts';
 import { playerView } from '../../src/session/view.ts';
 import { chooseSeenHand } from '../../src/ai/moves.ts';
 import { phoneActions } from '../../src/net/netgame.ts';
-import { act, dealAll, playRound, setupFor } from './helpers.ts';
+import { act, dealAll, playRound, setupFor, startedRound } from './helpers.ts';
 
 /** Two or three players, dealt, and in the hidden swap. */
 function inSwap(n: number, seed: number, waitForAll: boolean | undefined): Session {
   const rng = seededRng(seed);
   const setup: SessionSetup = { ...setupFor(n), ...(waitForAll === undefined ? {} : { waitForAll }) };
   let s = dealAll(createSession(setup, rng).session, rng);
-  s = act(s, { type: 'startRound', by: 'p1' }, rng);
+  s = startedRound(s, rng, 'p1');
   assert.equal(s.phase, 'swap');
   return s;
 }

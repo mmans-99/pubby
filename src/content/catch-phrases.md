@@ -37,3 +37,6 @@ Add a new line starting with "- " to add a catch-phrase. Lines without "- " are 
 - Ultimate time!!
 - HIGHER!!!
 - LOWER!!!
+- Not a chance!!
+- Keep picking up!!
+- Nope, I'm having fun!!

@@ -537,14 +537,15 @@ export function takeAllowed(state: PlayState, requester: PlayerId, target: Playe
   if (handOf(state, requester).length === 0) return 'You are out of this round';
   if (handOf(state, target).length === 0) return 'That player is already out';
   if (playersHoldingCards(state).length < 3) return 'Not allowed with only two players left';
+  if (state.turn !== requester) return 'Only the player about to lead can ask for cards';
   return null;
 }
 
 /**
- * The requester takes all of the target's cards, unseen. Only between tricks.
- * The target has no cards left, so they go out and take the next place.
- * If the target was about to lead, the next player clockwise still holding
- * cards leads instead.
+ * The requester takes all of the target's cards, unseen. Only between tricks,
+ * and only the player about to lead can ask (9an.1). The target has no cards
+ * left, so they go out and take the next place. The requester, who asked
+ * instead of playing a first card, leads the next trick.
  */
 export function takeCards(state: PlayState, requester: PlayerId, target: PlayerId): PlayResult {
   const why = takeAllowed(state, requester, target);
@@ -557,8 +558,7 @@ export function takeCards(state: PlayState, requester: PlayerId, target: PlayerI
     { type: 'cardsTaken', requester, target, count: taken.length },
     { type: 'playerOut', player: target, place: finished.length },
   ];
-  let leader = state.turn as PlayerId;
-  if (leader === target) leader = activeFrom(state.order, hands, target)[0] as PlayerId;
+  const leader = requester;
   const base = { order: state.order, hands };
   const stillIn = state.order.filter((p) => (hands[p] ?? []).length > 0);
   return {

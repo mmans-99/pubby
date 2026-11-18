@@ -16,13 +16,26 @@ export function setBusyPlayers(ids: Iterable<string>): void {
   busy = new Set(ids);
 }
 
-export function isBusyPlayer(id: string): boolean {
-  return busy.has(id);
+/** 9an.5 (E-c): players the host is waiting on (set when it sends an update, not when the lobby redraws). */
+let pending: ReadonlySet<string> = new Set();
+
+/** The host sets the players it is waiting on, right after it sends an update. */
+export function setPendingPlayers(ids: Iterable<string>): void {
+  pending = new Set(ids);
 }
 
-/** True while any person's phone has a pop-up open (network games). */
+export function isBusyPlayer(id: string): boolean {
+  return busy.has(id) || pending.has(id);
+}
+
+/** True while any person's phone has a pop-up open, or the host is still waiting for one (network games). */
 export function anyoneBusy(): boolean {
-  return busy.size > 0;
+  return busy.size > 0 || pending.size > 0;
+}
+
+/** This phone's pop-up state as last reported (used to answer the host's ack, E-a). */
+export function myBusyNow(): boolean {
+  return mine;
 }
 
 /** The game screen reports this phone's pop-up state. Listeners hear only changes. */

@@ -137,6 +137,8 @@ export function createSession(setup: SessionSetup, rng: Rng): ActionResult {
     noticeSeen: [],
     play: null,
     takeRequests: [],
+    peeks: [],
+    kept: [],
     vote: null,
     paused: false,
     pausedAt: null,
@@ -177,6 +179,8 @@ function startNextRound(prev: Session, rng: Rng, out: Out): Session {
     noticeSeen: [],
     play: null,
     takeRequests: [],
+    peeks: [],
+    kept: [],
     vote: null,
     ready: [],
     pauseRequests: [],
@@ -242,7 +246,9 @@ function reduce(s: Session, a: SessionAction, rng: Rng, out: Out): Session {
       if (v.calledBy !== null && a.by === v.calledBy) fail('You asked for this vote, so your vote is already YES');
       const ballots = { ...v.ballots, [a.by]: a.ballot };
       out.emit(s, { type: 'voteCast', kind: v.kind, by: a.by, ballot: a.ballot });
-      const s2: Session = { ...s, vote: { ...v, ballots } };
+      // 9an.4 (2.38): a reshuffle vote, either way, is the voter's choice for this deal (Keep my cards is done).
+      const kept = v.kind === 'reshuffle' && !s.kept.includes(a.by) ? [...s.kept, a.by] : s.kept;
+      const s2: Session = { ...s, vote: { ...v, ballots }, kept };
       // 2.32: nothing is decided until everyone has voted (tallyVote's `final` is true only then).
       const everyone = Object.keys(ballots).length === s.order.length;
       const tally = tallyVote(ballots, s.order.length, everyone);
@@ -275,8 +281,22 @@ function reduce(s: Session, a: SessionAction, rng: Rng, out: Out): Session {
       assertHost(s, a.by, 'start the round');
       assertPhase(s, 'reshuffle');
       if (s.vote) fail('Finish the reshuffle vote first');
+      if (keepOn(s)) {
+        // 9an.4 (2.38): nobody starts the round until every person has kept their cards or voted.
+        // The host counts as kept (their own Start), and so do players who are away (the host's phone sends them).
+        const counted = [...s.kept, s.hostId, ...(a.skip ?? []).filter((p) => s.order.includes(p))];
+        const waiting = s.order.filter((p) => !s.players.find((x) => x.id === p)?.computer && !counted.includes(p));
+        if (waiting.length) fail('Waiting for everyone to keep their cards');
+      }
       out.emit(s, { type: 'reshuffleWindowClosed' });
       return afterReshuffleWindow(s, out);
+    case 'keepCards': {
+      assertPhase(s, 'reshuffle');
+      if (!keepOn(s)) fail('Keeping cards is only for network games');
+      if (s.kept.includes(a.by)) fail('You have already kept your cards');
+      out.emit(s, { type: 'cardsKept', player: a.by });
+      return { ...s, kept: [...s.kept, a.by] };
+    }
     case 'swap': {
       assertPhase(s, 'swap');
       if (s.swapDone.includes(a.by)) fail(`${nameOf(s, a.by)} has already swapped this round`);
@@ -375,7 +395,8 @@ function reduce(s: Session, a: SessionAction, rng: Rng, out: Out): Session {
       out.emit(s, { type: 'takeAnswered', requester: a.requester, target: a.by, accepted: a.accept });
       let rest = s.takeRequests.filter((r) => r !== req);
       if (a.accept) {
-        // Asked by more than one player: giving to one is a no to the others.
+        // 9an.1 (2.38): only the player about to lead can ask now, so this only happens in saved games
+        // made before 2.38. Kept so those games still load and finish. Giving to one is a no to the others.
         for (const r of rest.filter((x) => x.target === a.by && !x.agreed)) {
           out.emit(s, { type: 'takeAnswered', requester: r.requester, target: a.by, accepted: false });
         }
@@ -390,6 +411,36 @@ function reduce(s: Session, a: SessionAction, rng: Rng, out: Out): Session {
       if (!req) fail('No request to withdraw');
       out.emit(s, { type: 'takeCancelled', requester: a.by, target: a.target, reason: 'withdrawn' });
       return { ...s, takeRequests: s.takeRequests.filter((r) => r !== req) };
+    }
+
+    // ----- Watch a hand (9an.3, 2.38) -----
+    case 'requestPeek': {
+      assertPhase(s, 'playing');
+      if (!s.play) fail('Not allowed right now (no trick)');
+      if (!peeksOn(s)) fail('Watching a hand is for network games and single player');
+      if (s.players.find((p) => p.id === a.by)?.computer) fail('Computer players do not watch hands');
+      if (a.target === a.by) fail('You cannot watch your own hand');
+      if (handOf(s, a.by).length > 0) fail('Only players who are out can watch');
+      if (s.peeks.some((p) => p.viewer === a.by)) fail('You can watch one player at a time');
+      if (handOf(s, a.target).length === 0) fail('That player is out');
+      out.emit(s, { type: 'peekRequested', viewer: a.by, target: a.target });
+      return { ...s, peeks: [...s.peeks, { viewer: a.by, target: a.target, showing: false }] };
+    }
+    case 'answerPeek': {
+      assertPhase(s, 'playing');
+      const peek = s.peeks.find((p) => p.viewer === a.viewer && p.target === a.by && !p.showing);
+      if (!peek) fail('No request to answer');
+      out.emit(s, { type: 'peekAnswered', viewer: a.viewer, target: a.by, accepted: a.accept });
+      if (!a.accept) return { ...s, peeks: s.peeks.filter((p) => p !== peek) };
+      return { ...s, peeks: s.peeks.map((p) => (p === peek ? { ...p, showing: true } : p)) };
+    }
+    case 'stopPeek': {
+      assertPhase(s, 'playing');
+      // Either the viewer or the player being watched may stop it.
+      const peek = s.peeks.find((p) => (p.viewer === a.by && p.target === a.other) || (p.target === a.by && p.viewer === a.other));
+      if (!peek) fail('Nothing to stop');
+      out.emit(s, { type: 'peekStopped', viewer: peek.viewer, target: peek.target, by: a.by });
+      return { ...s, peeks: s.peeks.filter((p) => p !== peek) };
     }
 
     // ----- Pause -----
@@ -479,7 +530,7 @@ function afterDealStep(s: Session, out: Out): Session {
   });
   const s2: Session = { ...s, deal: null, hands, hiddenDecks: deal.hiddenDecks };
   // 2.34.6 (CODE.md 9ah.2): every deal opens the reshuffle window; one vote per deal, as many deals as wanted.
-  return { ...s2, phase: 'reshuffle', reshuffleUsed: false };
+  return { ...s2, phase: 'reshuffle', reshuffleUsed: false, kept: [] };
 }
 
 // ---------------------------------------------------------------------------
@@ -517,9 +568,11 @@ function callVote(
   // Two players: asking counts as agreeing; only the other player answers.
   // 2.32 (PROJECT.md 12n): the player who asks is YES for every kind of vote (the automatic Ultimate vote has no asker).
   const ballots: Record<PlayerId, Ballot> = by !== null ? { [by]: 'yes' } : {};
+  const kept = kind === 'reshuffle' && by !== null && !s.kept.includes(by) ? [...s.kept, by] : s.kept;
   return {
     ...s,
     reshuffleUsed: kind === 'reshuffle' ? true : s.reshuffleUsed,
+    kept,
     vote: { kind, calledBy: by, ballots, value, awaitingHost: false, ...(draw ? { draw } : {}) },
   };
 }
@@ -696,7 +749,7 @@ function afterPlay(s: Session, r: PlayResult, out: Out): Session {
   let s2: Session = { ...s, play: r.state, hands: r.state.hands };
   for (const e of r.events) out.emit(s2, e);
   const end = r.events.find((e): e is Extract<PlayEvent, { type: 'roundEnded' }> => e.type === 'roundEnded');
-  if (end) return finishRound({ ...s2, takeRequests: [] }, end, out);
+  if (end) return finishRound(endPeeks({ ...s2, takeRequests: [] }, out), end, out);
   return processTakes(s2, out);
 }
 
@@ -706,6 +759,10 @@ function afterPlay(s: Session, r: PlayResult, out: Out): Session {
  * oldest first. Requests made during a trick wait until it is over.
  */
 function processTakes(s: Session, out: Out): Session {
+  return tidyPeeks(processTakesOnce(s, out), out);
+}
+
+function processTakesOnce(s: Session, out: Out): Session {
   if (s.phase !== 'playing' || !s.play || s.takeRequests.length === 0) return s;
   let play = s.play;
   let queue = s.takeRequests.slice();
@@ -729,6 +786,41 @@ function processTakes(s: Session, out: Out): Session {
     }
   }
   return { ...s, play, hands: play.hands, takeRequests: queue };
+}
+
+/**
+ * 9an.4 (2.38): Keep my cards and the wait before the round starts: network games only, which here means
+ * waitForAll with at least two people. Single player and one phone are unchanged.
+ */
+export function keepOn(s: Session): boolean {
+  return s.waitForAll && s.players.filter((p) => !p.computer).length >= 2;
+}
+
+/**
+ * 9an.3 (2.38): watching a hand: the session's `waitForAll`
+ * (network games and games against the computer), or one person with computer players. Not pass-and-play.
+ */
+export function peeksOn(s: Session): boolean {
+  if (s.waitForAll) return true;
+  const persons = s.players.filter((p) => !p.computer).length;
+  return s.players.length > persons && persons === 1;
+}
+
+/** 9an.3: a watch ends by itself when the player being watched has no cards left (they went out). */
+function tidyPeeks(s: Session, out: Out): Session {
+  if (s.peeks.length === 0) return s;
+  const keep = s.peeks.filter((p) => {
+    if (handOf(s, p.target).length > 0) return true;
+    out.emit(s, { type: 'peekStopped', viewer: p.viewer, target: p.target, by: null });
+    return false;
+  });
+  return keep.length === s.peeks.length ? s : { ...s, peeks: keep };
+}
+
+/** 9an.3: the round ended, so every watch ends (the viewers' cards are no longer shown). */
+function endPeeks(s: Session, out: Out): Session {
+  for (const p of s.peeks) out.emit(s, { type: 'peekStopped', viewer: p.viewer, target: p.target, by: null });
+  return s.peeks.length ? { ...s, peeks: [] } : s;
 }
 
 function finishRound(s: Session, end: RoundEnd, out: Out): Session {

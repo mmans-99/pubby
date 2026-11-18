@@ -414,9 +414,19 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [x] Part B: computer players ask when stuck and sometimes refuse to annoy (9an.2)
 - [x] Part C: watching a hand after you're out (9an.3)
 - [x] Part D: Keep my cards / Deal again before the host can start (9an.4)
-- [ ] Part E: pop-ups hold the game (host-side seq gate) and calm catch-up (9an.5; Opus review E-a to E-g added 2026-11-18, build from that)
-- [ ] Part F: felt drawn from the session; seq gap asks for sync (9an.6)
-- [ ] Part G: rejoin an online game after closing Pubby (host and others) (9an.7)
+- [~] Part E: pop-ups hold the game (host-side seq gate) and calm catch-up (9an.5; Opus review E-a to E-g added 2026-11-18)
+  - [x] Built 2026-11-18: E-a ack on updates that may open a pop-up, phone answers after drawing; E-b `POPUP_EVENTS` + `makesPopup` with test against `popupsFor`; E-c host waits in `busy.ts` at send time, 8 s guard sends the whole game again; E-d parsers keep `seq`/`ack`; E-e `lastSeq`; E-f calm sounds (last of batch) and 180 ms fade; E-g `pubbyNet.delayMs` on the phone reader
+  - [ ] Not built yet: "+1 more" for two pop-ups of the same kind; felt jumps to the current trick without flying missed cards
+  - [ ] Browser check (9an.5 item 8, slap held for 3 s with a 400 ms delay): needs a scripted slap scenario; not written yet
+  - [ ] `testbed/netvotes_check.py` fails at the take-cards step (Part A rule: asks only by the player about to lead); update that script in Part J
+- [~] Part F: felt drawn from the session; seq gap asks for sync (9an.6)
+  - [x] Built 2026-11-18: `trickFromPlay` (tested); `absorb` rebuilds the felt from `session.play` when it differs (not while a trick resolves); joining phone asks for a full copy once after a seq gap; `pubbyNet.dropNext` hook
+  - [ ] Browser check (drop one update, felt still shows all cards): not written yet
+- [x] Part G: rejoin an online game after closing Pubby (host and others) (9an.7; Opus review G-a to G-h added 2026-11-18)
+  - [x] Built 2026-11-18: `src/ui/rejoin.ts` (both keys, 10-minute expiry, joiner save throttled to a minute, host saves after every change); Rejoin on a reload (`resumeJoin`); Carry on (`resumeHost`, restore before the room answers, every seat starts away); End it (`endSavedHost`); home card; `pubbyNet.saved()` hook
+  - [x] `testbed/online_check.py` phase E "reload": Rejoin on a joining page, then Carry on on the host page; all phones on the same log afterwards (48 of 48, whole check)
+  - [x] `testbed/bot.js` taps Keep my cards before Start (9an.4)
+  - [ ] Not checked: the 10-minute expiry in the browser (needs a backdated save; optional `--long-away`)
 - [ ] Part H: host removes a player; cards leave the game (9an.8)
 - [ ] Part I: card table look (9an.9)
 - [ ] Part J: version 2.38.0, checks, test build, phone checklist 9an.12; regenerate the AI regression fixture (moves-2.38.0), the 2.34.5 one fails by design since Part A

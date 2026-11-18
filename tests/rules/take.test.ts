@@ -12,8 +12,8 @@ const hands = () => ({
   d: [c('hearts', 10), c('clubs', 9)],
 });
 
-test('take-cards: requester gets every card, the target goes out with the next place', () => {
-  const s = startPlay(['a', 'b', 'c', 'd'], hands(), 'a');
+test('take-cards: requester (the player about to lead) gets every card, the target goes out, and the requester leads', () => {
+  const s = startPlay(['a', 'b', 'c', 'd'], hands(), 'c');
   const r = takeCards(s, 'c', 'b');
   assert.equal(r.state.hands['b']!.length, 0);
   assert.equal(r.state.hands['c']!.length, 5);
@@ -22,14 +22,15 @@ test('take-cards: requester gets every card, the target goes out with the next p
     { type: 'cardsTaken', requester: 'c', target: 'b', count: 3 },
     { type: 'playerOut', player: 'b', place: 1 },
   ]);
-  assert.equal(r.state.turn, 'a');
-  assert.deepEqual(r.state.trick.participants, ['a', 'c', 'd']);
+  assert.equal(r.state.turn, 'c');
+  assert.deepEqual([...r.state.trick.participants].sort(), ['a', 'c', 'd']);
 });
 
-test('take-cards: if the leader is taken, the next player clockwise holding cards leads', () => {
-  const s = startPlay(['a', 'b', 'c', 'd'], hands(), 'b');
-  const r = takeCards(s, 'd', 'b');
-  assert.equal(r.state.turn, 'c');
+test('take-cards: only the player about to lead can ask; anyone else is refused with the new message', () => {
+  const s = startPlay(['a', 'b', 'c', 'd'], hands(), 'a');
+  assert.match(takeAllowed(s, 'c', 'b') ?? '', /Only the player about to lead/);
+  assert.equal(takeAllowed(s, 'a', 'b'), null);
+  assert.throws(() => takeCards(s, 'c', 'b'), /Only the player about to lead/);
 });
 
 test('take-cards: only between tricks, never with two players left, not from yourself or an out player', () => {
@@ -37,7 +38,7 @@ test('take-cards: only between tricks, never with two players left, not from you
   assert.ok(betweenTricks(s));
   s = playCard(s, 'a', 'hearts-2').state;
   assert.ok(!betweenTricks(s));
-  assert.throws(() => takeCards(s, 'c', 'b'), /between tricks/);
+  assert.throws(() => takeCards(s, 'b', 'c'), /between tricks/);
   assert.match(takeAllowed(s, 'c', 'c') ?? '', /own/);
   const two = startPlay(['a', 'b', 'c'], { a: [c('hearts', 2)], b: [c('hearts', 3)], c: [] }, 'a');
   assert.match(takeAllowed(two, 'a', 'b') ?? '', /two players/);

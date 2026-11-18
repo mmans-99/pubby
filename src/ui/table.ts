@@ -53,6 +53,10 @@ export interface TableOpts {
   last?: Child;
   /** The last trick had a slap: the stack's room includes the slap mark (CODE.md 9aa Part D). */
   lastSlap?: boolean;
+  /** 9an.3 (2.38): players whose hand someone is watching, with the watcher's name (filled by roundTable). */
+  watchedBy?: Readonly<Record<PlayerId, string>>;
+  /** 9an.4 (2.38): before the round starts, who is still choosing (hourglass) and who has kept (check). */
+  keepMark?: Readonly<Record<PlayerId, 'wait' | 'done'>>;
 }
 
 /** Where seat number `k` (0 = bottom, then clockwise) of `n` sits, in % of the table box. */
@@ -379,8 +383,13 @@ function seatTags(id: PlayerId, p: PlayerRow, o: TableOpts, thinking: boolean, p
     o.dealer === id ? h('span', { class: 'seat-dealer', 'aria-label': 'Deals' }, 'D') : null,
     // CODE.md 9u A5: a phone that left the screen; its seat is kept for 10 minutes.
     isAwayPlayer(id) ? h('span', { class: 'seat-away' }, 'Away') : null,
+    // 9an.3 (2.38, item 12): a small eye on the seat of a player whose hand is being watched. No pop-up.
+    o.watchedBy?.[id] ? h('span', { class: 'seat-watched', role: 'img', 'aria-label': `${o.watchedBy[id]} is watching` }, icon('eye')) : null,
     // 9ai.3 (2.36): a phone with a pop-up open. A flipping hourglass, no words.
     isBusyPlayer(id) && !isAwayPlayer(id) ? h('span', { class: 'seat-busy', role: 'img', 'aria-label': 'Busy' }, icon('wait')) : null,
+    // 9an.4 (2.38): the reshuffle step: an hourglass until this person has chosen, then a check.
+    o.keepMark?.[id] === 'wait' ? h('span', { class: 'seat-busy', role: 'img', 'aria-label': 'Choosing' }, icon('wait')) : null,
+    o.keepMark?.[id] === 'done' ? h('span', { class: 'seat-kept', role: 'img', 'aria-label': 'Kept' }, icon('check')) : null,
     place && p.place !== null ? h('span', { class: 'place-badge' }, ordinal(p.place)) : null,
     // Computer player choosing its move (CODE.md 9m.5, 9w.1): three dots, no word.
     thinking ? h('span', { class: 'think-dots', 'aria-label': 'Thinking' }, [0, 1, 2].map((i) => h('span', { class: 'dot', style: `--i:${i}`, 'aria-hidden': 'true' }, '•'))) : null,
@@ -396,7 +405,19 @@ function seatEl(o: TableOpts, id: PlayerId, cls: string, style: string, label: s
     : h('div', { class: full, style, 'data-seat': id }, kids);
 }
 
-export function roundTable(s: Session, v: PlayerView, o: TableOpts): HTMLElement {
+export function roundTable(s: Session, v: PlayerView, o0: TableOpts): HTMLElement {
+  // 9an.3 (2.38): the eye on a seat whose hand someone is watching (public: who watches, never the cards).
+  const watchedBy: Record<PlayerId, string> = {};
+  for (const p of v.peeks ?? []) {
+    if (p.showing) watchedBy[p.target] = s.players.find((x) => x.id === p.viewer)?.sessionName ?? p.viewer;
+  }
+  // 9an.4 (2.38): keep marks on the seats, only while the round is waiting to start (network games).
+  const keepMark: Record<PlayerId, 'wait' | 'done'> = {};
+  if (v.keepOn && s.phase === 'reshuffle') {
+    for (const id of v.kept) keepMark[id] = 'done';
+    for (const id of v.keepWaiting) keepMark[id] = 'wait';
+  }
+  const o: TableOpts = { ...o0, watchedBy, keepMark };
   const seats = tableOrder(s, o.bottom);
   const n = seats.length;
   const discTags = seatInitials(s.players.map((p) => ({ id: p.id, name: p.sessionName ?? p.profileName })));

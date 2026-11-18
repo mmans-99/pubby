@@ -17,6 +17,7 @@ import { h } from './dom.ts';
 import { icon } from './icons.ts';
 import { VERSION } from './version.ts';
 import { getState, update } from './store.ts';
+import { deleteHost, deleteJoin, saveHostNow, saveJoinNow, setHostParts, setJoinParts, type HostSaved, type JoinSaved } from './rejoin.ts';
 import { setHostSkipping } from '../ai/fastforward.ts';
 import { addProfile, findProfile, saveProfiles } from './storage.ts';
 import { makeQr, qrSvg } from '../net/qr.ts';
@@ -42,7 +43,7 @@ import { MAX_PLAYERS } from '../rules/cards.ts';
 import { createSession } from '../session/session.ts';
 import { defaultRng } from '../rules/rng.ts';
 import { hostLine } from './netscreens.ts';
-import { hostGotAct, hostGotReact, hostGotSay, hostStart, hostSync, inNetGame, joinEnded, joinGotGame, joinGotReact, joinGotSay, joinNope, netChanged, setTransport } from './netplay.ts';
+import { hostGotAct, hostGotReact, hostGotSay, hostResume, hostStart, hostSync, inNetGame, joinEnded, joinGotGame, joinGotReact, joinGotSay, joinNope, netChanged, setTransport, hostGotBusy, joinDelayMs, takeDrop } from './netplay.ts';
 
 type Role = 'host' | 'join';
 type Step =
@@ -102,6 +103,11 @@ let adding: Adding | null = null;
 let nextId = 0;
 /** Online: the room this phone hosts. */
 let hostRoom: HostRoom | null = null;
+/** G-a/G-e (2.38): the host token, kept so a reload can carry on (rejoin.ts). */
+let hostToken = '';
+/** G-b (2.38): the join token of this phone's seat, kept so a reload can rejoin. */
+let joinToken = '';
+let joinSaveTimer: number | undefined;
 
 // Online rooms (host's form, the room list, the passcode)
 let roomId = '';
@@ -157,6 +163,14 @@ let drawLater = false;
 // Entry points (app.ts)
 // ---------------------------------------------------------------------------
 
+// G-b, G-d (2.38): what rejoin.ts saves from the live screens.
+setJoinParts(() => (role === 'join' && mode === 'online' && roomId && joinToken
+  ? { roomId, joinToken, roomName, profileName: myProfile }
+  : null));
+setHostParts(() => (role === 'host' && mode === 'online' && hostRoom && lobby && hostToken
+  ? { game: getState().game, lobby, roomId, roomName, roomCode, hostToken, profileName: myProfile }
+  : null));
+
 /** The screen element. Always the same element, so the camera keeps running. */
 export function netLobbyScreen(back: () => void): HTMLElement {
   onBack = back;
@@ -173,6 +187,9 @@ export function netLobbyScreen(back: () => void): HTMLElement {
 /** Leaving the screen: tell the other phones, close every link, start fresh next time. */
 export function stopNetLobby(): void {
   if (!root) return;
+  // G-a (2.38): leaving the screen for good forgets the saved online game (rejoin.ts).
+  if (mode === 'online' && role === 'join') deleteJoin();
+  if (mode === 'online' && role === 'host') deleteHost();
   reset();
   root = null;
 }
@@ -218,6 +235,10 @@ export function netLobbyBack(): boolean {
 function reset(): void {
   hostAway = false;
   joinAway = null;
+  clearInterval(joinSaveTimer);
+  joinSaveTimer = undefined;
+  joinToken = '';
+  hostToken = '';
   stopScan();
   stopList();
   clearInterval(pingTimer);
@@ -801,6 +822,8 @@ function broadcast(): void {
   }
   // Online: the room list shows the seats and whether the game has started.
   hostRoom?.update(lobby.seats.length, lobby.started);
+  // G-d (2.38): every lobby change is saved too (away, back), for a reload of the host's page.
+  saveHostNow();
 }
 
 function startGame(): void {
@@ -922,6 +945,7 @@ function startHostRoom(id: string, token: string): void {
   hr.onBack = () => { if (hostRoom === hr) { hostAway = false; broadcast(); draw(); netChanged(); } };
   hr.onLost = () => {
     if (hostRoom !== hr) return;
+    deleteHost();
     hostRoom = null;
     hostAway = false;
     for (const linkId of [...links.keys()]) forgetLink(linkId);
@@ -942,6 +966,7 @@ async function makeRoom(): Promise<void> {
     const made = await createRoom({ name, passcode: roomCode, hostName: myProfile });
     if (step !== 'room-wait') return;
     roomId = made.roomId;
+    hostToken = made.hostToken; // G-e (2.38): kept for a reload (rejoin.ts)
     lobby = newLobby(myProfile);
     startPings();
     void keepAwake();
@@ -1004,30 +1029,90 @@ async function joinRoomNow(): Promise<void> {
   joiningRoom = true;
   roomPassError = '';
   try {
-    const { joinToken } = await joinRoom(pick.roomId, roomPass);
+    const { joinToken: token } = await joinRoom(pick.roomId, roomPass);
     if (step !== 'room-pass') return;
-    const p = joinSocket(pick.roomId, joinToken);
-    peer = p;
-    wireJoin(p);
-    // CODE.md 9u A3: a drop keeps this seat; the banner says what is happening.
-    p.onAway = (kind) => { if (peer === p) { joinAway = kind; draw(); } };
-    p.onBack = () => {
-      if (peer !== p) return;
-      joinAway = null;
-      // In a game, ask for the whole game again, so this screen catches up.
-      if (inNetGame()) peer.send({ t: 'sync' } satisfies ToHost);
-      draw();
-    };
-    go('room-wait');
-    clearTimeout(connectTimer);
-    connectTimer = window.setTimeout(() => {
-      if (peer === p && step === 'room-wait') joinFail('The room didn’t answer in time. Try again.');
-    }, CONNECT_TIMEOUT_MS);
+    openJoinSocket(pick.roomId, token, pick.name);
   } catch (e) {
     if (step === 'room-pass') { roomPassError = errText(e); draw(); }
   } finally {
     joiningRoom = false;
   }
+}
+
+/**
+ * G-c (2.38): connects this phone to a room with its join token. Used by a new join and by a
+ * rejoin after a reload (resumeJoin). Saves the seat's token for a reload (rejoin.ts).
+ */
+function openJoinSocket(id: string, token: string, name: string): void {
+  const p = joinSocket(id, token);
+  peer = p;
+  roomId = id;
+  roomName = name;
+  joinToken = token;
+  wireJoin(p);
+  // CODE.md 9u A3: a drop keeps this seat; the banner says what is happening.
+  p.onAway = (kind) => { if (peer === p) { joinAway = kind; draw(); } };
+  p.onBack = () => {
+    if (peer !== p) return;
+    joinAway = null;
+    // In a game, ask for the whole game again, so this screen catches up.
+    if (inNetGame()) peer.send({ t: 'sync' } satisfies ToHost);
+    draw();
+  };
+  go('room-wait');
+  clearTimeout(connectTimer);
+  connectTimer = window.setTimeout(() => {
+    if (peer === p && step === 'room-wait') joinFail('The room didn’t answer in time. Try again.');
+  }, CONNECT_TIMEOUT_MS);
+  clearInterval(joinSaveTimer);
+  joinSaveTimer = window.setInterval(() => saveJoinNow(), 60_000);
+}
+
+/** G-c (2.38): Rejoin after Pubby was closed or reloaded. A refused rejoin forgets the saved room. */
+export function resumeJoin(saved: JoinSaved): void {
+  reset();
+  mode = 'online';
+  role = 'join';
+  myProfile = saved.profileName;
+  openJoinSocket(saved.roomId, saved.joinToken, saved.roomName);
+  const p = peer;
+  if (!p) return;
+  const closed = p.onClose;
+  p.onClose = (why) => { deleteJoin(); closed(why); };
+}
+
+/**
+ * G-e (2.38): Carry on after the host's page was closed or reloaded. Everything is restored before
+ * the room answers, so the phones that come back are recognised (every seat starts away).
+ */
+export function resumeHost(saved: HostSaved): void {
+  reset();
+  mode = 'online';
+  role = 'host';
+  myProfile = saved.profileName;
+  roomId = saved.roomId;
+  roomName = saved.roomName;
+  roomCode = saved.roomCode;
+  hostToken = saved.hostToken;
+  let l: Lobby = saved.lobby;
+  for (const s of l.seats) {
+    if (!s.isHost && !s.bot && s.awaySince === undefined) l = setAway(l, s.id, Date.now());
+  }
+  lobby = l;
+  hostResume(saved.game, sessionPlayers(l).linkIds);
+  startPings();
+  void keepAwake();
+  watchVisibility();
+  watchBusy();
+  startHostRoom(saved.roomId, saved.hostToken);
+}
+
+/** G-f (2.38): End it. Forgets the save and closes the room for the phones (with the host token). */
+export function endSavedHost(saved: HostSaved): void {
+  deleteHost();
+  const hr = new HostRoom(saved.roomId, saved.hostToken);
+  hr.onReady = () => hr.close();
+  window.setTimeout(() => hr.close(), 5000);
 }
 
 function roomLostView(): View {
@@ -1119,6 +1204,7 @@ function hostGot(id: string, raw: unknown): void {
   // 9ai.3 (2.36): a seated phone has, or has closed, its pop-ups.
   if (m.t === 'busy') {
     if (!link.seated) return;
+    if (m.seq !== undefined) hostGotBusy(id, m.seq); // 9an.5 (E-a): the phone has drawn that update
     lobby = setBusy(lobby, id, m.on);
     broadcast();
     draw();
@@ -1339,6 +1425,14 @@ function wireJoin(p: Link): void {
 }
 
 function joinGot(raw: unknown): void {
+  // 9an.5 (E-g): the test hook delays every message by the same amount, so their order is kept.
+  if (typeof raw === 'object' && raw !== null && (raw as { t?: unknown }).t === 'game' && takeDrop()) return;
+  const delay = joinDelayMs();
+  if (delay > 0) { window.setTimeout(() => joinGotNow(raw), delay); return; }
+  joinGotNow(raw);
+}
+
+function joinGotNow(raw: unknown): void {
   hostHeard = performance.now();
   const m = readToJoiner(raw);
   if (!m || m.t === 'ping') return;
@@ -1377,8 +1471,10 @@ function joinGot(raw: unknown): void {
     endText = m.why;
     endJoin('refused');
   } else if (m.t === 'removed') {
+    deleteJoin();
     endJoin('removed');
   } else if (m.t === 'closed') {
+    deleteJoin();
     endJoin('closed');
   }
 }

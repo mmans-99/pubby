@@ -176,3 +176,18 @@ export function ordinal(n: number): string {
   const v = n % 100;
   return n + (s[(v - 20) % 10] ?? s[v] ?? s[0]!);
 }
+
+/**
+ * 9an.6 (F-1, 2.38): the felt's cards for the trick in progress, rebuilt from the session (the truth),
+ * so a card missed in a gap still shows. Jokers are not in the session's trick, so the joker entries
+ * from the phone's own log are kept as they were.
+ */
+export function trickFromPlay(
+  plays: readonly { readonly player: string; readonly card: Card }[],
+  jokers: readonly { readonly player: string; readonly card: string; readonly label: string }[] = [],
+): { player: string; card: string; label: string }[] {
+  return [
+    ...plays.map((p) => ({ player: p.player, card: p.card.id, label: shortLabel(p.card) })),
+    ...jokers.map((j) => ({ player: j.player, card: j.card, label: j.label })),
+  ];
+}

@@ -8,7 +8,7 @@ import { seededRng } from '../../src/rules/rng.ts';
 import { missingSuitPlayers } from '../../src/rules/round.ts';
 import { applyAction, createSession } from '../../src/session/session.ts';
 import type { Session, SessionSetup } from '../../src/session/types.ts';
-import { act, dealAll } from './helpers.ts';
+import { act, dealAll, startedRound } from './helpers.ts';
 
 function setup(opts: { waitForAll?: boolean; computer?: readonly string[] }, seed: number): SessionSetup {
   void seed;
@@ -29,7 +29,7 @@ function atStart(want: number, opts: { waitForAll?: boolean; computer?: readonly
     const rng = seededRng(seed);
     let s = dealAll(createSession(setup(opts, seed), rng).session, rng);
     if (missingSuitPlayers(s.order, s.hands).length !== want) continue;
-    s = act(s, { type: 'startRound', by: s.hostId }, rng);
+    s = startedRound(s, rng);
     return s;
   }
   throw new Error(`no seed with ${want} missing`);

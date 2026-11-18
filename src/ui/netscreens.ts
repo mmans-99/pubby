@@ -15,6 +15,7 @@ import { icon } from './icons.ts';
 import type { SavedGame } from './storage.ts';
 import type { PlayerId, Session, SessionAction } from '../session/types.ts';
 import { joinNames } from '../session/names.ts';
+import { isAwayPlayer } from '../net/away.ts';
 import { getState, update } from './store.ts';
 import { chooseLeaderStage, dealingStage, fastForwardMenuItems, gameFrame, handBlock, isHostSeat, nameOf, noticeStage, ownSeat, playHandStage, publicView, reactionsToggle, send, stageLayout } from './game.ts';
 import { miniDisc, netRoundStart } from './roundstart.ts';
@@ -104,23 +105,49 @@ function beforeRound(g: SavedGame): Child {
   const v = publicView(s);
   // 2.29: a fixed game screen: the table, your hand, the buttons; the target row floats over the table.
   const lay = stageLayout(true, 52);
+  // 9an.4 (2.38): in a network game the round waits until everyone has kept their cards (or voted).
+  const waiting = v.keepOn ? v.keepWaiting : [];
+  const iKept = v.kept.includes(me);
+  const awayWaiting = waiting.filter((p) => isAwayPlayer(p));
+  const keepRow = v.keepOn && !host && !iKept
+    ? h('button', { class: 'keep-go grow', onclick: () => send([{ type: 'keepCards', by: me }]) }, icon('hand'), ' Keep my cards')
+    : null;
+  const deal = v.canCallReshuffle
+    ? h('button', {
+      class: 'secondary grow',
+      'aria-label': 'Deal again? Call a reshuffle vote',
+      onclick: () => send([{ type: 'callVote', by: me, kind: 'reshuffle' }]),
+    }, icon('shuffle'), ' Deal again?')
+    : h('button', { class: 'secondary grow', disabled: true, 'aria-label': 'Deal again: already used this round' }, icon('shuffle'), ' Used');
+  const startBtn = host
+    ? h('button', {
+      class: 'big grow',
+      disabled: waiting.length > 0,
+      'aria-label': waiting.length ? `Start the round: waiting for ${joinNames(waiting.map((p) => nameOf(s, p)))}` : 'Start the round',
+      onclick: () => send([{ type: 'startRound', by: s.hostId }]),
+    }, icon('play'), waiting.length ? ` Waiting for ${joinNames(waiting.map((p) => nameOf(s, p)))}` : ' Start')
+    : null;
+  // The host can start without a player who is away; they count as kept.
+  const skipBtn = host && awayWaiting.length
+    ? h('button', {
+      class: 'secondary grow',
+      onclick: () => send([{ type: 'startRound', by: s.hostId, skip: awayWaiting }]),
+    }, `Start without ${joinNames(awayWaiting.map((p) => nameOf(s, p)))}`)
+    : null;
   return gameFrame(lay, {
     table: roundTable(s, v, { bottom: me, waste: wastePile(0), you: true, box: lay.box }),
     hand: handBlock(s, playerView(s, me), null, { head: false, fit: lay.handH, width: lay.handW }),
     action: h('div', { class: 'row round-buttons' },
-      v.canCallReshuffle
-        ? h('button', {
-          class: 'secondary grow',
-          'aria-label': 'Deal again? Call a reshuffle vote',
-          onclick: () => send([{ type: 'callVote', by: me, kind: 'reshuffle' }]),
-        }, icon('shuffle'), ' Deal again?')
-        : h('button', { class: 'secondary grow', disabled: true, 'aria-label': 'Deal again: already used this round' }, icon('shuffle'), ' Used'),
-      host
-        ? h('button', { class: 'big grow', onclick: () => send([{ type: 'startRound', by: s.hostId }]) }, icon('play'), ' Start')
-        : null,
+      keepRow,
+      deal,
+      startBtn,
+      skipBtn,
     ),
     // 9aj.5 (2.36): the target is proposed from the top bar (targetButton), not a row here.
-    extra: [host ? null : hostDeciding(s, 'when to start the round')],
+    extra: [
+      host ? null : hostDeciding(s, 'when to start the round'),
+      iKept && v.keepOn && !host ? h('p', { class: 'note good center', role: 'status' }, 'You kept your cards') : null,
+    ],
     extraAt: 'top',
   });
 }

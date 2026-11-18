@@ -197,7 +197,24 @@ function fire(name: Sfx): void {
  * Play an effect (after `delayMs`). Big effects queue one after another;
  * small ones are skipped while a big one plays. Does nothing while effects are off.
  */
+/**
+ * 9an.5 (E-f, 2.38): while a phone catches up on moves it missed behind open pop-ups, only the last
+ * sound of the batch is kept and played once when the catch-up ends.
+ */
+let calm = false;
+let calmSlot: Sfx | null = null;
+export function setCalm(on: boolean): void {
+  if (on === calm) return;
+  calm = on;
+  if (!on && calmSlot) {
+    const n = calmSlot;
+    calmSlot = null;
+    sfx(n);
+  }
+}
+
 export function sfx(name: Sfx, delayMs = 0): void {
+  if (calm) { calmSlot = name; return; }
   const run = (): void => {
     sfxLog.push(name);
     sfxSeen.add(name);

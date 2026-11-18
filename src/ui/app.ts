@@ -23,7 +23,8 @@ import { pauseLayer } from './between.ts';
 import { afterRender, gameScreen, hideMessageBar, popupLayer, reactionsLayer, shuffling, startShuffle, trickAnimating } from './game.ts';
 import { csvSheetLayer, pastGamesScreen, profileDetails } from './history.ts';
 import { renderMarkdown } from './markdown.ts';
-import { joinLobbyFromLink, joinRoomFromLink, netLobbyScreen, stopNetLobby } from './netlobby.ts';
+import { endSavedHost, joinLobbyFromLink, joinRoomFromLink, netLobbyScreen, resumeHost, resumeJoin, stopNetLobby } from './netlobby.ts';
+import { loadHost, loadJoin } from './rejoin.ts';
 import { screenKey } from './scrollkeep.ts';
 import { fastForwardOn } from '../ai/fastforward.ts';
 import { addProfile, deleteProfile, findProfile, keepStorage, loadGame, loadProfiles, loadRecords, loadVsProfiles, saveProfiles, saveVsProfiles } from './storage.ts';
@@ -307,6 +308,36 @@ function rulesOverlay(): HTMLElement {
 // Home
 // ---------------------------------------------------------------------------
 
+/** G-g (2.38): "Not now" hides the saved online game's card until Pubby starts again (the save stays). */
+let savedCardHidden = false;
+
+/**
+ * G-g (2.38): the saved online game (rejoin.ts). A host sees Carry on / End it; a joining phone sees
+ * Rejoin / Not now. Nothing shows when no save is still within its 10 minutes.
+ */
+function savedOnlineCard(): HTMLElement | null {
+  if (savedCardHidden) return null;
+  const host = loadHost();
+  if (host) {
+    return h('section', { class: 'panel saved-online', role: 'region', 'aria-label': 'Your online game' },
+      h('p', { class: 'net-big' }, 'Your online game is still on'),
+      h('p', { class: 'muted small' }, host.roomName),
+      h('button', { class: 'big', onclick: () => resumeHost(host) }, 'Carry on'),
+      h('button', { class: 'big secondary', onclick: () => { endSavedHost(host); update({}); } }, 'End it'),
+    );
+  }
+  const join = loadJoin();
+  if (join) {
+    return h('section', { class: 'panel saved-online', role: 'region', 'aria-label': 'Your online game' },
+      h('p', { class: 'net-big' }, 'Your online game is still on'),
+      h('p', { class: 'muted small' }, join.roomName),
+      h('button', { class: 'big', onclick: () => { resumeJoin(join); update({ screen: 'netlobby' }); } }, 'Rejoin'),
+      h('button', { class: 'big secondary', onclick: () => { savedCardHidden = true; update({}); } }, 'Not now'),
+    );
+  }
+  return null;
+}
+
 function homeScreen(): HTMLElement {
   const g = getState().game;
   return h('main', { class: 'screen home' },
@@ -320,6 +351,7 @@ function homeScreen(): HTMLElement {
       h('p', { class: 'tagline' }, 'Get rid of your cards. Don’t be last.'),
     ),
     h('div', { class: 'stack' },
+      savedOnlineCard(),
       g ? h('button', { class: 'big', disabled: missingProfiles().length > 0, onclick: carryOn },
         `Carry on game (round ${g.session.round})`) : null,
       g && missingProfiles().length ? h('p', { class: 'note warn' }, missingText(missingProfiles())) : null,

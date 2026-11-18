@@ -173,7 +173,8 @@ export function loadGame(): SavedGame | null {
   const stage: GameStage = g.stage === 'hand' || g.stage === 'handoff' ? g.stage : 'table';
   // 2.20 fields: older saves have neither, which means the old behaviour.
   // 2.30: notices (older saves have none, which is the old behaviour).
-  const session = { ...g.session, waitForAll: g.session.waitForAll ?? false, handSeen: g.session.handSeen ?? [], notice: g.session.notice ?? null, noticeSeen: g.session.noticeSeen ?? [] };
+  // 9an.3 (2.38): watch-a-hand list (empty before 2.38).
+  const session = { ...g.session, waitForAll: g.session.waitForAll ?? false, handSeen: g.session.handSeen ?? [], notice: g.session.notice ?? null, noticeSeen: g.session.noticeSeen ?? [], peeks: g.session.peeks ?? [] };
   return {
     session, stage, holder: g.holder ?? g.session.hostId, trickLog: g.trickLog ?? [], lastTrick: g.lastTrick ?? null, notes: g.notes ?? {},
     ...(g.bots ? { bots: g.bots } : {}),

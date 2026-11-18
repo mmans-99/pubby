@@ -192,6 +192,9 @@
       const call = byLabel('Deal again? Call')[0];
       if (call) return click(call, 'call reshuffle vote');
     }
+    // 9an.4 (2.38): before the round starts, each person keeps their cards (the host's Start waits for them).
+    const keepBtn = buttons().find((b) => b.textContent.includes('Keep my cards'));
+    if (keepBtn) return click(keepBtn, 'keep my cards');
     // 2.31 (CODE.md 9aa Part C): the against-the-computer round-start button is now just "Start".
     const startRound = byText('Start ·') || buttons().find((b) => b.textContent.trim() === 'Start');
     if (startRound) return click(startRound, 'start the round');

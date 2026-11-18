@@ -10,8 +10,8 @@ import type { Card, StandardCard, Suit } from '../rules/cards.ts';
 import type { DealMode } from '../rules/deal.ts';
 import { canForfeit, legalCards } from '../rules/play.ts';
 import { swapAllowed } from '../rules/round.ts';
-import { handOf, targetVoteAllowed } from './session.ts';
-import type { LeadNotice, PlayerId, RoundRecord, Session, SessionEnd, SessionPhase, UltimateLabels, VoteKind } from './types.ts';
+import { handOf, keepOn, targetVoteAllowed } from './session.ts';
+import type { LeadNotice, Peek, PlayerId, RoundRecord, Session, SessionEnd, SessionPhase, UltimateLabels, VoteKind } from './types.ts';
 
 export interface PlayerSummary {
   readonly id: PlayerId;
@@ -58,6 +58,18 @@ export interface PlayerView {
   readonly canForfeit: boolean;
   /** Take-cards requests involving this player only. */
   readonly myTakeRequests: readonly { readonly requester: PlayerId; readonly target: PlayerId; readonly agreed: boolean }[];
+  /** 9an.3 (2.38): every watch this round, public (who watches whom; no cards). */
+  readonly peeks: readonly Peek[];
+  /** 9an.3: the watches I am part of (I asked, or I am being asked). */
+  readonly myPeeks: readonly Peek[];
+  /** 9an.4 (2.38): Keep my cards is on (network games). */
+  readonly keepOn: boolean;
+  /** 9an.4: the people who have kept (or voted on) this deal. */
+  readonly kept: readonly PlayerId[];
+  /** 9an.4: the people (not computers, not the host, whose Start counts as their keep) still to keep before the round can start. */
+  readonly keepWaiting: readonly PlayerId[];
+  /** 9an.3: the hand I am watching right now (I am the viewer of a showing watch), else null. Only my copy has the cards. */
+  readonly watching: { readonly target: PlayerId; readonly cards: readonly Card[] } | null;
   readonly vote: {
     readonly kind: VoteKind;
     readonly calledBy: PlayerId | null;
@@ -127,6 +139,17 @@ export function playerView(s: Session, me: PlayerId): PlayerView {
     wastePileCount: play?.wastePile.length ?? 0,
     pendingFinalTwo: play?.pendingFinalTwo ?? null,
     myTakeRequests: s.takeRequests.filter((r) => r.requester === me || r.target === me),
+    peeks: s.peeks,
+    keepOn: keepOn(s),
+    kept: s.phase === 'reshuffle' ? s.kept : [],
+    keepWaiting: keepOn(s) && s.phase === 'reshuffle'
+      ? s.order.filter((p) => p !== s.hostId && !s.players.find((x) => x.id === p)?.computer && !s.kept.includes(p))
+      : [],
+    myPeeks: s.peeks.filter((p) => p.viewer === me || p.target === me),
+    watching: (() => {
+      const mine = s.peeks.find((p) => p.viewer === me && p.showing);
+      return mine ? { target: mine.target, cards: handOf(s, mine.target).slice() } : null;
+    })(),
     canForfeit: !!play && canForfeit(play, me),
     vote: v
       ? {

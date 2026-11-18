@@ -22,14 +22,14 @@ import { defaultRng } from '../rules/rng.ts';
 import { applyAction, handOf } from '../session/session.ts';
 import type { LeadNotice, PlayerId, Session, SessionAction, SessionEvent } from '../session/types.ts';
 import { playerView, type PlayerView } from '../session/view.ts';
-import { cardFace, cardFaceFromId, fanLayout, fitFan, hasFourAces, ordinal, shortLabel, sortHand, SUIT_NAME, SUIT_SYMBOL } from './cards.ts';
+import { cardFace, cardFaceFromId, fanLayout, fitFan, hasFourAces, ordinal, shortLabel, sortHand, SUIT_NAME, SUIT_SYMBOL, trickFromPlay } from './cards.ts';
 import { h, type Child } from './dom.ts';
 import type { GameStage, LastTrick, SavedGame, TrickPlay } from './storage.ts';
 import { getState, say, update, type Popup } from './store.ts';
 import { saveFinishedGame } from './history.ts';
-import { reshuffleStage, resetTap, roundStartHolder, roundStartScreen, voteAlertBody, voteOutcome, voteResultBody } from './roundstart.ts';
+import { miniDisc, reshuffleStage, resetTap, roundStartHolder, roundStartScreen, voteAlertBody, voteOutcome, voteResultBody } from './roundstart.ts';
 import { lockedSeats } from '../rules/deal.ts';
-import { cardSound, eventSounds, sfx } from '../audio/sfx.ts';
+import { cardSound, eventSounds, setCalm, sfx } from '../audio/sfx.ts';
 import { soundSettings } from '../audio/settings.ts';
 import { icon, type IconName } from './icons.ts';
 import { botsOnlyFor, botsTick, startFastForward, startSkip, stopFastForward } from './bots.ts';
@@ -41,9 +41,10 @@ import { handH, roundTable, wastePile } from './table.ts';
 import { joinNames } from '../session/names.ts';
 import { gameLayout, type GameLayout } from './layout.ts';
 import { forfeitLine } from './popuptext.ts';
+import { watchAskCard, watchEyeButton, watchingBlock, watchPill, watchSheet } from './watch.ts';
 import { netGameBody, netMenu } from './netscreens.ts';
 import {
-  askPausePanel, askToTake, gameOverStage, netPauseButton, notesPanel, passOnButton, pauseButton, pausePanel, pauseRequestsBanner,
+  askPausePanel, gameOverStage, netPauseButton, notesPanel, passOnButton, pauseButton, pausePanel, pauseRequestsBanner,
   pauseTick, resultsStage, takeButton, takeControls, takeHolder, takePrompts, takeStatus, targetButton, targetSheet,
 } from './between.ts';
 
@@ -274,7 +275,21 @@ function dealtTo(before: Session, after: Session): { seat: PlayerId | null; any:
  * After a move: the last-trick record, private notes, who holds the phone,
  * saving a finished game, pop-ups, sounds and animations, then redraw.
  */
+/**
+ * 9an.5 (E-a): this phone's busy state, the same rule the game screen reports to the host. An ack
+ * must send this, or a phone that is auto-closing pop-ups could leave the host waiting for a change
+ * that never comes.
+ */
+export function phoneBusyNow(): boolean {
+  return getState().popups.length > 0 && !autoClosing() && !(trickAnim && trickAnim.step !== 'wait');
+}
+
+/** 9an.5 (E-f): this phone took moves while pop-ups were still open; it catches up calmly. */
+let catchingUp = false;
+
 function absorb(g: SavedGame, session: Session, events: readonly SessionEvent[], opts: SendOpts): void {
+  // 9an.5 (E-f): pop-ups already open before these moves means a catch-up: calm sounds, a fade after.
+  if (getState().popups.length > 0) { catchingUp = true; setCalm(true); }
   const dealt = dealtTo(g.session, session);
   if (dealt.seat && !pendingFly) pendingFly = dealt.seat;
 
@@ -346,6 +361,14 @@ function absorb(g: SavedGame, session: Session, events: readonly SessionEvent[],
     }
   }
 
+  // 9an.6 (F-1, 2.38): the session is the truth for the trick in progress; events only drive the animation.
+  // A card missed in a gap (a full update has no events) still shows. Not while a trick is resolving.
+  if (session.play && session.phase === 'playing' && !events.some((e) => e.type === 'trickResolved')) {
+    const want = trickFromPlay(session.play.trick.plays, trickLog.filter((t) => t.card === 'joker'));
+    const same = want.length === trickLog.length && want.every((w, i) => w.player === trickLog[i]?.player && w.card === trickLog[i]?.card);
+    if (!same) trickLog = want;
+  }
+
   // Game over: save the game record and add it to the profiles on this phone (once).
   let recordId = g.recordId;
   if (session.ended && !recordId && events.some((e) => e.type === 'sessionEnded')) {
@@ -356,7 +379,7 @@ function absorb(g: SavedGame, session: Session, events: readonly SessionEvent[],
   // 9v.4 / 2.32.1: while Fast forward or Skip runs, only the round-over pop-up (and the game-over one) is shown.
   // The round-over one names the round's winner (1st in the finishing order).
   const quiet = skipping() || instantSkipping();
-  const fresh = popupsFor(session, events)
+  const fresh = popupsFor(session, events, seat ?? null)
     // 9ai.4: the asker doesn't get the vote alert (they already said YES).
     .filter((p) => !(p.kind === 'voteAlert' && p.by === seat))
     .filter((p) => !quiet || p.kind === 'lastTwo' || (p.kind === 'slap' && p.over !== undefined))
@@ -402,12 +425,34 @@ function absorb(g: SavedGame, session: Session, events: readonly SessionEvent[],
   });
 }
 
-function popupsFor(s: Session, events: readonly SessionEvent[]): Popup[] {
+/**
+ * `seat`: the player whose phone this is (network game or single player), or null on one shared phone.
+ * On one phone the take-cards requests stay private (9an.1), so they make no pop-up here.
+ */
+function popupsFor(s: Session, events: readonly SessionEvent[], seat: PlayerId | null): Popup[] {
   const out: Popup[] = [];
   const end = events.find((e) => e.type === 'roundEnded');
   const lastTwo = end && end.type === 'roundEnded' ? end.finishingOrder.slice(-2) : [];
   for (const e of events) {
     switch (e.type) {
+      case 'takeRequested':
+        // 9an.1 item 9: everyone who isn't the asker or the asked sees the ask.
+        if (seat && seat !== e.requester && seat !== e.target) out.push({ kind: 'take', requester: e.requester, target: e.target, answer: null });
+        break;
+      case 'peekAnswered':
+        // 9an.3 (2.38, item 10): a refused watch is a pop-up for the player who asked, only.
+        if (seat && seat === e.viewer && !e.accepted) out.push({ kind: 'info', icon: 'eye', title: `${nameOf(s, e.target)} said no`, text: '' });
+        break;
+      case 'takeAnswered':
+        // 9an.1 item 9: the answer, on every phone with a seat (the asked player's phone included).
+        if (seat) {
+          const gone = events.find((x) => x.type === 'playerOut' && x.player === e.target);
+          out.push({
+            kind: 'take', requester: e.requester, target: e.target,
+            answer: { accepted: e.accepted, place: e.accepted && gone?.type === 'playerOut' ? gone.place : null },
+          });
+        }
+        break;
       case 'slapped':
         // 2.21: a slap that ends the round has no next trick, so no pick-up line (the round is over, the game may be too).
         out.push({ kind: 'slap', slapper: e.slapper, slapped: e.slapped, cards: e.cardsPickedUp,
@@ -490,7 +535,8 @@ function popupsFor(s: Session, events: readonly SessionEvent[]): Popup[] {
         });
         break;
       case 'cardsTaken':
-        out.push({
+        // 9an.1: with a seat, the answer pop-up above says it (one pop-up per take); one phone keeps this one.
+        if (!seat) out.push({
           kind: 'info', icon: 'take', title: 'Cards taken',
           text: `${nameOf(s, e.requester)} took ${nameOf(s, e.target)}'s ${e.count} cards`,
         });
@@ -1193,7 +1239,6 @@ function playHandoffStage(g: SavedGame): Child {
     table: trickArea(s, g, v, actor, actor, lay),
     hand: handoffBlock(who, () => update({ game: { ...g, stage: 'hand', holder: actor } }), { compact: true }),
     action: choosing || asked ? h('p', { class: 'hint center' }, choosing ? 'Pick up or forfeit' : `For ${who} only`) : null,
-    extra: askToTake(g),
   });
 }
 
@@ -1344,6 +1389,9 @@ export function playHandStage(g: SavedGame): Child {
         (s.play?.hands[jokerGivesWin(s, v.me)!]?.length ?? 0) === 0 ? 'goes out with their last card unopposed and wins' : 'can play their last card unopposed and win'} the round.`)
       : null,
     takeControls(s, v.me),
+    watchSheet(s, v),
+    watchAskCard(s, v),
+    watchPill(s, v),
     !ownSeat(g) && !myTurn && !choosing && !s.takeRequests.some((r) => r.target === v.me && !r.agreed)
       ? passOnButton(g)
       : null,
@@ -1353,14 +1401,17 @@ export function playHandStage(g: SavedGame): Child {
   // The final-two decision card has its own Forfeit, so the row leaves it out while choosing.
   const waitHint = !myTurn && actor && !choosing ? h('span', { class: 'action-hint' }, `Wait for ${nameOf(s, actor)}`) : null;
   const barForfeit = choosing ? null : forfeitBtn;
-  const action: Child = barForfeit || playButton || waitHint
-    ? h('div', { class: 'action-row' }, barForfeit, playButton ?? waitHint)
+  // 9an.3 (2.38, item 8): out of the round, the eye (Watch a hand) sits beside Forfeit.
+  const eye = watchEyeButton(s, v);
+  const action: Child = barForfeit || eye || playButton || waitHint
+    ? h('div', { class: 'action-row' }, barForfeit, eye, playButton ?? waitHint)
     : null;
   return gameFrame(lay, {
     table: trickArea(s, g, v, v.me, actor ?? v.me, lay, myTurn ? turnLabel(s, v) : undefined),
     hand: fastItems.length
       ? h('div', { class: 'hand-actions' }, ...fastItems)
-      : handBlock(s, v, playBlocked ? null : onTap, {
+      // 9an.3 (2.38, item 10): out and watching someone: their cards show where my hand was.
+      : watchingBlock(s, v) ?? handBlock(s, v, playBlocked ? null : onTap, {
         head: false, fit: lay.handH, width: lay.handW,
         yourTurn: myTurn,
       }),
@@ -1465,6 +1516,9 @@ export function popupLayer(): HTMLElement | null {
       h('div', { class: `place-big ${tier}` }, ordinal(p.place)),
       h('div', { class: 'small' }, mine ? 'Sit back and watch the rest.' : 'No cards left.'),
     ];
+  } else if (p.kind === 'take') {
+    cls += ' take-pop';
+    body = takePopBody(s, p);
   } else if (p.kind === 'lastTwo') {
     body = lastTwoBody(s, p, ownSeat(g));
   } else if (p.kind === 'voteAlert') {
@@ -1492,6 +1546,26 @@ export function popupLayer(): HTMLElement | null {
     fastForwardOn()
       ? h('button', { class: 'secondary big ff-stop', onclick: (e: Event) => { e.stopPropagation(); stopFastForward(); } }, 'Stop fast forward')
       : null);
+}
+
+/** 9an.1 (2.38): the asker's disc, "Amy is asking Ben for their cards" and Waiting; then the answer. */
+function takePopBody(s: Session, p: Extract<Popup, { kind: 'take' }>): Child[] {
+  const who = nameOf(s, p.requester);
+  const whom = nameOf(s, p.target);
+  if (!p.answer) return [
+    h('div', { class: 'take-pop-disc' }, miniDisc(s, p.requester, '56px')),
+    h('div', { class: 'popup-title' }, `${who} is asking ${whom} for their cards`),
+    h('div', { class: 'small' }, `Waiting for ${whom}`),
+  ];
+  if (!p.answer.accepted) return [
+    h('div', { class: 'take-pop-disc' }, miniDisc(s, p.target, '56px')),
+    h('div', { class: 'popup-title' }, `${whom} said no to ${who}`),
+  ];
+  return [
+    h('div', { class: 'take-pop-disc' }, miniDisc(s, p.target, '56px')),
+    h('div', { class: 'popup-title' }, `${whom} gave ${who} their cards`),
+    p.answer.place !== null ? h('div', { class: 'small' }, `${whom} came ${ordinal(p.answer.place)}`) : null,
+  ];
 }
 
 function lastTwoBody(s: Session, p: Extract<Popup, { kind: 'lastTwo' }>, me: PlayerId | null): Child[] {
@@ -1703,7 +1777,17 @@ export function afterRender(): void {
   const st = getState();
   const s = st.game?.session;
   // 9ai.3 (2.36): this phone reports whether a pop-up of its own is up (not while Fast forward or Skip runs).
-  reportMyBusy(st.popups.length > 0 && !autoClosing() && !(trickAnim && trickAnim.step !== 'wait'));
+  reportMyBusy(phoneBusyNow());
+  // 9an.5 (E-f): the last pop-up closed: the missed batch ends (one sound, then a 180 ms fade on the felt).
+  if (catchingUp && st.popups.length === 0) {
+    catchingUp = false;
+    setCalm(false);
+    const felt = document.querySelector('.round-table');
+    if (felt) {
+      felt.classList.add('catching-up');
+      window.setTimeout(() => felt.classList.remove('catching-up'), 180);
+    }
+  }
   const dealing = st.screen === 'game' && st.game?.net?.role !== 'join' && s?.phase === 'dealing' && s.deal?.mode === 'auto' && s.deal.nextSeat !== null && !s.vote && !s.paused && !shuffling() && !anyoneBusy();
   if (!dealing) {
     if (dealTimer !== null) { window.clearTimeout(dealTimer); dealTimer = null; }

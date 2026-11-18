@@ -5,7 +5,7 @@ import { applyAction, createSession, finalStandings } from '../../src/session/se
 import type { Session } from '../../src/session/types.ts';
 import { legalCards } from '../../src/rules/play.ts';
 import { playerView } from '../../src/session/view.ts';
-import { act, dealAll, playRound, setupFor, start, step, voteRest } from './helpers.ts';
+import { act, dealAll, playRound, setupFor, start, step, voteRest, startedRound } from './helpers.ts';
 
 const types = (s: Session) => s.log.map((e) => e.event.type);
 
@@ -124,7 +124,7 @@ test('vote with no majority: the host decides (tie, or too few votes)', () => {
 test('hidden swap: 2 and 3 players, once each per round, then the round starts', () => {
   const rng = seededRng(6);
   let s = dealAll(start(3, rng), rng);
-  s = act(s, { type: 'startRound', by: 'p1' }, rng);
+  s = startedRound(s, rng, 'p1');
   assert.equal(s.phase, 'swap');
   const size = s.hands['p2']!.length;
   const give = s.hands['p2']!.slice(0, 4).map((c) => c.id);
@@ -137,14 +137,14 @@ test('hidden swap: 2 and 3 players, once each per round, then the round starts',
   assert.ok(['playing', 'reactionTap'].includes(s.phase));
 
   let four = dealAll(start(4, rng), rng);
-  four = act(four, { type: 'startRound', by: 'p1' }, rng);
+  four = startedRound(four, rng, 'p1');
   assert.notEqual(four.phase, 'swap');
 });
 
 test('pause: host pauses and resumes; requests need the host; nothing else works while paused', () => {
   const rng = seededRng(7);
   let s = dealAll(start(4, rng), rng);
-  s = act(s, { type: 'startRound', by: 'p1' }, rng);
+  s = startedRound(s, rng, 'p1');
   assert.throws(() => act(s, { type: 'pause', by: 'p2', at: 0 }, rng), /host/);
   s = act(s, { type: 'requestPause', by: 'p2' }, rng);
   s = act(s, { type: 'requestPause', by: 'p3' }, rng);
@@ -204,7 +204,7 @@ test('a full round: scores, results screen, ready up, loser deals next, winner p
   assert.equal(s.round, 2);
   assert.equal(s.dealer, r.finishingOrder[4]);
   s = dealAll(s, rng);
-  s = act(s, { type: 'startRound', by: 'p1' }, rng);
+  s = startedRound(s, rng, 'p1');
   if (s.phase === 'chooseLeader') {
     const other = s.order.find((p) => p !== r.finishingOrder[0])!;
     assert.throws(() => act(s, { type: 'chooseLeader', by: other, leader: other }, rng), /winner/);
@@ -216,7 +216,7 @@ test('a full round: scores, results screen, ready up, loser deals next, winner p
 test('target vote on the results screen sets the goal; not during a round', () => {
   const rng = seededRng(11);
   let s = dealAll(start(4, rng), rng);
-  s = act(s, { type: 'startRound', by: 'p1' }, rng);
+  s = startedRound(s, rng, 'p1');
   assert.throws(() => act(s, { type: 'callVote', by: 'p2', kind: 'target', value: 10 }, rng), /results/);
   s = playRound(s, rng);
   assert.throws(() => act(s, { type: 'callVote', by: 'p2', kind: 'target', value: 0 }, rng));
@@ -367,7 +367,7 @@ test('target vote before round 1 starts (during the deal or before the host star
 test('target vote: not during a round, not before later rounds, and only until one is agreed', () => {
   const rng = seededRng(31);
   let s = dealAll(start(4, rng), rng);
-  s = act(s, { type: 'startRound', by: 'p1' }, rng);
+  s = startedRound(s, rng, 'p1');
   assert.throws(() => act(s, { type: 'callVote', by: 'p2', kind: 'target', value: 5 }, rng), /before round 1|results/);
   s = playRound(s, rng);
   s = act(s, { type: 'callVote', by: 'p2', kind: 'target', value: 50 }, rng);
@@ -388,14 +388,14 @@ test('target vote: not during a round, not before later rounds, and only until o
 function playing(seed: number) {
   const rng = seededRng(seed);
   let s = dealAll(start(4, rng), rng);
-  s = act(s, { type: 'startRound', by: 'p1' }, rng);
+  s = startedRound(s, rng, 'p1');
   while (s.phase !== 'playing') s = step(s, rng); // Reaction Tap if needed
   return { s, rng };
 }
 
-test('take-cards request: asked between tricks, agreed, cards move at once and the giver goes out', () => {
+test('take-cards request: asked by the player about to lead, agreed, cards move at once, the asker leads', () => {
   let { s, rng } = playing(40);
-  const req = s.order.find((p) => p !== s.play!.turn)!;
+  const req = s.play!.turn!;
   const target = s.order.find((p) => p !== req)!;
   const before = s.play!.hands[req]!.length + s.play!.hands[target]!.length;
   s = act(s, { type: 'requestTake', by: req, target }, rng);
@@ -410,20 +410,31 @@ test('take-cards request: asked between tricks, agreed, cards move at once and t
   assert.equal(s.play!.hands[target]!.length, 0);
   assert.equal(s.play!.hands[req]!.length, before);
   assert.deepEqual(s.play!.finished, [target]);
+  assert.equal(s.play!.turn, req);
   assert.deepEqual(s.takeRequests, []);
   assert.ok(s.log.some((e) => e.event.type === 'cardsTaken'));
 });
 
 test('take-cards request: refused, or withdrawn, nothing moves', () => {
   let { s, rng } = playing(41);
-  s = act(s, { type: 'requestTake', by: 'p2', target: 'p3' }, rng);
+  const lead = s.play!.turn!;
+  const [t1, t2] = s.order.filter((p) => p !== lead) as [string, string];
+  s = act(s, { type: 'requestTake', by: lead, target: t1 }, rng);
   const hands = JSON.stringify(s.play!.hands);
-  s = act(s, { type: 'answerTake', by: 'p3', requester: 'p2', accept: false }, rng);
+  s = act(s, { type: 'answerTake', by: t1, requester: lead, accept: false }, rng);
   assert.equal(JSON.stringify(s.play!.hands), hands);
   assert.deepEqual(s.takeRequests, []);
-  s = act(s, { type: 'requestTake', by: 'p2', target: 'p4' }, rng);
-  s = act(s, { type: 'withdrawTake', by: 'p2', target: 'p4' }, rng);
+  s = act(s, { type: 'requestTake', by: lead, target: t2 }, rng);
+  s = act(s, { type: 'withdrawTake', by: lead, target: t2 }, rng);
   assert.deepEqual(s.takeRequests, []);
+});
+
+test('take-cards request: only the player about to lead can ask; others are refused', () => {
+  let { s, rng } = playing(46);
+  const lead = s.play!.turn!;
+  const other = s.order.find((p) => p !== lead)!;
+  const target = s.order.find((p) => p !== lead && p !== other)!;
+  assert.throws(() => act(s, { type: 'requestTake', by: other, target }, rng), /Only the player about to lead/);
 });
 
 test('take-cards request: only before a trick starts, never during one', () => {
@@ -434,34 +445,23 @@ test('take-cards request: only before a trick starts, never during one', () => {
   assert.throws(() => act(s, { type: 'requestTake', by: req, target }, rng), /before a trick starts/);
 });
 
-test('take-cards request: two players ask the same player, who gives to one; the other gets a no', () => {
-  let { s, rng } = playing(45);
-  const [a, b, target] = s.order.slice(0, 3) as [string, string, string];
-  s = act(s, { type: 'requestTake', by: a, target }, rng);
-  s = act(s, { type: 'requestTake', by: b, target }, rng);
-  const before = s.play!.hands[b]!.length + s.play!.hands[target]!.length;
-  s = act(s, { type: 'answerTake', by: target, requester: b, accept: true }, rng);
-  assert.equal(s.play!.hands[b]!.length, before);
-  assert.equal(s.play!.hands[target]!.length, 0);
-  assert.deepEqual(s.takeRequests, []);
-  assert.ok(s.log.some((e) => e.event.type === 'takeAnswered' && e.event.requester === a && !e.event.accepted));
-});
-
 test('take-cards request: not with only two players holding cards (and never in a 2-player game)', () => {
   const rng = seededRng(43);
   let s = dealAll(start(2, rng), rng);
-  s = act(s, { type: 'startRound', by: 'p1' }, rng);
+  s = startedRound(s, rng, 'p1');
   while (s.phase === 'swap') s = step(s, rng);
   if (s.phase === 'playing') assert.throws(() => act(s, { type: 'requestTake', by: 'p1', target: 'p2' }, rng), /two players/);
 });
 
 test('player view: take-cards requests are only shown to the two players involved', () => {
   let { s, rng } = playing(44);
-  s = act(s, { type: 'requestTake', by: 'p2', target: 'p3' }, rng);
-  assert.equal(playerView(s, 'p2').myTakeRequests.length, 1);
-  assert.equal(playerView(s, 'p3').myTakeRequests.length, 1);
-  assert.equal(playerView(s, 'p4').myTakeRequests.length, 0);
-  assert.equal(playerView(s, 'p1').myTakeRequests.length, 0);
+  const lead = s.play!.turn!;
+  const target = s.order.find((p) => p !== lead)!;
+  const bystander = s.order.find((p) => p !== lead && p !== target)!;
+  s = act(s, { type: 'requestTake', by: lead, target }, rng);
+  assert.equal(playerView(s, lead).myTakeRequests.length, 1);
+  assert.equal(playerView(s, target).myTakeRequests.length, 1);
+  assert.equal(playerView(s, bystander).myTakeRequests.length, 0);
 });
 
 test('full sessions with random take-cards requests run without errors', () => {

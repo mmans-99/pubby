@@ -37,6 +37,8 @@ function phraseIndex(phrases: readonly string[], text: string): number | null {
  *  - roundStarted: any computer player (x0.5, "Let's go!!").
  *  - jokerPlayed: a person played a joker (x1, "Ooh, a joker!!").
  *  - takeRequested: a person asks me for cards (x1, "Not so easy, sweetheart!!").
+ *  - takeAnswered: I refused a person's take-cards request (9an.2, always for windup, else reactRate):
+ *    "Not a chance!!", "Keep picking up!!", "Nope, I'm having fun!!".
  *  - targetReached: a person reached the target (x1, "Ultimate time!!").
  */
 export function reactionFor(
@@ -89,6 +91,12 @@ export function reactionFor(
       return human(e.player) ? roll(rate, ['Ooh, a joker!!']) : null;
     case 'takeRequested':
       return e.target === me && human(e.requester) ? roll(rate, ['Not so easy, sweetheart!!']) : null;
+    case 'takeAnswered':
+      // 9an.2 (2.38): a refusal to a person is a taunt; the windup personality always says something.
+      if (e.target === me && !e.accepted && human(e.requester)) {
+        return roll(persona.personality === 'windup' ? Math.max(rate, 0.6) : rate, ['Not a chance!!', 'Keep picking up!!', "Nope, I'm having fun!!"]);
+      }
+      return null;
     case 'targetReached':
       return e.players.some((p) => human(p)) ? roll(rate, ['Ultimate time!!']) : null;
     default:

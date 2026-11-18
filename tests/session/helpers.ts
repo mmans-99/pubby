@@ -1,6 +1,6 @@
 import { betweenTricks, legalCards, takeAllowed } from '../../src/rules/play.ts';
 import type { Rng } from '../../src/rules/rng.ts';
-import { applyAction, createSession } from '../../src/session/session.ts';
+import { applyAction, createSession, keepOn } from '../../src/session/session.ts';
 import type { Session, SessionAction, SessionSetup } from '../../src/session/types.ts';
 
 export function setupFor(n: number, jokers = true): SessionSetup {
@@ -26,6 +26,20 @@ export function dealAll(s: Session, rng: Rng): Session {
 }
 
 /**
+ * 9an.4 (2.38): start the round. In a network game every person keeps their cards first (the host's
+ * Start counts for the host), so the start gate passes; elsewhere this is just the host's startRound.
+ */
+export function startedRound(s: Session, rng: Rng, by: string = s.hostId): Session {
+  if (keepOn(s) && s.phase === 'reshuffle') {
+    for (const p of s.order) {
+      const human = !s.players.find((x) => x.id === p)?.computer;
+      if (human && p !== s.hostId && !s.kept.includes(p)) s = act(s, { type: 'keepCards', by: p }, rng);
+    }
+  }
+  return act(s, { type: 'startRound', by }, rng);
+}
+
+/**
  * One automatic step through the round: deals, starts the round, keeps hands,
  * taps, picks a leader, plays the first legal card, and forfeits on a
  * final-two choice. Returns the session after one action.
@@ -36,7 +50,7 @@ export function step(s: Session, rng: Rng): Session {
       return s.deal?.nextSeat === null ? act(s, { type: 'autoDealStart', by: s.dealer, firstSeat: s.dealer }, rng)
         : act(s, { type: 'autoDealAll', by: s.dealer }, rng);
     case 'reshuffle':
-      return act(s, { type: 'startRound', by: s.hostId }, rng);
+      return startedRound(s, rng);
     case 'swap': {
       const who = s.order.find((p) => !s.swapDone.includes(p))!;
       return act(s, { type: 'swap', by: who, cardIds: [] }, rng);
@@ -68,7 +82,8 @@ export function step(s: Session, rng: Rng): Session {
         return act(s, { type: 'answerTake', by: pending.target, requester: pending.requester, accept: rng() < 0.5 }, rng);
       }
       if (rng() < 0.03 && betweenTricks(play)) {
-        const a = s.order[Math.floor(rng() * s.order.length)]!;
+        // Only the player about to lead can ask (9an.1).
+        const a = play.turn!;
         const b = s.order[Math.floor(rng() * s.order.length)]!;
         if (!takeAllowed(play, a, b) && !s.takeRequests.some((r) => r.requester === a)) {
           return act(s, { type: 'requestTake', by: a, target: b }, rng);

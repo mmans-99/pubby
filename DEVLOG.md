@@ -16,6 +16,28 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-18 (13:50, Haiku) — Build: 9an.7 Part G (not committed)
+
+`src/ui/rejoin.ts` holds the two saved keys (`pubby.rejoin`, `pubby.hostGame`), 10-minute expiry, and the live hooks that netlobby registers. Joining phone saves its room and token on game updates (throttled to once a minute) and rejoins after a reload; the host saves the game and lobby after every change and carries on by restoring them before the room answers (every seat starts away). Home card: Rejoin / Not now, or Carry on / End it. Leaving the lobby screen for good forgets the save. Bug found by the browser check: the host token was not stored when a room was made; fixed.
+
+**Checks:** `npm run check` clean; `npm test` 528 of 529 (fixture, by design); build clean; `testbed/online_check.py` 48 of 48 (new phase E: reload a joining phone, then the host; all phones on the same log). `testbed/bot.js` now taps Keep my cards. Not checked: the 10-minute expiry in the browser.
+
+---
+
+## 2026-11-18 (13:20, Haiku) — Build: 9an.6 Part F (not committed)
+
+`trickFromPlay` in `src/ui/cards.ts` (tested); `absorb` rebuilds the felt's trick from `session.play` when it differs (skipped while a trick resolves); a joining phone that sees a gap in `seq` applies the update and asks for a full copy once; `pubbyNet.dropNext` test hook (applied in `joinGot`). `npm run check` clean; `npm test` 522 of 523 (fixture, by design); build clean. Browser check not yet written. Part G stopped for an Opus design (host restore).
+
+---
+
+## 2026-11-18 (13:00, Haiku) — Build: 9an.5 Part E (partial, not committed)
+
+Built the Opus review (E-a to E-g): `src/ui/popupevents.ts` (`POPUP_EVENTS`, `makesPopup`), `src/net/popupwait.ts` (per-player wait bookkeeping), `seq`/`ack` in `GameUpdate` and `seq` in the busy message (both parsers copy them), host sends `ack` on updates that may open a pop-up, phone answers after drawing with `phoneBusyNow()` (same rule as the busy report), 8 s guard with `console.warn`, `busy.ts` pending set, calm sound gate `setCalm` (last sound of a batch, 180 ms fade), `pubbyNet.delayMs` hook.
+
+Not yet: "+1 more" stacking, felt jump without flying missed cards, the slap-held browser check. Checks: `npm run check` clean; `npm test` 519 of 520 (2.34.5 fixture, by design); `node build.mjs` clean; `testbed/netvotes_check.py` passes the vote and round-start steps, then fails at the take-cards step (old rule, Part A; script updates in Part J).
+
+---
+
 ## 2026-11-18 (11:45, Opus) — Plan: take-cards on your lead, watching a hand, Keep or Deal again, pop-up gate, rejoin, removing a player, card table (docs only)
 
 **User (11:34):** ten requests (see `PROJECT.md` 12y). **Answers (11:38):** take-cards by the leader only; watch a hand until the round ends, the shown player can stop; everyone taps Keep or Deal again; table: mockups first (made: https://claude.ai/artifact/YaDGaLmzRAkyucWD9hiH37, options A oval wood, B stadium leather, C round gold).

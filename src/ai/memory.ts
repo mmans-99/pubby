@@ -46,6 +46,12 @@ export interface Memory {
   trickCount: number;
   /** Take-cards requests this bot has made this round. */
   asks: number;
+  /** 9an.2 (2.38): times a slap by that player made ME pick up the trick this round. */
+  slappedMe: Record<PlayerId, number>;
+  /** 9an.2 (2.38): times MY slap made that player pick up the trick this round. */
+  iSlapped: Record<PlayerId, number>;
+  /** 9an.2 (2.38): times I picked up a trick this round (a slap or the waste pile). */
+  pickups: number;
 }
 
 function emptyRound(m: Memory): void {
@@ -57,6 +63,13 @@ function emptyRound(m: Memory): void {
   m.jokersPlayed = 0;
   m.trickCount = 0;
   m.asks = 0;
+  m.pickups = 0;
+  m.slappedMe = {};
+  m.iSlapped = {};
+  for (const p of m.order) {
+    m.slappedMe[p] = 0;
+    m.iSlapped[p] = 0;
+  }
   clearKnowledge(m);
 }
 
@@ -83,6 +96,9 @@ export function newMemory(me: PlayerId, level: Level, order: readonly PlayerId[]
     jokersPlayed: 0,
     trickCount: 0,
     asks: 0,
+    pickups: 0,
+    slappedMe: {},
+    iSlapped: {},
   };
   clearKnowledge(m);
   return m;
@@ -125,6 +141,12 @@ export function remember(m: Memory, events: readonly SessionEvent[], rng: Rng): 
         m.jokersPlayed += e.count;
         break;
       case 'slapped': {
+        // 9an.2: who slapped whom, from the public event only.
+        if (e.slapped === m.me) {
+          m.slappedMe[e.slapper] = (m.slappedMe[e.slapper] ?? 0) + 1;
+          m.pickups++;
+        }
+        if (e.slapper === m.me) m.iSlapped[e.slapped] = (m.iSlapped[e.slapped] ?? 0) + 1;
         // The trick goes face up into the slapped player's hand.
         for (const t of m.trick) {
           m.known[e.slapped]?.set(t.cardId, t.card);
@@ -143,6 +165,7 @@ export function remember(m: Memory, events: readonly SessionEvent[], rng: Rng): 
         if (m.level === 'easy') forget(m, rng);
         break;
       case 'wastePilePickedUp': {
+        if (e.player === m.me) m.pickups++;
         const suits = new Set<Suit>();
         for (const id of m.waste) {
           const card = m.played.get(id);

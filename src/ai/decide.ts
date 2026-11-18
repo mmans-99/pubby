@@ -24,10 +24,12 @@ import { betweenTricks } from '../rules/play.ts';
 import type { SessionAction } from '../session/types.ts';
 import {
   chooseCallVote,
+  chooseKeep,
   chooseCard,
   chooseDeal,
   chooseFinalTwo,
   chooseLeader,
+  choosePeekAnswer,
   chooseReady,
   chooseSeenHand,
   chooseSwap,
@@ -80,8 +82,11 @@ export function decide(seen: AiSeen, m: Memory, persona: Persona, rng: Rng, habi
   if (v.chooser === me) return one(chooseLeader(seen, rng), 'hard');
 
   if (v.phase === 'playing') {
-    const answer = chooseTakeAnswer(seen);
+    const answer = chooseTakeAnswer(seen, m, persona, rng);
     if (answer) return one(answer, 'easy');
+    // 9an.3 (2.38): a person out of the round asked to watch my hand.
+    const peekAnswer = choosePeekAnswer(seen, persona, rng);
+    if (peekAnswer) return one(peekAnswer, 'easy');
   }
 
   if (v.pendingFinalTwo === me) return one(chooseFinalTwo(seen, persona, rng), 'hard');
@@ -89,15 +94,19 @@ export function decide(seen: AiSeen, m: Memory, persona: Persona, rng: Rng, habi
   if (v.turn === me) {
     // A take-cards request is waiting: the trick waits for it.
     if (s.takeRequests.some((r) => !r.agreed)) return null;
+    // 9an.2 (2.38): the player about to lead may ask instead of playing their first card.
+    if (s.play && betweenTricks(s.play)) {
+      const ask = chooseTakeAsk(seen, m, rng);
+      if (ask) return one(ask, 'hard');
+    }
     const card = chooseCard(seen, m, persona, rng, habits);
     return one(card, v.legalCardIds.length === 1 ? 'forced' : 'hard');
   }
 
-  if (v.phase === 'playing' && s.play && betweenTricks(s.play)) {
-    return one(chooseTakeAsk(seen, m, rng), 'hard');
+  if (v.phase === 'reshuffle') {
+    // 9an.4 (2.38): a reshuffle call, or else keep the cards (so a network round never waits for a computer).
+    return one(chooseCallVote(seen, persona) ?? chooseKeep(seen), 'easy');
   }
-
-  if (v.phase === 'reshuffle') return one(chooseCallVote(seen, persona), 'easy');
 
   if (v.phase === 'results') return one(chooseReady(seen), 'easy');
 

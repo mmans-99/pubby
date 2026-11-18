@@ -9,7 +9,7 @@
  */
 
 import { seededRng, shuffle, type Rng } from '../../src/rules/rng.ts';
-import { applyAction, createSession } from '../../src/session/session.ts';
+import { applyAction, createSession, keepOn } from '../../src/session/session.ts';
 import type { PlayerId, Session, SessionAction } from '../../src/session/types.ts';
 import { decide, type Decision } from '../../src/ai/decide.ts';
 import { remember, newMemory, type Memory } from '../../src/ai/memory.ts';
@@ -160,7 +160,13 @@ function hostAction(s: Session, nonUltimateRounds: number, rounds: number): Sess
   const host = s.hostId;
   if (s.vote?.awaitingHost) return { type: 'hostDecides', by: host, yes: false };
   if (s.vote) return null;
-  if (s.phase === 'reshuffle') return { type: 'startRound', by: host };
+  if (s.phase === 'reshuffle') {
+    // 9an.4 (2.38): in a network game every person (not a computer) keeps its cards before the round starts.
+    const waiting = keepOn(s)
+      ? s.order.find((p) => p !== host && !s.kept.includes(p) && !s.players.find((x) => x.id === p)?.computer)
+      : undefined;
+    return waiting ? { type: 'keepCards', by: waiting } : { type: 'startRound', by: host };
+  }
   if (s.phase === 'dealing' && s.deal && s.deal.nextSeat !== null) return { type: 'autoDealAll', by: s.dealer };
   if (s.phase === 'results' && s.ready.length === s.order.length) {
     // After an Ultimate Round has been agreed, the next round is the last one: advance into it.

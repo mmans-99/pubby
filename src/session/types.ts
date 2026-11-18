@@ -122,6 +122,16 @@ export interface TakeRequest {
   readonly agreed: boolean;
 }
 
+/**
+ * 9an.3 (2.38): a player who is out asks to watch another player's hand. `showing` is false while the
+ * target is deciding, true once they have said Show. Public (only who watches whom, never the cards).
+ */
+export interface Peek {
+  readonly viewer: PlayerId;
+  readonly target: PlayerId;
+  readonly showing: boolean;
+}
+
 export interface Session {
   readonly hostId: PlayerId;
   readonly players: readonly SessionPlayer[];
@@ -160,6 +170,10 @@ export interface Session {
   readonly play: PlayState | null;
   /** Take-cards requests this round, oldest first (PROJECT.md section 4.2). */
   readonly takeRequests: readonly TakeRequest[];
+  /** 9an.3 (2.38): watch-a-hand requests and shows this round (empty for old saved games). */
+  readonly peeks: readonly Peek[];
+  /** 9an.4 (2.38): people who have chosen Keep my cards (or voted on a reshuffle) this deal. */
+  readonly kept: readonly PlayerId[];
 
   readonly vote: VoteState | null;
 
@@ -196,7 +210,8 @@ export type SessionAction =
   | { type: 'closeVote'; by: PlayerId } // host: count now, even if some have not voted
   | { type: 'hostDecides'; by: PlayerId; yes: boolean }
   // Round start
-  | { type: 'startRound'; by: PlayerId } // host: close the reshuffle window
+  | { type: 'startRound'; by: PlayerId; skip?: readonly PlayerId[] } // host: close the reshuffle window (skip: players away, who count as kept)
+  | { type: 'keepCards'; by: PlayerId } // 9an.4 (2.38): Keep my cards before the round starts (network games)
   | { type: 'swap'; by: PlayerId; cardIds: readonly string[] }
   | { type: 'seenHand'; by: PlayerId } // 2.20: Done on the new hand
   | { type: 'seenNotice'; by: PlayerId } // 2.30: OK on a leadNotice
@@ -210,6 +225,10 @@ export type SessionAction =
   | { type: 'requestTake'; by: PlayerId; target: PlayerId }
   | { type: 'answerTake'; by: PlayerId; requester: PlayerId; accept: boolean }
   | { type: 'withdrawTake'; by: PlayerId; target: PlayerId }
+  // 9an.3 (2.38): watch a hand (out players, network games and single player)
+  | { type: 'requestPeek'; by: PlayerId; target: PlayerId }
+  | { type: 'answerPeek'; by: PlayerId; viewer: PlayerId; accept: boolean }
+  | { type: 'stopPeek'; by: PlayerId; other: PlayerId }
   // Pause
   | { type: 'requestPause'; by: PlayerId }
   | { type: 'respondPause'; by: PlayerId; requester: PlayerId; approve: boolean; at: number }
@@ -283,6 +302,11 @@ export type SessionEvent =
       readonly target: PlayerId;
       readonly reason: 'withdrawn' | 'notPossible';
     }
+  | { readonly type: 'cardsKept'; readonly player: PlayerId }
+  | { readonly type: 'peekRequested'; readonly viewer: PlayerId; readonly target: PlayerId }
+  | { readonly type: 'peekAnswered'; readonly viewer: PlayerId; readonly target: PlayerId; readonly accepted: boolean }
+  /** `by` null: it ended by itself (the target went out, or the round ended). */
+  | { readonly type: 'peekStopped'; readonly viewer: PlayerId; readonly target: PlayerId; readonly by: PlayerId | null }
   | { readonly type: 'pauseRequested'; readonly by: PlayerId }
   | { readonly type: 'pauseDeclined'; readonly requester: PlayerId }
   | { readonly type: 'paused'; readonly requestedBy: PlayerId | null }

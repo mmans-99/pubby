@@ -11,7 +11,7 @@ import { isJoker, isStandard, type Card, type StandardCard, type Suit, SUITS } f
 import { betweenTricks, takeAllowed } from '../rules/play.ts';
 import type { Rng } from '../rules/rng.ts';
 import type { PlayerId, SessionAction } from '../session/types.ts';
-import { PERSONALITY_WEIGHTS, type Persona } from './persona.ts';
+import { PERSONALITY_WEIGHTS, type Level, type Persona, type Personality } from './persona.ts';
 import { learnedWeights, type Habits } from './learn.ts';
 import { handBadness, knownSlap, leadRisk, pSlapAfterMe, rankValue, yetToPlay } from './eval.ts';
 import { unknownPool, type Memory } from './memory.ts';
@@ -277,39 +277,103 @@ export function chooseCallVote(seen: AiSeen, persona: Persona): SessionAction | 
   return null;
 }
 
+/**
+ * 9an.4 (2.38): a computer player that is not calling a reshuffle keeps its cards, so the round
+ * never waits for it. Only while keeping is on and it has not chosen yet.
+ */
+export function chooseKeep(seen: AiSeen): SessionAction | null {
+  const v = seen.view;
+  if (!v.keepOn || v.kept.includes(seen.me)) return null;
+  return { type: 'keepCards', by: seen.me };
+}
+
 // ---------------------------------------------------------------------------
 // Take-cards requests
 // ---------------------------------------------------------------------------
 
-/** A request is waiting for me: always agree. With several askers, the first in seat order. */
-export function chooseTakeAnswer(seen: AiSeen): SessionAction | null {
+/**
+ * 9an.2 (2.38): how often a computer player says no, just to annoy a person who keeps slapping it.
+ * Only for a person (never a computer), after they have slapped me twice, and only while I still hold 3 cards.
+ */
+export const REFUSE_RATE: Record<Personality, number> = { windup: 0.7, reckless: 0.5, counter: 0.4, careful: 0.25 };
+
+/**
+ * 9an.2 (2.38): the score a player must reach before a computer player asks for their cards
+ * (see chooseTakeAsk). Easy asks less often: it also needs a 30% chance (EASY_ASK_CHANCE).
+ */
+export const ASK_BAR: Record<Level, number> = { easy: 3.5, normal: 2.5, hard: 2.0 };
+const EASY_ASK_CHANCE = 0.3;
+
+/**
+ * Answer a take-cards request waiting for me (9an.2 item 7). Computer players agree, except now and then
+ * they refuse a person who keeps slapping them, to annoy them: never for a computer asker.
+ */
+export function chooseTakeAnswer(seen: AiSeen, m: Memory, persona: Persona, rng: Rng): SessionAction | null {
   const askers = seen.session.takeRequests.filter((r) => r.target === seen.me && !r.agreed).map((r) => r.requester);
   const requester = seen.session.order.find((p) => askers.includes(p));
   if (!requester) return null;
+  const asker = seen.session.players.find((p) => p.id === requester);
+  const askerIsPerson = !!asker && !asker.computer;
+  const myCards = seen.view.players.find((p) => p.id === seen.me)?.cardCount ?? 0;
+  if (askerIsPerson && (m.iSlapped[requester] ?? 0) >= 2 && myCards >= 3) {
+    const rate = REFUSE_RATE[persona.personality] * (persona.level === 'easy' ? 0.5 : 1);
+    if (rng() < rate) return { type: 'answerTake', by: seen.me, requester, accept: false };
+  }
   return { type: 'answerTake', by: seen.me, requester, accept: true };
 }
 
 /**
- * Ask a player for their cards: only between tricks, at most once per round,
- * when I hold at least twice the average of the others and at least three
- * players still hold cards. Asks the player with the fewest cards.
+ * 9an.3 item 7 (2.38): a person asks to watch my hand (I am out). Usually I agree (chance 0.75; windup 0.5).
+ * Computer players never ask, so this is only ever answered for a person.
+ */
+export function choosePeekAnswer(seen: AiSeen, persona: Persona, rng: Rng): SessionAction | null {
+  const peek = seen.session.peeks.find((p) => p.target === seen.me && !p.showing);
+  if (!peek) return null;
+  const agree = persona.personality === 'windup' ? 0.5 : 0.75;
+  return { type: 'answerPeek', by: seen.me, viewer: peek.viewer, accept: rng() < agree };
+}
+
+/**
+ * Ask a player for their cards (9an.2 items 1 to 4, 9an.1). Only the player about to lead asks, between
+ * tricks, when they have picked up at least twice this round and are either slapped twice by one player or
+ * holding far more cards than the others. The target is the player they can't get past (or whose hand
+ * is missing suits), using only what anyone at the table could know.
  */
 export function chooseTakeAsk(seen: AiSeen, m: Memory, rng: Rng): SessionAction | null {
   const play = seen.session.play;
   if (!play || !betweenTricks(play)) return null;
-  if (m.asks > 0) return null;
-  if (seen.session.takeRequests.some((r) => r.requester === seen.me)) return null;
+  if (seen.view.turn !== seen.me) return null;
+  // Hard may ask twice a round; Normal and Easy once.
+  if (m.asks >= (m.level === 'hard' ? 2 : 1)) return null;
+  if (m.trickCount < 3) return null;
+  if (seen.session.takeRequests.some((r) => !r.agreed || r.requester === seen.me)) return null;
   const holders = seen.view.players.filter((p) => p.cardCount > 0);
   if (holders.length < 3) return null;
   const mine = holders.find((p) => p.id === seen.me);
   if (!mine) return null;
   const others = holders.filter((p) => p.id !== seen.me);
   const avg = others.reduce((sum, p) => sum + p.cardCount, 0) / others.length;
-  if (mine.cardCount < 2 * avg) return null;
-  const fewest = Math.min(...others.map((p) => p.cardCount));
-  const candidates = others.filter((p) => p.cardCount === fewest && takeAllowed(play, seen.me, p.id) === null);
-  const target = pickRandom(candidates, rng);
-  return target ? { type: 'requestTake', by: seen.me, target: target.id } : null;
+
+  // Stuck test (all levels): picked up at least twice, and slapped twice by someone or far behind.
+  const slappedTwice = m.order.some((p) => (m.slappedMe[p] ?? 0) >= 2);
+  const stuck = m.pickups >= 2 && (slappedTwice || mine.cardCount >= 1.5 * avg);
+  if (!stuck) return null;
+  if (m.level === 'easy' && rng() >= EASY_ASK_CHANCE) return null;
+
+  // Score each player I may ask: the one who keeps slapping me, the one with suits missing, the small hand.
+  let best: PlayerId[] = [];
+  let bestScore = -Infinity;
+  for (const t of others) {
+    if (takeAllowed(play, seen.me, t.id) !== null) continue;
+    const score = 2 * (m.slappedMe[t.id] ?? 0)
+      + 1.5 * (m.voids[t.id]?.size ?? 0)
+      + (avg - t.cardCount) / avg;
+    if (score > bestScore) { bestScore = score; best = [t.id]; }
+    else if (score === bestScore) best.push(t.id);
+  }
+  if (best.length === 0 || bestScore < ASK_BAR[m.level]) return null;
+  const target = pickRandom(best, rng);
+  return target ? { type: 'requestTake', by: seen.me, target } : null;
 }
 
 // ---------------------------------------------------------------------------

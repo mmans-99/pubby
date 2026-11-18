@@ -362,6 +362,69 @@ def phase_d(browser, base, errors):
             p.context.close()
 
 
+def log_len(page):
+    return page.evaluate("() => { const s = window.pubbyNet && window.pubbyNet.session(); return s ? s.log.length : -1; }")
+
+
+def bot_steps(pages, n):
+    """Run the bot on every page for n steps (a part of a game, not the whole of it)."""
+    for p in pages:
+        p.evaluate(BOT)
+    for _ in range(n):
+        for p in pages:
+            p.evaluate('cfg => window.pubbyBot.step(cfg)', GAME)
+        time.sleep(0.05)
+
+
+def phase_e(browser, base, errors):
+    """9an.7 (Part G): a reload of a joining phone, then of the host. Both come back to the same game."""
+    proc, server = start_relay()
+    try:
+        amy = new_page(browser, base, server, errors, 'Amy')
+        ben = new_page(browser, base, server, errors, 'Ben')
+        cat = new_page(browser, base, server, errors, 'Cat')
+        host_room(amy, 'Amy', 'Reload table', '2468')
+        watch_list(ben, 'Ben')
+        wait_for(lambda: in_list(ben, 'Reload table'), 8)
+        join_room(ben, 'Reload table', '2468')
+        check('Ben joins the reload table', wait_for(lambda: step_of(ben) == 'lobby', 20))
+        watch_list(cat, 'Cat')
+        wait_for(lambda: in_list(cat, 'Reload table'), 8)
+        join_room(cat, 'Reload table', '2468')
+        check('Cat joins the reload table', wait_for(lambda: step_of(cat) == 'lobby', 20))
+        amy.get_by_role('button', name='Start game').click()
+        check('the game starts on all three phones', wait_for(lambda: all(p.locator('.screen.game').count() == 1 for p in (amy, ben, cat)), 20))
+        bot_steps([amy, ben, cat], 150)
+        check('some moves are played before the reload', wait_for(lambda: log_len(amy) >= 12, 60), str(log_len(amy)))
+        before = log_len(amy)
+
+        # Ben's page is reloaded: the saved room offers Rejoin, and Ben is back in the same game.
+        ben.reload()
+        ben.wait_for_selector('text=Your online game is still on', timeout=20000)
+        check('a reloaded joining phone offers Rejoin', ben.get_by_role('button', name='Rejoin').count() == 1)
+        ben.get_by_role('button', name='Rejoin').click()
+        check('Rejoin puts Ben back in the game', wait_for(lambda: ben.locator('.screen.game').count() == 1, 25))
+        bot_steps([amy, ben, cat], 30)
+        check('after Rejoin, Ben shows the same moves as the host', wait_for(lambda: log_len(ben) == log_len(amy) and log_len(amy) >= before, 25),
+              f'ben {log_len(ben)} amy {log_len(amy)} before {before}')
+
+        # The host's page is reloaded: Carry on puts the game back, and the others carry on with it.
+        amy.reload()
+        amy.wait_for_selector('text=Your online game is still on', timeout=20000)
+        check('a reloaded host offers Carry on', amy.get_by_role('button', name='Carry on').count() == 1)
+        amy.get_by_role('button', name='Carry on').click()
+        check('Carry on puts the host back in the game', wait_for(lambda: amy.locator('.screen.game').count() == 1, 25))
+        bot_steps([amy, ben, cat], 40)
+        check('after Carry on, all phones show the same moves and the game goes on',
+              wait_for(lambda: log_len(amy) > before and log_len(ben) == log_len(amy) and log_len(cat) == log_len(amy), 40),
+              f'amy {log_len(amy)} ben {log_len(ben)} cat {log_len(cat)}')
+        check('no page errors in phase E', not errors, '; '.join(errors[:3]))
+        for p in (amy, ben, cat):
+            p.context.close()
+    finally:
+        stop_relay(proc)
+
+
 def main():
     dist = ROOT / 'dist'
     httpd = serve(dist)
@@ -373,6 +436,7 @@ def main():
         phase_b(browser, base, errors)
         phase_c(browser, base, errors)
         phase_d(browser, base, [])
+        phase_e(browser, base, errors)
         browser.close()
     httpd.shutdown()
     print(f'\n{sum(results)} of {len(results)} checks passed')

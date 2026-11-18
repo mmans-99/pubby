@@ -7,7 +7,7 @@ import { createSession, handOf } from '../../src/session/session.ts';
 import { playerView } from '../../src/session/view.ts';
 import type { Card } from '../../src/rules/cards.ts';
 import type { Session } from '../../src/session/types.ts';
-import { act, dealAll, start, step } from '../session/helpers.ts';
+import { act, dealAll, start, startedRound, step } from '../session/helpers.ts';
 
 /** Every real card id a session copy holds (hands, deck, waste pile, hidden decks). */
 function realCards(s: Session): Set<string> {
@@ -67,9 +67,11 @@ test('a phone copy holds only its own cards, at every point of a game (2, 3, 5 a
 test('take-cards requests and their events are public: every phone sees who asked whom, but no cards', () => {
   const rng = seededRng(7);
   let s = dealAll(start(4, rng), rng);
-  s = act(s, { type: 'startRound', by: s.hostId }, rng);
+  s = startedRound(s, rng);
   while (s.phase !== 'playing') s = step(s, rng);
-  s = act(s, { type: 'requestTake', by: 'p2', target: 'p3' }, rng);
+  const asker = s.play!.turn!;
+  const asked = s.order.find((p) => p !== asker)!;
+  s = act(s, { type: 'requestTake', by: asker, target: asked }, rng);
   for (const p of ['p1', 'p2', 'p3', 'p4']) {
     assert.equal(redactSession(s, p).takeRequests.length, 1, `${p} sees the request`);
     assert.equal(logFor(s.log, p).filter((x) => x.event.type === 'takeRequested').length, 1, `${p} sees the event`);
@@ -79,7 +81,7 @@ test('take-cards requests and their events are public: every phone sees who aske
   for (const cards of Object.values(copy.hands)) {
     assert.ok(cards.every(isBlank) || cards === copy.hands['p1']);
   }
-  assert.equal(eventFor({ type: 'takeRequested', requester: 'p2', target: 'p3' }, 'p4'), true);
+  assert.equal(eventFor({ type: 'takeRequested', requester: asker, target: asked }, 'p4'), true);
   assert.equal(eventFor({ type: 'slapped', slapper: 'p1', slapped: 'p2', cardsPickedUp: 3 }, 'p4'), true);
 });
 

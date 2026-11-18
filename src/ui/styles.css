@@ -1574,3 +1574,30 @@ html[data-rail="1"] .results-footer { flex: 1 1 0; min-width: 0; min-height: 0; 
 .bot-seat .seat-top { align-items: center; }
 .bot-seat .bot-name { flex: 1; min-width: 0; font: inherit; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--cream); color: var(--ink); }
 .bot-seat .seg { margin-top: 6px; }
+
+/* ---- 2.38 (CODE.md 9an): take-cards confirm, watching a hand, the seat eye ---- */
+.take-go { width: 100%; background: var(--gold); color: #1d1404; border: 0; font-weight: 800; }
+/* 9an.4 (2.38): Keep my cards (gold, like Take) and the check on a kept seat. */
+.keep-go { background: var(--gold); color: #1d1404; border: 0; font-weight: 800; }
+.seat-kept { display: inline-flex; color: var(--good, #7fd17f); font-size: 0.9em; }
+.seat-kept .icon { width: 1em; height: 1em; }
+.take-confirm-disc, .take-pop-disc { display: flex; justify-content: center; margin: 4px 0 8px; }
+.take-pop .popup-title { text-align: center; }
+.take-pop .take-pop-disc { margin-bottom: 4px; }
+.seat-watched { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: rgba(20, 14, 8, 0.7); color: var(--gold); }
+.seat-watched .ic { width: 14px; height: 14px; }
+.watch-btn { color: var(--ink); }
+.watch-pill { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 6px auto; padding: 6px 12px; border-radius: 999px; background: var(--cream); color: var(--ink); font-weight: 700; width: max-content; max-width: 100%; }
+.watch-pill .ic { width: 16px; height: 16px; color: var(--gold); }
+.watch-pill button { min-height: 36px; padding: 0 12px; }
+.watching-hand { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+.watching-hand .hand-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.watching-hand .hand-head h2 { margin: 0; }
+.watch-fan { display: flex; justify-content: center; align-items: flex-end; padding: 6px 0; flex-wrap: nowrap; overflow-x: auto; }
+.watch-fan .card { width: 54px; margin-left: -16px; flex: 0 0 auto; pointer-events: none; }
+.watch-fan .card:first-child { margin-left: 0; }
+
+/* 9an.5 (E-f, 2.38): the felt fades in once after a calm catch-up (180 ms). */
+.round-table.catching-up { animation: catch-fade 180ms ease-out; }
+@keyframes catch-fade { from { opacity: 0.6; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .round-table.catching-up { animation: none; } }

@@ -34,9 +34,10 @@ export function isBlank(c: Card): boolean {
   return c.id.startsWith('hidden-');
 }
 
-function blankHands(hands: Readonly<Record<PlayerId, readonly Card[]>>, me: PlayerId): Record<PlayerId, readonly Card[]> {
+/** `keep`: other players whose hands this phone may see (9an.3: the player I am watching). */
+function blankHands(hands: Readonly<Record<PlayerId, readonly Card[]>>, me: PlayerId, keep: readonly PlayerId[] = []): Record<PlayerId, readonly Card[]> {
   const out: Record<PlayerId, readonly Card[]> = {};
-  for (const [p, cards] of Object.entries(hands)) out[p] = p === me ? cards : blankCards(cards.length, p);
+  for (const [p, cards] of Object.entries(hands)) out[p] = p === me || keep.includes(p) ? cards : blankCards(cards.length, p);
   return out;
 }
 
@@ -52,9 +53,11 @@ export function eventFor(_e: SessionEvent, _me: PlayerId): boolean {
 
 /** The session as one phone may have it. The log is left out (sent separately). */
 export function redactSession(s: Session, me: PlayerId): Session {
+  // 9an.3 (2.38): only the viewer of a showing watch gets that player's hand, and nobody else's copy has it.
+  const shown = (s.peeks ?? []).filter((p) => p.viewer === me && p.showing).map((p) => p.target);
   return {
     ...s,
-    hands: blankHands(s.hands, me),
+    hands: blankHands(s.hands, me, shown),
     hiddenDecks: {},
     deal: s.deal
       ? {
@@ -67,7 +70,7 @@ export function redactSession(s: Session, me: PlayerId): Session {
     play: s.play
       ? {
         ...s.play,
-        hands: blankHands(s.play.hands, me),
+        hands: blankHands(s.play.hands, me, shown),
         wastePile: blankCards(s.play.wastePile.length, 'waste'),
       }
       : null,
@@ -106,6 +109,10 @@ export interface GameUpdate {
   events: SessionEvent[];
   /** The host's clock (ms) when sent: joining phones use it for the pause countdown. */
   hostNow: number;
+  /** 9an.5 (E-a, 2.38): this phone's update number for the host's pop-up wait (optional, old phones send none). */
+  seq?: number;
+  /** 9an.5 (E-a): the host waits for this phone to answer once it has drawn this update, even if nothing changed. */
+  ack?: boolean;
 }
 
 /** Host → joining phone: a move from this phone wasn't allowed. */
@@ -129,6 +136,8 @@ const PHONE_ACTIONS = new Set<string>([
   'startRound', 'swap', 'seenHand', 'seenNotice', 'reactionTap', 'chooseLeader',
   'playCard', 'pickUpWastePile', 'forfeit',
   'requestTake', 'answerTake', 'withdrawTake',
+  'requestPeek', 'answerPeek', 'stopPeek',
+  'keepCards',
   'requestPause', 'respondPause', 'pause', 'resume', 'setPauseTimeLimit',
   'readyUp', 'unready', 'advance', 'endSession',
 ]);
@@ -155,6 +164,7 @@ export function readGameUpdate(raw: unknown): GameUpdate | null {
   const s = raw['session'];
   if (typeof raw['me'] !== 'string' || !isObj(s) || !Array.isArray(s['order']) || !Array.isArray(raw['log']) || !Array.isArray(raw['events'])) return null;
   if (typeof raw['hostNow'] !== 'number' || !Number.isFinite(raw['hostNow'])) return null;
+  const seq = raw['seq'];
   return {
     t: 'game',
     me: raw['me'],
@@ -163,5 +173,7 @@ export function readGameUpdate(raw: unknown): GameUpdate | null {
     log: raw['log'] as LogEntry[],
     events: raw['events'] as SessionEvent[],
     hostNow: raw['hostNow'],
+    ...(Number.isInteger(seq) ? { seq: seq as number } : {}),
+    ...(raw['ack'] === true ? { ack: true } : {}),
   };
 }

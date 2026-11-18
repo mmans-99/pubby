@@ -410,7 +410,7 @@ export function takeStatus(s: Session, me: PlayerId): HTMLElement | null {
   return h('div', { class: 'stack take-statuses' }, waiting.map((r) =>
     h('div', { class: 'take-status', role: 'status' },
       miniDisc(s, r.requester, '34px'),
-      h('span', { class: 'take-status-text' }, `${nameOf(s, r.requester)} asked ${nameOf(s, r.target)} for his cards`),
+      h('span', { class: 'take-status-text' }, `${nameOf(s, r.requester)} asked ${nameOf(s, r.target)} for their cards`),
       h('span', { class: 'pill wait' }, icon('wait'), ' Waiting'))));
 }
 
@@ -420,12 +420,13 @@ export function takeStatus(s: Session, me: PlayerId): HTMLElement | null {
  */
 function askSheet(s: Session, title: string, ids: readonly PlayerId[], onPick: (id: PlayerId) => void, onCancel: () => void, showCards: boolean, seen = false): HTMLElement {
   const counts = publicView(s).players;
-  return h('div', { class: seen ? 'overlay take-sheet-overlay seen' : 'overlay take-sheet-overlay' },
+  // 9an.1 (2.38): a tap outside the sheet is the same as Cancel.
+  return h('div', { class: seen ? 'overlay take-sheet-overlay seen' : 'overlay take-sheet-overlay', onclick: (e: Event) => { if (e.target === e.currentTarget) onCancel(); } },
     h('section', { class: seen ? 'sheet take-sheet seen' : 'sheet take-sheet', role: 'dialog', 'aria-label': title },
       h('span', { class: 'take-grab', 'aria-hidden': 'true' }),
       h('div', { class: 'sheet-head' },
         h('span', { class: 'take-icon-circle' }, icon('take')),
-        h('div', null, h('h2', { class: 'take-title' }, title), h('p', { class: 'take-sub' }, 'Before the trick · one ask at a time'))),
+        h('div', null, h('h2', { class: 'take-title' }, title), h('p', { class: 'take-sub' }, 'Your lead · ask instead of playing'))),
       h('div', { class: 'sheet-rows' }, ids.map((id) => {
         const n = counts.find((p) => p.id === id)?.cardCount ?? 0;
         return h('button', { class: 'sheet-row', onclick: () => onPick(id), 'aria-label': `${showCards ? `Ask ${nameOf(s, id)} for ${n} cards` : nameOf(s, id)}` },
@@ -437,20 +438,27 @@ function askSheet(s: Session, title: string, ids: readonly PlayerId[], onPick: (
       h('button', { class: 'ghost big', onclick: onCancel }, 'Cancel')));
 }
 
-/** Players `p` may ask right now (before a trick, nothing open). */
+/**
+ * Players `p` may ask right now: only the player about to lead, before a trick,
+ * with nothing of their own open (9an.1).
+ */
 function takeTargets(s: Session, p: PlayerId): PlayerId[] {
   const play = s.play;
   if (s.phase !== 'playing' || !play || play.over || s.paused || !betweenTricks(play)) return [];
+  if (play.turn !== p) return [];
   if (s.takeRequests.some((r) => r.requester === p)) return [];
   return s.order.filter((q) => !takeAllowed(play, p, q));
 }
 
-/** Ask to take someone's cards (before a trick only, one at a time), and see or withdraw my request. */
+/** Ask to take someone's cards (only the player about to lead, before a trick), and see or withdraw my request. */
 export function takeControls(s: Session, me: PlayerId): HTMLElement | null {
   const play = s.play;
   const mine = s.takeRequests.filter((r) => r.requester === me);
   const targets = takeTargets(s, me);
   const choosing = getState().armed === 'take' && targets.length > 0;
+  // 9an.1 item 8: a tap on a player first shows the confirm view in the same sheet (takePick).
+  const pick = getState().takePick ?? null;
+  const confirming = choosing && pick !== null && targets.includes(pick);
   // 9ak.1: the sheet's `seen` state is tracked on every redraw, so it resets when the sheet closes.
   const seen = sheetSeen('take', choosing && s.phase === 'playing' && !!play && !play.over && betweenTricks(play));
   if (s.phase !== 'playing' || !play || play.over || !betweenTricks(play)) return null;
@@ -463,40 +471,44 @@ export function takeControls(s: Session, me: PlayerId): HTMLElement | null {
         h('b', null, `You asked ${nameOf(s, r.target)}`),
         h('small', { class: 'muted' }, r.agreed ? 'Agreed' : 'Waiting for an answer')),
       h('button', { class: 'ghost', onclick: () => send([{ type: 'withdrawTake', by: me, target: r.target }], { stage: 'hand', holder: me }) }, 'Withdraw'))),
-    choosing
-      ? askSheet(s, 'Take whose cards?', targets,
-        (id) => send([{ type: 'requestTake', by: me, target: id }]),
-        () => update({ armed: null }), true, seen)
-      : null,
+    choosing && confirming && pick !== null
+      ? takeConfirmSheet(s, me, pick, seen)
+      : choosing
+        ? askSheet(s, 'Take whose cards?', targets,
+          (id) => update({ takePick: id }),
+          () => update({ armed: null, takePick: null }), true, seen)
+        : null,
   );
 }
 
-/** On the hand-off screen before a trick: pick who is asking, then the phone goes to them in private. */
-export function askToTake(g: SavedGame): HTMLElement | null {
-  const s = g.session;
-  const askers = s.order.filter((p) => takeTargets(s, p).length > 0);
-  const open = !!askers.length && getState().armed === 'asker';
-  const seen = sheetSeen('asker', open);
-  if (!open) return null;
-  return askSheet(s, 'Who is asking?', askers,
-    (id) => update({ game: { ...g, stage: 'hand', holder: id }, armed: 'take' }),
-    () => update({ armed: null }), false, seen);
+/** 9an.1 item 8 (2.38): the confirm view for one player; nothing is sent until "Ask". */
+function takeConfirmSheet(s: Session, me: PlayerId, target: PlayerId, seen: boolean): HTMLElement {
+  const name = nameOf(s, target);
+  const n = publicView(s).players.find((p) => p.id === target)?.cardCount ?? 0;
+  const close = (): void => update({ armed: null, takePick: null });
+  return h('div', { class: seen ? 'overlay take-sheet-overlay seen' : 'overlay take-sheet-overlay', onclick: (e: Event) => { if (e.target === e.currentTarget) close(); } },
+    h('section', { class: seen ? 'sheet take-sheet take-confirm seen' : 'sheet take-sheet take-confirm', role: 'dialog', 'aria-label': `Take all of ${name}’s cards?` },
+      h('span', { class: 'take-grab', 'aria-hidden': 'true' }),
+      h('div', { class: 'take-confirm-disc' }, miniDisc(s, target, '64px')),
+      h('h2', { class: 'take-title center' }, `Take all of ${name}’s cards?`),
+      h('p', { class: 'muted small center' }, `${name} has ${n} ${n === 1 ? 'card' : 'cards'}. If they agree they go out and you lead the next trick.`),
+      h('button', { class: 'big take-go', onclick: () => { send([{ type: 'requestTake', by: me, target }]); update({ takePick: null }); } }, `Ask ${name}`),
+      h('button', { class: 'ghost big', onclick: () => update({ takePick: null }) }, 'Back'),
+    ));
 }
 
-/** H6: the take-cards button in the top bar (before a trick, when someone can ask). */
+/** H6: the take-cards button in the top bar (before a trick, on the leader's own hand screen only, 9an.1). */
 export function takeButton(g: SavedGame): HTMLElement | null {
   const s = g.session;
   if (s.phase !== 'playing' || !s.play || s.play.over || !betweenTricks(s.play) || s.paused) return null;
-  const onHand = g.stage === 'hand';
-  const can = onHand ? takeTargets(s, g.holder).length > 0 : s.order.some((p) => takeTargets(s, p).length > 0);
-  if (!can) return null;
-  const mode = onHand ? 'take' : 'asker';
-  const open = getState().armed === mode;
+  if (g.stage !== 'hand') return null;
+  if (takeTargets(s, g.holder).length === 0) return null;
+  const open = getState().armed === 'take';
   return h('button', {
     class: open ? 'icon-btn on' : 'icon-btn',
-    'aria-label': onHand ? 'Ask to take someone’s cards' : 'Someone wants to take cards',
+    'aria-label': 'Ask to take someone’s cards',
     'aria-expanded': open ? 'true' : 'false',
-    onclick: () => update({ armed: open ? null : mode, menuOpen: false }),
+    onclick: () => update({ armed: open ? null : 'take', menuOpen: false, takePick: null }),
   }, icon('take'));
 }
 

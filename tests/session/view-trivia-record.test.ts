@@ -5,7 +5,7 @@ import { addGameToProfiles, buildGameRecord, profileCsv, profileRivals, sessionC
 import { computeTrivia } from '../../src/session/trivia.ts';
 import type { LogEntry, Session } from '../../src/session/types.ts';
 import { playerView } from '../../src/session/view.ts';
-import { act, dealAll, playRound, start, step, endGame } from './helpers.ts';
+import { act, dealAll, playRound, start, step, endGame, startedRound } from './helpers.ts';
 
 /** Card ids a player must never see: other hands and hidden decks. */
 function secretIds(s: Session, me: string): string[] {
@@ -39,7 +39,7 @@ test('player views never include other hands or hidden decks, at every stage', (
 test('player view: own hand, counts for others, legal cards only on your turn', () => {
   const rng = seededRng(210);
   let s = dealAll(start(4, rng), rng);
-  s = act(s, { type: 'startRound', by: 'p1' }, rng);
+  s = startedRound(s, rng, 'p1');
   const turn = s.play!.turn!;
   const v = playerView(s, turn);
   assert.equal(v.myHand.length, s.play!.hands[turn]!.length);

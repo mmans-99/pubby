@@ -17,9 +17,14 @@ import type { PlayerId, Session, SessionAction, SessionEvent } from '../session/
 import { eventFor, logFor, phoneActions, redactSession, stampHostTime, type GameUpdate, type NetInfo } from '../net/netgame.ts';
 import type { ToJoiner } from '../net/lobby.ts';
 import { getState, say, update } from './store.ts';
-import { receive, runActions, showMessage, showReaction, startShuffle } from './game.ts';
+import { phoneBusyNow, receive, runActions, showMessage, showReaction, startShuffle } from './game.ts';
 import { sfx } from '../audio/sfx.ts';
 import { clearSwapReveal } from './roundstart.ts';
+import { makesPopup } from './popupevents.ts';
+import { deleteHost, deleteJoin, loadHost, loadJoin, saveHostNow, saveJoinNow } from './rejoin.ts';
+import { clearWait, newWaits, nextSeq, noteAck, pendingPlayers, startWait, type PopupWaits } from '../net/popupwait.ts';
+import { setPendingPlayers } from '../net/busy.ts';
+import { isAwayPlayer } from '../net/away.ts';
 import type { BotsInfo, SavedGame } from './storage.ts';
 
 export type { NetInfo };
@@ -69,6 +74,8 @@ function playerOfLink(linkId: string): PlayerId | null {
  */
 export function hostStart(session: Session, links: Record<PlayerId, string>, me: PlayerId, bots?: BotsInfo): void {
   linkOf = {};
+  waits = newWaits();
+  setPendingPlayers([]);
   for (const [p, l] of Object.entries(links)) if (l !== 'host' && l !== 'bot') linkOf[p] = l;
   sentLog.clear();
   const g: SavedGame = { session, stage: 'hand', holder: me, trickLog: [], lastTrick: null, notes: {}, net: { role: 'host', me }, ...(bots ? { bots } : {}) };
@@ -78,10 +85,38 @@ export function hostStart(session: Session, links: Record<PlayerId, string>, me:
   for (const p of Object.keys(linkOf)) sendUpdate(p, session, [], true);
 }
 
+/** 9an.5 (E-a, E-c, 2.38): the host's pop-up waits, per player. */
+let waits: PopupWaits = newWaits();
+/** 9an.5 (E-e): the update number this phone last drew (a gap later asks for a sync, Part F). */
+let lastSeq = 0;
+/** 9an.5 (E-g): test hook, a fixed delay before a joining phone reads what the host sent. */
+let testDelay = 0;
+
+/** A player the host is waiting on, sent to the busy set (never an away phone). */
+function publishWaits(): void {
+  setPendingPlayers(pendingPlayers(waits, Object.keys(linkOf)).filter((p) => !isAwayPlayer(p)));
+}
+
+/** 9an.5 (item 6): a phone that has not answered within 8 s gets a full copy and the wait ends. */
+const ANSWER_MS = 8000;
+function armGuard(p: PlayerId, seq: number): void {
+  window.setTimeout(() => {
+    if (waits.waitSeq[p] !== seq) return; // answered, or a newer update is being waited on
+    console.warn(`Pubby: ${p} did not answer update ${seq} within ${ANSWER_MS / 1000} s; sending the whole game again.`);
+    clearWait(waits, p);
+    publishWaits();
+    const g = getState().game;
+    if (g?.net?.role === 'host') sendUpdate(p, g.session, [], true);
+  }, ANSWER_MS);
+}
+
 function sendUpdate(p: PlayerId, s: Session, events: readonly SessionEvent[], full: boolean): void {
   const link = linkOf[p];
   if (!link || !transport) return;
   const from = full ? 0 : (sentLog.get(link) ?? 0);
+  const seq = nextSeq(waits, p);
+  // E-a: an update that may make a pop-up must be answered once drawn, even if nothing changes on the phone.
+  const ack = !full && events.some((e) => makesPopup(e, p));
   const msg: GameUpdate = {
     t: 'game',
     me: p,
@@ -90,8 +125,21 @@ function sendUpdate(p: PlayerId, s: Session, events: readonly SessionEvent[], fu
     log: logFor(s.log.slice(from), p),
     events: full ? [] : events.filter((e) => eventFor(e, p)),
     hostNow: Date.now(),
+    seq,
+    ...(ack ? { ack: true } : {}),
   };
-  if (transport.sendTo(link, msg)) sentLog.set(link, s.log.length);
+  if (!transport.sendTo(link, msg)) return;
+  sentLog.set(link, s.log.length);
+  if (ack) { startWait(waits, p, seq); armGuard(p, seq); }
+  publishWaits();
+}
+
+/** 9an.5 (E-a): a phone has drawn update `seq`. */
+export function hostGotBusy(linkId: string, seq: number): void {
+  const p = playerOfLink(linkId);
+  if (!p) return;
+  noteAck(waits, p, seq);
+  publishWaits();
 }
 
 /** 2.27 (CODE.md 9v.5): tells every joining phone the host is skipping to the end of the round (or has stopped). */
@@ -107,6 +155,21 @@ export function hostSendReaction(from: PlayerId, r: number): void {
 /** game.ts `send` on the host's phone, after every change. */
 export function hostBroadcast(s: Session, events: readonly SessionEvent[]): void {
   for (const p of Object.keys(linkOf)) sendUpdate(p, s, events, false);
+  // G-d (2.38): the host's game is saved after every change, so a reload comes back to it (rejoin.ts).
+  if (s.ended) deleteHost(); else saveHostNow(s);
+}
+
+/**
+ * G-e (2.38): puts a saved game back on the host's phone. Sends nothing: the phones are
+ * told when the room answers (their "joined" leads to a whole-game resend, see addOnlineLink).
+ */
+export function hostResume(game: SavedGame, links: Record<PlayerId, string>): void {
+  linkOf = {};
+  for (const [p, l] of Object.entries(links)) if (l !== 'host' && l !== 'bot') linkOf[p] = l;
+  sentLog.clear();
+  waits = newWaits();
+  setPendingPlayers([]);
+  update({ game, screen: 'game', popups: [], selected: null, armed: null, menuOpen: false });
 }
 
 /** Moves from another phone. */
@@ -145,9 +208,16 @@ export function joinSend(actions: readonly SessionAction[]): boolean {
 
 export function joinGotGame(m: GameUpdate): void {
   clockOffset = m.hostNow - Date.now();
+  // G-b (2.38): a joining phone keeps its room for a reload; an ended game forgets it.
+  window.setTimeout(() => { if (m.session.ended) deleteJoin(); else saveJoinNow(); }, 0);
   const g = getState().game;
   const have = g?.net?.role === 'join' ? g : null;
   if (!m.full && !have) { transport?.sendHost({ t: 'sync' }); return; }
+  // 9an.6 (F-3, 2.38): a skipped update number means one was lost. Apply this one, then ask for the whole game once.
+  const gap = !m.full && have !== null && m.seq !== undefined && m.seq !== lastSeq + 1;
+  if (gap) window.setTimeout(() => transport?.sendHost({ t: 'sync' }), 0);
+  if (m.seq !== undefined) lastSeq = m.seq;
+  if (m.ack && m.seq !== undefined) answerAfterDraw(m.seq);
   const log = m.full || !have ? m.log : [...have.session.log, ...m.log];
   const session: Session = { ...m.session, log };
   if (!have) {
@@ -158,6 +228,33 @@ export function joinGotGame(m: GameUpdate): void {
     return;
   }
   receive(session, m.events);
+}
+
+/** 9an.5 (E-a): once this update is on screen, tell the host what this phone shows (even when nothing changed). */
+function answerAfterDraw(seq: number): void {
+  window.setTimeout(() => {
+    transport?.sendHost({ t: 'busy', on: phoneBusyNow(), seq });
+  }, 0);
+}
+
+/** 9an.6 (F-5): test hook, the number of game updates still to drop on this phone. */
+let dropNext = 0;
+
+/** True when the next game update should be dropped (test hook); consumes one drop. */
+export function takeDrop(): boolean {
+  if (dropNext <= 0) return false;
+  dropNext--;
+  return true;
+}
+
+/** For the joining phone's gap check (Part F) and tests. */
+export function joinLastSeq(): number {
+  return lastSeq;
+}
+
+/** 9an.5 (E-g): the test hook's delay, applied by the phone's message reader. */
+export function joinDelayMs(): number {
+  return testDelay;
 }
 
 export function joinNope(why: string): void {
@@ -261,9 +358,25 @@ export function netChanged(): void {
 // Automated test hook (testbed/netgame_check.py)
 // ---------------------------------------------------------------------------
 
+/** G-h: a saved game with its token replaced, for the checks. */
+function hideToken<T extends object>(v: T | null, key: string): T | null {
+  return v === null ? null : { ...v, [key]: '…' };
+}
+
 (window as unknown as Record<string, unknown>)['pubbyNet'] = {
   info: () => netInfo(),
   session: () => getState().game?.session ?? null,
+  /** 9an.7 (G-h): the saved online games (tokens hidden), for the reload checks. */
+  saved: () => ({
+    join: hideToken(loadJoin(), 'joinToken'),
+    host: hideToken(loadHost(), 'hostToken'),
+  }),
+  /** 9an.6 (F-5): drop the next N game updates on this phone (checks only, to test the gap). */
+  get dropNext(): number { return dropNext; },
+  set dropNext(n: number) { dropNext = Math.max(0, Math.round(n)); },
+  /** 9an.5 (E-g): a delay in ms before this phone reads what the host sends (checks only). */
+  get delayMs(): number { return testDelay; },
+  set delayMs(ms: number) { testDelay = Math.max(0, Math.round(ms)); },
   /** Send moves exactly as this phone's screens would (to check the host refuses bad ones). */
   send: (actions: SessionAction[]) => (netInfo()?.role === 'join' ? joinSend(actions) : runActions(actions) === null),
 };
