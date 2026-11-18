@@ -1,4 +1,4 @@
-// CODE.md 9ah.2 (2.34.6): with "Deal again" once per deal, computer players must not loop.
+// CODE.md 9ah.2 (2.34.6), 9ap.8 (2.38.2): with "Deal again" once per round, computer players must not loop.
 // Plays 300 four-player all-computer rounds and reports deals per round (bar: average under 1.5, most under 8).
 // Usage: node --experimental-strip-types testbed/deal_again_check.ts [rounds]
 import { playBotGame } from '../tests/ai/botgame.ts';

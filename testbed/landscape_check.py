@@ -59,13 +59,11 @@ def run(browser, w, h):
         r = page.evaluate(RECT, sel)
         check(r is not None and inside(r) and r['r'] <= 56.5, f'{w}x{h}: the {name} button is in the rail')
     page.screenshot(path=f'/tmp/landscape-play-{w}x{h}.png')
-    # Close any pop-up that covers the screen (the "Tap anywhere to close" notes), as a person would.
-    for _ in range(20):
-        note = page.get_by_text('Tap anywhere to close')
-        if not note.count():
+    # 9ap.G (2.38.2): a pop-up that covers the screen closes by itself after 5 s (no tap), so run the clock until none is up.
+    for _ in range(40):
+        if not page.locator('.popup-overlay').count():
             break
-        note.first.click()
-        advance(page, 50)
+        advance(page, 500)
     page.get_by_role('button', name='Menu').click()
     advance(page, 50)
     menu = page.evaluate(RECT, '.menu-layer > .menu')

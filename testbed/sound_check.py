@@ -176,13 +176,9 @@ with sync_playwright() as p:
         if page.locator('.anim-block').count() == 0:
             break
         page.wait_for_timeout(100)
-    # 9ai.1 (2.36): pop-ups close on a tap, so the round-over pop-up is closed first (its sounds come with it).
-    for _ in range(5):
+    # 9ap.G (2.38.2): pop-ups close by themselves after 5 s (a tap does nothing), so wait for the round-over pop-up.
+    for _ in range(150):
         if not page.locator('.popup-overlay').count():
-            break
-        try:
-            page.locator('.popup-overlay').first.click(timeout=2000)
-        except Exception:  # it closed by itself between the look and the tap
             break
         page.wait_for_timeout(200)
     page.wait_for_timeout(600)

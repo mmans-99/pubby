@@ -4,6 +4,26 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-18 (20:37, Haiku) — Build 9ap: 2.38.2, watched hand fan, no flash on sheets, computers ask less, Deal again once per round, 5 s pop-ups (not committed)
+
+**Built:** `CODE.md` 9ap Parts A, B, C, D, G, H, and E (checks, test build). Part F (deal stop with messages) is parked, not built, per the user (19:13).
+- **A** watched hand sorted and in the same fan as your own (`fanCards` in `cards.ts`, `watchingBlock` in `watch.ts`).
+- **B** no flash on the watch sheet, watch ask card, remove sheet, take-cards card (`sheetSeen`).
+- **C** computers ask for cards less: from trick 6, three pick-ups, gap of five tricks, a chance per lead (easy 0.15, normal 0.4, hard 0.6), higher bars (`ASK_BAR`). Asks per computer round fell from 0.33 to 0.25 (normal) and 0.53 to 0.28 (hard); easy 0.35 to 0.18.
+- **D** computers call Deal again with a rubbish hand, and vote yes with a worse-than-average hand.
+- **G** no-choice pop-ups close by themselves after 5 s, at the same time on every phone (host clock), with a countdown bar; no tap to close.
+- **H** Deal again once per round (`session.ts`).
+- Pass bars (`testbed/ai_arena.ts --bars`): all 9 pass. Hard beats Normal by 0.134 on 2000 games. The bar was lowered from 0.15 to 0.10 on the user's decision (20:35). A later 600-game run gave 0.072, so the margin is small and noisy.
+- `npm run check` clean; `npm test` 571 of 571; `node build.mjs` 2.38.2; `testbed/netgame_check.py` 97 of 97; `lasttrick` 21, `sound` 44, `landscape` 24, `lasttwo` 16, `react` 32 all pass. `popups_check` 10 pass, 4 fail (take, sheet_under, ff_stop, tie: "not seen in this game"), the same as the unchanged 2.38.1 build here.
+- Check fixes, not game fixes: the own-seat selector (`.me-pill`) and SLAP! counting by first draw (`POPUP_WATCH_JS`).
+- Moves fixture regenerated as `moves-2.38.2.json`.
+
+**Test build:** https://claude.ai/artifact/RNPL3NfvCVRM1rqjXnVFse (2.38.2, private).
+
+**Not done:** the phone test (checklist 9ap.7), commit and push (waiting for "push").
+
+---
+
 ## 2026-11-18 (18:22, Opus) — Plan 9ap: watched hand fan, no flash on the watch sheet, computers ask less, computers deal again (docs only)
 
 **User (18:22, phone screenshot, single player, watching Tommy):** watched cards not in order and not in the fan; the "Ask" pop-up flashes every time a card is played; computers ask for cards after one slap and sometimes ask a second player straight away; computers should sometimes deal again with rubbish cards.

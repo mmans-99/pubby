@@ -160,9 +160,11 @@ def four_aces_game(browser, mine=True):
             break
     if mine:
         check(shows == 1, 'four aces: "Ultimate Badboy!!" shows on the person\'s screen')
-        page.locator('.popup-overlay').click()  # a tap closes it
+        page.locator('.popup-overlay').click()  # 9ap.G (2.38.2): a tap does not close it
         page.clock.run_for(300)
-        check(page.locator('.popup.badboy').count() == 0, 'a tap closes it')
+        check(page.locator('.popup.badboy').count() == 1, 'a tap does not close it (9ap.G)')
+        page.clock.run_for(5000)
+        check(page.locator('.popup.badboy').count() == 0, 'it closes by itself after 5 s')
         again = 0
         for _ in range(10):
             page.clock.run_for(300)

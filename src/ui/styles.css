@@ -1610,9 +1610,8 @@ html[data-rail="1"] .results-footer { flex: 1 1 0; min-width: 0; min-height: 0; 
 .watching-hand { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
 .watching-hand .hand-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .watching-hand .hand-head h2 { margin: 0; }
-.watch-fan { display: flex; justify-content: center; align-items: flex-end; padding: 6px 0; flex-wrap: nowrap; overflow-x: auto; }
-.watch-fan .card { width: 54px; margin-left: -16px; flex: 0 0 auto; pointer-events: none; }
-.watch-fan .card:first-child { margin-left: 0; }
+/* 9ap.A (2.38.2): the watched hand is a fan like your own (`.hand.fan`), not tappable. */
+.watching-hand .watch-fan .card { pointer-events: none; }
 
 /* 9an.5 (E-f, 2.38): the felt fades in once after a calm catch-up (180 ms). */
 .round-table.catching-up { animation: catch-fade 180ms ease-out; }

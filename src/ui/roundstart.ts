@@ -281,8 +281,8 @@ export function resultQuestion(kind: VoteKind, value: number | null): string {
 }
 
 /**
- * 9ai.4 (2.36): the alert, shown on every phone except the asker's. Solid, no timer;
- * "Vote now" or a tap anywhere closes it.
+ * 9ai.4 (2.36): the alert, shown on every phone except the asker's. Solid; "Vote now" opens the vote.
+ * 9ap.G (2.38.2): it closes by itself after 5 s like every pop-up (no tap closes it).
  */
 export function voteAlertBody(s: Session, p: Extract<Popup, { kind: 'voteAlert' }>, next: () => void): Child[] {
   const who = nameOf(s, p.by);

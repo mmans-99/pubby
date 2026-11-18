@@ -366,6 +366,9 @@ export function takeHolder(s: Session): PlayerId | null {
 /** Requests asking `me` for my cards, waiting for my answer. */
 export function takePrompts(s: Session, me: PlayerId): HTMLElement | null {
   const asks = s.takeRequests.filter((r) => r.target === me && !r.agreed);
+  // 9ap.8 (2.38.2): the card is rebuilt on every redraw, so it is marked seen after its first draw (no replayed entrance).
+  // Play waits for these answers (session.ts), so this overlay never stays open while cards are played.
+  const seen = sheetSeen('take-prompt', asks.length > 0 && !!s.play);
   if (!asks.length || !s.play) return null;
   const nextPlace = s.play.finished.length + 1;
   const give = (requester: PlayerId): void => { send([{ type: 'answerTake', by: me, requester, accept: true }]); };
@@ -396,7 +399,7 @@ export function takePrompts(s: Session, me: PlayerId): HTMLElement | null {
       h('button', { class: 'big take-give', onclick: () => give(asks[0]!.requester) }, icon('check'), ` Give my cards to ${nameOf(s, asks[0]!.requester)}`),
       h('button', { class: 'big btn-outline-no', onclick: refuseAll }, 'Refuse'),
     ];
-  return h('div', { class: 'overlay take-overlay' }, h('section', { class: 'take-card', role: 'alertdialog', 'aria-label': 'Take cards' }, card));
+  return h('div', { class: seen ? 'overlay take-overlay seen' : 'overlay take-overlay' }, h('section', { class: 'take-card', role: 'alertdialog', 'aria-label': 'Take cards' }, card));
 }
 
 /**

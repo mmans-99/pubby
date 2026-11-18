@@ -454,15 +454,15 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [ ] Phone checklist 9ao.4
 
 ## Phase 4y — Fixes after watching and computer-player play (plan 2026-11-18 18:22, build guide `CODE.md` 9ap; target 2.38.2; approved 2026-11-18 19:13, for Haiku)
-- [ ] Part A: watched hand sorted and in the same fan as your own hand
-- [ ] Part B: no flash on the watch sheet, the watch ask card and the remove sheet (`sheetSeen`)
-- [ ] Part C: computers ask for cards less (from trick 6, 3 pick-ups, gap of 5 tricks, chance per lead, higher bar)
-- [ ] Part D: computers call Deal again with a rubbish hand, and vote yes more often
-- [ ] Part E: 2.38.2, checks, test build
+- [x] Part A: watched hand sorted and in the same fan as your own hand (built 2026-11-18, Haiku, not committed)
+- [x] Part B: no flash on the watch sheet, the watch ask card, the remove sheet and the take-cards card (`sheetSeen`) (built, not committed)
+- [x] Part C: computers ask for cards less (from trick 6, 3 pick-ups, gap of 5 tricks, chance per lead, higher bar) (built, not committed; Hard bar lowered to 0.10, see 9ap.8)
+- [x] Part D: computers call Deal again with a rubbish hand, and vote yes more often (built, not committed)
+- [~] Part E: 2.38.2, checks done (`npm run check`, `npm test` 571, `netgame_check` 97, arena bars all pass); test build and phone checklist pending
 - [ ] Part F: deal stops while messages are sent (online, computer dealing): parked by the user until it happens again
-- [ ] Part G: no-choice pop-ups close after 5 s, same moment on every phone
-- [ ] Part H: Deal again once per round
-- [ ] Phone checklist 9ap.7
+- [x] Part G: no-choice pop-ups close after 5 s, same moment on every phone (built, not committed)
+- [x] Part H: Deal again once per round (built, not committed)
+- [ ] Phone checklist 9ap.7 (phone test pending)
 
 ## Phase 5 — Polish
 

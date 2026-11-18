@@ -159,6 +159,24 @@ export function fitFan(n: number, width: number, height: number, landscape: bool
   return { cardW: fan.cardW, height: b.bottom - b.top, spots: fan.spots.map((p) => ({ ...p, y: p.y - b.top })) };
 }
 
+/**
+ * 9ap.A (2.38.2): puts each card in its place in a fan. The same placement is used for your own hand and for a
+ * watched hand, so the two can't drift apart. `make` builds the card's element (classes, handlers); this sets its
+ * --i, --x, --y, --rot and stacking order from the spot for that index.
+ */
+export function fanCards(cards: readonly Card[], spots: readonly FanSpot[], make: (c: Card, i: number) => HTMLElement): HTMLElement[] {
+  return cards.map((c, i) => {
+    const el = make(c, i);
+    const spot = spots[i]!;
+    el.style.setProperty('--i', String(i));
+    el.style.setProperty('--x', `${spot.x.toFixed(1)}px`);
+    el.style.setProperty('--y', `${spot.y.toFixed(1)}px`);
+    el.style.setProperty('--rot', `${spot.rot.toFixed(1)}deg`);
+    el.style.zIndex = String(spot.z);
+    return el;
+  });
+}
+
 /** 2.34.6 (CODE.md 9ah.3): all four aces in one hand ("You are the Ultimate Badboy!!"). */
 export function hasFourAces(hand: readonly Card[]): boolean {
   return hand.filter((c) => c.kind === 'standard' && c.rank === 14).length === 4;

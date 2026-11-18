@@ -6,6 +6,7 @@
 
 import type { PlayerId, Session } from '../session/types.ts';
 import { removeAllowed } from '../session/session.ts';
+import { sheetSeen } from './between.ts';
 import { h, type Child } from './dom.ts';
 import { icon } from './icons.ts';
 import { nameOf } from './game.ts';
@@ -31,10 +32,14 @@ export function statusLine(p: PlayerId): string {
 
 /** The sheet, when the host has opened it for a player (armed "remove:<id>" or "removeok:<id>"). */
 export function removeSheet(g: SavedGame): HTMLElement | null {
-  if (!g.net || g.net.role !== 'host') return null;
   const arm = getState().armed ?? '';
   const confirm = arm.startsWith('removeok:');
-  if (!confirm && !arm.startsWith('remove:')) return null;
+  const open = !!g.net && g.net.role === 'host' && (confirm || arm.startsWith('remove:'));
+  // 9ap.B (2.38.2): each view keeps its own `seen` state, tracked on every redraw, so the sheet doesn't replay
+  // its slide-up when the game redraws (a card played, a message) while the host has it open.
+  const listSeen = sheetSeen('remove', open && !confirm);
+  const confirmSeen = sheetSeen('remove-confirm', open && confirm);
+  if (!open) return null;
   const id = arm.slice(arm.indexOf(':') + 1) as PlayerId;
   const s: Session = g.session;
   if (!s.order.includes(id) || id === s.hostId) {
@@ -44,9 +49,9 @@ export function removeSheet(g: SavedGame): HTMLElement | null {
   const close = (): void => update({ armed: null });
   const who = nameOf(s, id);
   const results = s.phase === 'results';
-  const sheet = (title: string, kids: Child[]): HTMLElement =>
-    h('div', { class: 'overlay take-sheet-overlay', onclick: (e: Event) => { if (e.target === e.currentTarget) close(); } },
-      h('section', { class: 'sheet take-sheet', role: 'dialog', 'aria-label': title },
+  const sheet = (title: string, kids: Child[], seen: boolean): HTMLElement =>
+    h('div', { class: seen ? 'overlay take-sheet-overlay seen' : 'overlay take-sheet-overlay', onclick: (e: Event) => { if (e.target === e.currentTarget) close(); } },
+      h('section', { class: seen ? 'sheet take-sheet seen' : 'sheet take-sheet', role: 'dialog', 'aria-label': title },
         h('span', { class: 'take-grab', 'aria-hidden': 'true' }),
         ...kids));
 
@@ -63,7 +68,7 @@ export function removeSheet(g: SavedGame): HTMLElement | null {
         onclick: () => update({ armed: `removeok:${id}` }),
       }, 'Remove from game'),
       h('button', { class: 'ghost big', onclick: close }, 'Cancel'),
-    ]);
+    ], listSeen);
   }
 
   // H-b confirm view: "Remove Ben? Their cards leave the game and they come last this round." (results: they leave before the next round)
@@ -83,5 +88,5 @@ export function removeSheet(g: SavedGame): HTMLElement | null {
       },
     }, 'Remove'),
     h('button', { class: 'ghost big', onclick: () => update({ armed: `remove:${id}` }) }, 'Back'),
-  ]);
+  ], confirmSeen);
 }

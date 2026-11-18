@@ -527,8 +527,10 @@ function afterDealStep(s: Session, out: Out): Session {
     handSizes: Object.fromEntries(s.order.map((p) => [p, (hands[p] ?? []).length])),
   });
   const s2: Session = { ...s, deal: null, hands, hiddenDecks: deal.hiddenDecks };
-  // 2.34.6 (CODE.md 9ah.2): every deal opens the reshuffle window; one vote per deal, as many deals as wanted.
-  return { ...s2, phase: 'reshuffle', reshuffleUsed: false, kept: [] };
+  // 9ap.H (2.38.2): every deal opens the reshuffle window, but only one Deal again vote per round. `reshuffleUsed`
+  // is kept from the round's start (false) and set by the vote (passed or failed), so a redeal after a passed vote
+  // does not bring "Deal again?" back. It is reset only when a round starts (createSession, startNextRound).
+  return { ...s2, phase: 'reshuffle', kept: [] };
 }
 
 // ---------------------------------------------------------------------------
@@ -546,7 +548,7 @@ function callVote(
   if (s.vote) fail('A vote is already in progress');
   if (kind === 'reshuffle') {
     if (s.phase !== 'reshuffle') fail('A reshuffle vote can only be called after the deal, before the round begins');
-    if (s.reshuffleUsed) fail('Only one reshuffle vote per deal');
+    if (s.reshuffleUsed) fail('Only one reshuffle vote per round');
     value = null;
   } else if (kind === 'target') {
     if (!targetVoteAllowed(s)) {

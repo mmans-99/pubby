@@ -88,11 +88,11 @@ def run(browser, w, h):
             break
         page.evaluate('cfg => window.pubbyBot.step(cfg)', cfg)
         advance(page, 100)
-    for _ in range(20):
-        note = page.get_by_text('Tap anywhere to close')
-        if not note.count():
+    # 9ap.G (2.38.2): pop-ups close by themselves after 5 s (no tap): run the clock until none is up.
+    for _ in range(40):
+        if not page.locator('.popup-overlay').count():
             break
-        note.first.click(); advance(page, 50)
+        advance(page, 500)
     if page.locator('.results-footer .react-inline').count():
         page.locator('.results-footer .react-inline').first.click(); advance(page, 150)
         check(page.locator('.reactions-sheet').count() == 1, f'{w}x{h} results: the 😂 opens the sheet')

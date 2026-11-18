@@ -59,91 +59,120 @@ function askedFor(action: unknown): string | undefined {
 // Asking
 // ---------------------------------------------------------------------------
 
-test('ask: not stuck (picked up only once) means no ask', () => {
+// 9ap.C (2.38.2): fixed "random" numbers for the chance roll. `sure` is below every level's chance (so a stuck
+// computer asks); `never` is above it (so it plays a card instead).
+const sure = (): number => 0;
+const never = (): number => 0.999;
+
+/** Stuck at trick 6 with three pick-ups and two slaps by p3 (passes the stuck rule at every level). */
+function stuckAt(level: Level = 'normal', trick = 6) {
+  const p = leadPosition({ level });
+  p.memory.trickCount = trick;
+  p.memory.pickups = 3;
+  p.memory.slappedMe.p3 = 2;
+  return p;
+}
+
+test('ask: not stuck (picked up only once, slapped three times) means no ask', () => {
   const p = leadPosition();
-  p.memory.trickCount = 5;
+  p.memory.trickCount = 6;
   p.memory.pickups = 1;
   p.memory.slappedMe.p3 = 3;
-  assert.equal(chooseTakeAsk(p.seen, p.memory, seededRng(1)), null);
+  assert.equal(chooseTakeAsk(p.seen, p.memory, sure), null);
 });
 
-test('ask: stuck after two pick-ups and two slaps by one player asks that player', () => {
+test('ask: one slap and three pick-ups is not stuck (needs two slaps or far more cards)', () => {
   const p = leadPosition();
-  p.memory.trickCount = 5;
-  p.memory.pickups = 2;
-  p.memory.slappedMe.p3 = 2;
-  assert.equal(askedFor(chooseTakeAsk(p.seen, p.memory, seededRng(1))), 'p3');
+  p.memory.trickCount = 6;
+  p.memory.pickups = 3;
+  p.memory.slappedMe.p3 = 1;
+  assert.equal(chooseTakeAsk(p.seen, p.memory, sure), null);
 });
 
-test('ask: stuck by holding far more cards than the others, and asks the player with a missing suit', () => {
+test('ask: stuck after three pick-ups and two slaps by one player asks that player', () => {
+  const p = stuckAt();
+  assert.equal(askedFor(chooseTakeAsk(p.seen, p.memory, sure)), 'p3');
+});
+
+test('ask: stuck by holding twice the others (8+ cards), and asks the player with a missing suit', () => {
   const p = leadPosition({ my: 9, others: 3 });
-  p.memory.trickCount = 5;
-  p.memory.pickups = 2;
+  p.memory.trickCount = 6;
+  p.memory.pickups = 3;
   p.memory.voids.p2!.add('hearts');
   p.memory.voids.p2!.add('spades');
-  assert.equal(askedFor(chooseTakeAsk(p.seen, p.memory, seededRng(1))), 'p2');
+  assert.equal(askedFor(chooseTakeAsk(p.seen, p.memory, sure)), 'p2');
 });
 
-test('ask: needs at least three tricks played, and to be the player about to lead', () => {
-  const p = leadPosition();
-  p.memory.pickups = 2;
-  p.memory.slappedMe.p3 = 2;
-  p.memory.trickCount = 2;
-  assert.equal(chooseTakeAsk(p.seen, p.memory, seededRng(1)), null);
-  const notMyTurn = leadPosition();
-  notMyTurn.memory.trickCount = 5;
-  notMyTurn.memory.pickups = 2;
-  notMyTurn.memory.slappedMe.p3 = 2;
+test('ask: twice the others but under 8 cards is not stuck', () => {
+  const p = leadPosition({ my: 6, others: 2 });
+  p.memory.trickCount = 6;
+  p.memory.pickups = 3;
+  assert.equal(chooseTakeAsk(p.seen, p.memory, sure), null);
+});
+
+test('ask: waits until trick 6, and only the player about to lead asks', () => {
+  const early = stuckAt('normal', 5);
+  assert.equal(chooseTakeAsk(early.seen, early.memory, sure), null);
+  const notMyTurn = stuckAt();
   const other = { ...notMyTurn.seen, view: { ...notMyTurn.seen.view, turn: 'p2' as PlayerId } };
-  assert.equal(chooseTakeAsk(other, notMyTurn.memory, seededRng(1)), null);
+  assert.equal(chooseTakeAsk(other, notMyTurn.memory, sure), null);
 });
 
-test('ask: Normal asks once a round, Hard may ask twice', () => {
-  const normal = leadPosition({ level: 'normal' });
-  normal.memory.trickCount = 5;
-  normal.memory.pickups = 2;
-  normal.memory.slappedMe.p3 = 2;
+test('ask: Normal asks once a round; Hard may ask twice, with a gap', () => {
+  const normal = stuckAt('normal');
   normal.memory.asks = 1;
-  assert.equal(chooseTakeAsk(normal.seen, normal.memory, seededRng(1)), null);
+  assert.equal(chooseTakeAsk(normal.seen, normal.memory, sure), null);
 
-  const hard = leadPosition({ level: 'hard' });
-  hard.memory.trickCount = 5;
-  hard.memory.pickups = 2;
-  hard.memory.slappedMe.p3 = 2;
+  const hard = stuckAt('hard');
   hard.memory.asks = 1;
-  assert.equal(askedFor(chooseTakeAsk(hard.seen, hard.memory, seededRng(1))), 'p3');
+  hard.memory.lastAskTrick = 1; // 6 - 1 = 5 tricks since the ask
+  hard.memory.pickupsSinceAsk = 2;
+  assert.equal(askedFor(chooseTakeAsk(hard.seen, hard.memory, sure)), 'p3');
 });
 
-test('ask: the bars are as set (Easy 3.5, Normal 2.5, Hard 2.0)', () => {
-  assert.deepEqual(ASK_BAR, { easy: 3.5, normal: 2.5, hard: 2.0 });
+test('ask: a refused computer waits five tricks and two more pick-ups before asking again', () => {
+  const p = stuckAt('hard', 7);
+  p.memory.asks = 1;
+  p.memory.lastAskTrick = 6;
+  p.memory.pickups = 5;
+  p.memory.pickupsSinceAsk = 0;
+  assert.equal(chooseTakeAsk(p.seen, p.memory, sure), null, 'one trick later: no ask');
+  p.memory.trickCount = 11;
+  p.memory.pickupsSinceAsk = 1;
+  assert.equal(chooseTakeAsk(p.seen, p.memory, sure), null, 'five tricks later but one pick-up: no ask');
+  p.memory.pickupsSinceAsk = 2;
+  assert.equal(askedFor(chooseTakeAsk(p.seen, p.memory, sure)), 'p3');
 });
 
-test('ask: Easy asks rarely (a 30% chance on top of the bar); Normal asks every time it is stuck', () => {
-  let easy = 0;
-  let normal = 0;
-  for (let seed = 1; seed <= 200; seed++) {
-    const e = leadPosition({ level: 'easy' });
-    e.memory.trickCount = 5;
-    e.memory.pickups = 2;
-    e.memory.slappedMe.p3 = 2;
-    if (chooseTakeAsk(e.seen, e.memory, seededRng(seed))) easy++;
-    const n = leadPosition({ level: 'normal' });
-    n.memory.trickCount = 5;
-    n.memory.pickups = 2;
-    n.memory.slappedMe.p3 = 2;
-    if (chooseTakeAsk(n.seen, n.memory, seededRng(seed))) normal++;
+test('ask: the bars are as set (Easy 4.0, Normal 3.0, Hard 2.5)', () => {
+  assert.deepEqual(ASK_BAR, { easy: 4.0, normal: 3.0, hard: 2.5 });
+});
+
+test('ask: the chance on top of being stuck is 15% Easy, 40% Normal, 60% Hard', () => {
+  const asked = { easy: 0, normal: 0, hard: 0 };
+  for (let seed = 1; seed <= 400; seed++) {
+    for (const level of ['easy', 'normal', 'hard'] as const) {
+      const p = stuckAt(level);
+      if (chooseTakeAsk(p.seen, p.memory, seededRng(seed))) asked[level]++;
+    }
   }
-  assert.equal(normal, 200);
-  assert.ok(easy > 20 && easy < 100, `easy asked ${easy} of 200`);
+  assert.ok(asked.easy > 30 && asked.easy < 90, `easy asked ${asked.easy} of 400`);
+  assert.ok(asked.normal > 120 && asked.normal < 200, `normal asked ${asked.normal} of 400`);
+  assert.ok(asked.hard > 200 && asked.hard < 280, `hard asked ${asked.hard} of 400`);
+});
+
+test('ask: when the chance roll fails, the computer plays a card and can ask on a later lead', () => {
+  const p = stuckAt();
+  assert.equal(chooseTakeAsk(p.seen, p.memory, never), null);
+  // Still stuck on a later lead (the roll is taken again): it asks.
+  p.memory.trickCount = 7;
+  assert.equal(askedFor(chooseTakeAsk(p.seen, p.memory, sure)), 'p3');
 });
 
 test('ask: while a request of mine is still open, I do not ask again', () => {
-  const p = leadPosition();
-  p.memory.trickCount = 5;
-  p.memory.pickups = 2;
-  p.memory.slappedMe.p3 = 2;
+  const p = stuckAt();
   const open = { ...p.seen, session: { ...p.seen.session, takeRequests: [{ requester: 'p2', target: 'p4', agreed: false }] } };
-  assert.equal(chooseTakeAsk(open, p.memory, seededRng(1)), null);
+  assert.equal(chooseTakeAsk(open, p.memory, sure), null);
 });
 
 // ---------------------------------------------------------------------------
@@ -259,4 +288,23 @@ test('memory: counts who slapped me, whom I slapped, and my pick-ups this round'
   remember(m, [START], seededRng(1));
   assert.equal(m.slappedMe.p3, 0);
   assert.equal(m.pickups, 0);
+});
+
+test('memory: my ask records the trick it was made on and restarts the pick-up count (9ap.C)', () => {
+  const m = newMemory('p1', 'hard', ORDER);
+  remember(m, [START, { type: 'wastePilePickedUp', player: 'p1', cards: 4 } as SessionEvent], seededRng(1));
+  assert.equal(m.pickupsSinceAsk, 1);
+  remember(m, [{ type: 'takeRequested', requester: 'p1', target: 'p2' } as SessionEvent], seededRng(1));
+  assert.equal(m.asks, 1);
+  assert.equal(m.lastAskTrick, m.trickCount);
+  assert.equal(m.pickupsSinceAsk, 0);
+  remember(m, [{ type: 'wastePilePickedUp', player: 'p1', cards: 4 } as SessionEvent], seededRng(1));
+  assert.equal(m.pickups, 2);
+  assert.equal(m.pickupsSinceAsk, 1);
+  // Someone else's ask doesn't count as mine.
+  remember(m, [{ type: 'takeRequested', requester: 'p3', target: 'p2' } as SessionEvent], seededRng(1));
+  assert.equal(m.asks, 1);
+  remember(m, [START], seededRng(1));
+  assert.equal(m.lastAskTrick, -99);
+  assert.equal(m.pickupsSinceAsk, 0);
 });

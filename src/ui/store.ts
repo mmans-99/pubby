@@ -69,7 +69,7 @@ export type Popup =
   | { kind: 'voteAlert'; by: PlayerId; vote: VoteKind; value: number | null; dealer: PlayerId; twoPlayers: boolean }
   /** The result. `kindOf` and `value` give the question; `ballots` the YES and NO rows (9ai.4). */
   | { kind: 'vote'; decidedBy: 'majority' | 'host' | 'both'; result: boolean; text: string; kindOf?: VoteKind; value?: number | null; ballots?: Readonly<Record<PlayerId, Ballot>> }
-  /** `ms`: how long it stays up (default POP_MS in game.ts). */
+  /** `ms`: how long it stays up (default POPUP_SHOW_MS, 5 s, in game.ts). */
   | { kind: 'info'; icon: IconName; title: string; text: string; ms?: number };
 
 export type Screen = 'home' | 'profiles' | 'history' | 'setup' | 'solo' | 'game' | 'netlobby' | 'bye';

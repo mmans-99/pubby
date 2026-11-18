@@ -22,7 +22,7 @@ import { defaultRng } from '../rules/rng.ts';
 import { applyAction, handOf } from '../session/session.ts';
 import type { LeadNotice, PlayerId, Session, SessionAction, SessionEvent } from '../session/types.ts';
 import { playerView, type PlayerView } from '../session/view.ts';
-import { cardFace, cardFaceFromId, fanLayout, fitFan, hasFourAces, ordinal, shortLabel, sortHand, SUIT_NAME, SUIT_SYMBOL, trickFromPlay } from './cards.ts';
+import { cardFace, cardFaceFromId, fanCards, fanLayout, fitFan, hasFourAces, ordinal, shortLabel, sortHand, SUIT_NAME, SUIT_SYMBOL, trickFromPlay } from './cards.ts';
 import { h, type Child } from './dom.ts';
 import type { GameStage, LastTrick, SavedGame, TrickPlay } from './storage.ts';
 import { getState, say, update, type Popup } from './store.ts';
@@ -35,7 +35,7 @@ import { icon, type IconName } from './icons.ts';
 import { botsOnlyFor, botsTick, startFastForward, startSkip, stopFastForward } from './bots.ts';
 import { fastForwardOn, hostIsSkipping, instantSkipping, skipNote, skipping } from '../ai/fastforward.ts';
 import { anyoneBusy, reportMyBusy } from '../net/busy.ts';
-import { hostBroadcast, joinSend, sendMessage, sendReaction } from './netplay.ts';
+import { hostBroadcast, hostClock, joinSend, sendMessage, sendReaction } from './netplay.ts';
 import { cleanMessage } from '../net/lobby.ts';
 import { handH, roundTable, wastePile } from './table.ts';
 import { joinNames } from '../session/names.ts';
@@ -45,7 +45,7 @@ import { watchAskCard, watchEyeButton, watchingBlock, watchPill, watchSheet } fr
 import { netGameBody, netMenu } from './netscreens.ts';
 import {
   askPausePanel, gameOverStage, netPauseButton, notesPanel, passOnButton, pauseButton, pausePanel, pauseRequestsBanner,
-  pauseTick, resultsStage, takeButton, takeControls, takeHolder, takePrompts, takeStatus, targetButton, targetSheet,
+  pauseTick, resultsStage, sheetSeen, takeButton, takeControls, takeHolder, takePrompts, takeStatus, targetButton, targetSheet,
 } from './between.ts';
 
 const rng = defaultRng();
@@ -58,17 +58,20 @@ export const CATCH_PHRASES: string[] = catchPhrasesMd
   .map((l) => l.slice(2).trim())
   .filter(Boolean);
 
-/** The SLAP! pop-up closes by itself after this long. */
-const SLAP_MS = 4000;
-/** Every other pop-up closes by itself after this long (tap to skip). */
-const POP_MS = 2400;
-/** How long a pop-up stays up. */
+/**
+ * 9ap.G (user 2026-11-18 19:07, 2.38.2): every pop-up closes by itself after this long, on every phone at the
+ * same moment (its host-clock start, `popupAt`). There is no tap to close. Fast forward and Skip use half.
+ */
+const POPUP_SHOW_MS = 5000;
+/** How long a pop-up stays up: 5 s, or half of that while Fast forward or Skip runs (its own shorter time for `info`: `ms`). */
 function popupMs(p: Popup): number {
-  if (p.kind === 'info' && p.ms) return p.ms;
-  return p.kind === 'slap' || p.kind === 'haha' || p.kind === 'badboy' || p.kind === 'pathetic' ? SLAP_MS : p.kind === 'lastTwo' ? POP_MS + 600 : POP_MS;
+  const full = p.kind === 'info' && p.ms ? p.ms : POPUP_SHOW_MS;
+  return quickMode() ? full / 2 : full;
 }
-/** "X leads" pop-up (who leads and any missing suits): long enough to read (user, 2026-11-13). */
-const LEAD_MS = 6000;
+/** Host-clock start of each pop-up on screen (`at`). Set when it is made, or when it first shows on this phone. */
+const popupAt = new WeakMap<Popup, number>();
+/** "X leads" pop-up (who leads and any missing suits): the same 5 s as every pop-up (9ap.G). */
+const LEAD_MS = POPUP_SHOW_MS;
 /** A finished trick stays on the felt this long before its cards move. */
 const TRICK_HOLD_MS = 700;
 /** Cards sliding to the waste pile or into the slapped player's seat. */
@@ -231,6 +234,8 @@ type SendOpts = {
   holder?: PlayerId;
   /** The move was made on this phone (so its raised card and "tap again" are done with). */
   mine?: boolean;
+  /** 9ap.G (2.38.2): the host's clock when these events happened (a joining phone gets it with the update). */
+  hostAt?: number;
 };
 
 /**
@@ -257,11 +262,28 @@ export function runActions(actions: readonly SessionAction[], opts: SendOpts = {
   return null;
 }
 
-/** Network game, joining phone: the host sent the game after a move. */
-export function receive(session: Session, events: readonly SessionEvent[]): void {
+/** Network game, joining phone: the host sent the game after a move (`hostAt`: the host's clock for that update). */
+export function receive(session: Session, events: readonly SessionEvent[], hostAt?: number): void {
   const g = getState().game;
   if (!g) return;
-  absorb(g, session, events, {});
+  absorb(g, session, events, { hostAt });
+}
+
+/**
+ * 9ap.G (item 3, 2.38.2): stamps each new pop-up with the host-clock time it starts. The first one starts at the
+ * host's time for these events; one queued behind another starts when that one ends, so the queue runs in step on
+ * every phone. Behind a pop-up that has no stamp yet, a new one is left unstamped and starts when it first shows.
+ */
+function stampPopups(existing: readonly Popup[], fresh: readonly Popup[], hostAt: number): Popup[] {
+  const last = existing[existing.length - 1];
+  let tail: number | null = last === undefined ? hostAt : popupAt.has(last) ? Math.max(hostAt, popupAt.get(last)! + popupMs(last)) : null;
+  for (const p of fresh) {
+    if (tail !== null) {
+      popupAt.set(p, tail);
+      tail += popupMs(p);
+    }
+  }
+  return [...existing, ...fresh];
 }
 
 /** Seat that just got one card dealt (for the flying card), from the hand counts. */
@@ -281,7 +303,7 @@ function dealtTo(before: Session, after: Session): { seat: PlayerId | null; any:
  * that never comes.
  */
 export function phoneBusyNow(): boolean {
-  return getState().popups.length > 0 && !autoClosing() && !(trickAnim && trickAnim.step !== 'wait');
+  return getState().popups.length > 0 && !quickMode() && !(trickAnim && trickAnim.step !== 'wait');
 }
 
 /** 9an.5 (E-f): this phone took moves while pop-ups were still open; it catches up calmly. */
@@ -384,7 +406,7 @@ function absorb(g: SavedGame, session: Session, events: readonly SessionEvent[],
     .filter((p) => !(p.kind === 'voteAlert' && p.by === seat))
     .filter((p) => !quiet || p.kind === 'lastTwo' || (p.kind === 'slap' && p.over !== undefined))
     .map((p) => (quiet && p.kind === 'lastTwo' && !p.shared ? { ...p, winner: p.order[0] } : p));
-  const popups = [...getState().popups, ...fresh];
+  const popups = stampPopups(getState().popups, fresh, opts.hostAt ?? hostClock());
 
   // Sound effects and animations for what just happened (PROJECT.md 12b). 2.32.1: none for an instant Skip.
   if (!instantSkipping()) {
@@ -626,6 +648,10 @@ export function gameScreen(g: SavedGame): HTMLElement {
   // Stages that are not framed (results, round start screens not yet framed) scroll inside their own
   // box, so the page itself never scrolls during a game (2.29, CODE.md 9x.2).
   const framed = hasFrame(body);
+  // 9ap.B (2.38.2): the Last trick sheet's `seen` state is tracked on every redraw (open or not), so a card played
+  // while it is open doesn't replay its slide-up.
+  const lastOpen = st.lastOpen === true && s.phase !== 'gameOver' && !!g.lastTrick;
+  const lastSeen = sheetSeen('last', lastOpen);
   // 2.31 (CODE.md 9aa Part A): the scrolling box is named, so a redraw keeps its place (app.ts render).
   const content: Child = framed ? body : h('div', { class: 'game-scroll', 'data-scroll': `game-${s.phase}-${s.round}` }, body);
   return h('main', { class: framed ? 'screen game fixed framed' : 'screen game fixed' },
@@ -651,7 +677,7 @@ export function gameScreen(g: SavedGame): HTMLElement {
     st.armed === 'roundinfo' ? noteLayer(s) : null,
     // 9ak.1 (2.37): the menu floats as a card over the table; a tap outside it closes it.
     st.menuOpen ? menuLayer(g.net ? netMenu(g) : gameMenu(g)) : null,
-    st.lastOpen && s.phase !== 'gameOver' && g.lastTrick ? lastSheet(s, g.lastTrick) : null,
+    lastOpen && g.lastTrick ? lastSheet(s, g.lastTrick, lastSeen) : null,
     targetSheet(s, { me: ownSeat(g) ?? undefined }),
     fastBanner(g),
     pausePanel(g),
@@ -961,10 +987,10 @@ function lastCorner(s: Session, t: LastTrick): Child {
 }
 
 /** The last trick, big, on a sheet (2.29): from the corner of the table. */
-function lastSheet(s: Session, t: LastTrick): HTMLElement {
+function lastSheet(s: Session, t: LastTrick, seen: boolean): HTMLElement {
   const close = (): void => update({ lastOpen: false });
-  return h('div', { class: 'overlay', onclick: (e: Event) => { if (e.target === e.currentTarget) close(); } },
-    h('div', { class: 'sheet last-sheet', role: 'dialog', 'aria-label': 'Last trick', 'data-scroll': 'last' },
+  return h('div', { class: seen ? 'overlay seen' : 'overlay', onclick: (e: Event) => { if (e.target === e.currentTarget) close(); } },
+    h('div', { class: seen ? 'sheet last-sheet seen' : 'sheet last-sheet', role: 'dialog', 'aria-label': 'Last trick', 'data-scroll': 'last' },
       h('div', { class: 'sheet-head' }, h('h2', null, 'Last trick'), h('button', { class: 'ghost', onclick: close }, 'Close')),
       h('div', { class: 'last-big' }, t.plays.map((p: TrickPlay) => h('div', { class: 'last-big-item' },
         cardFaceFromId(p.card, 'last-big-card'),
@@ -1305,15 +1331,9 @@ export function handBlock(
       h('span', { class: 'count' }, String(hand.length)),
     ),
     hand.length
-      ? h('div', { class: fresh ? 'hand fan fresh' : 'hand fan', style: `--card-w:${fan.cardW.toFixed(1)}px;--fan-h:${fan.height.toFixed(1)}px` }, hand.map((c, i) => {
+      ? h('div', { class: fresh ? 'hand fan fresh' : 'hand fan', style: `--card-w:${fan.cardW.toFixed(1)}px;--fan-h:${fan.height.toFixed(1)}px` }, fanCards(hand, fan.spots, (c) => {
         const playable = onTap !== null && legal.has(c.id);
         const el = cardFace(c, [onTap && !playable ? 'dim' : '', raised(c.id) ? 'selected' : '', playable ? 'playable' : '', opts.mark && opts.picked?.has(c.id) ? 'new-card' : ''].join(' '));
-        el.style.setProperty('--i', String(i));
-        const spot = fan.spots[i]!;
-        el.style.setProperty('--x', `${spot.x.toFixed(1)}px`);
-        el.style.setProperty('--y', `${spot.y.toFixed(1)}px`);
-        el.style.setProperty('--rot', `${spot.rot.toFixed(1)}deg`);
-        el.style.zIndex = String(spot.z);
         if (onTap && !playable) el.addEventListener('click', () => sfx('notAllowed'));
         if (playable) {
           el.setAttribute('role', 'button');
@@ -1415,7 +1435,7 @@ export function playHandStage(g: SavedGame): Child {
     hand: fastItems.length
       ? h('div', { class: 'hand-actions' }, ...fastItems)
       // 9an.3 (2.38, item 10): out and watching someone: their cards show where my hand was.
-      : watchingBlock(s, v) ?? handBlock(s, v, playBlocked ? null : onTap, {
+      : watchingBlock(s, v, { fit: lay.handH, width: lay.handW }) ?? handBlock(s, v, playBlocked ? null : onTap, {
         head: false, fit: lay.handH, width: lay.handW,
         yourTurn: myTurn,
       }),
@@ -1428,32 +1448,39 @@ export function playHandStage(g: SavedGame): Child {
 // Pop-ups
 // ---------------------------------------------------------------------------
 
-/** When each SLAP! pop-up first appeared, so its countdown bar survives a redraw. */
-const slapShownAt = new WeakMap<Popup, number>();
+/** Pop-ups whose start has been fixed on this phone (the first time one is drawn as the top pop-up). */
+const popupStarted = new WeakSet<Popup>();
 
-function slapElapsed(p: Popup): number {
-  const now = Date.now();
-  if (!slapShownAt.has(p)) slapShownAt.set(p, now);
-  return Math.min(popupMs(p), now - slapShownAt.get(p)!);
+/**
+ * The host-clock start of a pop-up on this phone, fixed the first time it is drawn: the later of its stamp and
+ * that moment. A slap pop-up is stamped when the trick is played, but it is drawn only after the trick's animation,
+ * so it starts when it appears and always gets its full 5 s; phones still close together (their clocks are the
+ * host's, and the only difference is how late each phone drew it).
+ */
+function popupStart(p: Popup): number {
+  if (!popupStarted.has(p)) {
+    popupStarted.add(p);
+    popupAt.set(p, Math.max(popupAt.get(p) ?? 0, hostClock()));
+  }
+  return popupAt.get(p)!;
+}
+
+/** How far a pop-up has been up, on the host's clock, so the countdown bar survives a redraw. */
+function popupElapsed(p: Popup): number {
+  return Math.min(popupMs(p), Math.max(0, hostClock() - popupStart(p)));
 }
 
 /**
- * 9ai.1 (2.36): pop-ups close by themselves only while Fast forward or Skip runs
- * (only computer players are left, so no person is waiting). Otherwise they wait for a tap.
+ * 9ap.G (2.38.2): Fast forward and Skip run the pop-ups at half time (their old shorter times). Only then, and
+ * while a trick is being animated, the timing is quicker; the rule that a pop-up closes by itself is always on.
  */
-function autoClosing(): boolean {
+function quickMode(): boolean {
   return fastForwardOn() || skipping() || instantSkipping();
 }
 
-/** The countdown bar under a pop-up that closes by itself (only while autoClosing). */
-function popupTimer(p: Popup): HTMLElement | null {
-  if (!autoClosing()) return null;
-  return h('div', { class: 'slap-timer', 'aria-hidden': 'true' }, h('span', { style: `animation-duration:${popupMs(p)}ms;animation-delay:-${slapElapsed(p)}ms` }));
-}
-
-/** 9ai.1: the line at the bottom of a pop-up that closes on a tap (hidden while it closes by itself). */
-function tapHint(): HTMLElement | null {
-  return autoClosing() ? null : h('div', { class: 'tap-hint' }, 'Tap anywhere to close');
+/** The countdown bar under every pop-up (9ap.G): it runs out at the moment the pop-up closes. */
+function popupTimer(p: Popup): HTMLElement {
+  return h('div', { class: 'slap-timer', 'aria-hidden': 'true' }, h('span', { style: `animation-duration:${popupMs(p)}ms;animation-delay:-${popupElapsed(p)}ms` }));
 }
 
 /** Coloured place badge: 1st gold, 2nd silver, 3rd bronze, Last red. */
@@ -1483,7 +1510,6 @@ export function popupLayer(): HTMLElement | null {
       h('div', { class: 'slap-word pathetic-word', 'aria-label': 'Pathetic!!!' }, 'PATHETIC!!!'),
       h('div', { class: 'slap-who' }, forfeitLine(nameOf(s, p.player), ownSeat(g) === p.player)),
       h('div', { class: 'small' }, 'Last place.'),
-      popupTimer(p),
     ];
   } else if (p.kind === 'badboy') {
     cls += ' slap badboy';
@@ -1492,14 +1518,12 @@ export function popupLayer(): HTMLElement | null {
       h('div', { class: 'badboy-pre' }, 'You are the'),
       h('div', { class: 'slap-word badboy-word', 'aria-label': 'You are the Ultimate Badboy!!' }, 'Ultimate', h('br'), 'Badboy!!'),
       h('div', { class: 'small' }, 'All four aces.'),
-      popupTimer(p),
     ];
   } else if (p.kind === 'haha') {
     cls += ' slap haha';
     body = [
       h('div', { class: 'slap-word', 'aria-label': 'Ha ha ha!' }, 'HAHAHA!'),
       h('div', { class: 'slap-who' }, `${nameOf(s, p.laugher)} played a lower card than ${nameOf(s, p.loser)}!`),
-      popupTimer(p),
     ];
   } else if (p.kind === 'slap') {
     cls += ' slap';
@@ -1508,7 +1532,6 @@ export function popupLayer(): HTMLElement | null {
       h('div', { class: 'slap-who' }, `${nameOf(s, p.slapper)} slapped ${nameOf(s, p.slapped)}`),
       h('div', { class: 'small' }, p.over === 'game' ? 'Game over.' : p.over === 'round' ? 'Round over.'
         : `${nameOf(s, p.slapped)} picks up ${p.cards} ${p.cards === 1 ? 'card' : 'cards'} and leads.`),
-      popupTimer(p),
     ];
   } else if (p.kind === 'out') {
     // 9ai.2 (2.36): where the player came, not "is out". On your own phone: "You came 2nd!".
@@ -1526,7 +1549,7 @@ export function popupLayer(): HTMLElement | null {
   } else if (p.kind === 'lastTwo') {
     body = lastTwoBody(s, p, ownSeat(g));
   } else if (p.kind === 'voteAlert') {
-    // 9ai.4 (2.36): solid, no timer; "Vote now" or a tap anywhere closes it.
+    // 9ai.4 (2.36): solid; "Vote now" opens the vote (9ap.G: it closes by itself after 5 s).
     cls += ' vote-alert';
     body = voteAlertBody(s, p, next);
   } else if (p.kind === 'vote') {
@@ -1541,12 +1564,13 @@ export function popupLayer(): HTMLElement | null {
     ];
   }
   shownPopups.add(p);
-  // 9ai.1 (2.36): every pop-up has no timer and closes on a tap anywhere (except during Fast forward or Skip).
-  // The vote alert has its own "Vote now" button and no tap line (9ai.4).
+  // 9ap.G (2.38.2): every pop-up closes by itself after 5 s (no tap to close; see popupTimer). The vote alert keeps
+  // its own "Vote now" button (9ai.4).
   // 9aj.2 (2.36): during Fast forward the pop-ups come back to back and cover the bottom Stop button,
   // so the Stop button is drawn here, above the overlay, and its tap does not also close the pop-up.
-  return h('div', { class: 'overlay popup-overlay', 'data-skip': 'true', onclick: next },
-    h('div', { class: cls, role: 'alert' }, body, p.kind === 'voteAlert' ? null : tapHint()),
+  // 9ap.G (2.38.2): no tap closes a pop-up; it closes by itself after 5 s, with a countdown bar under it.
+  return h('div', { class: 'overlay popup-overlay', 'data-skip': 'true' },
+    h('div', { class: cls, role: 'alert' }, body, popupTimer(p)),
     fastForwardOn()
       ? h('button', { class: 'secondary big ff-stop', onclick: (e: Event) => { e.stopPropagation(); stopFastForward(); } }, 'Stop fast forward')
       : null);
@@ -1761,16 +1785,18 @@ export function afterRender(): void {
   pauseTick();
   driveTrickAnim();
   const top = trickAnim && trickAnim.step !== 'wait' ? undefined : getState().popups[0];
-  // 9ai.1 (2.36): only Fast forward or Skip closes a pop-up by itself; otherwise no timer at all.
-  if (top && autoClosing() && slapTimer?.popup !== top) {
+  // 9ap.G (2.38.2): every pop-up closes by itself at its start + 5 s on the host's clock, so every phone closes it
+  // at the same moment (the countdown bar runs on the same clock). Pop-ups queued behind one close one after another.
+  if (top && slapTimer?.popup !== top) {
     if (slapTimer) window.clearTimeout(slapTimer.id);
+    const left = popupStart(top) + popupMs(top) - hostClock();
     const id = window.setTimeout(() => {
       slapTimer = null;
       const cur = getState().popups;
       if (cur[0] === top) update({ popups: cur.slice(1) });
-    }, Math.max(300, popupMs(top) - slapElapsed(top)));
+    }, Math.max(300, left));
     slapTimer = { popup: top, id };
-  } else if (slapTimer && (!top || !autoClosing() || slapTimer.popup !== top)) {
+  } else if (slapTimer && (!top || slapTimer.popup !== top)) {
     window.clearTimeout(slapTimer.id);
     slapTimer = null;
   }

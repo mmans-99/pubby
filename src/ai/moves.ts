@@ -241,13 +241,13 @@ export function chooseVote(seen: AiSeen, persona: Persona, rng: Rng): SessionAct
   const v = seen.view;
   const vote = v.vote;
   if (!vote) return null;
-  const w = PERSONALITY_WEIGHTS[persona.personality];
   const me = seen.me;
   const n = v.players.length;
   const myScore = v.players.find((p) => p.id === me)?.score ?? 0;
   let yes: boolean;
   if (vote.kind === 'reshuffle') {
-    yes = handBadness(v.myHand) > 0.35 * w.reshuffleBar;
+    // 9ap.D item 2 (2.38.2): yes for a worse-than-average hand (was above 0.35 × the bar, which nearly never passed).
+    yes = handBadness(v.myHand) > 0;
   } else if (vote.kind === 'target') {
     // Yes if my score is in the top half of the table.
     const place = 1 + v.players.filter((p) => p.id !== me && p.score > myScore).length;
@@ -268,10 +268,12 @@ export function chooseVote(seen: AiSeen, persona: Persona, rng: Rng): SessionAct
 }
 
 /** During the reshuffle window: call a reshuffle vote if my hand is bad. */
-export function chooseCallVote(seen: AiSeen, persona: Persona): SessionAction | null {
+export function chooseCallVote(seen: AiSeen, persona: Persona, rng: Rng): SessionAction | null {
   if (!seen.view.canCallReshuffle) return null;
   const w = PERSONALITY_WEIGHTS[persona.personality];
-  if (handBadness(seen.view.myHand) > 0.5 * w.reshuffleBar) {
+  // 9ap.D item 1 (2.38.2): a rubbish hand calls (was above 0.5 × the bar, about 1 deal in 1,000). Easy also needs a coin toss.
+  if (handBadness(seen.view.myHand) > 0.25 * w.reshuffleBar) {
+    if (persona.level === 'easy' && rng() >= 0.5) return null;
     return { type: 'callVote', by: seen.me, kind: 'reshuffle' };
   }
   return null;
@@ -298,11 +300,15 @@ export function chooseKeep(seen: AiSeen): SessionAction | null {
 export const REFUSE_RATE: Record<Personality, number> = { windup: 0.7, reckless: 0.5, counter: 0.4, careful: 0.25 };
 
 /**
- * 9an.2 (2.38): the score a player must reach before a computer player asks for their cards
- * (see chooseTakeAsk). Easy asks less often: it also needs a 30% chance (EASY_ASK_CHANCE).
+ * 9an.2 (2.38), 9ap.C (2.38.2): the score a player must reach before a computer player asks for their cards
+ * (see chooseTakeAsk). Raised in 2.38.2 so the asks are rarer.
  */
-export const ASK_BAR: Record<Level, number> = { easy: 3.5, normal: 2.5, hard: 2.0 };
-const EASY_ASK_CHANCE = 0.3;
+export const ASK_BAR: Record<Level, number> = { easy: 4.0, normal: 3.0, hard: 2.5 };
+/**
+ * 9ap.C item 4 (2.38.2): once the stuck test and the gap pass, a computer asks only this often (a failed roll
+ * means it plays a card this trick and can try again on a later lead). Was Easy 0.3 only.
+ */
+export const ASK_CHANCE: Record<Level, number> = { easy: 0.15, normal: 0.4, hard: 0.6 };
 
 /**
  * Answer a take-cards request waiting for me (9an.2 item 7). Computer players agree, except now and then
@@ -334,10 +340,12 @@ export function choosePeekAnswer(seen: AiSeen, persona: Persona, rng: Rng): Sess
 }
 
 /**
- * Ask a player for their cards (9an.2 items 1 to 4, 9an.1). Only the player about to lead asks, between
- * tricks, when they have picked up at least twice this round and are either slapped twice by one player or
- * holding far more cards than the others. The target is the player they can't get past (or whose hand
- * is missing suits), using only what anyone at the table could know.
+ * Ask a player for their cards (9an.2 items 1 to 4, 9an.1; 9ap.C, 2.38.2). Only the player about to lead asks,
+ * between tricks, and only when they are really stuck: a few tricks in (trick 6 or later), at least three
+ * pick-ups this round, and either slapped twice by one player or holding at least twice the others' average
+ * (and at least 8 cards). After an ask, a computer waits 5 tricks and two more pick-ups before asking again,
+ * so a refused computer never asks a second player straight away. The target is the player they can't get past
+ * (or whose hand is missing suits), using only what anyone at the table could know.
  */
 export function chooseTakeAsk(seen: AiSeen, m: Memory, rng: Rng): SessionAction | null {
   const play = seen.session.play;
@@ -345,7 +353,7 @@ export function chooseTakeAsk(seen: AiSeen, m: Memory, rng: Rng): SessionAction 
   if (seen.view.turn !== seen.me) return null;
   // Hard may ask twice a round; Normal and Easy once.
   if (m.asks >= (m.level === 'hard' ? 2 : 1)) return null;
-  if (m.trickCount < 3) return null;
+  if (m.trickCount < 6) return null;
   if (seen.session.takeRequests.some((r) => !r.agreed || r.requester === seen.me)) return null;
   const holders = seen.view.players.filter((p) => p.cardCount > 0);
   if (holders.length < 3) return null;
@@ -354,11 +362,15 @@ export function chooseTakeAsk(seen: AiSeen, m: Memory, rng: Rng): SessionAction 
   const others = holders.filter((p) => p.id !== seen.me);
   const avg = others.reduce((sum, p) => sum + p.cardCount, 0) / others.length;
 
-  // Stuck test (all levels): picked up at least twice, and slapped twice by someone or far behind.
+  // Stuck test (all levels): three pick-ups, and slapped twice by someone or far behind (2 × average, 8+ cards).
   const slappedTwice = m.order.some((p) => (m.slappedMe[p] ?? 0) >= 2);
-  const stuck = m.pickups >= 2 && (slappedTwice || mine.cardCount >= 1.5 * avg);
+  const stuck = m.pickups >= 3 && (slappedTwice || (mine.cardCount >= 2 * avg && mine.cardCount >= 8));
   if (!stuck) return null;
-  if (m.level === 'easy' && rng() >= EASY_ASK_CHANCE) return null;
+  // Gap between asks: 5 tricks since the last ask, and after an earlier ask this round, 2 more pick-ups.
+  if (m.trickCount - m.lastAskTrick < 5) return null;
+  if (m.asks > 0 && m.pickupsSinceAsk < 2) return null;
+  // Not every chance: when everything above passes, the computer asks with its chance for its level.
+  if (rng() >= ASK_CHANCE[m.level]) return null;
 
   // Score each player I may ask: the one who keeps slapping me, the one with suits missing, the small hand.
   let best: PlayerId[] = [];

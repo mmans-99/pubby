@@ -282,7 +282,7 @@ export function joinGotGame(m: GameUpdate): void {
     update({ game: fresh, screen: 'game', popups: [], selected: null, armed: null, menuOpen: false, rulesOpen: false });
     return;
   }
-  receive(session, m.events);
+  receive(session, m.events, m.hostNow);
 }
 
 /** 9an.5 (E-a): once this update is on screen, tell the host what this phone shows (even when nothing changed). */

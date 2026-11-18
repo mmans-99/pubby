@@ -105,7 +105,7 @@ export function decide(seen: AiSeen, m: Memory, persona: Persona, rng: Rng, habi
 
   if (v.phase === 'reshuffle') {
     // 9an.4 (2.38): a reshuffle call, or else keep the cards (so a network round never waits for a computer).
-    return one(chooseCallVote(seen, persona) ?? chooseKeep(seen), 'easy');
+    return one(chooseCallVote(seen, persona, rng) ?? chooseKeep(seen), 'easy');
   }
 
   if (v.phase === 'results') return one(chooseReady(seen), 'easy');

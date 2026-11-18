@@ -35,15 +35,10 @@
     if (finalTrick && window.__holdFinal) return 'wait'; // lasttrick_check.py looks at it first
     if (finalTrick && !document.querySelector('.popup-overlay')) { st.finalTaps = (st.finalTaps || 0) + 1; return click(finalTrick, 'tap to see the results'); }
     // Pop-ups first.
-    // Pop-ups close by themselves; the ones that can be tapped away are skipped.
+    // 9ap.G (2.38.2): every pop-up closes by itself after 5 s; a tap does nothing, so the bot waits for it.
     const skip = document.querySelector('.popup-overlay[data-skip]');
-    // 2.36 (CODE.md 9aj.6): count the SLAP! pop-ups this phone closes (the check reads window.__botSlapClosed).
-    if (skip) {
-      const pop = skip.querySelector('.popup');
-      const cls = pop ? pop.className : '';
-      if (/\bslap\b/.test(cls) && !/\bhaha\b/.test(cls)) window.__botSlapClosed = (window.__botSlapClosed || 0) + 1;
-      return click(skip, 'popup ' + (document.querySelector('.popup-title, .vote-word')?.textContent || ''));
-    }
+    // (netgame_check.py counts the SLAP! pop-ups itself, on each pop-up's first draw.)
+    if (skip) return 'wait';
     if (document.querySelector('.popup-overlay')) return 'wait';
     // End-of-trick animation and the shuffle before the deal: nothing to tap yet.
     if (document.querySelector('.anim-block, .deck.shuffling')) { st.anims = (st.anims || 0) + 1; return 'wait'; }

@@ -55,13 +55,11 @@ def run(browser, w, h):
             break
     check(found, f'{w}x{h}: reached the last two (Forfeit on the bottom row)')
     if found:
-        # Close any pop-up that covers the screen, as a person would.
-        for _ in range(20):
-            note = page.get_by_text('Tap anywhere to close')
-            if not note.count():
+        # 9ap.G (2.38.2): a pop-up that covers the screen closes by itself after 5 s (no tap), so run the clock until none is up.
+        for _ in range(40):
+            if not page.locator('.popup-overlay').count():
                 break
-            note.first.click()
-            advance(page, 50)
+            advance(page, 500)
         forfeit = page.evaluate(RECT, '.action-row .forfeit-btn')
         play = page.evaluate(RECT, '.action-row > button.grow')
         react = page.evaluate(RECT, '.game-action-slot .react-inline')

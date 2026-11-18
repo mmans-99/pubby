@@ -1,6 +1,6 @@
 // CODE.md 9z.6 step 3 (regression). Two checks:
-//   1. With learning off (habits null, the default) the bots make exactly the moves of 2.38.0:
-//      500 recorded decisions (tests/ai/fixtures/moves-2.38.0.json, made by regress-fixture.ts; 2.34.5's file is kept).
+//   1. With learning off (habits null, the default) the bots make exactly the moves of 2.38.2:
+//      500 recorded decisions (tests/ai/fixtures/moves-2.38.2.json, made by regress-fixture.ts; 2.38.0's and 2.34.5's files are kept).
 //      2.34.5 (9ag): jokers set aside with a last normal card are thrown away at the trick end,
 //      so the jokersDiscarded event comes later; games of seeds 1, 2 and 7 change a few moves
 //      after a joker is set aside (2.34.3's file is kept as the record before that).
@@ -17,9 +17,9 @@ import { seededRng } from '../../src/rules/rng.ts';
 import { playBotGame } from './botgame.ts';
 import { recordDecisions, type Recorded } from './regress-fixture.ts';
 
-const golden: Recorded[] = JSON.parse(readFileSync(new URL('./fixtures/moves-2.38.0.json', import.meta.url), 'utf8'));
+const golden: Recorded[] = JSON.parse(readFileSync(new URL('./fixtures/moves-2.38.2.json', import.meta.url), 'utf8'));
 
-test('learning off: 500 recorded decisions match 2.38.0 exactly', () => {
+test('learning off: 500 recorded decisions match 2.38.2 exactly', () => {
   assert.equal(golden.length, 500);
   const now = recordDecisions(500);
   assert.equal(now.length, golden.length);

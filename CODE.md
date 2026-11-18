@@ -643,7 +643,7 @@ Order of checks (first that applies wins): game paused or ended → null; I'm th
 
 Plays whole games with only bots, using `createSession` and `applyAction` from the session layer (the arena is allowed the full session; the bots still only get `seenBy`). The arena itself does the host's jobs: `startRound` when no bot calls a reshuffle, `advance` on results (after every bot is ready), `endSession` after a set number of rounds, and the `tick` clock. Options: `--games N --players 2..8 --levels normal,easy,... --seed S`. It prints JSON: games finished, refused moves (must be 0), moves that crashed (must be 0), average place by level and personality, decision time p50 / p95 per level, and per-seat average place. Also a `random` level used only here (random legal move) as the baseline.
 
-**Pass bars** (written into the DEVLOG each time): 0 refused moves; every game finishes; Easy and Normal p95 under 20 ms per decision on a laptop; over 2000 four-player games with 2 Normal and 2 random seats, Normal's average place is better by at least 0.3; Normal beats Easy by at least 0.15. Slice D: Hard beats Normal by at least 0.15 and p95 under 150 ms.
+**Pass bars** (written into the DEVLOG each time): 0 refused moves; every game finishes; Easy and Normal p95 under 20 ms per decision on a laptop; over 2000 four-player games with 2 Normal and 2 random seats, Normal's average place is better by at least 0.3; Normal beats Easy by at least 0.15. Slice D: Hard beats Normal by at least 0.10 (lowered from 0.15 in 2.38.2, see 9ap.8) and p95 under 150 ms.
 
 ---
 
@@ -4157,6 +4157,50 @@ Tried in a browser (2.38.1 build, 390x844, single player vs 3 computers): auto d
 
 ### 9ap.6 Built notes
 (Haiku: arena results, asks per round before and after, anything that didn't match the plan.)
+
+**Built so far (2026-11-18, Haiku, then checked by Opus 20:04–20:35). Parts A, B, C, D, G, H done; Part E part done. Not committed.**
+- `npm run check` passes; `npm test` 571 of 571; `node build.mjs` builds 2.38.2.
+- Moves fixture regenerated as `tests/ai/fixtures/moves-2.38.2.json` (463 of 500 moves differ from 2.38.0, from the new ask and Deal again numbers); `regress.test.ts` points at it. The 2.38.0 file is kept.
+- Deviations from the plan: (1) a pop-up's 5 s starts at its host stamp or when it is first drawn on this phone, whichever is later (`popupStart` in `game.ts`), so a SLAP! stamped at trick time but drawn after the trick animation still gets its full 5 s; (2) Fast forward / Skip run pop-ups at half time (`quickMode`); (3) the lead notice is 5 s like the rest.
+- Opus review: `chooseTakeAsk` gets one chance roll per lead (`decide.ts` either asks or plays a card), and the reshuffle phase gets one call-or-keep decision, so the chances work as planned. Unused `w` removed from `chooseVote`.
+- `testbed/netgame_check.py` 97 of 97 (was 88). Fixes were in the check, not the game: (1) the own-seat check looked for `.table-seat.me`, which the table stopped using before 2.38.1; it now looks for `.table-seat.me-pill` and waits up to 5 s; (2) SLAP! pop-ups are counted once each on their first draw (the `.popup` element without `seen`, `POPUP_WATCH_JS` → `window.__slapFirst`). Counting by text merged two identical SLAP!s in a row. `bot.js` no longer counts pop-ups; it just waits for them to close.
+- `popups_check.py` timer, tap and bar steps pass. `netvotes_check.py` new check "the vote alert closes on Amy and Cat within 0.5 s" passes (34 ms apart). Both checks' later steps (take, sheet under, ff stop, tie; "Ask to take someone's cards") fail the same way on the unchanged 2.38.1 build in this environment, so they predate this work.
+- **Arena, Hard vs Normal, 4 players (place 1 = first out, lower is better):** 2.38.1, 600 games: Hard 2.394, Normal 2.606, gap 0.212. 2.38.2, 600 games: Hard 2.422, Normal 2.578, gap 0.156. 2.38.2, 2000 games (`--seed 3000001`): Hard 2.433, Normal 2.567, **gap 0.134**, 0 refused, 0 crashed. Below the old 0.15 bar. Likely cause: Part C (Hard asks later and less often, and asking was one of Hard's edges); not proved.
+- **User decision 20:35: accept the smaller gap and lower the bar (option C).** See 9ap.8.
+
+**9ap.8 results (Haiku, 2026-11-18, build 2.38.2):**
+- Step 1, bar lowered: `hardBeatsNormalBy0_10` in `testbed/ai_arena.ts` (was `…0_15`, bar 0.15 → 0.10). `CODE.md` 9m.4 pass bars updated.
+- Step 2, full `npx tsx testbed/ai_arena.ts --bars` (2000 games per slice): **all 9 bars pass.** No refused moves; 0 crashes; 6400 of 6400 games finished; Normal beats random by 1.416 (bar 0.3); Normal beats Easy by 0.534 (bar 0.15); Easy p95 0.05 ms, Normal p95 0.06 ms (bar 20 ms); **Hard beats Normal by 0.134 (bar 0.10)**; Hard p95 5.89 ms (bar 150 ms).
+- Step 3, asks per computer round (`asksPerComputerRound`, new counter in `tests/ai/botgame.ts`, 600 games of 4 players, seed 5000001, all rounds including Ultimate):
+
+| Level | 2.38.1 | 2.38.2 |
+|---|---|---|
+| Easy | 0.345 | 0.181 |
+| Normal | 0.332 (in normal/hard run) / 0.277 (easy/normal run) | 0.251 / 0.187 |
+| Hard | 0.528 | 0.277 |
+
+  All runs: 600 of 600 finished, 0 refused, 0 crashed. Aim ("well under 1 per round") met on both builds.
+- **Caveat on the Hard gap:** a second 600-game run with seed 5000001 (2.38.2, normal and hard) gave Hard 2.464 vs Normal 2.536, a gap of 0.072. The 2000-game bars run gave 0.134. Gaps this size move by several hundredths between seeds and sample sizes, so the 0.10 bar is close to the noise. Recommend a larger run (e.g. 4000+ games over several seeds) before deciding whether Hard is strong enough.
+- Step 4: `testbed/deal_again_check.ts` header now says "once per round".
+- Step 5: `takePrompts` (`src/ui/between.ts`) is answer-required: play waits on pending take requests (`session.ts`), so it can't stay open during play. It was rebuilt on every redraw with the entrance animation, so it now uses `sheetSeen('take-prompt', …)` and gets `seen` after its first draw. `npm run check` clean.
+- Step 6, browser checks on the final 2.38.2 build (`node build.mjs`): `lasttrick_check` 21/21, `sound_check` 44/44, `landscape_check` 24/24, `lasttwo_check` 16/16, `react_check` 32/32, `netgame_check` 97/97. `popups_check` 10 pass, 4 fail (take, sheet_under, ff_stop, tie: "not seen in this game"). The same steps never run on the unchanged 2.38.1 build in this environment, so they are not caused by this work. Not fixed (per the plan).
+- Step 9: test build published as a new private artifact, `dist/index.html` (2.38.2): https://claude.ai/artifact/RNPL3NfvCVRM1rqjXnVFse (the 2.38.1 link is unchanged). Phone checklist 9ap.7 still to do.
+- Step 8: temporary `node_modules` symlink removed.
+- Step 7: DEVLOG entry and TODO Phase 4y updated. PROJECT 12u item 1 already matches Part G as built (5 s, no tap), so it is unchanged.
+
+### 9ap.8 Remaining work for Haiku (Opus, 2026-11-18 20:35; build in this order)
+1. **Lower the Hard bar to 0.10.** The 2000-game gap is 0.134, and its run-to-run noise is about ±0.03, so 0.10 passes reliably while still meaning "Hard is clearly better than Normal". Change:
+   - `testbed/ai_arena.ts`: rename `hardBeatsNormalBy0_15` to `hardBeatsNormalBy0_10` and make it pass at `vsNormal >= 0.10`.
+   - `CODE.md` 9m.4 pass bars (the line starting "**Pass bars**"): "Slice D: Hard beats Normal by at least 0.15" → "by at least 0.10 (lowered from 0.15 in 2.38.2, 9ap.8: Hard asks for cards less often)".
+   - 9ap Part C item 8 stays as written; note here in 9ap.6 that the bar was lowered.
+2. **Run the full bars:** `npx tsx testbed/ai_arena.ts --bars` (takes about 25 min, so run it in the background with a long timeout, and run nothing else heavy at the same time). All 9 bars must pass. Put the numbers in 9ap.6. If Hard beats Normal by less than 0.10, stop and tell the user; don't tune.
+3. **Asks per round (Part C item 8):** not logged yet. Add a count of `requestTake` actions by level to the arena report (`ai_arena.ts`, next to refused moves), run 600 games of 4 players on `normal,hard` and `easy,normal` on this build and on 2.38.1 (unchanged copy: `git archive HEAD | tar -x -C /tmp/base`, then symlink `node_modules`), and put asks per round per computer (before and after) in 9ap.6.
+4. `testbed/deal_again_check.ts` header comment: "once per deal" → "once per round".
+5. Part A item 4: check `between.ts` `takePrompts` (and any other `overlay` built while `playing`) for `seen`; list in 9ap.6; fix only if it can stay open while cards are played.
+6. Browser checks on the 2.38.2 build (`node build.mjs` first): `lasttrick_check.py`, `sound_check.py`, `landscape_check.py`, `lasttwo_check.py`, `react_check.py`, `popups_check.py`, `netgame_check.py`. Record pass counts in 9ap.6. A failure that also fails on 2.38.1 is not this work's: list it, don't fix it.
+7. MD files (CLAUDE.md rule): DEVLOG entry for 2.38.2, TODO.md phase entry, PROJECT.md 12u item 1 if it doesn't match Part G as built, this 9ap.6.
+8. Remove the temporary `node_modules` symlink in the repo (it points at `/opt/npm-tools/node_modules`) once all checks are done.
+9. Publish `dist/index.html` (2.38.2) as a private test build and give the user the link and 9ap.7. **Do not commit or push until the user says "push".**
 
 ### 9ap.7 Phone checklist (2.38.2)
 1. Go out, tap the eye and leave the "Watch whose hand?" sheet open while others play: it doesn't flash.

@@ -53,6 +53,10 @@ export interface Memory {
   iSlapped: Record<PlayerId, number>;
   /** 9an.2 (2.38): times I picked up a trick this round (a slap or the waste pile). */
   pickups: number;
+  /** 9ap.C (2.38.2): the trick count when I last asked for cards this round (-99 at round start). */
+  lastAskTrick: number;
+  /** 9ap.C (2.38.2): pick-ups since my last ask (reset by the ask; only counts when I have asked before). */
+  pickupsSinceAsk: number;
 }
 
 function emptyRound(m: Memory): void {
@@ -65,6 +69,8 @@ function emptyRound(m: Memory): void {
   m.trickCount = 0;
   m.asks = 0;
   m.pickups = 0;
+  m.lastAskTrick = -99;
+  m.pickupsSinceAsk = 0;
   m.slappedMe = {};
   m.iSlapped = {};
   for (const p of m.order) {
@@ -98,6 +104,8 @@ export function newMemory(me: PlayerId, level: Level, order: readonly PlayerId[]
     trickCount: 0,
     asks: 0,
     pickups: 0,
+    lastAskTrick: -99,
+    pickupsSinceAsk: 0,
     slappedMe: {},
     iSlapped: {},
   };
@@ -153,6 +161,7 @@ export function remember(m: Memory, events: readonly SessionEvent[], rng: Rng): 
         if (e.slapped === m.me) {
           m.slappedMe[e.slapper] = (m.slappedMe[e.slapper] ?? 0) + 1;
           m.pickups++;
+          m.pickupsSinceAsk++;
         }
         if (e.slapper === m.me) m.iSlapped[e.slapped] = (m.iSlapped[e.slapped] ?? 0) + 1;
         // The trick goes face up into the slapped player's hand.
@@ -173,7 +182,10 @@ export function remember(m: Memory, events: readonly SessionEvent[], rng: Rng): 
         if (m.level === 'easy') forget(m, rng);
         break;
       case 'wastePilePickedUp': {
-        if (e.player === m.me) m.pickups++;
+        if (e.player === m.me) {
+          m.pickups++;
+          m.pickupsSinceAsk++;
+        }
         const suits = new Set<Suit>();
         for (const id of m.waste) {
           const card = m.played.get(id);
@@ -200,7 +212,11 @@ export function remember(m: Memory, events: readonly SessionEvent[], rng: Rng): 
         break;
       }
       case 'takeRequested':
-        if (e.requester === m.me) m.asks++;
+        if (e.requester === m.me) {
+          m.asks++;
+          m.lastAskTrick = m.trickCount;
+          m.pickupsSinceAsk = 0;
+        }
         break;
       default:
         // Nothing to remember from the other events.

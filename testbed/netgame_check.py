@@ -125,9 +125,12 @@ SNAP_JS = """() => {
 
 POPUP_WATCH_JS = """() => {
   window.__pops = window.__pops || { slap: 0, other: 0, haha: 0 };
+  window.__slapFirst = 0;
   new MutationObserver(() => {
     for (const el of document.querySelectorAll('.popup:not([data-counted])')) {
       el.setAttribute('data-counted', '1');
+      // 9ap.G (2.38.2): a pop-up's first draw has no 'seen' class (game.ts shownPopups), so this counts each SLAP! once.
+      if (el.classList.contains('slap') && !el.classList.contains('haha') && !el.classList.contains('seen')) window.__slapFirst++;
       if (el.classList.contains('haha')) window.__pops.haha++;
       else if (el.classList.contains('slap')) window.__pops.slap++;
       else window.__pops.other++;
@@ -179,7 +182,10 @@ def play(cfg, browser, base):
     check(f'{n} players: Start puts every phone in the game', in_game)
     shuffles = [p.locator('.deck.shuffling').count() for p in pages]
     check(f'{n} players: the shuffle shows on every phone at the start', all(x == 1 for x in shuffles), str(shuffles))
-    me_seats = [p.evaluate("() => { const e = document.querySelector('.round-table .table-seat.me'); return e && e.getAttribute('data-seat'); }") for p in pages]
+    # Your own seat is the gold pill at the bottom (table.ts: class me-pill); it can read a status line instead of "You".
+    SEAT_JS = "() => { const e = document.querySelector('.round-table .table-seat.me-pill'); return e && e.getAttribute('data-seat'); }"
+    wait_for(lambda: all(p.evaluate(SEAT_JS) for p in pages), 5)
+    me_seats = [p.evaluate(SEAT_JS) for p in pages]
     check(f'{n} players: round table on every phone, own seat at the bottom', me_seats == [f'p{k + 1}' for k in range(n)], str(me_seats))
     # Reactions: a joining phone laughs, the host sends a catch-phrase; every other phone shows them from the sender's seat.
     pages[1].get_by_role('button', name='Open reactions').click()
@@ -236,7 +242,6 @@ def play(cfg, browser, base):
     diag = []
     leaks = []
     mismatch = []
-    closed_slaps = [0] * n  # SLAP! pop-ups each phone closed (counted in the loop below)
     turns_by = set()
     t0 = time.time()
     last_progress = time.time()
@@ -248,19 +253,10 @@ def play(cfg, browser, base):
     shot_dir = pathlib.Path('/tmp/pubby-net-shots')
     shot_dir.mkdir(exist_ok=True)
     while time.time() - t0 < 900:
-        # 2.36 (CODE.md 9aj.6): pop-ups close on a tap (9ai.1). Each phone closes its own, and the SLAP! pop-ups
-        # it actually closed are counted here (not timed), so the SLAP! check compares what every phone showed.
-        for i, p in enumerate(pages):
-            for _ in range(3):
-                if not p.locator('.popup-overlay').count():
-                    break
-                cls = p.evaluate("() => (document.querySelector('.popup-overlay .popup') || {}).className || ''")
-                try:
-                    p.locator('.popup-overlay').first.click(timeout=1000)
-                except Exception:  # it closed by itself between the look and the tap
-                    break
-                if re.search(r'\bslap\b', cls) and 'haha' not in cls:
-                    closed_slaps[i] += 1
+        # 2.36 (CODE.md 9aj.6), 9ap.G (2.38.2): pop-ups close by themselves after 5 s (a tap does nothing), so no
+        # tap here. Each SLAP! pop-up is counted once on each phone, when that phone first shows it, so the SLAP!
+        # check compares what every phone showed.
+        # (each SLAP! pop-up is counted once per phone on its first draw: window.__slapFirst, see POPUP_WATCH_JS.)
         for i, p in enumerate(pages):
             act = p.evaluate('cfg => window.pubbyBot.step(cfg)', cfg)
             key = act.split(' ')[0]
@@ -342,7 +338,7 @@ def play(cfg, browser, base):
     pops = [p.evaluate('window.__pops') for p in pages]
     check(f'{n} players: pop-ups shown on every phone', all(x['other'] > 0 for x in pops), json.dumps(pops))
     # Taps the check made itself, plus the ones the bot closed on each phone (bot.js counts them).
-    slaps = [closed_slaps[i] + (pages[i].evaluate('window.__botSlapClosed || 0')) for i in range(n)]
+    slaps = [pages[i].evaluate('window.__slapFirst || 0') for i in range(n)]
     check(f'{n} players: SLAP! pop-ups shown on every phone alike', len(set(slaps)) == 1, str(slaps))
     recs = [json.loads(p.evaluate("localStorage.getItem('pubby.gameRecords') || '[]'")) for p in pages]
     check(f'{n} players: the game is saved on every phone', all(len(r) == 1 for r in recs), str([len(r) for r in recs]))

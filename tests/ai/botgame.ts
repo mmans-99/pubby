@@ -82,6 +82,8 @@ export interface BotGameResult {
   readonly crashed: number;
   /** Time spent in decide(), in milliseconds, for every call. */
   readonly decisionMs: { level: SeatLevel; ms: number }[];
+  /** Take-card asks (requestTake) that were applied, by the asker's level (9ap.8: asks per round). */
+  readonly asks: Partial<Record<SeatLevel, number>>;
   readonly seats: SeatResult[];
   /** The game's habit table when `learn` is on (people seats only), else null. */
   readonly habits: Habits | null;
@@ -229,6 +231,7 @@ export function playBotGame(opts: BotGameOptions): BotGameResult {
   let crashed = 0;
   const learned = { risk: 0, jokerSave: 0, decisions: 0, moved: 0 };
   const decisionMs: { level: SeatLevel; ms: number }[] = [];
+  const asks: Partial<Record<SeatLevel, number>> = {};
   const maxSteps = 400000;
   let finished = false;
 
@@ -278,7 +281,10 @@ export function playBotGame(opts: BotGameOptions): BotGameResult {
 
       opts.onDecision?.({ seen, memory, persona, decision, session: s });
       try {
-        for (const action of decision.actions) s = applyAction(s, action, rng).session;
+        for (const action of decision.actions) {
+          s = applyAction(s, action, rng).session;
+          if (action.type === 'requestTake') asks[level] = (asks[level] ?? 0) + 1;
+        }
       } catch (err) {
         refused++;
         opts.onRefused?.({ action: decision.actions[0] ?? null, error: String(err), session: s });
@@ -322,6 +328,7 @@ export function playBotGame(opts: BotGameOptions): BotGameResult {
     refused,
     crashed,
     decisionMs,
+    asks,
     seats,
     habits,
     learned: habits ? learned : null,

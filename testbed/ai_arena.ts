@@ -104,6 +104,9 @@ interface Totals {
   byPersonality: Map<string, Acc>;
   bySeat: Map<number, Acc>;
   decisionMs: Map<string, number[]>;
+  /** 9ap.8: applied take-card asks by level, and computer seat-rounds by level (for asks per round). */
+  asks: Map<string, number>;
+  seatRounds: Map<string, number>;
   /** Pooled chances and yes counts of every people seat, over all games (--learn). */
   habits: Record<HabitName, { chances: number; yes: number }>;
   /** Places of computer seats only (no people seats), by level: the bots the learning bars compare. */
@@ -122,6 +125,8 @@ function emptyTotals(): Totals {
     byPersonality: new Map(),
     bySeat: new Map(),
     decisionMs: new Map(),
+    asks: new Map(),
+    seatRounds: new Map(),
     habits: { boldFollow: { chances: 0, yes: 0 }, highLead: { chances: 0, yes: 0 }, earlyJoker: { chances: 0, yes: 0 } },
     computerByLevel: new Map(),
     learned: { risk: 0, jokerSave: 0, decisions: 0, moved: 0 },
@@ -154,6 +159,10 @@ function absorb(t: Totals, r: BotGameResult): void {
     t.learned.decisions += r.learned.decisions;
     t.learned.moved += r.learned.moved;
   }
+  for (const [level, n] of Object.entries(r.asks)) t.asks.set(level, (t.asks.get(level) ?? 0) + (n ?? 0));
+  r.seats.forEach((seat) => {
+    if (!seat.person) t.seatRounds.set(seat.level, (t.seatRounds.get(seat.level) ?? 0) + seat.places.length);
+  });
   for (const d of r.decisionMs) {
     const list = t.decisionMs.get(d.level) ?? [];
     list.push(d.ms);
@@ -209,6 +218,8 @@ function report(t: Totals, extra: Record<string, unknown> = {}): Record<string, 
     averagePlaceComputerBotsByLevel: Object.fromEntries([...t.computerByLevel].map(([k, a]) => [k, mean(a)])),
     averagePlaceBySeat: Object.fromEntries([...t.bySeat].map(([k, a]) => [`seat${k + 1}`, mean(a)])),
     decisionTime: decision,
+    // 9ap.8: take-card asks per computer round, by level (asks applied / computer seat-rounds, all rounds incl. Ultimate asks).
+    asksPerComputerRound: Object.fromEntries([...t.seatRounds].map(([k, rounds]) => [k, Math.round(((t.asks.get(k) ?? 0) / rounds) * 1000) / 1000])),
     ...extra,
   };
 }
@@ -335,7 +346,7 @@ async function main(): Promise<void> {
     normalBeatsEasyBy0_15: { value: vsEasy, pass: vsEasy !== null && vsEasy >= 0.15 },
     easyP95UnderMs20: { value: p95('easy'), pass: (p95('easy') ?? Infinity) < 20 },
     normalP95UnderMs20: { value: p95('normal'), pass: (p95('normal') ?? Infinity) < 20 },
-    hardBeatsNormalBy0_15: { value: vsNormal, pass: vsNormal !== null && vsNormal >= 0.15 },
+    hardBeatsNormalBy0_10: { value: vsNormal, pass: vsNormal !== null && vsNormal >= 0.10 },
     hardP95UnderMs150: { value: hardP95, pass: (hardP95 ?? Infinity) < 150 },
   };
   console.log(JSON.stringify({

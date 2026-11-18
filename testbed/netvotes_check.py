@@ -63,15 +63,25 @@ def play_scenario(browser, base):
              ng.wait_for(lambda: all(phase(p) == 'reshuffle' for p in pages), 20))
 
     # Target score proposed by Ben (round 1, before the round), from the top-bar target button (CODE.md 9aj.5).
-    # The pop-ups close on a tap (9ai.1): close them on every phone before reading the ballots.
+    # 9ap.G (2.38.2): pop-ups close by themselves after 5 s (a tap does nothing), so wait for them on every phone.
     def close_popups(p):
-        for _ in range(5):
-            if p.locator('.popup-overlay').count() == 0:
-                break
-            try:
-                p.locator('.popup-overlay').first.click(timeout=2000)
-            except Exception:  # it closed by itself between the look and the tap
-                break
+        deadline = time.time() + 30
+        while p.locator('.popup-overlay').count() and time.time() < deadline:
+            p.wait_for_timeout(250)
+    # 9ap.G item 7: the first pop-up batch ends at the same moment on the two phones that show it (host-clock stamp).
+    WATCH_JS = """() => {
+      if (window.__popWatch) return;
+      window.__popWatch = { firstSeen: null, firstGone: null };
+      const look = () => {
+        const w = window.__popWatch;
+        const up = document.querySelectorAll('.popup-overlay').length > 0;
+        if (up && w.firstSeen === null) w.firstSeen = Date.now();
+        if (!up && w.firstSeen !== null && w.firstGone === null) w.firstGone = Date.now();
+      };
+      new MutationObserver(look).observe(document.body, { childList: true, subtree: true });
+    }"""
+    for p in pages:
+        p.evaluate(WATCH_JS)
     pages[1].locator('.target-btn').click()
     # 9al.2 (2.37.1): the quick chips are gone; step − / + to 10.
     value = int(pages[1].locator('.target-sheet .step-value').inner_text())
@@ -84,6 +94,11 @@ def play_scenario(browser, base):
     pages[1].get_by_role('button', name='Propose 10 points', exact=True).click()
     for p in pages:
         close_popups(p)
+    # 9ap.G: the vote alert closes on Amy's and Cat's phones at the same moment (within 0.5 s).
+    gone = [p.evaluate('() => window.__popWatch && window.__popWatch.firstGone') for p in (pages[0], pages[2])]
+    ng.check('pop-ups: the vote alert closes on Amy and Cat within 0.5 s of each other (9ap.G)',
+             all(g is not None for g in gone) and abs(gone[0] - gone[1]) <= 500,
+             f'closed at {gone}')
     ng.check('target vote: every phone shows three ballots',
              ng.wait_for(lambda: all(p.locator('.ballot-row').count() == 3 for p in pages), 10))
     pages[0].get_by_role('button', name='YES', exact=True).click()
