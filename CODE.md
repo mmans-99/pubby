@@ -4060,6 +4060,34 @@ Mockups: https://claude.ai/artifact/YaDGaLmzRAkyucWD9hiH37. Whichever is picked:
 9. Host: tap a player's seat → Remove from game: their cards vanish (not into the pile), they come last this round, the next round has one player fewer; their phone says they were removed.
 10. The table looks like the picked mockup and every fan fits on it with 2, 5 and 8 players, upright and sideways.
 
+### 9ao Fixes after the 2.38.0 phone test: green background back, no hand while dealing (plan 2026-11-18 16:24, Opus, approved; target 2.38.1, for Haiku)
+
+**User (16:22):** "I don't like everything has gone dark now, like the menu background etc." and, during the deal, tapping the target chip showed one of their cards at the bottom. **16:24:** picked **A**: green felt everywhere, as before 2.38.
+
+**Part A: green felt everywhere again (`src/ui/styles.css`).** 9an.9 made the whole app a dark brown room. Put back the 2.37.3 colours in these four places only; the table itself (leather rail, `.table-felt`, stitched line, your-turn felt glow, seat layout in `table.ts`) does not change.
+1. `html, body` background: `radial-gradient(120% 80% at 50% 0%, var(--felt-light), var(--felt) 45%, var(--felt-dark))` (replaces the `#2b2219 … #0d0906` gradient; drop the 9an.9 comment).
+2. Landscape rail, `html[data-rail="1"] .screen.game.fixed .game-bar`: `background: var(--felt-dark);` (was `#120d09`).
+3. `.results-footer`: `background: var(--felt-dark);` and shadow back to `rgba(0, 0, 0, 0.35)` (was `#1f1612`, 0.5).
+4. Search `styles.css` for any other `#120d09`, `#17110c`, `#0d0906` or "dark room" left from 9an.9 outside the table rules, and put the felt colour back there too. Leave `color-scheme: dark` (it was there before 2.38).
+
+**Part B: no hand on the vote screens while dealing (`src/ui/roundstart.ts`).** A vote can be called during the deal (target chip). `waitStage` and `voteWaitStage` show `handBlock(…)` under the vote card unless `s.phase === 'results'`, so mid-deal the cards dealt so far show face up. Only the phone's own hand shows (no other player's cards leak), but hands must stay hidden until the deal ends.
+1. In both functions, hide the hand when `s.phase === 'results' || s.phase === 'dealing'` (a small helper `handHidden(s)` is fine).
+2. `voteStage` already shows a hand only for a reshuffle vote (after the deal), so no change there. Check `passStage` and `netscreens.ts` `waitingFor` too: if either can render during `dealing`, apply the same rule.
+3. Add a UI-free test if there is a place for one; otherwise the browser check in Part C covers it.
+
+**Part C: version, checks, test build.**
+1. `package.json` 2.38.1.
+2. `npm run check`, `npm test`, `node build.mjs`; browser: single player vs computers, start a deal, tap the target chip mid-deal and call a vote: no cards under the vote card; menus, setup, results footer and landscape rail are green.
+3. Publish the test build (private link) and give the user 9ao.4.
+
+**Part D (16:30, user: "I don't like that there's a box around it, can't it blend in? And make the background slightly darker than table"):** the box was the table's outer drop shadow, cut off by `.game-table-slot` (`overflow: hidden`). Removed that drop shadow from `.round-table` (inset shadows kept). The `html, body` background is now a darker green than the felt: `radial-gradient(120% 80% at 50% 0%, #1a4f20, #133d18 45%, #0c2b10)` (felt is `#2a7d32 … #0f3a14`). Menus use the same darker green.
+
+### 9ao.4 Phone checklist (2.38.1)
+1. Home, menus, setup screens and the game screen around the table are a dark green (darker than the table), not dark brown, and there is no box round the table.
+2. The table still has its leather rail and stitched felt, and your-turn glow works.
+3. Landscape: the left icon rail is dark green; the results footer is dark green.
+4. During the deal, tap the target chip and ask for a target: the vote shows with no cards under it, on every phone. After the deal, a reshuffle vote still shows your hand.
+
 ## 8a. Playable test builds (required before every commit)
 
 `CLAUDE.md` rule 5: the user tests every change on their phone before approving a commit.

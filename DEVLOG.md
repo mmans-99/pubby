@@ -4,6 +4,33 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-18 (16:30, Haiku) — Build 9ao: 2.38.1, green felt back, no hand while dealing (not committed)
+
+**User (16:24):** picked A for the dark background; "build". Plan `CODE.md` 9ao.
+
+**Built:**
+- Part A (`src/ui/styles.css`): `html, body` background back to the green felt gradient; landscape rail `.game-bar` and `.results-footer` back to `var(--felt-dark)`. The table (leather rail, felt, glow, seats) unchanged.
+- Part B (`src/ui/roundstart.ts`): `handHidden(s)` (results or dealing) used by `waitStage` and `voteWaitStage`, so no hand under a wait or vote card while the deal is going on. `netscreens.ts` `waitingFor` is only reached outside the deal, so unchanged.
+- Part C: `package.json` 2.38.1.
+
+**Checks:** `npm test` 556 of 561 pass; the 5 failures are the relay server tests (health, rooms, socket, refusals), the same environment issue as 2.38.0. `tsc -p tsconfig.json` clean. `node build.mjs` clean (v2.38.1, using esbuild from /opt/npm-tools via a temporary link, removed after). Home screen screenshot at 390x844: green, version 2.38.1. NOT checked in a browser: the mid-deal vote (Part B) and the landscape rail and results footer. Those need the phone test.
+
+**Test build (private):** https://claude.ai/artifact/DNqXAR77zCPDXsDu2TzerC
+
+**16:32 (Opus), Part D:** user saw a box round the table and wanted the background a little darker than the table. The box was `.round-table`'s outer drop shadow, clipped by the table slot: removed. Room background now darker green than the felt (`CODE.md` 9ao Part D). Browser screenshot at 390x844 (4 players, dealing) looked right. Same test link, republished.
+
+---
+
+## 2026-11-18 (16:24, Opus) — Plan 9ao: green background back, no hand while dealing (docs only)
+
+**User (16:22, phone screenshot):** doesn't like the app going dark (menus etc.); during the deal, tapping the target chip showed one of their cards at the bottom. **16:24:** picked A (green felt everywhere, as before 2.38).
+
+**Found:** 9an.9 changed the `html, body` background, the landscape rail and the results footer to dark brown. The card was the user's own: `waitStage` / `voteWaitStage` (`roundstart.ts`) show the hand under a vote in every phase but results, so a vote called mid-deal shows the cards dealt so far. No other player's cards can show this way.
+
+**Plan:** `CODE.md` 9ao (Parts A to C, target 2.38.1), for Haiku. Not built.
+
+---
+
 ## 2026-11-18 (14:22, Haiku) — Push to main: version 2.38.0 (Parts A to J, GitHub Pages)
 
 **User (14:22):** "Push to main." Local `main` was at `origin/main` (092389f); the three Phase 4w WIP commits (a9299ea, b071010, 21327a8) sat on a detached HEAD. They and this session's changes go to `main` as a fast-forward, with no force push. Checks before the push: `npm run check` clean, `npm test` 561 of 561, `node build.mjs` clean (v2.38.0). GitHub Pages deploys it (CI runs check and test first). The table (Part I) and the removal UI (Part H) still need a phone test on the live app; the 9an.12 checklist is in CODE.md.

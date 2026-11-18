@@ -447,6 +447,12 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
   - [x] Private test page published (https://claude.ai/artifact/9urVJuerjp4m2XqREoWp78)
   - [ ] Phone checklist 9an.12 by the user, then approval to commit
 
+## Phase 4x — Fixes after the 2.38.0 phone test (plan 2026-11-18 16:24, build guide `CODE.md` 9ao; target 2.38.1; BUILT 2026-11-18 as 2.38.1, not committed; test build https://claude.ai/artifact/DNqXAR77zCPDXsDu2TzerC; phone test pending)
+- [x] Part A: green felt background everywhere again (option A); table unchanged
+- [x] Part B: no hand on the vote screens while dealing
+- [x] Part C: 2.38.1, checks, test build
+- [ ] Phone checklist 9ao.4
+
 ## Phase 5 — Polish
 
 - [ ] Animations for slap and trick resolution

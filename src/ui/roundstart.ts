@@ -118,6 +118,14 @@ export function netRoundStart(g: SavedGame, me: PlayerId): Child | null {
   return null;
 }
 
+/**
+ * 9ao (2.38.1): no hand under a wait or vote card while the deal is still going on.
+ * A vote called mid-deal would otherwise show the cards dealt so far (the phone's own hand).
+ */
+function handHidden(s: Session): boolean {
+  return s.phase === 'results' || s.phase === 'dealing';
+}
+
 /** Network game: this phone has answered; waiting for the others. */
 function waitStage(g: SavedGame, me: PlayerId, what: 'vote' | 'swap' | 'tap' | 'cards', waitingFor: readonly PlayerId[]): Child {
   const s = g.session;
@@ -131,7 +139,7 @@ function waitStage(g: SavedGame, me: PlayerId, what: 'vote' | 'swap' | 'tap' | '
     h('div', { class: 'step-head' }, h('div', { class: 'step-title' }, icon(ic), ` ${title}`),
       h('div', { class: 'muted small' }, `Waiting for ${who}`)),
     seatStrip(s, publicView(s), {}),
-    s.phase === 'results' ? null : handBlock(s, playerView(s, me), null, { head: false }),
+    handHidden(s) ? null : handBlock(s, playerView(s, me), null, { head: false }),
   );
 }
 
@@ -153,7 +161,7 @@ function voteWaitStage(g: SavedGame, me: PlayerId): Child {
   return h('div', { class: 'stack' },
     voteCard(s, me, !!ownSeat(g), voteWho(s, v, !!ownSeat(g), me), [v.awaitingHost ? tieBand(s, v, !!ownSeat(g)) : null, foot]),
     me === s.hostId && !v.awaitingHost && Object.keys(v.ballots).length > 0 ? countNowButton(s) : null,
-    s.phase === 'results' ? null : handBlock(s, playerView(s, me), null, { head: false }),
+    handHidden(s) ? null : handBlock(s, playerView(s, me), null, { head: false }),
   );
 }
 

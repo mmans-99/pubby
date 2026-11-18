@@ -22,8 +22,8 @@
 html, body {
   margin: 0;
   min-height: 100%;
-  /* 9an.9 (2.38): a dark room, so the table stands out (it was green felt before). */
-  background: radial-gradient(90% 60% at 50% 45%, #2b2219, #17110c 70%, #0d0906);
+  /* 9ao (2.38.1): a darker green than the table's felt, so the table stands out without a box round it. */
+  background: radial-gradient(120% 80% at 50% 0%, #1a4f20, #133d18 45%, #0c2b10);
   background-attachment: fixed;
   color: var(--cream);
   font: 16px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -1028,7 +1028,8 @@ button.secondary.on { box-shadow: 0 0 0 3px var(--gold); }
      the corner radius --tr comes from table.ts too, and every seat sits inside the felt (seatLayout). */
   background: radial-gradient(120% 80% at 50% 30%, #3b2a22, #1f1612 70%);
   border-radius: var(--tr, 120px); overflow: hidden;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55), inset 0 2px 2px rgba(255, 255, 255, 0.12), inset 0 -4px 8px rgba(0, 0, 0, 0.6);
+  /* 9ao: no drop shadow outside the rail: the table slot cut it off and drew a box round the table. */
+  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.12), inset 0 -4px 8px rgba(0, 0, 0, 0.6);
 }
 .table-felt {
   position: absolute; inset: var(--rail, 14px); border-radius: calc(var(--tr, 120px) - var(--rail, 14px));
@@ -1450,7 +1451,7 @@ html[data-rail="1"] .screen.game.fixed .game-bar {
   position: fixed; left: 0; top: 0; bottom: 0; width: 56px; height: auto; z-index: 20;
   flex-direction: column; flex-wrap: nowrap; justify-content: flex-start; align-items: center; gap: 6px;
   padding: calc(8px + env(safe-area-inset-top)) 0 8px calc(env(safe-area-inset-left)); box-sizing: border-box;
-  background: #120d09; /* 9an.9: the dark room, not the old green felt */
+  background: var(--felt-dark);
 }
 html[data-rail="1"] .screen.game.fixed .game-bar > * { flex: none; }
 html[data-rail="1"] .screen.game.fixed .game-bar .icon-btn,
@@ -1482,7 +1483,7 @@ html[data-rail="1"] .menu-layer > .menu { left: 64px; top: 8px; }
 .results-scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 8px; }
 .results-footer {
   flex: none; display: flex; flex-direction: column; gap: 10px;
-  background: #1f1612; border-radius: 22px 22px 0 0; box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5); /* 9an.9: dark room */
+  background: var(--felt-dark); border-radius: 22px 22px 0 0; box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
   padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
 }
 /* Winner card: 92px, the trophy in a gold circle, the round label, the winner and your place. */
