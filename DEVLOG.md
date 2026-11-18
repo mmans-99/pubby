@@ -4,6 +4,18 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-18 (12:30, Haiku then Opus) — Build: 9an Parts A to D (code not committed); Part E reviewed (docs pushed)
+
+**Built (Haiku), not committed or pushed:** A take-cards by the leader only, confirm step, pop-up on other phones, the asker leads; B computer players ask when stuck and sometimes refuse a person who keeps slapping them; C watching a hand once out (network games and single player), the watched hand only on the viewer's copy, eye on the seat; D Keep my cards: `kept` list, `keepCards`, reshuffle votes count, `startRound` gate with `skip` for away players, computers keep (`chooseKeep`), seat hourglass/check, host Start greyed "Waiting for …", "Start without …". Keep is on for `waitForAll` with two or more people (single player also sets `waitForAll`, so it is excluded by the people count). `LOBBY_PROTOCOL` 12.
+
+**Checks:** `npm run check` clean; `npm test` 509 of 510 (the 2.34.5 AI fixture fails by design after Part A; regenerate in Part J); `node build.mjs` clean. Arena (300 games) Hard still beats Normal. No browser checks or test build yet. Environment: `node_modules` symlinked to the preinstalled tools (no npm install here; not committed).
+
+**Opus review of Part E (`CODE.md` 9an.5):** the plan would freeze the table 8 s whenever a pop-up event made no pop-up on a phone (busy is only sent on change) → updates carry `ack` and the phone always answers; the wait goes in `busy.ts` at send time, not the lobby redraw; parsers must copy `seq`/`ack`; `makesPopup` is an event-type list with a test against `popupsFor`; test hooks in `joinGot`.
+
+**User (12:27):** push docs only; code stays local until the full 2.38 test build is tested.
+
+---
+
 ## 2026-11-18 (11:45, Opus) — Plan: take-cards on your lead, watching a hand, Keep or Deal again, pop-up gate, rejoin, removing a player, card table (docs only)
 
 **User (11:34):** ten requests (see `PROJECT.md` 12y). **Answers (11:38):** take-cards by the leader only; watch a hand until the round ends, the shown player can stop; everyone taps Keep or Deal again; table: mockups first (made: https://claude.ai/artifact/YaDGaLmzRAkyucWD9hiH37, options A oval wood, B stadium leather, C round gold).

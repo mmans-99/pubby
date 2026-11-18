@@ -406,20 +406,20 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [x] Built 2026-11-16 13:45 (Haiku), test build published
 - [ ] Phone test of 2.37.1 (13:50: Stop fast forward and the results reactions sheet failed; see Phase 4v)
 
-## Phase 4w — Take-cards on your lead, watching a hand, Keep or Deal again, pop-up gate, missing felt card, online rejoin, removing a player, card table (plan 2026-11-18 11:45, `PROJECT.md` 12y, build guide `CODE.md` 9an, mockups https://claude.ai/artifact/YaDGaLmzRAkyucWD9hiH37; target 2.38.0; approved, NOT BUILT)
+## Phase 4w — Take-cards on your lead, watching a hand, Keep or Deal again, pop-up gate, missing felt card, online rejoin, removing a player, card table (plan 2026-11-18 11:45, `PROJECT.md` 12y, build guide `CODE.md` 9an, mockups https://claude.ai/artifact/YaDGaLmzRAkyucWD9hiH37; target 2.38.0; approved; Parts A–D built 2026-11-18, code not committed)
 
 - [x] User approves the plan (2026-11-18 11:49)
 - [x] User picks the table look: B, stadium felt with a leather rail
-- [ ] Part A: take-cards by the leader only, confirm step, pop-up on every phone, taker leads (9an.1)
-- [ ] Part B: computer players ask when stuck and sometimes refuse to annoy (9an.2)
-- [ ] Part C: watching a hand after you're out (9an.3)
-- [ ] Part D: Keep my cards / Deal again before the host can start (9an.4)
-- [ ] Part E: pop-ups hold the game (host-side seq gate) and calm catch-up (9an.5)
+- [x] Part A: take-cards by the leader only, confirm step, pop-up on every phone, taker leads (9an.1)
+- [x] Part B: computer players ask when stuck and sometimes refuse to annoy (9an.2)
+- [x] Part C: watching a hand after you're out (9an.3)
+- [x] Part D: Keep my cards / Deal again before the host can start (9an.4)
+- [ ] Part E: pop-ups hold the game (host-side seq gate) and calm catch-up (9an.5; Opus review E-a to E-g added 2026-11-18, build from that)
 - [ ] Part F: felt drawn from the session; seq gap asks for sync (9an.6)
 - [ ] Part G: rejoin an online game after closing Pubby (host and others) (9an.7)
 - [ ] Part H: host removes a player; cards leave the game (9an.8)
 - [ ] Part I: card table look (9an.9)
-- [ ] Part J: version 2.38.0, checks, test build, phone checklist 9an.12
+- [ ] Part J: version 2.38.0, checks, test build, phone checklist 9an.12; regenerate the AI regression fixture (moves-2.38.0), the 2.34.5 one fails by design since Part A
 
 ## Phase 5 — Polish
 
