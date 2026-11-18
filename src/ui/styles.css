@@ -22,7 +22,8 @@
 html, body {
   margin: 0;
   min-height: 100%;
-  background: radial-gradient(120% 80% at 50% 0%, var(--felt-light), var(--felt) 45%, var(--felt-dark));
+  /* 9an.9 (2.38): a dark room, so the table stands out (it was green felt before). */
+  background: radial-gradient(90% 60% at 50% 45%, #2b2219, #17110c 70%, #0d0906);
   background-attachment: fixed;
   color: var(--cream);
   font: 16px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -1023,9 +1024,22 @@ button.secondary.on { box-shadow: 0 0 0 3px var(--gold); }
 /* ---- 2.4: the round table (table.ts) ---- */
 .round-table {
   position: relative; margin: 2px auto; /* width and height come from tableBox (CODE.md 9w.2) */
-  /* The felt fills the table area (CODE.md 9u Part E1). */
-  background: radial-gradient(120% 70% at 50% 40%, #2e7d32, #14421a 80%);
-  border-radius: 18px; overflow: hidden;
+  /* 9an.9 (2.38), option B: a rounded-end table. A dark leather rail (--rail wide, from table.ts) round the felt;
+     the corner radius --tr comes from table.ts too, and every seat sits inside the felt (seatLayout). */
+  background: radial-gradient(120% 80% at 50% 30%, #3b2a22, #1f1612 70%);
+  border-radius: var(--tr, 120px); overflow: hidden;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55), inset 0 2px 2px rgba(255, 255, 255, 0.12), inset 0 -4px 8px rgba(0, 0, 0, 0.6);
+}
+.table-felt {
+  position: absolute; inset: var(--rail, 14px); border-radius: calc(var(--tr, 120px) - var(--rail, 14px));
+  background: radial-gradient(80% 60% at 50% 40%, #2a7d32, #185a1e 60%, #0f3a14);
+  box-shadow: inset 0 0 26px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+/* The stitched line on the rail, just outside the felt. */
+.table-felt::after {
+  content: ''; position: absolute; inset: calc(-0.55 * var(--rail, 14px)); border-radius: calc(var(--tr, 120px) - 0.45 * var(--rail, 14px));
+  border: 1.5px dashed rgba(251, 246, 233, 0.28);
 }
 /* The led-suit mark is faint, behind the pile. No wooden oval any more. */
 .table-oval { position: absolute; inset: 0; pointer-events: none; }
@@ -1099,7 +1113,8 @@ button.table-seat { cursor: pointer; }
   50% { box-shadow: 0 0 0 6px var(--gold), 0 0 30px 12px rgba(242, 193, 78, 0.35); }
 }
 /* 9ai.6, idea 3: your own turn. The table edge glows, your hand is framed and glows, playable cards lift, a pill says what to do. */
-.round-table.your-turn .table-oval { box-shadow: 0 0 0 4px var(--gold), 0 0 30px 8px rgba(242, 193, 78, 0.4); }
+/* 9an.9: your turn: the felt's edge glows gold, just inside the rail. */
+.round-table.your-turn .table-felt { box-shadow: inset 0 0 0 3px var(--gold), inset 0 0 26px rgba(242, 193, 78, 0.35); }
 /* 9aj.4 (2.36): no frame. A gold glow sits under the fan, and the cards stay on top of it. */
 .hand-section.your-turn { position: relative; }
 .hand-section.your-turn::before {
@@ -1160,6 +1175,7 @@ button.me-pill { background: var(--cream); color: var(--ink); }
 .table-waste { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 /* The waste pile sits in the bottom-right corner of the felt (CODE.md 9u Part E5). */
 .table-waste.corner { position: absolute; right: 16px; bottom: 16px; z-index: 3; }
+/* 9an.9: inside the table, the waste pile's right and bottom come from table.ts (wasteBox). */
 .table-waste .waste-pile { width: 34px; height: 48px; border-radius: 5px; box-shadow: 2px 2px 0 #8e1d1d, 4px 4px 0 #6d1616; }
 .waste-count { font-weight: 800; font-size: 0.85rem; background: rgba(0, 0, 0, 0.35); border-radius: 999px; padding: 0 8px; }
 .place-badge { background: var(--gold); color: var(--ink); border-radius: 999px; padding: 0 7px; font-weight: 800; font-size: 0.72rem; }
@@ -1434,7 +1450,7 @@ html[data-rail="1"] .screen.game.fixed .game-bar {
   position: fixed; left: 0; top: 0; bottom: 0; width: 56px; height: auto; z-index: 20;
   flex-direction: column; flex-wrap: nowrap; justify-content: flex-start; align-items: center; gap: 6px;
   padding: calc(8px + env(safe-area-inset-top)) 0 8px calc(env(safe-area-inset-left)); box-sizing: border-box;
-  background: var(--felt-dark);
+  background: #120d09; /* 9an.9: the dark room, not the old green felt */
 }
 html[data-rail="1"] .screen.game.fixed .game-bar > * { flex: none; }
 html[data-rail="1"] .screen.game.fixed .game-bar .icon-btn,
@@ -1466,7 +1482,7 @@ html[data-rail="1"] .menu-layer > .menu { left: 64px; top: 8px; }
 .results-scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 8px; }
 .results-footer {
   flex: none; display: flex; flex-direction: column; gap: 10px;
-  background: var(--felt-dark); border-radius: 22px 22px 0 0; box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+  background: #1f1612; border-radius: 22px 22px 0 0; box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5); /* 9an.9: dark room */
   padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
 }
 /* Winner card: 92px, the trophy in a gold circle, the round label, the winner and your place. */
@@ -1601,3 +1617,6 @@ html[data-rail="1"] .results-footer { flex: 1 1 0; min-width: 0; min-height: 0; 
 .round-table.catching-up { animation: catch-fade 180ms ease-out; }
 @keyframes catch-fade { from { opacity: 0.6; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .round-table.catching-up { animation: none; } }
+
+/* 9an.8 (2.38): the host's "Remove" link in a notice */
+.net-lost .link-btn { background: none; border: 0; padding: 0; color: inherit; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }

@@ -14,6 +14,7 @@
  */
 
 import type { PlayerId, Session, SessionAction, SessionEvent } from '../session/types.ts';
+import { removeAllowed } from '../session/session.ts';
 import { eventFor, logFor, phoneActions, redactSession, stampHostTime, type GameUpdate, type NetInfo } from '../net/netgame.ts';
 import type { ToJoiner } from '../net/lobby.ts';
 import { getState, say, update } from './store.ts';
@@ -60,7 +61,7 @@ export function inNetGame(): boolean {
   return !!getState().game?.net;
 }
 
-function playerOfLink(linkId: string): PlayerId | null {
+export function playerOfLink(linkId: string): PlayerId | null {
   return Object.keys(linkOf).find((p) => linkOf[p] === linkId) ?? null;
 }
 
@@ -154,6 +155,9 @@ export function hostSendReaction(from: PlayerId, r: number): void {
 
 /** game.ts `send` on the host's phone, after every change. */
 export function hostBroadcast(s: Session, events: readonly SessionEvent[]): void {
+  // H-h: the turn clock restarts when the turn passes. Nothing counts while the game is held (pause, vote, pop-up is not seen here).
+  const turn = s.play && s.phase === 'playing' && !s.paused && !s.vote ? s.play.turn : null;
+  if (turn !== turnClock.p) turnClock = { p: turn, since: Date.now() };
   for (const p of Object.keys(linkOf)) sendUpdate(p, s, events, false);
   // G-d (2.38): the host's game is saved after every change, so a reload comes back to it (rejoin.ts).
   if (s.ended) deleteHost(); else saveHostNow(s);
@@ -173,6 +177,56 @@ export function hostResume(game: SavedGame, links: Record<PlayerId, string>): vo
 }
 
 /** Moves from another phone. */
+/** CODE.md 9an.8 (H-h): the host's clocks, on the host's phone only; nothing is sent. */
+const lastMoveAt: Partial<Record<PlayerId, number>> = {};
+/** H-h: the hint thresholds. A seat away this long, or a turn not moved on this long, shows the Remove hint (host only). */
+export const HINT_AWAY_MS = 120_000;
+export const HINT_TURN_MS = 90_000;
+let turnClock: { p: PlayerId | null; since: number } = { p: null, since: 0 };
+
+/** The lobby's link id (seat id) for a player, or undefined. */
+export function linkIdOf(p: PlayerId): string | undefined {
+  return linkOf[p];
+}
+
+/** H-h: how long ago `p` last made an accepted move, or null if not since this phone started. */
+export function movedAgoMs(p: PlayerId): number | null {
+  const at = lastMoveAt[p];
+  return at === undefined ? null : Date.now() - at;
+}
+
+/** H-h: how long the turn has been with `p` (null if it is not their turn, or the game is held). */
+export function turnIdleMs(p: PlayerId): number | null {
+  return turnClock.p === p ? Date.now() - turnClock.since : null;
+}
+
+/** CODE.md 9an.8 (H-g): the lobby registers what to do with a removed phone's link (netplay must not import netlobby). */
+let onRemovedLink: ((linkId: string) => void) | null = null;
+export function setOnRemovedLink(fn: ((linkId: string) => void) | null): void {
+  onRemovedLink = fn;
+}
+
+/**
+ * CODE.md 9an.8 (H-g): the host removes a player from a started network game. Order: check the rules;
+ * forget the link and the pop-up wait (so the next broadcast can't reach the removed phone); apply the
+ * action (log, save, computer players, broadcast to the rest); then the lobby tells the phone it is removed.
+ * Returns the reason it was refused, or null.
+ */
+export function hostRemove(p: PlayerId): string | null {
+  const g = getState().game;
+  if (!g?.net || g.net.role !== 'host' || !g.session) return 'Only the host can remove a player';
+  const why = removeAllowed(g.session, g.session.hostId, p);
+  if (why) return why;
+  const linkId = linkOf[p];
+  delete linkOf[p];
+  clearWait(waits, p);
+  publishWaits();
+  const err = runActions([{ type: 'removePlayer', by: g.session.hostId, player: p }]);
+  if (err) return err;
+  if (linkId) onRemovedLink?.(linkId);
+  return null;
+}
+
 export function hostGotAct(linkId: string, raw: unknown): void {
   const g = getState().game;
   const p = playerOfLink(linkId);
@@ -181,6 +235,7 @@ export function hostGotAct(linkId: string, raw: unknown): void {
   if ('why' in checked) { transport?.sendTo(linkId, { t: 'nope', why: checked.why }); return; }
   const why = runActions(stampHostTime(checked.actions, Date.now()));
   if (why) transport?.sendTo(linkId, { t: 'nope', why });
+  else lastMoveAt[p] = Date.now();
 }
 
 /** A phone asked for the whole game again. */

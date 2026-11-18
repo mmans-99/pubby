@@ -173,6 +173,42 @@ export function autoDealAll(state: DealState): DealState {
 }
 
 /**
+ * 9an.8 (2.38): a player was removed during the deal. Their seat leaves the
+ * deal: the cards already dealt to them leave the game (they do not go back
+ * into `remaining`); undealt cards go to the others as dealing carries on.
+ * Hidden decks are unchanged. If the seat was next to get a card, the next
+ * seat clockwise takes over.
+ */
+export function removeSeat(state: DealState, seat: SeatId): DealState {
+  assertSeat(state, seat);
+  const n = state.seats.length;
+  const idx = state.seats.indexOf(seat);
+  const seats = state.seats.filter((x) => x !== seat);
+  let nextSeat = state.nextSeat;
+  if (nextSeat === seat) {
+    nextSeat = null;
+    for (let k = 1; k < n; k++) {
+      const cand = state.seats[(idx + k) % n] as SeatId;
+      if (cand !== seat) {
+        nextSeat = cand;
+        break;
+      }
+    }
+  }
+  const lap = (state.lap ?? []).filter((x) => x !== seat);
+  const hands: Record<SeatId, readonly Card[]> = { ...state.hands };
+  delete hands[seat];
+  return {
+    ...state,
+    seats,
+    hands,
+    nextSeat,
+    lastSeat: state.lastSeat === seat ? null : state.lastSeat,
+    lap: lap.length >= seats.length ? [] : lap,
+  };
+}
+
+/**
  * Manual deal: one card to the tapped seat. If the dealer switched from auto,
  * the next auto seat is kept, so switching back resumes the rotation.
  */

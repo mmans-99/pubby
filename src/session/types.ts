@@ -78,6 +78,8 @@ export interface RoundRecord {
   readonly totals: Readonly<Record<PlayerId, number>>;
   readonly sharedSecondLast: readonly PlayerId[] | null;
   readonly forfeitedBy: PlayerId | null;
+  /** 9an.8 (2.38): players removed during this round, after everyone who stayed (absent in older games). */
+  readonly removed?: readonly PlayerId[];
 }
 
 export interface UltimateLabels {
@@ -93,7 +95,7 @@ export interface SessionEnd {
   readonly winners: readonly PlayerId[];
   readonly decidedBy: 'ultimate' | 'highestScore';
   /** Why the session ended. */
-  readonly reason: 'ultimatePlayed' | 'ultimateVoteFailedAtTarget' | 'hostEnded' | 'drawDeclined';
+  readonly reason: 'ultimatePlayed' | 'ultimateVoteFailedAtTarget' | 'hostEnded' | 'drawDeclined' | 'playersLeft';
 }
 
 /**
@@ -174,6 +176,10 @@ export interface Session {
   readonly peeks: readonly Peek[];
   /** 9an.4 (2.38): people who have chosen Keep my cards (or voted on a reshuffle) this deal. */
   readonly kept: readonly PlayerId[];
+  /** 9an.8 (2.38): players the host removed during this round, in removal order (bottom places). Cleared each round. */
+  readonly removed: readonly PlayerId[];
+  /** 9an.8 (2.38): everyone removed from this game, in removal order. Never cleared (their points stay; they can't win). */
+  readonly gone: readonly PlayerId[];
 
   readonly vote: VoteState | null;
 
@@ -229,6 +235,8 @@ export type SessionAction =
   | { type: 'requestPeek'; by: PlayerId; target: PlayerId }
   | { type: 'answerPeek'; by: PlayerId; viewer: PlayerId; accept: boolean }
   | { type: 'stopPeek'; by: PlayerId; other: PlayerId }
+  // 9an.8 (2.38): the host removes a player (network games only; not sent by phones)
+  | { type: 'removePlayer'; by: PlayerId; player: PlayerId }
   // Pause
   | { type: 'requestPause'; by: PlayerId }
   | { type: 'respondPause'; by: PlayerId; requester: PlayerId; approve: boolean; at: number }
@@ -313,7 +321,9 @@ export type SessionEvent =
   | { readonly type: 'resumed'; readonly reason: 'host' | 'timeLimit' }
   | { readonly type: 'pauseTimeLimitSet'; readonly seconds: number | null }
   | { readonly type: 'playerReady'; readonly player: PlayerId }
-  | { readonly type: 'playerUnready'; readonly player: PlayerId } // 9ak.3 (2.37): no pop-up, no log line
+  | { readonly type: 'playerUnready'; readonly player: PlayerId }
+  /** 9an.8 (2.38): `cards` is how many cards left the game with them (hand, aside jokers, cards on the felt). */
+  | { readonly type: 'playerRemoved'; readonly player: PlayerId; readonly cards: number } // 9ak.3 (2.37): no pop-up, no log line
   | ({ readonly type: 'sessionEnded' } & SessionEnd);
 
 export interface LogEntry {

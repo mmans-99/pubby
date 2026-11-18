@@ -8,7 +8,7 @@ import {
 
 /** The 16 screen sizes from CODE.md 9w.7 (CSS px, width × height). */
 const SIZES: [number, number][] = [
-  [320, 568], [360, 640], [375, 667], [390, 844], [430, 932], [412, 915], [768, 1024], [820, 1180],
+  [320, 568], [360, 640], [360, 740], [375, 667], [390, 844], [430, 932], [412, 915], [768, 1024], [820, 1180], [740, 360],
   [1024, 768], [1180, 820], [568, 320], [667, 375], [844, 390], [932, 430], [1280, 800], [1920, 1080],
 ];
 
@@ -104,5 +104,17 @@ test('fanLayout without maxCardW keeps the portrait card sizes (64 to 96 px)', (
   for (const width of [200, 360, 520, 1000]) {
     const { cardW } = fanLayout(10, width);
     assert.ok(cardW >= 64 && cardW <= 96, `width ${width} cardW ${cardW}`);
+  }
+});
+
+// 9an.9 (2.38): the rounded-end table. Every fan lies on the rail inside the table's outline, every disc,
+// name, your pill, the waste pile and the last trick on the felt, for 2 to 8 players (seatCollisions checks both).
+test('rounded table: nothing outside the table or the felt, 2 to 8 players, every size (after fitBox)', () => {
+  for (const [vw, vh] of SIZES) {
+    for (let n = 2; n <= 8; n++) {
+      const box = fitBox(n, tableBox(vw, vh));
+      const bad = seatCollisions(n, box).filter((x) => x.includes('outside'));
+      assert.deepEqual(bad, [], `${vw}x${vh} with ${n} players`);
+    }
   }
 });

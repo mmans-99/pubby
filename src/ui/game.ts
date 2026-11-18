@@ -478,6 +478,10 @@ function popupsFor(s: Session, events: readonly SessionEvent[], seat: PlayerId |
       case 'playerOut':
         if (!lastTwo.includes(e.player)) out.push({ kind: 'out', player: e.player, place: e.place });
         break;
+      case 'playerRemoved':
+        // 9an.8 (H-i, item 8): every other phone sees it. The removed player's phone gets its own screen instead.
+        if (seat && seat !== e.player) out.push({ kind: 'info', icon: 'x', title: `${nameOf(s, e.player)} was removed by the host`, text: '' });
+        break;
       case 'forfeited':
         // 2.34.6: a forfeit is shown to everyone, in capitals.
         out.push({ kind: 'pathetic', player: e.player });

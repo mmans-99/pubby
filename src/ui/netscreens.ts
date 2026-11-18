@@ -24,6 +24,8 @@ import { ordinal } from './cards.ts';
 import { scoreRows } from './scores.ts';
 import { playerView } from '../session/view.ts';
 import { netSeats } from './netlobby.ts';
+import { removeSheet, clockText } from './removesheet.ts';
+import { HINT_AWAY_MS, HINT_TURN_MS, hostClock, linkIdOf, playerOfLink, turnIdleMs } from './netplay.ts';
 import { roundTable, wastePile } from './table.ts';
 import { seatName } from '../net/lobby.ts';
 
@@ -51,25 +53,56 @@ export function netGameBody(g: SavedGame): Child {
   }
   // 9ad.2 (2.34): on a game screen the notice floats inside the table area, so it never pushes the rows.
   const notice = connectionNotice(g);
+  const sheet = removeSheet(g); // CODE.md 9an.8: the host's "Remove from game" sheet
   const frame = body instanceof HTMLElement && body.classList.contains('game-frame') ? body : null;
   const slot = frame?.querySelector('.game-table-slot');
+  if (sheet && frame) frame.appendChild(sheet);
   if (notice && slot) { slot.appendChild(notice); return body; }
-  return [notice, body]; // screens that scroll (results, waiting) keep it on top
+  return sheet && !frame ? [notice, body, sheet] : [notice, body]; // screens that scroll (results, waiting) keep it on top
 }
 
-/** A phone lost its link: the game can't go on until rejoining exists (slice 4). */
+/**
+ * A phone is away or lost its link: the game waits for it. CODE.md 9an.8 (H-h, H-i): on the host's phone
+ * the notice has a Remove button (it opens the sheet), and a hint appears when someone has not moved on
+ * their turn for 90 seconds. Joining phones only see that the host is waiting.
+ */
 function connectionNotice(g: SavedGame): HTMLElement | null {
   if (!g.net || g.session.ended) return null;
-  // CODE.md 9u A5: an away phone is kept for 10 minutes; the game waits for it (no auto-play).
-  // 9ad.2 (2.34): shorter text; `table-notice` floats it over the table.
-  const away = (netSeats() ?? []).filter((x) => x.awaySince !== undefined && !x.isHost);
-  if (away.length) return h('p', { class: 'note warn net-lost table-notice', role: 'status' }, `${away.map(seatName).join(', ')} ${away.length === 1 ? 'is' : 'are'} away · waiting for them`);
-  const gone = (netSeats() ?? []).filter((x) => !x.connected);
-  if (!gone.length) return null;
-  const who = gone.map(seatName).join(', ');
-  return h('p', { class: 'note warn net-lost table-notice', role: 'status' },
-    `${who} lost connection. Rejoining comes in a later update: `,
-    g.net.role === 'host' ? 'close the game from the menu and start again.' : 'the host can close the game.');
+  const host = g.net.role === 'host';
+  const seats = (netSeats() ?? []).filter((x) => !x.isHost && !x.removed);
+  const playerOf = (linkId: string): PlayerId | null => playerOfLink(linkId);
+  const removeButton = (linkId: string): Child => {
+    const p = playerOf(linkId);
+    return p ? h('button', { class: 'link-btn', onclick: () => update({ armed: `remove:${p}` }) }, 'Remove') : null;
+  };
+  const away = seats.filter((x) => x.awaySince !== undefined);
+  if (away.length) {
+    const names = away.map(seatName).join(', ');
+    const tail: Child[] = host ? [' · ', removeButton(away[0]!.id)] : [' · waiting for them'];
+    // H-h: after 2 minutes the host's hint shows how long the seat has been away.
+    const first = away[0]!;
+    const longest = hostClock() - Math.min(...away.map((x) => x.awaySince!));
+    const timed = host && away.length === 1 && longest >= HINT_AWAY_MS;
+    return h('p', { class: 'note warn net-lost table-notice', role: 'status' },
+      timed ? `${seatName(first)} has been away ${clockText(longest)}` : `${names} ${away.length === 1 ? 'is' : 'are'} away`, ...tail);
+  }
+  const gone = seats.filter((x) => !x.connected);
+  if (gone.length) {
+    const who = gone.map(seatName).join(', ');
+    return h('p', { class: 'note warn net-lost table-notice', role: 'status' },
+      `${who} lost connection`, ...(host ? [' · ', removeButton(gone[0]!.id)] : [' · waiting for the host'] as Child[]));
+  }
+  // H-h: the hint for a turn that has not moved for 90 seconds (host only, never for computer players).
+  const turn = g.session.play?.turn;
+  if (host && turn && g.session.phase === 'playing' && !g.session.players.find((x) => x.id === turn)?.computer) {
+    const idle = turnIdleMs(turn);
+    if (idle !== null && idle >= HINT_TURN_MS) {
+      const linkId = linkIdOf(turn);
+      return h('p', { class: 'note warn net-lost table-notice', role: 'status' },
+        `${nameOf(g.session, turn)} hasn't moved for ${clockText(idle)}`, ' · ', linkId ? removeButton(linkId) : null);
+    }
+  }
+  return null;
 }
 
 /**

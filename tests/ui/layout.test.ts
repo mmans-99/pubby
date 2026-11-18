@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fanBounds, fanLayout, fitFan } from '../../src/ui/cards.ts';
 import { CHROME_PORTRAIT, CHROME_RAIL, gameLayout, MIN_TABLE_H, RAIL_GAP, RAIL_MAX_H, RAIL_SIDE_W, RAIL_W, sideBarW } from '../../src/ui/layout.ts';
-import { fitBox, seatCollisions, tableBoxFor, lastBox, lastStep } from '../../src/ui/table.ts';
+import { fitBox, insideTable, ownSeatBox, railWidth, seatCollisions, tableBoxFor, lastBox, lastStep } from '../../src/ui/table.ts';
 
 /** The 16 screen sizes from CODE.md 9w.7, plus the test phone (384 × 730, CODE.md 9x.5). */
 const SIZES: [number, number][] = [
@@ -144,8 +144,9 @@ test('lastBox: at the bottom-left, room for n cards grows with n', () => {
   const one = lastBox(box, 1);
   const eight = lastBox(box, 8);
   assert.ok(eight.w > one.w);
-  assert.equal(one.x, 8);
-  assert.equal(one.y + one.h, box.h - 8);
+  // 9an.9: moved in from the corner until the rounded table clears it, still in the bottom-left quarter.
+  assert.ok(one.x >= 8 && one.x + one.w < box.w / 2 && one.y > box.h / 2);
+  assert.ok(insideTable(one, box, railWidth(box)));
 });
 
 // 2.31 (CODE.md 9aa Part D): the last-trick cards are spaced so each corner number and suit shows.
@@ -158,15 +159,16 @@ test('lastStep: each card is at least one card-u further along, on every size', 
   }
 });
 
-test('lastStep: 1.6u (one corner index wide) when up to 5 players, on a 384 × 730 phone', () => {
+test('lastStep: 1.6u (one corner index wide) when up to 3 players, on a 384 × 730 phone', () => {
+  // 9an.9: the stack starts further in (the rounded corner), so from 4 players the cards sit closer (at least 1u, test above).
   const box = gameLayout(384, 730).box;
-  for (let n = 2; n <= 5; n++) assert.equal(lastStep(box, n), 1.6 * box.u, `${n} players`);
+  for (let n = 2; n <= 3; n++) assert.equal(lastStep(box, n), 1.6 * box.u, `${n} players`);
 });
 
 test('lastBox: 8 cards stay left of the You pill, and a slap adds room for its mark', () => {
-  const box = gameLayout(384, 730).box;
+  const box = fitBox(8, gameLayout(384, 730).box); // as the table draws it (9an.9: the stack starts further in)
   const eight = lastBox(box, 8);
-  assert.ok(eight.x + eight.w <= 0.4 * box.w + 8);
+  assert.ok(eight.x + eight.w <= ownSeatBox(8, box).x);
   assert.ok(Math.abs(lastBox(box, 8, true).w - eight.w - 1.4 * box.u) < 1e-9);
 });
 

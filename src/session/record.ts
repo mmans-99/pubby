@@ -32,6 +32,8 @@ export interface GameRecord {
   readonly trivia: Trivia;
   /** True if any player was a computer player (CODE.md 9m.2). */
   readonly vsComputer: boolean;
+  /** 9an.8 (2.38): players removed from the game, in removal order. Absent when nobody was removed. */
+  readonly gone?: readonly PlayerId[];
 }
 
 /** Records saved before computer players existed have no `vsComputer` field: they read as false. */
@@ -46,7 +48,8 @@ export function buildGameRecord(s: Session, savedAt: Date, id: string): GameReco
   return {
     id,
     savedAt: savedAt.toISOString(),
-    playerCount: s.order.length,
+    // 9an.8: the table the game started with (removed players still count, and keep their points).
+    playerCount: s.players.length,
     players: s.players,
     vsComputer: s.players.some((p) => p.computer === true),
     hostId: s.hostId,
@@ -61,7 +64,8 @@ export function buildGameRecord(s: Session, savedAt: Date, id: string): GameReco
       losers: s.ultimateLabels?.losers ?? [],
     },
     final: { ...s.ended, scores: s.scores },
-    trivia: computeTrivia(s.log, s.order),
+    trivia: computeTrivia(s.log, [...s.order, ...s.gone]),
+    ...(s.gone.length ? { gone: s.gone.slice() } : {}),
   };
 }
 

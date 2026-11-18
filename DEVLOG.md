@@ -4,6 +4,72 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-18 (14:22, Haiku) — Push to main: version 2.38.0 (Parts A to J, GitHub Pages)
+
+**User (14:22):** "Push to main." Local `main` was at `origin/main` (092389f); the three Phase 4w WIP commits (a9299ea, b071010, 21327a8) sat on a detached HEAD. They and this session's changes go to `main` as a fast-forward, with no force push. Checks before the push: `npm run check` clean, `npm test` 561 of 561, `node build.mjs` clean (v2.38.0). GitHub Pages deploys it (CI runs check and test first). The table (Part I) and the removal UI (Part H) still need a phone test on the live app; the 9an.12 checklist is in CODE.md.
+
+---
+
+## 2026-11-18 (14:00, Opus) — Part I redone: the rounded-end table
+
+**User (13:58):** "Redo table. And I can't test multiplayer things on the test link."
+
+**Built:** `table.ts`: `railWidth`, `tableRadius` (a quarter of the short side, at most 180 px), `insideTable`, `fanBox`, `topTuck`; `seatLayout` moves each fan in from the edge until the rounded outline clears it (fans on the rail, fully seen), discs and names inward from the fan as before; `wasteBox` and `lastBox` start in the corners and move in until they clear the curve (landscape: also clear of the side fans); `lastStep` uses the room left before your pill; `ownSeatCentre` keeps your pill on the felt. `styles.css`: leather rail, `.table-felt` with stitched line, your-turn glow on the felt edge, dark room background for the whole app, dark landscape side bar and results footer. 7 and 8-player side seats moved a little; landscape trick zone starts at 0.3h.
+
+**Tests:** `seatCollisions` now also reports things outside the table or felt and fans on the corner items; new rounded-table test (2 to 8 players, 18 sizes); three last-trick tests updated for the new corner place. `npm run check` clean, `npm test` 561/561, `node build.mjs` clean. Browser: screenshots for 2 to 8 players at 390x844, 360x740 and 844x390 looked right; `landscape_check.py` 24/24, `tablet_check.py` 77/77, `lasttrick_check.py` 20/20 (one timing flake on the first run, passes on the old code too).
+
+**Multiplayer test:** the private test page blocks the camera and service worker, so network play (Part H) can only be tested on GitHub Pages, which means a push to `main` (the live app). Asked the user.
+
+---
+
+## 2026-11-18 (later, Haiku) — Build: Part H host UI, Part I table, Part J version and test build (not committed)
+
+**User:** "Just finish all the parts" (Part H host UI, Part I card table, Part J checks and test build).
+
+**Built:**
+- Part H host UI: `src/ui/removesheet.ts` (pick and confirm views; `hostRemove` from `netplay.ts`); `src/ui/netscreens.ts` connection notice rewritten (away notice with Remove, 2-minute hint, lost-connection notice, 90 s hint for a person's turn, phones told the host is waiting; removed seats skipped); `linkIdOf` and `playerOfLink` exported; `HINT_AWAY_MS` and `HINT_TURN_MS` added; `.net-lost .link-btn` style.
+- Part I (partly): `.round-table` is a dark leather stadium rail with `.table-felt` inset by 16 px, a stitched line, and your-turn glow on the felt edge (`src/ui/table.ts` renders the felt; `styles.css`). Not done: the dark room background, the seat re-fit and collision tests, landscape and tablet checks.
+- Part J: version 2.38.0; fixture `tests/ai/fixtures/moves-2.38.0.json` regenerated (2.34.5 kept), test file and generator comment updated.
+
+**Checks:** `npm run check` clean; `npm test` 560 of 560; `node build.mjs` clean (v2.38.0). Test page: https://claude.ai/artifact/9urVJuerjp4m2XqREoWp78 (private to the owner).
+
+**Fixture finding:** 463 of 500 recorded decisions differ from `moves-2.34.5.json`, starting at seed 1, decision 37 (a Normal bot asks for a take where it used to play a card). The committed HEAD (before Part H) gives the same 463 differences, so Part H changes none. The cause is the Part A take and ask rules, which the plan says break the old fixture by design. Not audited decision by decision; that audit is still open.
+
+**Phone test (13:52, user, screenshots):** the Part I table was broken: fans, names, the top corner seats (8 players), the waste pile and the last trick were cut off by the rounded rail. Opus reverted Part I (`styles.css`, `table.ts`) and republished the test page with the old table. Part I to be redone with the seat re-fit first.
+
+**Fixture audit (Opus):** the 7 recorded games each match 2.34.5 up to one first change, then play out differently. Seeds 1, 3, 5, 7: a Normal leader asks for cards instead of leading (Part B, `chooseTakeAsk`: the leader asks when stuck). Seeds 2, 4, 6: an Easy bot plays a different card, because Easy's 30% ask roll now runs before the card pick and shifts its random numbers. Both by design.
+
+**Not yet:** the phone checklist (9an.12), the browser check of the sheet and hints, Part I. No commit or push until the user has tested the test page and approved.
+
+---
+
+## 2026-11-18 (14:30, Haiku) — Build: Part H, removing a player (partly built, not committed)
+
+**User:** "build Part H, the plan is approved" (`CODE.md` 9an.8, H-a to H-k with the H-q answers of 13:18).
+
+**Built and tested:**
+- Rules: `removeFromPlay` (`src/rules/play.ts`: cards leave the game, next to act, trick closes, round ends with one holder left, pending pick-up), `afterLastTurn` pulled out of `finishTurn`, `TrickState.size` (a trick that started with three finishes under normal rules), `removeSeat` (`src/rules/deal.ts`). Tests: `tests/rules/remove.test.ts` (12), `tests/rules/deal.test.ts` (3 more).
+- Session: `removePlayer` action (`removeAllowed`, `removeFromGame`, `dropFromRound`, `fixPrevious`, `votesAfterRemoval`, `phaseAfterRemoval` for every phase, `completeTap` and `afterSwapGate` pulled out of the cases), `finishRound` (removed players last, starting-count table, `previous.loser` never a removed player, `playersLeft`), `finalStandings` lists `gone` last. Saved games load with `removed: []`, `gone: []`. Tests: `tests/session/remove.test.ts` (13).
+- Record: `playerCount` is the starting count, trivia includes removed players, `gone` in the record.
+- AI memory: a removed player leaves `order` and their known cards and voids are forgotten. Pop-up: `playerRemoved` is a pop-up for every other phone.
+- Network: `LobbySeat.removed`, `markRemoved`, lobby message reads `removed`; `hostRemove` in `netplay.ts` (check, drop link, apply, then the lobby's `removeInGame`); a removed seat that comes back is refused and kicked; joiner text "The host removed you from the game".
+
+**Not built yet:** the host's seat sheet and confirm view, the "Remove" band with the 2 min away / 90 s idle hints (H-h), the connection notice texts (H-i), the phone test and version 2.38.0 (Part J). `npm run build` and `npm test` could not be run here (no `node_modules`, network off); `tsc -p tsconfig.json` and `tsx --test` were run.
+
+**Checks:** `tsc --noEmit -p tsconfig.json` clean. Full `tsx --test` run: 554 of 560 pass. The 6 failures also fail on the untouched commit (AI regression 2.34.5 fixture, which the plan says fails until Part J; 5 relay server tests that need `tsx` in the relay process, not installed here).
+
+**Not committed.** Also changed: `CLAUDE.md` (exception for approved plans written for Haiku, from 13:21), `TODO.md`, `DEVLOG.md`.
+
+---
+
+## 2026-11-18 (13:21, Haiku then Opus) — Rule: Haiku builds approved plans written for it (docs only)
+
+**What happened:** asked to build Part H, Haiku stopped with "Switch to Opus" (point 3: touches several systems), although 9an.8 was reviewed by Opus, answered by the user and written for Haiku.
+
+**User approved:** new exception in `CLAUDE.md` ("Which model does what"): an approved `CODE.md` plan written for Haiku is built even if it touches several systems; stop only if the code doesn't match the plan or a real choice is left open. No code. Part H still to build.
+
+---
+
 ## 2026-11-18 (13:06, Opus) — Part H reviewed (docs only)
 
 **Opus review of Part H (`CODE.md` 9an.8 H-a to H-k), read against the session, rules, deal, record, net and table code.** Main findings: a removed player must leave `order` at once (every gate, the vote total, the table and the computer players read it), with `removed` (this round, for the bottom places) and `gone` (whole game); the round's `previous.loser` must be the last holder, not the last place, or the next round's dealer would be a gone player; a trick that started with three must finish under normal rules after a removal (new `TrickState.size`); in a started network game the lobby seat is marked `removed`, never deleted (player ids come from seat order); the host drops the link before applying the action; Part G's rejoin path must refuse a removed seat. Votes: the removed player's ballot is dropped (replaces the plan line). Seven questions for the user (H-q, also in `PROJECT.md` Open questions): the 2 min / 90 s hints, one holder left = round loser, their felt cards, a player already out, dealer or chooser removed on the results screen, dealer removed mid-deal, the removed player's game result. No code.

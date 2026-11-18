@@ -11,6 +11,7 @@ import {
   isDealComplete,
   lockedSeats,
   manualDealCard,
+  removeSeat,
   setDealMode,
   startDeal,
 } from '../../src/rules/deal.ts';
@@ -154,4 +155,39 @@ test('deal functions never change the state passed in', () => {
   const before = JSON.stringify(s0);
   autoDealStep(s0);
   assert.equal(JSON.stringify(s0), before);
+});
+
+test('removeSeat mid-deal: their cards leave the game, nextSeat moves on, the deal finishes among the rest', () => {
+  // 9an.8 H-d: a player removed during the deal.
+  const s0 = autoDealStart(startDeal(ids(4), deckFor(4)), 'p1');
+  let s = s0;
+  for (let i = 0; i < 6; i++) s = autoDealStep(s); // p1, p2, p3, p4, p1, p2
+  const dealtToP2 = s.hands['p2']?.length ?? 0;
+  assert.ok(dealtToP2 > 0);
+  const remainingBefore = s.remaining.length;
+  const r = removeSeat(s, 'p2');
+  assert.deepEqual(r.seats, ['p1', 'p3', 'p4']);
+  assert.equal(r.hands['p2'], undefined);
+  assert.equal(r.remaining.length, remainingBefore); // not put back into the pile
+  assert.equal(r.nextSeat, 'p3');
+  const done = autoDealAll(r);
+  assert.equal(isDealComplete(done), true);
+  // Undealt cards went to the others: nobody dealt to p2 again.
+  assert.equal(done.hands['p2'], undefined);
+});
+
+test('removeSeat when the removed seat was next to get a card: the next seat clockwise takes over', () => {
+  const s0 = autoDealStart(startDeal(ids(3), deckFor(3)), 'p1');
+  const s = autoDealStep(s0); // p1 got one, nextSeat is p2
+  assert.equal(s.nextSeat, 'p2');
+  const r = removeSeat(s, 'p2');
+  assert.equal(r.nextSeat, 'p3');
+});
+
+test('removeSeat clears lastSeat when the removed seat got the last card', () => {
+  const s0 = manualDealCard(setDealMode(startDeal(ids(3), deckFor(3)), 'manual'), 'p1');
+  assert.equal(s0.lastSeat, 'p1');
+  const r = removeSeat(s0, 'p1');
+  assert.equal(r.lastSeat, null);
+  assert.deepEqual(r.lap, []);
 });

@@ -83,8 +83,9 @@ const EDGE_SPOTS: Record<number, [Edge, number][]> = {
   4: [['left', 0.4], ['top', 0.5], ['right', 0.4]],
   5: [['left', 0.4], ['top', 0.28], ['top', 0.72], ['right', 0.4]],
   6: [['left', 0.45], ['top', 0.2], ['top', 0.5], ['top', 0.8], ['right', 0.45]],
-  7: [['left', 0.7], ['left', 0.22], ['top', 0.3], ['top', 0.7], ['right', 0.22], ['right', 0.7]],
-  8: [['left', 0.75], ['left', 0.2], ['top', 0.18], ['top', 0.5], ['top', 0.82], ['right', 0.2], ['right', 0.75]],
+  7: [['left', 0.64], ['left', 0.2], ['top', 0.3], ['top', 0.7], ['right', 0.2], ['right', 0.64]],
+  // 9an.9: the corner seats a little further in, so the rounded corners don't push them onto the side seats.
+  8: [['left', 0.66], ['left', 0.24], ['top', 0.24], ['top', 0.5], ['top', 0.76], ['right', 0.24], ['right', 0.66]],
 };
 
 /** Landscape (CODE.md 9w.3 rule 1): more room on top, less on the sides. */
@@ -189,7 +190,16 @@ export function seatCollisions(n: number, box: TableBox): string[] {
   layout.forEach((s, i) => { boxes.push([`bubble ${i}`, bubbleBox(s, box.u)], [`name ${i}`, nameBox(s, box.u)]); });
   boxes.push(['your seat', ownSeatBox(n, box)], ['waste pile', wasteBox(box)], ['last trick', lastBox(box, n)]);
   const bad: string[] = [];
+  const m = feltMargin(box);
+  // 9an.9: every seat's fan (on the rail) and its disc and name (on the felt), your pill, the waste pile and the last trick stay inside the felt.
+  layout.forEach((s, i) => { if (!insideTable(seenFan(s.edge, s.fan, box), box, FAN_MARGIN - 0.5)) bad.push(`fan ${i} outside the table`); });
+  for (const [name, b] of boxes) if (!insideTable(b, box, m - 3)) bad.push(`${name} outside the felt`);
   for (const [name, b] of boxes) if (overlaps(b, middleBox(box))) bad.push(`${name} in the middle`);
+  // 9an.9: a fan never lies on the waste pile, the last trick or your pill.
+  layout.forEach((s, i) => {
+    const f = fanBox(s.edge, s.fan, box.u);
+    for (const [name, b] of boxes.slice(-3)) if (overlaps(f, b)) bad.push(`fan ${i} / ${name}`);
+  });
   for (let a = 0; a < boxes.length; a++) {
     for (let b = a + 1; b < boxes.length; b++) {
       if (overlaps(boxes[a]![1], boxes[b]![1])) bad.push(`${boxes[a]![0]} / ${boxes[b]![0]}`);
@@ -209,34 +219,121 @@ export function tableInset(box: TableBox): boolean {
   return box.w >= 600 && box.h >= 380;
 }
 
-/** Where each other player sits, in px, for `n` players in this box (CODE.md 9w.3). */
+/* ---------------------------------------------------------------------------
+ * 9an.9 (2.38): the table is a rounded-end table: a leather rail round a felt. Everything a
+ * seat draws (its fan of card backs, disc and name), the waste pile and the last trick sit
+ * inside the felt, so the rounded corners never cut anything off.
+ * ------------------------------------------------------------------------- */
+
+/** The rail's width in px. */
+export function railWidth(box: TableBox): number {
+  return Math.round(clamp(1.25 * box.u, 10, 16));
+}
+
+/** The corner radius as a share of the table's shorter side. */
+export const RADIUS_SHARE = 0.25;
+
+/** The table's corner radius in px: rounded ends, but not so round that the corner seats lose their room. */
+export function tableRadius(box: TableBox): number {
+  return Math.min(180, RADIUS_SHARE * Math.min(box.w, box.h));
+}
+
+/** True when the whole box is inside the table's rounded shape, `m` px in from its edge. */
+export function insideTable(b: Box, box: TableBox, m: number): boolean {
+  const r = Math.max(0, tableRadius(box) - m);
+  const x0 = m, y0 = m, x1 = box.w - m, y1 = box.h - m;
+  const corners: [number, number][] = [[b.x, b.y], [b.x + b.w, b.y], [b.x, b.y + b.h], [b.x + b.w, b.y + b.h]];
+  for (const [px, py] of corners) {
+    if (px < x0 - 0.01 || px > x1 + 0.01 || py < y0 - 0.01 || py > y1 + 0.01) return false;
+    const cx = px < x0 + r ? x0 + r : px > x1 - r ? x1 - r : px;
+    const cy = py < y0 + r ? y0 + r : py > y1 - r ? y1 - r : py;
+    if (Math.hypot(px - cx, py - cy) > r + 0.01) return false;
+  }
+  return true;
+}
+
+/** How far in from the table's edge a fan of card backs must stay: it lies on the rail, fully seen. */
+const FAN_MARGIN = 1;
+
+/** How far in from the table's edge things must stay: the rail, plus a little felt. */
+function feltMargin(box: TableBox): number {
+  return railWidth(box) + 3;
+}
+
+/**
+ * The room a fan of card backs takes (edgeFan, up to 13 backs), around its centre, with a few px
+ * spare for the cards' tilt.
+ */
+export function fanBox(edge: Edge, at: { x: number; y: number }, u: number): Box {
+  const { bw, bh } = cardBackSize(u);
+  if (edge === 'top') {
+    const half = 6 * Math.min(8, 70 / 13) + bw / 2 + 6;
+    return { x: at.x - half, y: at.y + 9 - bh / 2 - 3, w: 2 * half, h: bh + 11 };
+  }
+  const halfH = 6 * Math.min(6, 55 / 13) + bw / 2 + 6;
+  const x = edge === 'left' ? at.x - 8 - bh / 2 - 3 : at.x + 4.4 - bh / 2 - 3;
+  return { x, y: at.y - halfH, w: bh + 9.6, h: 2 * halfH };
+}
+
+/**
+ * On a very short table (a small phone on its side) the top fans tuck a little under the rail, as they
+ * did before 9an.9, so their discs and names keep clear of the trick. Everywhere else: 0, fully seen.
+ */
+export function topTuck(box: TableBox): number {
+  return box.h < 190 ? 0.3 * cardBackSize(box.u).bh : 0;
+}
+
+/** The part of a fan that must be inside the table: all of it, less the tucked top on a short table. */
+function seenFan(edge: Edge, at: { x: number; y: number }, box: TableBox): Box {
+  const b = fanBox(edge, at, box.u);
+  const t = edge === 'top' ? topTuck(box) : 0;
+  return { ...b, y: b.y + t, h: b.h - t };
+}
+
+/** Moves a box from its corner toward the table's centre, 1 px at a time, until it is inside the felt. */
+function pushInside(b: Box, box: TableBox, dx: number, dy: number): Box {
+  const m = feltMargin(box);
+  let cur = b;
+  for (let i = 0; i < 400 && !insideTable(cur, box, m); i++) cur = { ...cur, x: cur.x + dx, y: cur.y + dy };
+  return cur;
+}
+
+/** Where each other player sits, in px, for `n` players in this box (CODE.md 9w.3; inside the felt since 9an.9). */
 export function seatLayout(n: number, box: TableBox): SeatSpot[] {
   const { w, h, u } = box;
   const { bh } = cardBackSize(u);
   const list = edgeListFor(n, box.landscape);
-  // 2.34.5 (CODE.md 9ag.3 fix 4): on a tablet-sized table the fans sit inside the felt (their outer
-  // edge at the table's edge), not half off it, so they are never cut off. Phones keep the old look.
-  const inset = tableInset(box);
-  const sideIn = inset ? bh / 2 + 10 : 0;
-  const topIn = inset ? bh / 2 - 5 : 0;
-  const topBand = 6.2 * u + topIn, bottomBand = 4.5 * u;
+  const m = feltMargin(box);
+  // A top fan's centre: its top edge on the felt's edge, then lower until the rounded corners clear it.
+  const topY = (x: number): number => {
+    let y = FAN_MARGIN - topTuck(box) - (9 - bh / 2 - 3);
+    for (let i = 0; i < 400 && !insideTable(seenFan('top', { x, y }, box), box, FAN_MARGIN); i++) y += 1;
+    return y;
+  };
+  // A side fan's centre: its outer edge on the felt's edge, then further in until the rounded corners clear it.
+  const sideX = (edge: 'left' | 'right', y: number): number => {
+    let x = edge === 'left' ? FAN_MARGIN + 11 + bh / 2 : w - FAN_MARGIN - 11 - bh / 2;
+    const step = edge === 'left' ? 1 : -1;
+    for (let i = 0; i < 400 && !insideTable(fanBox(edge, { x, y }, u), box, FAN_MARGIN); i++) x += step;
+    return x;
+  };
+  const topIn = topY(w / 2);
+  const topBand = 6.2 * u + topIn, bottomBand = 4.5 * u + m;
   const out: SeatSpot[] = [];
   for (let k = 1; k <= n - 1; k++) {
     const [edge, t] = list[k - 1] ?? ['top', 0.5];
     let spot: Omit<SeatSpot, 'hit'>;
     if (edge === 'top') {
       const x = t * w;
-      const by = topIn + 0.95 * bh;
-      spot = { edge, fan: { x, y: topIn }, bubble: { x, y: by }, name: { x, y: by + 1.5 * u, align: 'center' } };
+      const fy = topY(x);
+      const by = fy + 0.95 * bh;
+      spot = { edge, fan: { x, y: fy }, bubble: { x, y: by }, name: { x, y: by + 1.5 * u, align: 'center' } };
     } else {
       const y = topBand + (h - topBand - bottomBand) * t;
       const left = edge === 'left';
-      spot = {
-        edge,
-        fan: { x: left ? sideIn : w - sideIn, y },
-        bubble: { x: left ? sideIn + 0.95 * bh : w - sideIn - 0.95 * bh, y },
-        name: { x: left ? sideIn + 0.95 * bh : w - sideIn - 0.95 * bh, y: y + 1.5 * u, align: 'center' },
-      };
+      const fx = sideX(edge, y);
+      const bx = left ? fx + 0.95 * bh : fx - 0.95 * bh;
+      spot = { edge, fan: { x: fx, y }, bubble: { x: bx, y }, name: { x: bx, y: y + 1.5 * u, align: 'center' } };
     }
     out.push({ ...spot, hit: hitBox(spot, u, bh) });
   }
@@ -281,9 +378,15 @@ export function nameBox(s: SeatSpot, u: number): Box {
 
 /** Your own seat: the small pill at the bottom centre of the felt (9u × 2.2u). */
 export function ownSeatBox(n: number, box: TableBox): Box {
+  const c = ownSeatCentre(n, box);
+  return { x: c.x - 4.5 * box.u, y: c.y - 1.1 * box.u, w: 9 * box.u, h: 2.2 * box.u };
+}
+
+/** The centre of your pill, in px: the bottom seat's spot, kept inside the felt (9an.9). */
+export function ownSeatCentre(n: number, box: TableBox): { x: number; y: number } {
   const c = seatSpot(n, 0);
-  const cx = (c.x / 100) * box.w, cy = (c.y / 100) * box.h;
-  return { x: cx - 4.5 * box.u, y: cy - 1.1 * box.u, w: 9 * box.u, h: 2.2 * box.u };
+  const y = Math.min((c.y / 100) * box.h, box.h - feltMargin(box) - 1.1 * box.u);
+  return { x: (c.x / 100) * box.w, y };
 }
 
 /**
@@ -293,8 +396,25 @@ export function ownSeatBox(n: number, box: TableBox): Box {
  */
 export function lastStep(box: TableBox, n: number): number {
   const want = 1.6 * box.u; // one corner index wide
-  const maxW = 0.4 * box.w;
+  // 9an.9: the room runs from where the stack starts (moved in from the rounded corner) to just left of the pill.
+  const maxW = Math.min(0.4 * box.w, box.w / 2 - 4.5 * box.u - 6 - lastStart(box).x);
   return n <= 1 ? 0 : Math.max(1.0 * box.u, Math.min(want, (maxW - 3.6 * box.u) / (n - 1)));
+}
+
+/**
+ * Landscape (9an.9): the side seats sit low on a short table and their fans lie on the rail, so the last trick
+ * and the waste pile keep this far in from the left and right edges. Portrait: 0 (the side seats sit higher).
+ */
+function sideClear(box: TableBox): number {
+  if (!box.landscape) return 0;
+  return FAN_MARGIN + fanBox('left', { x: 0, y: 0 }, box.u).w + 6;
+}
+
+/** Where the last-trick stack starts: the bottom-left corner, moved in until one card clears the rounded corner (9an.9). */
+function lastStart(box: TableBox): { x: number; y: number } {
+  const h = 6.5 * box.u;
+  const b = pushInside({ x: 8, y: box.h - 8 - h, w: 3.6 * box.u, h }, box, 1, -0.75);
+  return { x: Math.max(b.x, sideClear(box)), y: b.y };
 }
 
 /**
@@ -308,16 +428,22 @@ export function lastBox(box: TableBox, n: number, slap = false): Box {
   const { u } = box;
   const h = 6.5 * u;
   const w = 3.6 * u + Math.max(0, n - 1) * lastStep(box, n) + (slap ? 1.4 * u : 0);
-  return { x: 8, y: box.h - 8 - h, w, h };
+  // 9an.9: from the bottom-left corner, moved in until the rounded corner clears it.
+  const at = lastStart(box);
+  return { x: at.x, y: at.y, w, h };
 }
 
 /** The waste pile: 5u × 6.5u in the bottom-right corner (16 px in from the edges). */
 export function wasteBox(box: TableBox): Box {
-  return { x: box.w - 16 - 5 * box.u, y: box.h - 16 - 6.5 * box.u, w: 5 * box.u, h: 6.5 * box.u };
+  // 9an.9: from the bottom-right corner, moved in until the rounded corner clears it (and, in landscape, the side fans).
+  const b = pushInside({ x: box.w - 16 - 5 * box.u, y: box.h - 16 - 6.5 * box.u, w: 5 * box.u, h: 6.5 * box.u }, box, -1, -0.5);
+  return { ...b, x: Math.min(b.x, box.w - sideClear(box) - b.w) };
 }
 
 /** The middle of the table, kept clear for the trick: 0.36w × 0.36h around (w/2, 0.45h). */
 export function middleBox(box: TableBox): Box {
+  // 9an.9: in landscape the table is short and the top fans lie fully on the rail, so the zone starts a little lower.
+  if (box.landscape) return { x: 0.32 * box.w, y: 0.3 * box.h, w: 0.36 * box.w, h: 0.32 * box.h };
   return { x: 0.32 * box.w, y: 0.27 * box.h, w: 0.36 * box.w, h: 0.36 * box.h };
 }
 
@@ -428,10 +554,16 @@ export function roundTable(s: Session, v: PlayerView, o0: TableOpts): HTMLElemen
   const plays = o.plays ?? [];
   // The pile's look is fixed by the round and the trick's first card, so it never reshuffles mid-trick.
   const spots = pileSpots(plays.map((p) => p.card), `${s.round}:${plays[0]?.card ?? ''}`);
-  const felt = `width:${box.w.toFixed(1)}px;height:${box.h.toFixed(1)}px;--u:${box.u.toFixed(2)}px;--bw:${bw}px;--bh:${bh}px`;
+  const felt = `width:${box.w.toFixed(1)}px;height:${box.h.toFixed(1)}px;--u:${box.u.toFixed(2)}px;--bw:${bw}px;--bh:${bh}px;--rail:${railWidth(box)}px;--tr:${tableRadius(box).toFixed(1)}px`;
+  // 9an.9: the waste pile's place comes from wasteBox (inside the rounded felt).
+  if (o.waste) {
+    const wb = wasteBox(box);
+    o.waste.style.right = `${(box.w - wb.x - wb.w).toFixed(1)}px`; o.waste.style.bottom = `${(box.h - wb.y - wb.h).toFixed(1)}px`;
+  }
   // 9ai.6 (2.36): your own turn at your own table: the felt glows (idea 3). Someone else's: their seat rings (idea 1).
   const yourTurn = !!o.you && o.highlight != null && o.highlight === o.bottom;
   return h('section', { class: `round-table n${n}${box.landscape ? ' landscape' : ' portrait'}${yourTurn ? ' your-turn' : ''}`, 'aria-label': 'Table', style: felt },
+    h('div', { class: 'table-felt', 'aria-hidden': 'true' }),
     h('div', { class: 'table-oval', 'aria-hidden': 'true' },
       o.ledSuit ? h('span', { class: red ? 'led-mark red' : 'led-mark' }, SUIT_SYMBOL[o.ledSuit]) : null),
     h('div', { class: 'table-middle' }, o.middle ?? null),
@@ -464,14 +596,14 @@ export function roundTable(s: Session, v: PlayerView, o0: TableOpts): HTMLElemen
       if (k === 0) {
         // Your own seat: a small pill "You · 6" at the bottom centre of the felt (9w.1).
         // Out of the round, the place replaces the count.
-        const at = seatSpot(n, 0);
+        const at = ownSeatCentre(n, box);
         const count = out ? h('span', { class: 'place-badge' }, ordinal(p.place!)) : h('span', { class: 'pill-count' }, String(p.cardCount));
         // 2.32.1: the pill's centre stays at least 14px above the bottom of the table area, so it is never cut off.
         // 9aj.4 (2.36): on your turn the same pill is gold and says the turn words (the card count is on your hand).
         const label = o.meLabel
           ? h('span', { class: 'pill-label', role: 'status' }, o.meLabel)
           : h('span', { class: 'pill-label' }, ...nameKids, ' · ', count);
-        return seatEl(o, id, cls('me-pill') + (o.meLabel ? ' turn-label' : ''), `left:${at.x.toFixed(2)}%;top:min(${at.y.toFixed(2)}%, calc(100% - 14px))`, p.sessionName,
+        return seatEl(o, id, cls('me-pill') + (o.meLabel ? ' turn-label' : ''), `left:${at.x.toFixed(1)}px;top:${at.y.toFixed(1)}px`, p.sessionName,
           [label, ...seatTags(id, p, o, thinking, false, true)]);
       }
       const tags = seatTags(id, p, o, thinking, true);

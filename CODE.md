@@ -4038,6 +4038,8 @@ Mockups: https://claude.ai/artifact/YaDGaLmzRAkyucWD9hiH37. Whichever is picked:
 6. Your-turn glow (9aj) moves to the rail's inner edge: `.round-table.your-turn .table-felt { box-shadow: inset 0 0 0 3px var(--gold), inset 0 0 26px rgba(242,193,78,.35) }`.
 7. Landscape rail layout (9ak Part F) and tablet (9ag) still work: run `landscape_check.py`, `tablet_check.py`.
 
+**Built notes (2026-11-18, Opus):** a first try of items 2 and 6 alone cut things off on the phone and was reverted. Redone with item 3 first: the table is a rounded rectangle (radius `0.25 × min(w, h)`, at most 180 px; a full stadium left no room for the corner seats on our shorter table), rail `clamp(1.25u, 10, 16)` px. `seatLayout` starts each fan at the table's edge and moves it in 1 px at a time until `fanBox` (room for 13 backs) is inside the outline (`insideTable`); on a table under 190 px high the top fans tuck 0.3 × bh under the rail. Waste pile and last trick start in their corners and move in (last trick 1 across, 0.75 up; waste 1 across, 0.5 up) until clear; in landscape also clear of the side fans. `seatCollisions` checks all of it. Items 1, 2, 3, 5, 6, 7 done; item 4 (hand overlapping the rail) not done, the layout rows are unchanged.
+
 ### 9an.10 Part J: version, checks, test build
 1. `package.json` 2.38.0.
 2. `npm run check`, `npm test`, `node build.mjs`, then `python3 testbed/run_checks.py --since origin/main` (playthrough, netgame, netvotes, online, lobby, landscape, tablet, results, lasttwo, popups at least). The test bot (`testbed/bot.js`) must learn: Keep my cards on the reshuffle screen; the take confirm step; skip the eye button.
@@ -4077,3 +4079,6 @@ Mockups: https://claude.ai/artifact/YaDGaLmzRAkyucWD9hiH37. Whichever is picked:
 - Commits: short imperative subject line, plus a body when the reason is not obvious.
 - No code is merged without the approvals in `CLAUDE.md`.
 - Each phase in `TODO.md` ends with a `DEVLOG.md` entry.
+
+**9an.11 built notes (2026-11-18):** Part H host UI (`src/ui/removesheet.ts`, `netscreens.ts` connection notice and hints) built, see TODO.md Part H. Part J: version 2.38.0; fixture `tests/ai/fixtures/moves-2.38.0.json` regenerated; 463 of 500 decisions differ from 2.34.5 but the committed HEAD gives the same differences, so Part H adds none (cause: Part A take and ask rules). Audit: 4 of the 7 games change at a Normal leader's new ask (Part B), 3 at an Easy card pick (the 30% ask roll shifts its random numbers); by design.
+

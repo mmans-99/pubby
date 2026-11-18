@@ -34,6 +34,8 @@ The user keeps **Haiku as the default** to save usage, and switches to **Opus** 
 3. The change touches several systems at once (for example rules engine + network sync + UI) or needs a design choice.
 4. You are unsure which approach is right, or the plan is unclear or contradicts itself.
 
+**Exception (user 2026-11-18):** if `CODE.md` has an approved plan written for Haiku (for example one Opus has reviewed and the user has answered), build it even if it touches several systems (point 3 doesn't apply). Only stop if the code doesn't match the plan or the plan leaves a real choice open.
+
 Say in one short line what Opus should look at, then wait. Keep it to one line, no long explanation.
 
 **If you are Opus**, when the plan is approved and written into the MD files (or the stuck problem is fixed), end your reply with:

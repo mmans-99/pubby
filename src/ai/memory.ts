@@ -25,7 +25,8 @@ export interface TrickEntry {
 export interface Memory {
   readonly me: PlayerId;
   readonly level: Level;
-  readonly order: readonly PlayerId[];
+  /** Players still in the game, clockwise. 9an.8 (2.38): a removed player leaves it. */
+  order: readonly PlayerId[];
   round: number;
   /** Current trick so far (from cardPlayed). */
   trick: TrickEntry[];
@@ -120,6 +121,13 @@ export function remember(m: Memory, events: readonly SessionEvent[], rng: Rng): 
         break;
       case 'swapped':
         m.known[e.player]?.clear();
+        break;
+      case 'playerRemoved':
+        // 9an.8 (H-g): a removed player leaves the turn order. What we knew about their hand is forgotten;
+        // their cards stay in the unknown pool (a pool bigger than the slots is already normal).
+        m.order = m.order.filter((p) => p !== e.player);
+        m.known[e.player] = new Map();
+        m.voids[e.player] = new Set();
         break;
       case 'cardPlayed': {
         const before = m.ledSuit;

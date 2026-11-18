@@ -427,12 +427,25 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
   - [x] `testbed/online_check.py` phase E "reload": Rejoin on a joining page, then Carry on on the host page; all phones on the same log afterwards (48 of 48, whole check)
   - [x] `testbed/bot.js` taps Keep my cards before Start (9an.4)
   - [ ] Not checked: the 10-minute expiry in the browser (needs a backdated save; optional `--long-away`)
-- [~] Part H: host removes a player; cards leave the game (9an.8)
+- [x] Part H: host removes a player; cards leave the game (9an.8) (built 2026-11-18, version 2.38.0, not committed; phone test pending)
   - [x] Opus review written 2026-11-18 (9an.8 H-a to H-k): out of `order` at once, `removed`/`gone`, `removeFromPlay` per phase, finishing order and `previous.loser`, seat marked (not deleted) in a started game, host clocks, tests
   - [x] User answered the seven questions in 9an.8 H-q (2026-11-18 13:18: all as suggested, both hints)
-  - [ ] Build Part H from 9an.8 using the Opus review
-- [ ] Part I: card table look (9an.9)
-- [ ] Part J: version 2.38.0, checks, test build, phone checklist 9an.12; regenerate the AI regression fixture (moves-2.38.0), the 2.34.5 one fails by design since Part A
+  - [x] Host UI built 2026-11-18: `src/ui/removesheet.ts` (pick view with status line, then the confirm view with the 9an.8 wording), connection notice rewritten in `netscreens.ts` (away notice with Remove, 2-minute "has been away" hint, lost-connection notice, 90 s "hasn't moved" hint for a person's turn, joining phones see "waiting for the host"); the old "Rejoining comes in a later update" text dropped; removed seats skipped
+  - [ ] Not checked yet: the phone test (9an.12), a browser check of the sheet and hints, the seat-tap entry (optional in 9an.8)
+  - [x] Built and tested earlier 2026-11-18, Haiku, not committed: rules (`removeFromPlay`, `removeSeat`, `afterLastTurn`, `TrickState.size`), session (`removePlayer`, `removeFromGame`, `finishRound` order and `previous`, `playersLeft`, `finalStandings` with `gone`), record, AI memory, pop-up, lobby `removed` seat, `hostRemove` and the lobby's removal. Not built yet: the host's seat sheet, the "Remove" band and the 2 min / 90 s hint clocks (9an.8 H-h, UI in `netscreens.ts` and `netlobby.ts`), the connection notice texts (H-i), the phone test and version 2.38.0 (Part J)
+- [~] Part I: card table look (9an.9), option B (redone 2026-11-18, Opus, not committed; phone test pending)
+  - [x] First try (rail and felt only, no seat re-fit) failed the phone test: fans, names, corner seats, waste pile and last trick cut off by the rounded rail. Reverted
+  - [x] Redone: seats placed on the table's real rounded shape (`insideTable`, `fanBox`, `seatLayout` in `table.ts`); fans lie on the rail fully seen (tucked a little only on a table under 190 px high); discs, names, your pill, waste pile and last trick on the felt; corner radius a quarter of the short side (not a full stadium: the corner seats need the room); dark room background (item 1), dark landscape side bar and results footer
+  - [x] `seatCollisions` also reports anything outside the table or felt and any fan on the waste pile, last trick or your pill; new test for 2 to 8 players over 18 sizes (360x740 and 740x360 added); 8-player and 7-player side seats moved a little; landscape trick zone starts at 0.3h
+  - [x] Browser screenshots for 2 to 8 players at 390x844, 360x740, 844x390; `landscape_check.py` 24/24, `tablet_check.py` 77/77, `lasttrick_check.py` 20/20
+  - [ ] Phone test by the user
+  - Known trade-off: from 4 players the last-trick cards sit closer (at least 1u apart, was 1.6u up to 5 players), because the stack starts further in from the rounded corner
+
+- [~] Part J: version 2.38.0, checks, test build, phone checklist 9an.12; regenerate the AI regression fixture (moves-2.38.0), the 2.34.5 one fails by design since Part A
+  - [x] Version 2.38.0 in `package.json`; `npm run check` clean, `npm test` 560 of 560, `node build.mjs` clean
+  - [x] Fixture `tests/ai/fixtures/moves-2.38.0.json` regenerated; 2.34.5's file kept. 463 of 500 recorded decisions differ from 2.34.5, and the same 463 differ on the committed HEAD, so Part H adds none (`Part A` take and ask rules, see DEVLOG). Audited: 7 recorded games, each the same as 2.34.5 up to one first change; 4 are a Normal leader now asking for cards (Part B `chooseTakeAsk`), 3 are an Easy bot's card pick (Easy's 30% ask roll uses the random stream first); the rest is the game going a different way. By design
+  - [x] Private test page published (https://claude.ai/artifact/9urVJuerjp4m2XqREoWp78)
+  - [ ] Phone checklist 9an.12 by the user, then approval to commit
 
 ## Phase 5 — Polish
 

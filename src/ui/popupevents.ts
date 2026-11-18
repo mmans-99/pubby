@@ -7,7 +7,7 @@ import type { PlayerId, SessionEvent } from '../session/types.ts';
 
 export const POPUP_EVENTS: ReadonlySet<SessionEvent['type']> = new Set<SessionEvent['type']>([
   'cardsTaken', 'drawAtEnd', 'drawCoward', 'finalTwoChoice', 'forfeited', 'jokerPlayed', 'jokersDiscarded',
-  'leaderChosen', 'pauseDeclined', 'peekAnswered', 'playerOut', 'reactionTapReplay', 'resumed', 'roundEnded',
+  'leaderChosen', 'pauseDeclined', 'peekAnswered', 'playerOut', 'playerRemoved', 'reactionTapReplay', 'resumed', 'roundEnded',
   'slapped', 'takeAnswered', 'takeRequested', 'targetReached', 'voteCalled', 'voteNeedsHost', 'voteResolved',
   'wastePilePickedUp',
 ]);

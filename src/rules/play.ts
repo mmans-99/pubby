@@ -52,6 +52,12 @@ export interface TrickState {
   readonly plays: readonly TrickPlay[];
   /** Participants who have had their turn (played a card or a joker). */
   readonly acted: readonly PlayerId[];
+  /**
+   * 9an.8 (2.38): how many players the trick started with. A removed player
+   * leaves `participants`, but the trick keeps its rules (a trick that started
+   * with three finishes under normal rules). Old saved games: participants.length.
+   */
+  readonly size?: number;
 }
 
 export interface PlayState {
@@ -138,7 +144,8 @@ function activeFrom(order: readonly PlayerId[], hands: PlayState['hands'], from:
 }
 
 function newTrick(state: Pick<PlayState, 'order' | 'hands'>, leader: PlayerId): TrickState {
-  return { participants: activeFrom(state.order, state.hands, leader), ledSuit: null, plays: [], acted: [] };
+  const participants = activeFrom(state.order, state.hands, leader);
+  return { participants, ledSuit: null, plays: [], acted: [], size: participants.length };
 }
 
 /** Plays of the led suit, highest first. */
@@ -331,14 +338,21 @@ export function playCard(state: PlayState, player: PlayerId, cardId: string): Pl
 
 /** After a play or joker that did not stop the trick: next turn, or resolve. */
 function finishTurn(state: PlayState, player: PlayerId, events: PlayEvent[]): PlayResult {
-  const trick = state.trick;
-  const next = nextToAct(trick, player);
+  const next = nextToAct(state.trick, player);
   if (next !== null) {
     // Includes a joker lead: the next player starts the trick with any card.
     return { state: { ...state, turn: next }, events };
   }
+  return afterLastTurn(state, events);
+}
 
-  if (trick.participants.length === 2) return resolveFinalTwo(state, events);
+/**
+ * Everyone in the trick has had their turn: final two, a joker-only trick, or
+ * the normal close. Also used when a removed player was the last to act (9an.8).
+ */
+function afterLastTurn(state: PlayState, events: PlayEvent[]): PlayResult {
+  const trick = state.trick;
+  if ((trick.size ?? trick.participants.length) === 2) return resolveFinalTwo(state, events);
 
   // Everyone has acted.
   if (trick.plays.length === 0) {
@@ -513,6 +527,88 @@ export function forfeit(state: PlayState, player: PlayerId): PlayResult {
   const other = otherOf(remaining, player);
   const events: PlayEvent[] = [{ type: 'forfeited', player }];
   return endRound(state, events, [...state.finished, other, player], state.wastePile, { forfeitedBy: player });
+}
+
+// ---------------------------------------------------------------------------
+// Removing a player during the round (9an.8, Part H)
+// ---------------------------------------------------------------------------
+
+/**
+ * The host removed `p` during the round (CODE.md 9an.8 H-d). Their hand, their
+ * aside jokers and their cards on the felt leave the game (not the waste pile,
+ * not `usedJokers`). `p` leaves `order`. The session adds the bottom places.
+ * If one player is left holding cards, the round ends and that player loses.
+ */
+export function removeFromPlay(state: PlayState, p: PlayerId): PlayResult {
+  if (state.over) throw new Error('The round is over');
+  if (!state.order.includes(p)) throw new Error(`${p} is not in the round`);
+
+  const trick = state.trick;
+  const myTurn = state.turn === p;
+  const betweenTricks = trick.acted.length === 0 && state.pendingFinalTwo === null;
+  // Their turn, mid-trick: who acts next, counting p as having acted (so the
+  // search skips them). Worked out before p leaves.
+  const nextAfterP = myTurn ? nextToAct({ ...trick, acted: [...trick.acted, p] }, p) : null;
+  // Between tricks: the next player clockwise who still holds cards leads.
+  const clockwiseHolder = activeFrom(state.order, state.hands, p).find((x) => x !== p) ?? null;
+
+  const order = state.order.filter((x) => x !== p);
+  // Final-two pick-up pending: the trick's cards already went to the waste pile,
+  // so p's card comes off the pile (and is not counted again below).
+  const pending = state.pendingFinalTwo !== null;
+  const theirCardIds = new Set(trick.plays.filter((x) => x.player === p).map((x) => x.card.id));
+  const pile = pending ? state.wastePile.filter((x) => !theirCardIds.has(x.id)) : state.wastePile;
+  const hands: Record<PlayerId, readonly Card[]> = { ...state.hands };
+  delete hands[p];
+  let asideJokers: PlayState['asideJokers'] = undefined;
+  if (state.asideJokers) {
+    const aside: Record<PlayerId, readonly Card[]> = { ...state.asideJokers };
+    delete aside[p];
+    asideJokers = aside;
+  }
+  const plays = trick.plays.filter((x) => x.player !== p);
+  const newTrickState: TrickState = {
+    size: trick.size ?? trick.participants.length,
+    participants: trick.participants.filter((x) => x !== p),
+    ledSuit: plays.length === 0 ? null : trick.ledSuit,
+    plays,
+    acted: trick.acted.filter((x) => x !== p),
+  };
+  const s: PlayState = {
+    ...state,
+    order,
+    hands,
+    asideJokers,
+    wastePile: pile,
+    forfeitAllowed: state.forfeitAllowed.filter((x) => x !== p),
+    trick: newTrickState,
+  };
+  const events: PlayEvent[] = [];
+
+  // One player left holding cards: the round ends. The trick cards still on the
+  // felt go to the waste pile (a pending pick-up has them there already); the
+  // one left is the loser.
+  const left = order.filter((x) => !state.finished.includes(x));
+  if (left.length <= 1) {
+    const waste = [...pile, ...(pending ? [] : plays.map((x) => x.card))];
+    return endRound(s, events, [...state.finished, ...left], waste);
+  }
+
+  // Between tricks: a fresh trick starts from the right player.
+  if (betweenTricks) {
+    const turn = myTurn ? clockwiseHolder : state.turn;
+    if (turn === null) throw new Error('No player left to lead the next trick');
+    return { state: { ...s, turn, trick: newTrick(s, turn) }, events };
+  }
+
+  // Mid-trick, their turn: the next player to act takes over, or the trick closes.
+  if (myTurn) {
+    if (nextAfterP !== null) return { state: { ...s, turn: nextAfterP }, events };
+    return afterLastTurn({ ...s, turn: null }, events);
+  }
+
+  // Mid-trick, someone else's turn: the trick carries on.
+  return { state: s, events };
 }
 
 // ---------------------------------------------------------------------------

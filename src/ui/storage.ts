@@ -174,7 +174,17 @@ export function loadGame(): SavedGame | null {
   // 2.20 fields: older saves have neither, which means the old behaviour.
   // 2.30: notices (older saves have none, which is the old behaviour).
   // 9an.3 (2.38): watch-a-hand list (empty before 2.38).
-  const session = { ...g.session, waitForAll: g.session.waitForAll ?? false, handSeen: g.session.handSeen ?? [], notice: g.session.notice ?? null, noticeSeen: g.session.noticeSeen ?? [], peeks: g.session.peeks ?? [] };
+  // 9an.8 (2.38): removed this round and gone from the game (empty before 2.38).
+  const session = {
+    ...g.session,
+    waitForAll: g.session.waitForAll ?? false,
+    handSeen: g.session.handSeen ?? [],
+    notice: g.session.notice ?? null,
+    noticeSeen: g.session.noticeSeen ?? [],
+    peeks: g.session.peeks ?? [],
+    removed: g.session.removed ?? [],
+    gone: g.session.gone ?? [],
+  };
   return {
     session, stage, holder: g.holder ?? g.session.hostId, trickLog: g.trickLog ?? [], lastTrick: g.lastTrick ?? null, notes: g.notes ?? {},
     ...(g.bots ? { bots: g.bots } : {}),

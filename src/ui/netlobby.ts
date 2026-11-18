@@ -35,7 +35,7 @@ import { lobbyLink } from '../net/signal.ts';
 import { canScan, startScanner, type Scanner } from '../net/scan.ts';
 import {
   addSeat, cleanName, joinProblem, jokerLine, LOBBY_PROTOCOL, lobbyProblems, moveSeat, NAME_MAX, newLobby,
-  readToHost, readToJoiner, removeSeat, renameSeat, seatName, sessionPlayers, setConnected, setReady, waitingText,
+  readToHost, readToJoiner, removeSeat, renameSeat, seatName, sessionPlayers, setConnected, setReady, waitingText, markRemoved,
   setAway, setBack, setBusy, isAway, addBot, setBotLevel, nextBotId,
   type Lobby, type LobbySeat, type ToHost, type ToJoiner,
 } from '../net/lobby.ts';
@@ -43,7 +43,7 @@ import { MAX_PLAYERS } from '../rules/cards.ts';
 import { createSession } from '../session/session.ts';
 import { defaultRng } from '../rules/rng.ts';
 import { hostLine } from './netscreens.ts';
-import { hostGotAct, hostGotReact, hostGotSay, hostResume, hostStart, hostSync, inNetGame, joinEnded, joinGotGame, joinGotReact, joinGotSay, joinNope, netChanged, setTransport, hostGotBusy, joinDelayMs, takeDrop } from './netplay.ts';
+import { hostGotAct, hostGotReact, hostGotSay, hostResume, hostStart, hostSync, inNetGame, joinEnded, joinGotGame, joinGotReact, joinGotSay, joinNope, netChanged, setOnRemovedLink, setTransport, hostGotBusy, joinDelayMs, takeDrop } from './netplay.ts';
 
 type Role = 'host' | 'join';
 type Step =
@@ -442,7 +442,7 @@ function body(): View {
     case 'join-code': return joinCodeView();
     case 'join-wait': return [topBar('Join a game'), h('div', { class: 'panel center' }, h('p', { class: 'net-big' }, 'Connected'), h('p', { class: 'muted small' }, 'Getting the game from the host…'))];
     case 'lost': return endView('Connection lost', 'This phone lost the link to the host. Rejoining a game comes in a later update: for now, the host starts again and adds you.');
-    case 'removed': return endView('Removed', 'The host took you out of this game.');
+    case 'removed': return endView('Removed', 'The host removed you from the game.');
     case 'closed': return endView('Game closed', 'The host closed the game.');
     case 'refused': return endView('Couldn’t join', endText);
     case 'failed': return endView('Couldn’t connect', endText);
@@ -813,6 +813,27 @@ function kick(id: string): void {
   draw();
 }
 
+/**
+ * CODE.md 9an.8 (H-g): the host removed a seat during a started game. The phone is told and its link is
+ * closed (online, the room refuses its token from now on, even if it was away). The seat stays, marked removed.
+ */
+function removeInGame(linkId: string): void {
+  const link = links.get(linkId);
+  if (link) {
+    link.peer.send({ t: 'removed' } satisfies ToJoiner);
+    dropLink(linkId, link);
+  } else {
+    hostRoom?.kick(linkId); // away: no open link, but the room must still refuse its token
+  }
+  const name = lobby?.seats.find((s) => s.id === linkId);
+  lobby = markRemoved(lobby!, linkId);
+  if (name) flash(`${seatName(name)} removed`);
+  broadcast();
+  draw();
+  netChanged();
+}
+setOnRemovedLink(removeInGame);
+
 function broadcast(): void {
   if (!lobby) return;
   // 2.4: the other phones see when the host is adding a player.
@@ -916,6 +937,8 @@ function dropLink(id: string, link: HostLink): void {
 function addOnlineLink(p: OnlineLink): void {
   if (!lobby) return;
   const seat = lobby.seats.find((s) => s.id === p.id);
+  // CODE.md 9an.8 (H-g): a removed seat never comes back (Part G's rejoin path must refuse it too).
+  if (seat?.removed) { p.send({ t: 'removed' } satisfies ToJoiner); hostRoom?.kick(p.id); return; }
   if (seat && !seat.isHost) {
     // CODE.md 9u A2/A5: a seated phone's socket is back. It keeps its seat and does not say hello again.
     links.set(p.id, { peer: p, lastHeard: performance.now(), seated: true });

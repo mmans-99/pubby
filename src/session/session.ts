@@ -18,9 +18,10 @@
 import { joinNames } from './names.ts';
 import { assertPlayerCount, jokerCount } from '../rules/cards.ts';
 import type { Card } from '../rules/cards.ts';
-import { autoDealAll, autoDealStart, autoDealStep, isDealComplete, manualDealCard, setDealMode } from '../rules/deal.ts';
+import { autoDealAll, autoDealStart, autoDealStep, isDealComplete, manualDealCard, removeSeat, setDealMode } from '../rules/deal.ts';
+import type { DealState } from '../rules/deal.ts';
 import type { PlayEvent, PlayResult, RoundEnd } from '../rules/play.ts';
-import { betweenTricks, forfeit, pickUpWastePile, playCard, startPlay, takeAllowed, takeCards } from '../rules/play.ts';
+import { betweenTricks, forfeit, pickUpWastePile, playCard, removeFromPlay, startPlay, takeAllowed, takeCards } from '../rules/play.ts';
 import type { Rng } from '../rules/rng.ts';
 import type { RoundSetup } from '../rules/round.ts';
 import {
@@ -45,6 +46,7 @@ import type {
   SessionEvent,
   SessionPhase,
   SessionSetup,
+  TapEntry,
   UltimateLabels,
 } from './types.ts';
 
@@ -69,7 +71,9 @@ function nameOf(s: Session, id: PlayerId | null): string {
 }
 
 function assertPlayer(s: Session, id: PlayerId): void {
-  if (!s.order.includes(id)) fail(`Unknown player: ${id}`);
+  if (s.order.includes(id)) return;
+  if (s.gone.includes(id)) fail(`${nameOf(s, id)} was removed from the game`);
+  fail(`Unknown player: ${id}`);
 }
 
 function assertHost(s: Session, by: PlayerId, what: string): void {
@@ -139,6 +143,8 @@ export function createSession(setup: SessionSetup, rng: Rng): ActionResult {
     takeRequests: [],
     peeks: [],
     kept: [],
+    removed: [],
+    gone: [],
     vote: null,
     paused: false,
     pausedAt: null,
@@ -181,6 +187,7 @@ function startNextRound(prev: Session, rng: Rng, out: Out): Session {
     takeRequests: [],
     peeks: [],
     kept: [],
+    removed: [],
     vote: null,
     ready: [],
     pauseRequests: [],
@@ -211,7 +218,8 @@ function reduce(s: Session, a: SessionAction, rng: Rng, out: Out): Session {
   if ('by' in a) assertPlayer(s, a.by);
 
   // While paused, only pause controls work.
-  if (s.paused && a.type !== 'resume' && a.type !== 'setPauseTimeLimit' && a.type !== 'tick') {
+  // 9an.8: removing a player is allowed while paused (a paused game is the likely moment).
+  if (s.paused && a.type !== 'resume' && a.type !== 'setPauseTimeLimit' && a.type !== 'tick' && a.type !== 'removePlayer') {
     fail('The game is paused');
   }
 
@@ -308,12 +316,7 @@ function reduce(s: Session, a: SessionAction, rng: Rng, out: Out): Session {
         hiddenDecks: res.hiddenDecks,
         swapDone: [...s.swapDone, a.by],
       };
-      if (s2.order.every((p) => s2.swapDone.includes(p))) {
-        // 2.20: with waitForAll, nobody leads until every phone has seen its new hand.
-        if (s2.waitForAll) return { ...s2, phase: 'cardCheck', handSeen: [] };
-        return decideLeaderStep(s2, out);
-      }
-      return s2;
+      return afterSwapGate(s2, out);
     }
     case 'seenHand': {
       assertPhase(s, 'cardCheck');
@@ -342,17 +345,7 @@ function reduce(s: Session, a: SessionAction, rng: Rng, out: Out): Session {
       if (!a.falseStart && !(a.ms >= 0)) fail('Reaction time must be 0 ms or more');
       out.emit(s, { type: 'reactionTapped', player: a.by, ms: a.ms, falseStart: a.falseStart });
       const results = { ...tap.results, [a.by]: { ms: a.ms, falseStart: a.falseStart } };
-      if (Object.keys(results).length < tap.players.length) return { ...s, tap: { ...tap, results } };
-      const outcome = resolveReactionTap(
-        tap.players.map((p) => ({ player: p, ms: results[p]!.ms, falseStart: results[p]!.falseStart })),
-      );
-      if (outcome.kind === 'replay') {
-        out.emit(s, { type: 'reactionTapReplay', players: outcome.players });
-        if (showsNotice(s)) return noticeAt({ ...s, tap: null }, { kind: 'tapTie', players: outcome.players, times: results }, out);
-        return { ...s, tap: { players: outcome.players, results: {} } };
-      }
-      if (showsNotice(s)) return noticeAt({ ...s, tap: null }, { kind: 'tapResult', players: tap.players, leader: outcome.slowest, times: results }, out);
-      return beginPlay({ ...s, tap: null }, outcome.slowest, 'reactionTap', out);
+      return completeTap({ ...s, tap: { ...tap, results } }, out);
     }
     case 'chooseLeader': {
       assertPhase(s, 'chooseLeader');
@@ -507,6 +500,11 @@ function reduce(s: Session, a: SessionAction, rng: Rng, out: Out): Session {
       assertPhase(s, 'results');
       if (s.vote) fail('Finish the vote first');
       return endOrOfferDraw(s, 'hostEnded', 1, out);
+    case 'removePlayer': {
+      const why = removeAllowed(s, a.by, a.player);
+      if (why) fail(why);
+      return removeFromGame(s, a.player, rng, out);
+    }
   }
 }
 
@@ -824,13 +822,17 @@ function endPeeks(s: Session, out: Out): Session {
 }
 
 function finishRound(s: Session, end: RoundEnd, out: Out): Session {
-  const order = end.finishingOrder;
+  // 9an.8 (H-e): the people who stayed in finishing order, then the players removed this round (bottom places).
+  // The round is scored for everyone who started it, so `n` is the starting count.
+  const order = [...end.finishingOrder, ...s.removed];
   const n = order.length;
+  const loser = end.loser ?? (order[n - 1] as PlayerId);
   const pauseCleared = { paused: false, pausedAt: null, pauseRequests: [] as PlayerId[] };
+  const removedRecord = s.removed.length ? { removed: s.removed.slice() } : {};
 
   if (s.ultimateRound) {
     // Outside the score. Titles only.
-    const losers = end.sharedSecondLast ? end.sharedSecondLast.slice() : [order[n - 1] as PlayerId];
+    const losers = end.sharedSecondLast ? end.sharedSecondLast.slice() : [loser];
     const winnerCandidate = order[0] as PlayerId;
     const labels: UltimateLabels = {
       winner: losers.includes(winnerCandidate) ? null : winnerCandidate,
@@ -852,10 +854,11 @@ function finishRound(s: Session, end: RoundEnd, out: Out): Session {
           totals: s.scores,
           sharedSecondLast: end.sharedSecondLast,
           forfeitedBy: end.forfeitedBy,
+          ...removedRecord,
         },
       ],
     };
-    return endSession(s2, 'ultimatePlayed', out);
+    return endSession(s2, s2.order.length <= 1 ? 'playersLeft' : 'ultimatePlayed', out);
   }
 
   const points = scoreRound(order, end.sharedSecondLast);
@@ -866,7 +869,8 @@ function finishRound(s: Session, end: RoundEnd, out: Out): Session {
     ...pauseCleared,
     phase: 'results',
     scores: totals,
-    previous: { winner: order[0] as PlayerId, loser: order[n - 1] as PlayerId },
+    // 9an.8: the round's loser is the last player who held cards, never a removed player (H-e).
+    previous: { winner: order[0] as PlayerId, loser },
     ready: [],
     rounds: [
       ...s.rounds,
@@ -878,9 +882,12 @@ function finishRound(s: Session, end: RoundEnd, out: Out): Session {
         totals,
         sharedSecondLast: end.sharedSecondLast,
         forfeitedBy: end.forfeitedBy,
+        ...removedRecord,
       },
     ],
   };
+  // 9an.8 (H-f): one player left: the round is scored, then the game ends. That player wins.
+  if (s2.order.length <= 1) return endSession(s2, 'playersLeft', out);
   return checkTarget(s2, out);
 }
 
@@ -909,7 +916,7 @@ function doPause(s: Session, at: number, requestedBy: PlayerId | null, out: Out)
  * Final standings: highest score first. The Ultimate Winner outranks every
  * score; the Ultimate Loser(s) rank below every score.
  */
-export function finalStandings(s: Pick<Session, 'order' | 'scores' | 'ultimateLabels'>): {
+export function finalStandings(s: Pick<Session, 'order' | 'scores' | 'ultimateLabels'> & { readonly gone?: readonly PlayerId[] }): {
   standings: PlayerId[];
   winners: PlayerId[];
   decidedBy: 'ultimate' | 'highestScore';
@@ -919,7 +926,9 @@ export function finalStandings(s: Pick<Session, 'order' | 'scores' | 'ultimateLa
   const losers = labels?.losers ?? [];
   const winner = labels?.winner ?? null;
   const middle = byScore.filter((p) => p !== winner && !losers.includes(p));
-  const standings = [...(winner ? [winner] : []), ...middle, ...losers.filter((p) => p !== winner)];
+  const stayed = [...(winner ? [winner] : []), ...middle, ...losers.filter((p) => p !== winner)];
+  // 9an.8 (H-q7): removed players are listed below everyone who stayed, in the order they were removed.
+  const standings = [...stayed, ...(s.gone ?? []).filter((p) => !stayed.includes(p))];
   if (winner) return { standings, winners: [winner], decidedBy: 'ultimate' };
   const pool = middle.length ? middle : byScore;
   const top = Math.max(...pool.map((p) => s.scores[p] ?? 0));
@@ -931,6 +940,277 @@ function endSession(s: Session, reason: SessionEnd['reason'], out: Out): Session
   const ended: SessionEnd = { ...f, reason };
   out.emit(s, { type: 'sessionEnded', ...ended });
   return { ...s, phase: 'gameOver', vote: null, ended, paused: false, pausedAt: null, pauseRequests: [] };
+}
+
+// ---------------------------------------------------------------------------
+// Removing a player (9an.8, Part H; CODE.md 9an.8 H-a to H-h)
+// ---------------------------------------------------------------------------
+
+/** Why the host can't remove this player now, or null if they can (H-b). Network games only. */
+export function removeAllowed(s: Session, by: PlayerId, player: PlayerId): string | null {
+  if (by !== s.hostId) return 'Only the host can remove a player';
+  if (player === s.hostId) return "The host can't remove themselves";
+  if (s.gone.includes(player)) return `${nameOf(s, player)} was removed from the game`;
+  if (!s.order.includes(player)) return 'Unknown player';
+  if (s.players.find((p) => p.id === player)?.computer) return "Computer players can't be removed";
+  if (s.phase === 'gameOver') return 'The session has ended';
+  if (!keepOn(s)) return 'Removing a player is for network games';
+  return null;
+}
+
+/** Cards that leave the game with a removed player: their hand, aside jokers and cards on the felt (H-b). */
+function cardsWithPlayer(s: Session, p: PlayerId): number {
+  if (!ROUND_PHASES.includes(s.phase)) return 0;
+  const aside = s.play?.asideJokers?.[p]?.length ?? 0;
+  const onFelt = s.play?.trick.plays.filter((x) => x.player === p).length ?? 0;
+  return handOf(s, p).length + aside + onFelt;
+}
+
+/**
+ * The host removed `p` (H-c). Common steps for every phase, then the phase's
+ * own step: the cards leave the game, `p` leaves the table at once, and the
+ * round goes on (or ends) without them.
+ */
+function removeFromGame(s: Session, p: PlayerId, rng: Rng, out: Out): Session {
+  // Read before anything changes: whether p was part of the Reaction Tap or the notice.
+  const involved = {
+    tap: s.tap?.players.includes(p) ?? false,
+    notice: s.notice !== null && (s.notice.players.includes(p) || s.notice.leader === p),
+  };
+  out.emit(s, { type: 'playerRemoved', player: p, cards: cardsWithPlayer(s, p) });
+  let s1 = dropFromRound(s, p, out);
+  s1 = fixPrevious(s1);
+  s1 = votesAfterRemoval(s1, rng, out);
+  if (s1.phase === 'gameOver') return s1;
+  return phaseAfterRemoval(s1, p, involved, rng, out);
+}
+
+/**
+ * H-c, common steps: p leaves `order` and `gone`; during a round they also
+ * join `removed` (not once they are already out, and not on the results
+ * screen). Requests, peeks, votes and readiness involving p are cleared.
+ */
+function dropFromRound(s: Session, p: PlayerId, out: Out): Session {
+  const inRound = ROUND_PHASES.includes(s.phase);
+  const alreadyOut = s.play?.finished.includes(p) ?? false;
+
+  for (const r of s.takeRequests) {
+    if (r.requester === p || r.target === p) {
+      out.emit(s, { type: 'takeCancelled', requester: r.requester, target: r.target, reason: 'notPossible' });
+    }
+  }
+  for (const pk of s.peeks) {
+    if (pk.viewer === p || pk.target === p) out.emit(s, { type: 'peekStopped', viewer: pk.viewer, target: pk.target, by: null });
+  }
+  const hands: Record<PlayerId, readonly Card[]> = { ...s.hands };
+  delete hands[p];
+  // H-c.4: p's ballot is dropped. A ballot from someone no longer at the table must not decide anything.
+  let vote = s.vote;
+  if (vote && p in vote.ballots) {
+    const ballots: Record<PlayerId, Ballot> = { ...vote.ballots };
+    delete ballots[p];
+    vote = { ...vote, ballots };
+  }
+  let tap = s.tap;
+  if (tap) {
+    const results: Record<PlayerId, TapEntry> = { ...tap.results };
+    delete results[p];
+    tap = { players: tap.players.filter((x) => x !== p), results };
+  }
+  // The rules engine removes p from the trick itself (removeFromPlay). Outside play the play state
+  // only keeps the round's order for the results screen.
+  const play = s.play && s.phase !== 'playing' ? { ...s.play, order: s.play.order.filter((x) => x !== p) } : s.play;
+
+  return {
+    ...s,
+    order: s.order.filter((x) => x !== p),
+    gone: [...s.gone, p],
+    removed: inRound && !alreadyOut && s.phase !== 'results' ? [...s.removed, p] : s.removed,
+    hands,
+    play,
+    takeRequests: s.takeRequests.filter((r) => r.requester !== p && r.target !== p),
+    peeks: s.peeks.filter((pk) => pk.viewer !== p && pk.target !== p),
+    kept: s.kept.filter((x) => x !== p),
+    swapDone: s.swapDone.filter((x) => x !== p),
+    handSeen: s.handSeen.filter((x) => x !== p),
+    noticeSeen: s.noticeSeen.filter((x) => x !== p),
+    ready: s.ready.filter((x) => x !== p),
+    pauseRequests: s.pauseRequests.filter((x) => x !== p),
+    vote,
+    tap,
+  };
+}
+
+/**
+ * H-c.5: if p was the round's loser (next dealer) or winner (who picks the
+ * leader), the job goes to the next player in that round's finishing order who
+ * is still in: the winner's job to 2nd place, the dealer's job to the player
+ * just above them. Only the last round's result is held here.
+ */
+function fixPrevious(s: Session): Session {
+  if (!s.previous) return s;
+  const stillIn = (x: PlayerId) => s.order.includes(x);
+  const { winner, loser } = s.previous;
+  if (stillIn(winner) && stillIn(loser)) return s;
+  const fo = s.rounds.length ? s.rounds[s.rounds.length - 1]!.finishingOrder : [];
+  let w = winner;
+  let l = loser;
+  if (!stillIn(winner)) w = fo.find((x) => stillIn(x)) ?? (s.order[0] as PlayerId);
+  if (!stillIn(loser)) {
+    const i = fo.indexOf(loser);
+    let found: PlayerId | undefined;
+    for (let k = i - 1; k >= 0 && found === undefined; k--) {
+      if (stillIn(fo[k] as PlayerId)) found = fo[k] as PlayerId;
+    }
+    l = found ?? (s.order[s.order.length - 1] as PlayerId);
+  }
+  return { ...s, previous: { winner: w, loser: l } };
+}
+
+/** H-c.4: the vote with p's ballot dropped: decided if the rest are enough (as castVote). */
+function votesAfterRemoval(s: Session, rng: Rng, out: Out): Session {
+  const v = s.vote;
+  if (!v || v.awaitingHost) return s;
+  const everyone = Object.keys(v.ballots).length === s.order.length;
+  const tally = tallyVote(v.ballots, s.order.length, everyone);
+  if (tally === 'passed') return resolveVote(s, true, 'majority', rng, out);
+  if (tally === 'failed') return resolveVote(s, false, 'majority', rng, out);
+  if (tally === 'hostDecides') return needHost(s, out);
+  return s;
+}
+
+/** The phase's own step after p's removal (H-c, by phase). */
+function phaseAfterRemoval(
+  s: Session,
+  p: PlayerId,
+  involved: { tap: boolean; notice: boolean },
+  rng: Rng,
+  out: Out,
+): Session {
+  if (s.phase === 'results') return s.order.length <= 1 ? endSession(s, 'playersLeft', out) : s;
+  if (s.phase === 'playing') {
+    // The rules engine takes p out of the trick, and ends the round if one player is left (H-d).
+    return afterPlay(s, removeFromPlay(s.play!, p), out);
+  }
+  // Round running but one player left: the round is scored with no play, then the game ends (H-e, H-f).
+  if (s.order.length <= 1) return endRoundWithoutPlay(s, out);
+
+  switch (s.phase) {
+    case 'dealing':
+      return dealingAfterRemoval(s, p, out);
+    case 'reshuffle':
+      return s;
+    case 'swap':
+      // Stay in swap even at three to two: the hidden decks were set for three, and the swap still works (H-c).
+      return afterSwapGate(s, out);
+    case 'cardCheck':
+      if (s.order.every((x) => s.handSeen.includes(x))) return decideLeaderStep(s, out);
+      return s;
+    case 'leadNotice':
+      if (involved.notice) return redecideLeader(s, out);
+      return advanceNoticeIfEveryoneSeen(s, out);
+    case 'reactionTap':
+      if (involved.tap) return redecideLeader(s, out);
+      return completeTap(s, out);
+    case 'chooseLeader':
+      // The fixed previous winner now chooses (fixPrevious); nothing else to do.
+      return s;
+    default:
+      return s;
+  }
+}
+
+/** H-e: the round ends with one player left and no trick played. That player is the round's loser. */
+function endRoundWithoutPlay(s: Session, out: Out): Session {
+  const left = s.order[0] as PlayerId;
+  const end: RoundEnd = { finishingOrder: [left], loser: left, sharedSecondLast: null, forfeitedBy: null };
+  return finishRound({ ...s, deal: null, vote: null, tap: null, notice: null, noticeSeen: [] }, end, out);
+}
+
+/**
+ * H-c dealing: p's seat leaves the deal (their cards already dealt go with them). If p was the
+ * dealer, the rest of the deal goes out by itself at once (H-q6).
+ */
+function dealingAfterRemoval(s: Session, p: PlayerId, out: Out): Session {
+  const before = s.deal as DealState;
+  let deal = before.seats.includes(p) ? removeSeat(before, p) : before;
+  if (s.dealer !== p) return afterDealStep({ ...s, deal }, out);
+  const first = deal.nextSeat ?? seatAfter(before, p, deal);
+  deal = autoDealStart(deal, first);
+  return afterDealStep({ ...s, deal: autoDealAll(deal) }, out);
+}
+
+/** The next seat clockwise from `p` (in the deal before p left) that is still in the deal. */
+function seatAfter(before: DealState, p: PlayerId, after: DealState): PlayerId {
+  const n = before.seats.length;
+  const i = before.seats.indexOf(p);
+  if (i >= 0) {
+    for (let k = 1; k < n; k++) {
+      const cand = before.seats[(i + k) % n] as PlayerId;
+      if (after.seats.includes(cand)) return cand;
+    }
+  }
+  return after.seats[0] as PlayerId;
+}
+
+/** H-c swap: the swap gate, after a swap or a removal. Everyone left has swapped: on to the next step. */
+function afterSwapGate(s: Session, out: Out): Session {
+  if (!s.order.every((p) => s.swapDone.includes(p))) return s;
+  // 2.20: with waitForAll, nobody leads until every phone has seen its new hand.
+  if (s.waitForAll) return { ...s, phase: 'cardCheck', handSeen: [] };
+  return decideLeaderStep(s, out);
+}
+
+/** H-c leadNotice: everyone left has tapped OK on the notice: the next step. */
+function advanceNoticeIfEveryoneSeen(s: Session, out: Out): Session {
+  const persons = s.order.filter((p) => !isComputer(s, p));
+  if (!s.waitForAll || persons.length === 0 || !persons.every((p) => s.noticeSeen.includes(p))) return s;
+  return advanceNotice({ ...s, noticeSeen: [] }, out);
+}
+
+/**
+ * H-c leadNotice / reactionTap: someone involved in the decided leader left, so the leader is
+ * decided again with the players who are left. Missing-suit pop-ups are not sent a second time.
+ */
+function redecideLeader(s: Session, out: Out): Session {
+  const declared = new Set(
+    s.log.filter((e) => e.round === s.round && e.event.type === 'missingSuitDeclared').map((e) => (e.event as { player: PlayerId }).player),
+  );
+  for (const m of missingSuitPlayers(s.order, s.hands)) {
+    if (!declared.has(m.player)) out.emit(s, { type: 'missingSuitDeclared', player: m.player });
+  }
+  const base: Session = { ...s, notice: null, noticeSeen: [], tap: null };
+  const d = decideLeader(roundSetup(base), base.hands);
+  if (d.kind === 'leader') {
+    if (d.reason === 'missingSuit' && showsNotice(base)) return noticeAt(base, { kind: 'missingOne', players: [d.leader], leader: d.leader }, out);
+    return beginPlay(base, d.leader, d.reason, out);
+  }
+  if (d.kind === 'reactionTap') {
+    if (showsNotice(base)) return noticeAt(base, { kind: 'missingMany', players: d.players }, out);
+    return startReactionTap(base, d.players, out);
+  }
+  return { ...base, phase: 'chooseLeader' };
+}
+
+/**
+ * The Reaction Tap, once every player in it has tapped: the slowest leads, or
+ * a tie runs again. Used after a tap and after a removal (H-c).
+ */
+function completeTap(s: Session, out: Out): Session {
+  const tap = s.tap;
+  if (!tap || tap.players.length === 0) return s;
+  const results = tap.results;
+  if (!tap.players.every((p) => results[p])) return s;
+  const outcome = resolveReactionTap(
+    tap.players.map((p) => ({ player: p, ms: results[p]!.ms, falseStart: results[p]!.falseStart })),
+  );
+  if (outcome.kind === 'replay') {
+    out.emit(s, { type: 'reactionTapReplay', players: outcome.players });
+    if (showsNotice(s)) return noticeAt({ ...s, tap: null }, { kind: 'tapTie', players: outcome.players, times: results }, out);
+    return { ...s, tap: { players: outcome.players, results: {} } };
+  }
+  if (showsNotice(s)) return noticeAt({ ...s, tap: null }, { kind: 'tapResult', players: tap.players, leader: outcome.slowest, times: results }, out);
+  return beginPlay({ ...s, tap: null }, outcome.slowest, 'reactionTap', out);
 }
 
 /** Cards a player holds right now (before play: the dealt hand; during play: the play hand). */

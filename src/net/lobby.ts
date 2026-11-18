@@ -31,6 +31,8 @@ export interface LobbySeat {
   awaySince?: number;
   /** CODE.md 9ai.3 (2.36): this phone has a pop-up open, so the game waits for it (not set for computer players). */
   busy?: boolean;
+  /** CODE.md 9an.8 (2.38): the host removed this player during a started game. The seat stays (player ids come from seat order). */
+  removed?: true;
   /** CODE.md 9u Part C (2.26): a computer player, on the host's phone only. Its id is "b1", "b2"… */
   bot?: { level: Level };
 }
@@ -149,6 +151,7 @@ export function readToJoiner(raw: unknown): ToJoiner | null {
         const seat: LobbySeat = { id: s['id'], profileName: s['profileName'], sessionName: s['sessionName'], isHost: s['isHost'] === true, connected: s['connected'] !== false, ready: s['ready'] === true };
         if (typeof s['awaySince'] === 'number') seat.awaySince = s['awaySince'];
         if (s['busy'] === true) seat.busy = true;
+        if (s['removed'] === true) seat.removed = true;
         const bot = s['bot'];
         if (isObj(bot) && (bot['level'] === 'easy' || bot['level'] === 'normal' || bot['level'] === 'hard')) seat.bot = { level: bot['level'] };
         seats.push(seat);
@@ -290,7 +293,12 @@ export function setReady(lobby: Lobby, id: string, ready: boolean): Lobby {
 
 /** Phase 4d: the seats the game is still waiting for (not at the table yet, without a link, or away). */
 export function waitingSeats(lobby: Lobby): LobbySeat[] {
-  return lobby.seats.filter((s) => !s.isHost && (!s.ready || !s.connected || s.awaySince !== undefined));
+  return lobby.seats.filter((s) => !s.isHost && !s.removed && (!s.ready || !s.connected || s.awaySince !== undefined));
+}
+
+/** CODE.md 9an.8 (H-g): the host removed this player during a started game. Clears away and busy. The seat stays. */
+export function markRemoved(lobby: Lobby, id: string): Lobby {
+  return { ...lobby, seats: lobby.seats.map((s) => (s.id === id && !s.isHost ? { ...s, removed: true, awaySince: undefined, busy: undefined } : s)) };
 }
 
 /**
