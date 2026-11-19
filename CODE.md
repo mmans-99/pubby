@@ -4517,6 +4517,94 @@ Build 2 (3.0.0, live app after push, two or three phones, at least one on mobile
 17. Seat badges never cover the card count, hourglass or eye.
 18. Nearby (QR) games: no voice buttons anywhere.
 
+### 9aq.15 Build 2 follow-ups, 3.0.1 (PLAN, Opus, user 2026-11-19 18:25; questions answered 18:35; APPROVED 18:38; written for Haiku)
+
+3.0.0 is on main (61716f1). Four open items. Order: **D first** (done 18:37, see Part D), then **B** (diagnose before any fix), then **A** and **C** together (one screenshot script covers both). One test build, **3.0.1**. Voice only runs on the live app (the test link can't reach the room server), so the order is the same as build 2: browser checks and screenshots here, the user's "push", then the phone test.
+
+#### Part A: the landscape rail with voice (9aq.11 item 2)
+
+**What is there now.** The rail is the top bar turned into a column (`html[data-rail="1"] .game-bar`, `layout.ts` `rail` when the height is 500 or less). `tableMicButton` and `tableVoiceButton` are already in that bar, so they already show in the rail right under the menu button (Voice shows because `innerWidth >= 390` is true in landscape). Nothing sizes them: the rail never checks its height.
+
+**The sums (40 px buttons, 6 px gaps, 8 px top padding).** The bottom of the rail holds three floating buttons: quick rules (bottom 8), sound (bottom 56), 😂 (bottom 104), so the top group must end above `H − 150`. Slots that fit in the top group: **740×360 → 4**, **844×390 → 5**, **915×412 → 5**. Today's top group: menu, mic, Voice, round chip, pause, then (by phase) the target chip or target button, Take cards, and while dealing the joker and hidden-deck chips. So even in plain play at 740×360 the group is 5 or more, and while dealing it can be 8. Step A1 confirms this on screen before anything changes.
+
+**Design (Q1: Option 1 chosen):**
+- **Option 1 (recommended, follows mockup 4):** the rail top reads menu, mic, then the game chips, in a fixed order of importance: menu, mic, round chip, pause, Take cards, target chip or target button, deal chips, Voice. A new pure function `railFit(viewH, items)` in `layout.ts` works out how many fit (the sums above). Whatever doesn't fit moves into the game menu: Voice is already a menu item; the deal chips become one line at the top of the menu ("4 jokers · 1 hidden deck", tapping the hidden-deck part opens its rule as now). Nothing is ever squeezed, shrunk or hidden under the 😂 button. Unit tests for `railFit` at 320, 360, 390, 412 and 500 high, in every phase.
+- **Option 2 (talk buttons by the thumb):** the mic moves to the bottom group, right above 😂, so the two "talk" buttons sit where the left thumb rests. The quick rules button moves into the menu on landscape phones, so the bottom group stays three tall. Voice is in the menu only. The top group then keeps one more game chip. The same `railFit` rule handles whatever still doesn't fit.
+
+Either way:
+- A1. **Before any change**, screenshots of 3.0.0 in the rail at 740×360 and 844×390 in each phase (dealing, round start with target button, playing, Take cards showing, results, game over), with a box-overlap check (any two `.game-bar > *` boxes, or a bar item and `.rules-btn`, `.sound-btn`, `.reactions-toggle`, overlap → fail). Record what overlaps today in 9aq.6.
+- A2. Build the chosen option. The mic keeps the 9aq.10 states (green ring when on, red dot when blocked) at 40 px.
+- A3. Tablets on their side (height over 500, for example 1180×820) keep the top bar and the portrait rule. No change.
+- A4. **Results ready panel mic (9aq.11 item 5): dropped** (Q2). The bar or rail mic is on screen during results.
+
+#### Part B: Cat's missed lobby talk ring (diagnose first, no fix yet)
+
+**What the check does.** `voice_check.py` step 3: Ben's fake mic talks, each page gets one click at (4, 4), then it waits 25 s for `[data-voice].talking` on Amy's and Cat's pages. Amy's ring showed; Cat's didn't, in 1 run of 4.
+
+**Suspects, from the code (none confirmed):**
+- **H1, signal dropped.** Ben (p2) offers to Cat (p3) through the host. The host forwards a `vsig` only if `to?.seated` (`netlobby.ts` around line 1367, and line 855 for the host's own). An offer sent before the host marks Cat seated is dropped without a word. The connection then sits in `new` or `have-local-offer`, which is never `failed`, so the one retry (`voice.ts` line 246) never runs.
+- **H2, sound locked.** The level meter reads from the shared `AudioContext` (`audio/engine.ts`). The `pointerdown` handler (`voicertc.ts` line 38) calls `play()` on the voice elements but never `resume()` on that context. Music is off by default, so on a joiner's page nothing may have woken the context. A suspended context gives a level of 0, so no ring.
+- **H3, too quiet at first.** Auto gain and noise suppression on the receiving side keep the level under `TALK_LEVEL` (0.02) for the first seconds.
+- **H4, wrong stream.** The meter reads an old stream (the 3.0.0 fix covers renegotiation; check it also covers a track that arrives before the stream is set).
+- **H5, test only.** The 25 s wait runs out on a slow run, or the click at (4, 4) lands on something on Cat's page.
+
+**B1. A read-only debug snapshot (the only code change in Part B).** `voiceDebug()` in `voiceglue.ts`, put on `window.__pubbyVoice` **only** when the page URL has `?voicedebug` (the testbed adds it; players never see it). It returns, for each other person: `connectionState`, `iceConnectionState`, `signalingState`, transceiver `currentDirection`, whether a remote track arrived and its `readyState` and `muted`, the audio element's `paused` and `muted`, the current level and the highest level in the last 2 s, `talking`, and counts of `vsig` sent and received for that pair. Also the `AudioContext` state, and on the host the count of `vsig` dropped (with the reason: not seated, wrong `from`).
+**B2. `voice_check.py --repeat N --trace`:** runs the whole check N times (fresh relay and browser each run). During step 3 it saves the snapshot from all three pages every 250 ms to `testbed/out/voice_trace_<run>.json`. When a ring check fails it prints the last snapshot of the failing page for the talker's pair.
+**B3.** Run 20 times. Sort each miss into H1 to H5 by the trace:
+- H1: Cat's pair with Ben never reaches `connected`, and the host's dropped count is above 0.
+- H2: connected, track live, `AudioContext` `suspended`, level 0.
+- H3: connected, context running, highest level above 0 but under 0.02.
+- H4: track ended or replaced, level 0.
+- H5: everything fine and the ring shows just after the 25 s.
+**B4.** Write what was found into 9aq.6 and stop. A fix is planned only after that, with the user (Opus if it is H1 or something not on this list). If 20 runs give no miss, record "0 of 20" and keep the item open, with `--trace` on for every later run.
+
+#### Part C: screenshots at six sizes, the seat card, the Voice sheet entrance (9aq.13 items 3 and 4)
+
+New `testbed/voice_shots.py`, local relay and fake mic as in `voice_check.py`, `?voicedebug` on.
+- C1. **Sizes:** 360×740, 390×844, 412×915, 844×390, 740×360, 1180×820. Saved to `testbed/out/shots/<size>_<scene>.png`.
+- C2. **Scenes:** the lobby with 2 people and with 8 people (8 pages); the top bar or rail while dealing with the target button and the deal chips; plain play; Take cards showing; results; the Voice sheet with 7 other people (it scrolls inside itself, never off the screen); one seat with all four marks at once (card count, hourglass, eye, keep marks) plus a voice badge.
+- C3. **Seat card at each edge.** Get to the `playing` phase (Deal all, then the testbed bot plays the other seats), then tap the left, top and right seats on Amy's page, and Ben's seat when it is the bottom-most other seat. The card must stay on screen, never cover your hand's Play button, and close on a tap outside.
+- C4. **Automatic checks per shot:** nothing wraps (each `.game-bar` child's height equals one row in portrait), no two bar or rail boxes overlap, the voice badge box doesn't overlap `.disc-count`, the hourglass, the eye or the keep marks, and no box is outside the viewport.
+- C5. **Voice sheet entrance runs once.** Open the sheet on Amy's page while Ben talks. For 5 s, Cat sends a typed message every 300 ms. Count `animationstart` events on `.sheet` (a listener added before the sheet opens): must be exactly 1. Also check the overlay has the class `seen` after the first redraw.
+- C6. Also count redraws in that time (the `.seat-disc` identity check already in `voice_check.py`, done again with the sheet open).
+- C7. **Build 1's screenshots (9aq.5 item 3):** added to this script (Q4 yes), see Answers.
+- C8. Look at every screenshot by eye, as well as the automatic checks, and list anything off in 9aq.6.
+
+#### Part D: is the live server 3.0.0?
+
+**Note: "protocol 13" never reaches the server.** `LOBBY_PROTOCOL` 13 is checked phone to phone: the host's phone compares the joiner's `hello` (protocol and app version, `lobby.ts` line 251). The server only checks `RELAY_PROTOCOL`, which is still **1** (3.0.0 didn't change it), and `/health` answers `{"ok":true,"protocol":1}` on the old and the new server alike. So `/health` can't tell them apart. The `/turn` route can: the new server answers a made-up token with **403 `{"error":"token"}`**, and the old server with **404 `{"error":"not-found"}`**.
+
+**Why it matters.** The deploy runs `npm run check` (the server type check) first. That check was never run in the build session (no network for `@cloudflare/workers-types`). If it failed, the old server is still live, and the app quietly falls back to STUN (`voiceIceServers` returns null). Voice then works on Wi-Fi but often not on mobile data, so the failure would look like a phone problem.
+
+**Result (user 18:37):** D1 and D2 done: "Deploy the room server" #5 and "Deploy to GitHub Pages" #87 for 61716f1 are both green, so the new server and 3.0 app are live. D3 and D4 not run yet (optional; D4 happens anyway in the phone test).
+
+Checks (the user does D1 to D4; this session can't reach GitHub Actions, `workers.dev` or `github.io`):
+- D1. GitHub → Actions: "Deploy the room server" for commit 61716f1 is green. If it is red, the failing step and its last lines.
+- D2. Same for the Pages deploy (`pages.yml`), so the live app is 3.0.
+- D3. `/turn` probe from any computer (no browser: a browser page from another site is refused by the origin check):
+  `curl -i -X POST -H "Content-Type: application/json" -d "{\"token\":\"x\"}" https://pubby-rooms.mmans99.workers.dev/rooms/abcdefgh/turn`
+  403 with `{"error":"token"}` = new server. 404 with `{"error":"not-found"}` = old server (the deploy failed).
+- D4. Protocol 13, on two phones: both show **3.0** on the home screen (if one shows 2.39, close Pubby fully and open it again, twice). One makes an Online room, the other joins: the lobby shows the mic and Voice buttons on both. If a phone still on 2.39 tries to join a 3.0 room, it must get the "update the app" message, not a hang.
+- D5. Relay logins: phone 9aq.7 item 14 (mobile data, Wi-Fi off) is the real test that the TURN key on the Worker works. No line in the app for this (Q3: no).
+- If D1 or D3 shows the old server: a fix plan (Opus) for the type error, then re-run D1 and D3. No app change is needed for D.
+
+#### Part E: version, checks, test build
+
+- E1. `package.json` **3.0.1**. `npm run check`, `npm test`, `node build.mjs`, and the server type check if the network allows it (say so if not).
+- E2. `voice_check.py` (with `--repeat 5`), `online_check.py`, `landscape_check.py`, `voice_shots.py`. Record the pass counts in 9aq.6.
+- E3. The private test link shows the rail without voice (voice can't start there). Give the user the screenshots of the rail with voice instead. Phone test after the push: 9aq.7 items 9 to 18, plus the new items 19 and 20 below.
+
+Phone checklist additions:
+19. Landscape phone, Online game with voice: the rail never overlaps the 😂, sound or rules buttons in any phase; what doesn't fit is in the menu.
+20. Voice sheet: opening it while someone talks slides it up once; it never slides again while people talk or messages arrive.
+
+#### Answers (user 2026-11-19 18:35)
+- **Q1: Option 1.** Mic under the menu button; whatever doesn't fit goes into the menu (`railFit`). Option 2 is not built.
+- **Q2: yes, drop 9aq.11 item 5.** The bar or rail mic covers results and game over. Note it in 9aq.6 as dropped by the user.
+- **Q3: no line in the Voice sheet.** Keep the relay logic in the background; nothing new on screen. The `relay` flag shows only in the `?voicedebug` snapshot (Part B1), not to players.
+- **Q4: yes, add build 1's scenes** (9aq.5 item 3: each round-end pop-up head, a notice during play at 4 and 8 players, the round note with What happened, a network pop-up with the done row half filled, and the 10-redraw entrance check) to `voice_shots.py`. They have never been checked, and the notice strip's place was never measured against the seat name labels (9aq.6 build 1).
+
+
 ## 9. Conventions
 
 - Language: TypeScript, strict mode.

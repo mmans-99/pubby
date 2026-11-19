@@ -4,6 +4,16 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-19 (18:25, Opus) — Plan 9aq.15: build 2 follow-ups (docs only)
+
+**User:** plan four open items after the 3.0.0 push (61716f1): the landscape rail; Cat's missed lobby talk ring (diagnose first); screenshots at six sizes, the seat card and the Voice sheet entrance; check the live server takes protocol 13 and `/rooms/<id>/turn`.
+
+**Found:** the mic and Voice buttons already sit in the rail (it is the top bar as a column), but nothing checks the rail's height: at 740×360 only 4 buttons fit above the bottom group, and plain play already needs 5. 9aq.11 item 5 (results panel mic) was not built either. `LOBBY_PROTOCOL` 13 is checked phone to phone, not by the server (the server checks `RELAY_PROTOCOL` 1, unchanged), so `/health` can't show the new server; a made-up token on `/turn` can (403 new, 404 old). The server deploy runs a type check that was never run in the build session. For the ring: the host silently drops voice signals to a seat not yet seated, and nothing resumes the shared AudioContext on a tap; both are suspects, not confirmed.
+
+**Plan:** `CODE.md` 9aq.15 (Parts A to E, 3.0.1), `TODO.md` Phase 4z. Not approved yet. **18:35:** Q1 Option 1, Q2 drop the results-panel mic, Q3 no relay line (logic in the background), Q4 add build 1 screenshots to the script. **18:37:** both deploys for 61716f1 green (server #5, Pages #87). **18:38:** plan approved; docs pushed for Haiku. No code changed. This session could not reach the room server, GitHub Actions, the live app or npm.
+
+---
+
 ## 2026-11-19 (Haiku) — Build 9aq part 2 (3.0.0): voice chat in online rooms (not committed)
 
 **User:** "build CODE.md 9aq build 2 (Parts F to K, 3.0.0)"; "TURN secrets are set directly on the Worker in Cloudflare; skip the server.yml secrets change in 9aq Part F."

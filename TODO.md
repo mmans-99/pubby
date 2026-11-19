@@ -480,6 +480,12 @@ Build 2, 3.0.0 (after build 1 is pushed):
 - [x] Part J: Voice sheet, storage `pubby.voice` (mutes remembered by name) (built 3.0.0)
 - [~] Part K: 3.0.0; `voice_check.py` 31 of 31 (two runs); `online_check.py` 48 of 48; NOT done: screenshots at six sizes, flash check of the Voice sheet entrance, test build for build 2 (voice can't be tried on it). Push on "push"; phone checklist 9aq.7 items 9 to 18 on the live app
 - [ ] Open bug, intermittent: Cat's lobby talk ring missed in 1 of 4 `voice_check.py` runs (not confirmed; see CODE.md 9aq.6)
+Build 2 follow-ups, 3.0.1 (plan `CODE.md` 9aq.15, Opus 2026-11-19 18:25; questions answered 18:35: Option 1, drop results-panel mic, no relay line, add build 1 screenshots; APPROVED 18:38):
+- [x] Part D: server and Pages deploys for 61716f1 green (user 18:37); `/turn` probe and two-phone join optional, the join is covered by the phone test
+- [ ] Part B: Cat's ring: `?voicedebug` snapshot, `voice_check.py --repeat 20 --trace`, sort misses into H1 to H5; no fix until found
+- [ ] Part A: landscape rail with voice (`railFit`, Option 1); screenshots of 3.0.0's rail first
+- [ ] Part C: `voice_shots.py`: six sizes, seat card at each edge, all marks on one seat, Voice sheet entrance once
+- [ ] Part E: 3.0.1, checks, push on "push", phone checklist 9aq.7 items 9 to 20
 
 ## Phase 5 — Polish
 
