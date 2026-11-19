@@ -1669,14 +1669,15 @@ button.voice-mute.gold { border: 2px solid var(--gold); }
 .overlay.seen, .overlay.seen .sheet { animation: none; }
 
 /* 9aq.11 (3.0.0): voice on the table. Badges sit on the seat disc, opposite the card count. */
+/* 9aq.16 Fix 3 (3.0.2): sized from --u like the card count (the disc's own unit), so it never covers the initial. */
 .seat-disc .voice-badge {
-  position: absolute; bottom: -4px; width: 22px; height: 22px; border-radius: 50%;
+  position: absolute; bottom: calc(-0.75 * var(--u, 11px)); width: calc(1.5 * var(--u, 11px)); height: calc(1.5 * var(--u, 11px)); border-radius: 50%;
   display: grid; place-items: center; background: var(--cream); color: var(--ink);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); pointer-events: none;
 }
-.seat-disc .voice-badge.at-right { right: -4px; }
-.seat-disc .voice-badge.at-left { left: -4px; }
-.seat-disc .voice-badge .ic { width: 14px; height: 14px; }
+.seat-disc .voice-badge.at-right { right: calc(-0.75 * var(--u, 11px)); }
+.seat-disc .voice-badge.at-left { left: calc(-0.75 * var(--u, 11px)); }
+.seat-disc .voice-badge .ic { width: calc(1 * var(--u, 11px)); height: calc(1 * var(--u, 11px)); }
 .seat-disc .voice-badge.gold { border: 2px solid var(--gold); }
 .seat-disc .voice-badge.grey { color: #6b6455; }
 .table-mic.on { color: #1f7a45; }

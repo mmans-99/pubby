@@ -124,3 +124,32 @@ export function railFit<T>(viewH: number, items: readonly T[]): { shown: T[]; ov
   const n = Math.max(0, Math.min(items.length, Math.floor((room + RAIL_ROW_GAP) / (RAIL_BTN + RAIL_ROW_GAP))));
   return { shown: items.slice(0, n) as T[], overflow: items.slice(n) as T[] };
 }
+
+/**
+ * 9aq.16 Fix 2: the portrait top bar. The screen pads 8 px each side, and the right 98 px are kept for the
+ * sound and rules buttons (styles.css `.game-bar` padding-right). At 380 px or less the bar is narrower
+ * (styles.css: 2 px gaps, 4 px left padding), so the same rule is applied with those numbers.
+ */
+export const BAR_SCREEN_PAD = 16;
+export const BAR_RIGHT_KEEP = 98;
+export const BAR_NARROW_MAX_W = 380;
+
+/**
+ * 9aq.16 Fix 2: how many of the bar's buttons fit in a portrait window of `viewW` px. `widths` is each
+ * button's width in order (the order is the bar's order, the same as railFit: the first ones are kept).
+ * Gaps are 8 px (2 px when narrow). Whatever does not fit goes to the game menu's shelf.
+ */
+export function barFit(viewW: number, widths: readonly number[]): number {
+  const narrow = viewW <= BAR_NARROW_MAX_W;
+  const room = viewW - BAR_SCREEN_PAD - BAR_RIGHT_KEEP - (narrow ? 4 : 0);
+  const gap = narrow ? 2 : 8;
+  let used = 0;
+  let n = 0;
+  for (const w of widths) {
+    const next = n === 0 ? w : used + gap + w;
+    if (next > room) break;
+    used = next;
+    n += 1;
+  }
+  return n;
+}

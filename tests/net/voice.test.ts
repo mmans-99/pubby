@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ICE_MAX_AGE_MS, RETRY_MS, TalkDetector, VoiceMesh, iceFresh, offersTo, type LinkState, type VoiceDeps, type VoiceLink } from '../../src/net/voice.ts';
+import { ICE_MAX_AGE_MS, RETRY_MS, STUCK_MS, TalkDetector, VoiceMesh, iceFresh, offersTo, type LinkState, type VoiceDeps, type VoiceLink } from '../../src/net/voice.ts';
 import { readVoiceData, readToHost, readToJoiner, setMic, LOBBY_PROTOCOL, type VoiceData, type Lobby } from '../../src/net/lobby.ts';
 
 /** A fake link: records what the mesh did to it. */
@@ -199,18 +199,22 @@ test('a link to a new person keeps the mute remembered for them', () => {
   assert.equal(h.mesh.isMuted('c1'), true);
 });
 
+/** The 3 s retry timers only (each link also has a 10 s stuck check, 9aq.16 Fix 1). */
+function retries(h: ReturnType<typeof harness>) {
+  return h.timers.filter((t) => t.ms === RETRY_MS);
+}
+
 test('a failed link is retried once after 3 s with an ICE restart; a second failure leaves it', () => {
   const h = harness('c2');
   h.mesh.setPeers(ORDER, ['c1']);
   const l = h.byPeer('c1');
   assert.ok(l);
   l.state('failed');
-  assert.equal(h.timers.length, 1);
-  assert.equal(h.timers[0]?.ms, RETRY_MS);
-  h.timers[0]?.f();
+  assert.equal(retries(h).length, 1);
+  retries(h)[0]?.f();
   assert.equal(l.restarts, 1);
   l.state('failed');
-  assert.equal(h.timers.length, 1, 'no second retry');
+  assert.equal(retries(h).length, 1, 'no second retry');
 });
 
 test('a connection that comes back clears the retry, so the next failure gets one again', () => {
@@ -220,7 +224,68 @@ test('a connection that comes back clears the retry, so the next failure gets on
   l?.state('failed');
   l?.state('connected');
   l?.state('failed');
-  assert.equal(h.timers.length, 2);
+  assert.equal(retries(h).length, 2);
+});
+
+test('9aq.16 Fix 1: an offer that arrives before the seat order is kept, then given to the link once it opens', () => {
+  const h = harness('c2');
+  h.mesh.onSignal('c1', SDP);
+  h.mesh.onSignal('c1', ICE);
+  assert.equal(h.links.length, 0, 'no link before the order is known');
+  h.mesh.setPeers(ORDER, ['c1']);
+  const l = h.byPeer('c1');
+  assert.ok(l);
+  assert.equal(l.offer, false);
+  assert.deepEqual(l.signals, [SDP, ICE], 'the kept signals arrive once, in order');
+  h.mesh.onSignal('c1', ICE);
+  assert.equal(l.signals.length, 3, 'later signals go straight to the link');
+  assert.equal(h.mesh.earlyCounts()['c1'], undefined, 'kept signals are cleared after they are passed on');
+});
+
+test('9aq.16 Fix 1: an early signal from someone who never joins is never used', () => {
+  const h = harness('c2');
+  h.mesh.onSignal('ghost', SDP);
+  h.mesh.setPeers(ORDER, ['c1']);
+  assert.equal(h.links.length, 1);
+  assert.equal(h.byPeer('ghost'), undefined);
+  assert.equal(h.mesh.earlyCounts()['ghost'], 1, 'still kept, not used');
+});
+
+test('9aq.16 Fix 1: at most 50 early signals per person; the newest 50 are kept', () => {
+  const h = harness('c2');
+  for (let i = 0; i < 51; i += 1) h.mesh.onSignal('c1', { ice: { candidate: `candidate:${i}`, sdpMid: '0', sdpMLineIndex: 0 } });
+  assert.equal(h.mesh.earlyCounts()['c1'], 50);
+  h.mesh.setPeers(ORDER, ['c1']);
+  const got = h.byPeer('c1')?.signals ?? [];
+  assert.equal(got.length, 50);
+  assert.equal((got[0] as { ice: { candidate: string } }).ice.candidate, 'candidate:1', 'the oldest one (0) was dropped');
+  assert.equal((got[49] as { ice: { candidate: string } }).ice.candidate, 'candidate:50');
+});
+
+test('9aq.16 Fix 1: a link stuck in "new" for 10 s counts as failed once, and gets one ICE restart', () => {
+  const h = harness('c2');
+  h.mesh.setPeers(ORDER, ['c1']);
+  const l = h.byPeer('c1');
+  assert.ok(l);
+  const stuck = h.timers.filter((t) => t.ms === STUCK_MS);
+  assert.equal(stuck.length, 1, 'one stuck check per link');
+  stuck[0]?.f();
+  assert.equal(retries(h).length, 1, 'the stuck link gets the single retry');
+  retries(h)[0]?.f();
+  assert.equal(l.restarts, 1);
+  // Still stuck after the restart: no second stuck check and no second retry.
+  l.state('failed');
+  assert.equal(h.timers.filter((t) => t.ms === STUCK_MS).length, 1);
+  assert.equal(retries(h).length, 1);
+});
+
+test('9aq.16 Fix 1: a link that connected before 10 s is not counted as stuck', () => {
+  const h = harness('c2');
+  h.mesh.setPeers(ORDER, ['c1']);
+  const l = h.byPeer('c1');
+  l?.state('connected');
+  h.timers.find((t) => t.ms === STUCK_MS)?.f();
+  assert.equal(retries(h).length, 0);
 });
 
 test('links send their signals out through the host, one person at a time', () => {

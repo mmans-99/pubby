@@ -42,7 +42,7 @@ import { hostBroadcast, hostClock, joinSend, sendMessage, sendReaction } from '.
 import { cleanMessage } from '../net/lobby.ts';
 import { handH, noticeFading, roundTable, wastePile } from './table.ts';
 import { joinNames } from '../session/names.ts';
-import { gameLayout, railFit, type GameLayout } from './layout.ts';
+import { BAR_NARROW_MAX_W, barFit, gameLayout, railFit, type GameLayout } from './layout.ts';
 import { forfeitLine } from './popuptext.ts';
 import { mergeRoundEnd } from './roundend.ts';
 import { watchAskCard, watchEyeButton, watchingBlock, watchPill, watchSheet } from './watch.ts';
@@ -792,7 +792,9 @@ export function gameScreen(g: SavedGame): HTMLElement {
   const order = railBar ? RAIL_ORDER : PORTRAIT_ORDER;
   const built = new Map<BarKey, Child>(order.map((k) => [k, slot[k]()]));
   const present = order.filter((k) => k === 'menu' || (built.get(k) ?? null) !== null);
-  const fit = railBar ? railFit(window.innerHeight, present) : { shown: present, overflow: [] as BarKey[] };
+  // 9aq.16 Fix 2: the portrait bar keeps the buttons that fit the width (barFit), the rest goes to the menu shelf.
+  // Where every button fits, nothing changes from 3.0.0.
+  const fit = railBar ? railFit(window.innerHeight, present) : barKeysFit(window.innerWidth, present);
   // The menu shelf: the rail's buttons that did not fit, as copies (the voice item is already in the menu).
   const shelfKeys = fit.overflow.filter((k) => k !== 'voice');
   const shelf = shelfKeys.length === 0 ? null : h('div', {
@@ -926,6 +928,24 @@ function dealHidden(s: Session): HTMLElement | null {
 type BarKey = 'menu' | 'mic' | 'voice' | 'round' | 'pause' | 'targetChip' | 'targetButton' | 'jokers' | 'hidden' | 'take';
 const PORTRAIT_ORDER: BarKey[] = ['menu', 'mic', 'voice', 'round', 'pause', 'targetChip', 'targetButton', 'jokers', 'hidden', 'take'];
 const RAIL_ORDER: BarKey[] = ['menu', 'mic', 'round', 'pause', 'take', 'targetChip', 'targetButton', 'jokers', 'hidden', 'voice'];
+
+/**
+ * 9aq.16 Fix 2: each bar button's width in px, as styles.css sets it. Icon buttons, the round chip and the
+ * target button are 40; the jokers and hidden chips are 52 (36 when narrow); the target chip is 64 (44 when narrow,
+ * where its word is hidden).
+ */
+function barWidth(k: BarKey, viewW: number): number {
+  const narrow = viewW <= BAR_NARROW_MAX_W;
+  if (k === 'targetChip') return narrow ? 44 : 64;
+  if (k === 'jokers' || k === 'hidden') return narrow ? 36 : 52;
+  return 40;
+}
+
+/** 9aq.16 Fix 2: the portrait bar's split: the first keys that fit (barFit) are shown, the rest overflow. */
+function barKeysFit(viewW: number, keys: BarKey[]): { shown: BarKey[]; overflow: BarKey[] } {
+  const n = barFit(viewW, keys.map((k) => barWidth(k, viewW)));
+  return { shown: keys.slice(0, n), overflow: keys.slice(n) };
+}
 
 /** 9aq.15 A2: puts the rail's overflow shelf at the top of the game menu. */
 function withShelf(menu: HTMLElement, shelf: HTMLElement | null): HTMLElement {

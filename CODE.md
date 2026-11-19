@@ -4530,6 +4530,13 @@ Opus checked Haiku's 3.0.1 build (9aq.6 build 3) against the traces, the code an
 
 **Then (Part E again):** version **3.0.2**, `npm run check`, `npm test`, build, `voice_check.py --repeat 20 --trace` (20 of 20), `online_check.py`, `landscape_check.py`, `voice_shots.py`, `rail_shots.py after`; send the user `voice-740x360-table.png` and `voice-844x390-table.png` (the rail with voice) and the portrait shots at 360 and 390 while dealing. Test build, then push on "push".
 
+**Build 4 (3.0.2, Haiku, built 2026-11-19, not committed, not pushed; plan 9aq.16).** Fixes 1 to 4 built as planned, with these notes:
+- Fix 1: `STUCK_MS` 10 s and `EARLY_MAX` 50 in `voice.ts`. The stuck check uses `deps.later`, so two existing tests that counted every timer now count only the 3 s retries.
+- Fix 2: the CSS narrows the bar at 380 px and under (2 px gaps, 4 px left pad, 36 px bar chips, 44 px target chip). `barFit` uses 380 to match what is drawn, not 360 as the plan said. Take and the target button are 40 px (icon buttons).
+- Fix 4: the game starts in Manual. In Auto, `notStarted` (`game.ts`) waits for the dealer's "First card to" tap before dealing, so the script taps Auto, then the first visible "First card to" seat, then waits for the hand (60 s). The plan's "tap Auto" alone did not deal.
+- Results: `npm run check` clean; `npm test` 638 of 638; `voice_shots.py` 150 of 150 (six sizes); `rail_shots.py after` 40 of 40; `online_check.py` 48 of 48; `landscape_check.py` 24 of 24; `voice_check.py --repeat 20 --trace` NOT 20 of 20 (runs 1 to 3 31 of 31; run 4 failed at Ben's join step before any voice step, and the batch stopped). Part C scenes C2 and C7 not done.
+- Test build: https://claude.ai/artifact/3Y4a4YKJayvBL6RgkMrpiX (voice does not run on it).
+
 ### 9aq.7 Phone checklist
 
 Build 1 (2.39.0, test link):

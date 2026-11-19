@@ -15,6 +15,7 @@ Usage: npm run build && python3 testbed/voice_shots.py
 """
 
 import pathlib
+import re
 import sys
 import time
 
@@ -26,7 +27,7 @@ from playwright.sync_api import sync_playwright  # noqa: E402
 
 ROOT = vc.ROOT
 OUT = ROOT / 'testbed' / 'out' / 'shots'
-SIZES = [(360, 740), (390, 844), (412, 915), (844, 390), (740, 360), (1180, 820)]
+SIZES = [(390, 844)] if __import__("os").environ.get("ONE") else [(360, 740), (390, 844), (412, 915), (844, 390), (740, 360), (1180, 820)]
 DEBUG = vc.DEBUG
 FLOAT_H = 150
 
@@ -89,6 +90,10 @@ def open_voice(page):
         page.get_by_role('button', name='Voice', exact=True).click()
 
 
+def table_mic(page):
+    return page.locator('button.table-mic, button.mic-btn').first
+
+
 def run_size(browser, base, errors, w, h, results):
     tag = f'{w}x{h}'
     proc, server = oc.start_relay()
@@ -127,9 +132,16 @@ def run_size(browser, base, errors, w, h, results):
         amy.get_by_role('button', name='Start game').click()
         oc.wait_for(lambda: all(p.locator('.screen.game').count() == 1 for _, p in pages), 25)
         time.sleep(2)
-        if amy.get_by_role('button', name='Deal all', exact=True).count() == 1:
-            amy.get_by_role('button', name='Deal all', exact=True).click()
-        dealt = oc.wait_for(lambda: amy.locator('.hand .card').count() > 0, 15)
+        # 9aq.16 Fix 4: the game starts in Manual deal mode ("Tap a name to deal"). In Auto (the .seg-btn), the
+        # dealer first taps who gets the first card ("First card to <name>", game.ts notStarted), and then the
+        # cards are dealt by themselves. So: tap Auto, tap the first visible "First card to" seat, then wait for Amy's hand.
+        auto = amy.locator('.seg-btn', has_text='Auto')
+        if oc.wait_for(lambda: auto.count() == 1, 15) and auto.get_attribute('aria-pressed') != 'true':
+            auto.click()
+        first = amy.locator('button[data-seat][aria-label^="First card to"]')
+        if oc.wait_for(lambda: any(first.nth(i).is_visible() for i in range(first.count())), 15):
+            next(first.nth(i) for i in range(first.count()) if first.nth(i).is_visible()).click()
+        dealt = oc.wait_for(lambda: amy.locator('.hand .card').count() > 0, 60)
         results.append((f'{tag}: Amy is dealt in (playing)', dealt))
         time.sleep(2)
 
@@ -158,7 +170,7 @@ def run_size(browser, base, errors, w, h, results):
         results.append((f'{tag} Voice sheet: the seat discs keep their elements while Ben talks', bool(disc_kept)))
         # Then redraws: Ben turns his mic off and on ten times in 5 s, so Amy's phone redraws each time.
         for _ in range(10):
-            vc.mic_button(ben).click()
+            table_mic(ben).click()  # 9aq.16 Fix 4: on the table the mic is .table-mic (the lobby one is .mic-btn)
             time.sleep(0.45)
         time.sleep(0.5)
         anim = amy.evaluate('() => window.__sheetAnim')
@@ -214,6 +226,8 @@ def main():
             try:
                 run_size(browser, base, errors, w, h, results)
             except Exception as e:  # one size failing must not hide the others
+                import traceback
+                traceback.print_exc(limit=-3)
                 results.append((f'{w}x{h}: the run stopped early ({type(e).__name__})', False))
             for name, ok in results[mark:]:
                 print(('PASS ' if ok else 'FAIL ') + name, flush=True)

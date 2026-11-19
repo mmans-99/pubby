@@ -17,6 +17,16 @@ export const TALK_OFF_MS = 400;
 export const RETRY_MS = 3000;
 /** The relay logins from /turn are kept this long, then asked for again (9aq.9 item 1). */
 export const ICE_MAX_AGE_MS = 2.5 * 60 * 60_000;
+/**
+ * 9aq.16 Fix 1: a link that has not reached "connected" this long after it opened
+ * counts as failed once (the same single retry as a real failure).
+ */
+export const STUCK_MS = 10_000;
+/**
+ * 9aq.16 Fix 1: signals from someone not yet in the seat order are kept, at most this many
+ * per person (the newest), and passed to their link when it opens.
+ */
+export const EARLY_MAX = 50;
 
 /**
  * In each pair the player earlier in the seat order makes the offer, so two offers never cross.
@@ -114,6 +124,10 @@ export class VoiceMesh {
   private lastLevel = new Map<string, number>();
   private muted = new Set<string>();
   private retried = new Set<string>();
+  /** 9aq.16 Fix 1: links that have reached "connected" since they opened. */
+  private connected = new Set<string>();
+  /** 9aq.16 Fix 1: signals that came before the seat order knew the sender (H6), per person. */
+  private early = new Map<string, VoiceData[]>();
   private track: unknown | null = null;
   private micSeq = 0;
   /** This phone's mic is on. */
@@ -127,14 +141,25 @@ export class VoiceMesh {
   setPeers(order: readonly string[], peers: readonly string[]): void {
     this.order = [...order];
     for (const p of [...this.links.keys()]) if (!peers.includes(p)) this.drop(p);
-    for (const p of peers) if (p !== this.deps.me && !this.links.has(p)) this.open(p, offersTo(this.deps.me, p, this.order));
+    for (const p of peers) {
+      if (p === this.deps.me || this.links.has(p)) continue;
+      this.open(p, offersTo(this.deps.me, p, this.order));
+      this.flushEarly(p);
+    }
   }
 
-  /** A signal from `from`, passed on by the host. Opens the link if the other side started first. */
+  /**
+   * A signal from `from`, passed on by the host. Opens the link if the other side started first.
+   * 9aq.16 Fix 1: a signal from someone not in the seat order yet is kept (see EARLY_MAX),
+   * not dropped, so an offer that beats the seat order is not lost.
+   */
   onSignal(from: string, d: VoiceData): void {
     if (from === this.deps.me) return;
     if (!this.links.has(from)) {
-      if (!this.order.includes(from)) return;
+      if (!this.order.includes(from)) {
+        this.keepEarly(from, d);
+        return;
+      }
       this.open(from, offersTo(this.deps.me, from, this.order));
     }
     this.links.get(from)?.signal(d);
@@ -239,9 +264,32 @@ export class VoiceMesh {
   /** Closes every link and the mic. Called when the room closes or this phone leaves it. */
   close(): void {
     for (const p of [...this.links.keys()]) this.drop(p);
+    this.early.clear();
     this.stopTrack();
     this.micOn = false;
     this.micBlocked = false;
+  }
+
+  /** 9aq.16 Fix 1, debug only: how many early signals are kept per person. */
+  earlyCounts(): Record<string, number> {
+    return Object.fromEntries([...this.early].map(([id, list]) => [id, list.length]));
+  }
+
+  private keepEarly(from: string, d: VoiceData): void {
+    const list = this.early.get(from) ?? [];
+    list.push(d);
+    if (list.length > EARLY_MAX) list.splice(0, list.length - EARLY_MAX);
+    this.early.set(from, list);
+  }
+
+  /** Passes the kept signals for `peer` to its link, in the order they came, then forgets them. */
+  private flushEarly(peer: string): void {
+    const kept = this.early.get(peer);
+    if (kept === undefined) return;
+    this.early.delete(peer);
+    const link = this.links.get(peer);
+    if (link === undefined) return;
+    for (const d of kept) link.signal(d);
   }
 
   private open(peer: string, offer: boolean): void {
@@ -252,8 +300,15 @@ export class VoiceMesh {
       (s) => this.linkState(peer, s),
     );
     this.links.set(peer, link);
+    this.connected.delete(peer);
     link.setMuted(this.muted.has(peer));
     if (this.track !== null) link.setTrack(this.track);
+    // 9aq.16 Fix 1: a link that never reaches "connected" is treated as failed once.
+    // `new` is never `failed`, so without this the one retry above would never run.
+    this.deps.later(() => {
+      if (this.links.get(peer) !== link || this.connected.has(peer)) return;
+      this.linkState(peer, 'failed');
+    }, STUCK_MS);
   }
 
   private drop(peer: string): void {
@@ -262,10 +317,13 @@ export class VoiceMesh {
     this.detectors.delete(peer);
     this.lastLevel.delete(peer);
     this.retried.delete(peer);
+    this.connected.delete(peer);
+    this.early.delete(peer);
   }
 
   private linkState(peer: string, s: LinkState): void {
     if (s === 'connected') {
+      this.connected.add(peer);
       this.retried.delete(peer);
       return;
     }

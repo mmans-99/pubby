@@ -42,7 +42,10 @@ PHASES_JS = """() => {
   const has = (s) => !!(bar && bar.querySelector(s));
   const round = document.querySelector('.round-chip');
   const out = [];
-  if (has('.chip-info')) out.push('deal');
+  // 9aq.16 Fix 4: the deal is spotted by the deal bar's text ("Tap a name to deal", "Dealing…"), not by the jokers chip,
+  // which the rail moves into the menu when it does not fit.
+  const hint = document.querySelector('.deal-bar .hint');
+  if (hint && /deal/i.test(hint.textContent)) out.push('deal');
   if (has('.target-btn') || has('.target-chip')) out.push('target');
   if (has('button[aria-label*="take someone"]')) out.push('take');
   if (document.querySelector('.hand .card')) out.push('playing');

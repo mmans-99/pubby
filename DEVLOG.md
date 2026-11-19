@@ -4,6 +4,27 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-19 (20:30, Haiku) — Build of plan 9aq.16 (3.0.2), test build; NOT committed, NOT pushed
+
+**User:** "Build CODE.md 9aq.16 (Fixes 1 to 4, version 3.0.2) on main at 51e292c."
+
+**Done:**
+- Fix 1 (H6): `src/net/voice.ts` keeps signals from people not yet in the seat order (50 per person, newest kept), passes them to the link when it opens, and treats a link still short of `connected` after 10 s (`STUCK_MS`) as failed once (the single retry). `voiceDebugSnapshot` shows `earlyKept`. Tests: 25 of 25 in `tests/net/voice.test.ts` (two timer-count tests now count only the 3 s retries).
+- Fix 2: `barFit` in `src/ui/layout.ts`, used by `game.ts` for the portrait bar (overflow goes to the menu shelf). Widths mirror the CSS. Tests: `tests/ui/barfit.test.ts`, 9 tests.
+- Fix 3: `.seat-disc .voice-badge` sized from `--u` in `styles.css`.
+- Fix 4: `testbed/voice_shots.py` now taps Auto and then the first "First card to" seat (the game is in Manual at start; in Auto it waits for the first-card tap). Mic on the table is `.table-mic`. `rail_shots.py` spots the deal by the deal bar's hint.
+- Version 3.0.2 (`package.json`). `npm run check` clean; `npm test` 638 of 638; `npm run build` ok.
+- `voice_shots.py`: 150 of 150 checks at six sizes. `rail_shots.py after`: 40 of 40. `online_check.py`: 48 of 48. `landscape_check.py`: 24 of 24.
+- Test build published as a private artifact (voice does not run on it): https://claude.ai/artifact/3Y4a4YKJayvBL6RgkMrpiX
+
+**Not met:**
+- `voice_check.py --repeat 20 --trace` is NOT 20 of 20. Runs 1 to 3: 31 of 31 each. Run 4: Ben's join step failed (the room list wait of 8 s, then the join), before any voice step ran; the script then crashed on the missing mic button and the batch stopped. Cause not diagnosed (likely a relay timing flake; no voice code had run yet). Per the plan: stop and report to Opus.
+- Part C scenes not done: the 8-person lobby, the Voice sheet with seven others, a seat with all four marks, and build 1's scenes (C7). The by-eye check covered the 360, 390 and 740 table shots only.
+
+**Observed, not changed:** the bottom action button ("Waiting for Ben", "Deal again?") runs to or past the right edge at 360, 390 and 740 wide (not checked against 3.0.1).
+
+**Next (Opus):** look at the voice_check run 4 join failure; the Part C scenes; then "push" from the user after the phone test.
+
 ## 2026-11-19 (19:40, Opus) — Check of the 3.0.1 build; plan 9aq.16 (docs only)
 
 **User:** "Can you check" (after Haiku's 3.0.1 build and its H6 finding).

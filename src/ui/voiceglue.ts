@@ -229,6 +229,7 @@ export function voiceDebugSnapshot(): Record<string, unknown> {
     audioContext: ctx === null ? 'none' : ctx.state,
     talking: mesh?.anyoneTalking() ?? false,
     peers,
+    earlyKept: mesh ? mesh.earlyCounts() : {},
     vsigSent: Object.fromEntries(vsigSent),
     vsigRecv: Object.fromEntries(vsigRecv),
     vsigDropped: Object.fromEntries(vsigDropped),
