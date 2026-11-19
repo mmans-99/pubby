@@ -69,8 +69,38 @@ export type Popup =
   | { kind: 'voteAlert'; by: PlayerId; vote: VoteKind; value: number | null; dealer: PlayerId; twoPlayers: boolean }
   /** The result. `kindOf` and `value` give the question; `ballots` the YES and NO rows (9ai.4). */
   | { kind: 'vote'; decidedBy: 'majority' | 'host' | 'both'; result: boolean; text: string; kindOf?: VoteKind; value?: number | null; ballots?: Readonly<Record<PlayerId, Ballot>> }
+  /**
+   * 9aq.1 (2.39): the round's end on one pop-up, in place of the SLAP!, PATHETIC!!!, HAHAHA! and last-two pop-ups
+   * of the same batch. `head` is the word shown big: pathetic (a forfeit) → slap → haha → over (plain end).
+   * Built by `mergeRoundEnd` (roundend.ts).
+   */
+  | {
+      kind: 'roundEnd';
+      head: 'pathetic' | 'slap' | 'haha' | 'over';
+      /** The round-ending slap, if there was one (its `over` is set). */
+      slap?: Extract<Popup, { kind: 'slap' }>;
+      /** The player who forfeited, if there was a forfeit. */
+      forfeiter?: PlayerId;
+      /** The HAHAHA! of a final-two choice in the same batch, if there was one. */
+      haha?: Extract<Popup, { kind: 'haha' }>;
+      end: Extract<Popup, { kind: 'lastTwo' }>;
+      gameOver: boolean;
+    }
   /** `ms`: how long it stays up (default POPUP_SHOW_MS, 5 s, in game.ts). */
   | { kind: 'info'; icon: IconName; title: string; text: string; ms?: number };
+
+/**
+ * 9aq.3 (2.39): a small notice on the felt. It never blocks play and never needs a tap: it shows for
+ * NOTICE_MS (game.ts) and then goes. Built from the info-style lines that used to be pop-ups.
+ */
+export interface Notice {
+  id: number;
+  icon: IconName;
+  title: string;
+  text: string;
+  /** Local clock (ms) when it was made. */
+  at: number;
+}
 
 export type Screen = 'home' | 'profiles' | 'history' | 'setup' | 'solo' | 'game' | 'netlobby' | 'bye';
 
@@ -94,6 +124,8 @@ export interface State {
   armed: string | null;
   message: string | null;
   popups: Popup[];
+  /** 9aq.3 (2.39): small notices on the felt, newest last. Optional so existing state literals still compile. */
+  notices?: Notice[];
   /** Card the player has tapped once (tap again or press Play to play it). */
   selected: string | null;
   /** Reactions drawer (😂 and catch-phrases) is slid open. */

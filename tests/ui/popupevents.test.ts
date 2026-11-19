@@ -25,9 +25,9 @@ test('a take request makes a pop-up for everyone except the asker and the asked'
   assert.equal(makesPopup(e, 'p3'), true);
 });
 
-test('a refused watch shows only to the viewer', () => {
+test('a refused watch is a notice now (9aq.3): no pop-up and no host wait, for anyone', () => {
   const e = { type: 'peekAnswered', viewer: 'p1', target: 'p2', accepted: false } as unknown as SessionEvent;
-  assert.equal(makesPopup(e, 'p1'), true);
+  assert.equal(makesPopup(e, 'p1'), false);
   assert.equal(makesPopup(e, 'p2'), false);
   const ok = { type: 'peekAnswered', viewer: 'p1', target: 'p2', accepted: true } as unknown as SessionEvent;
   assert.equal(makesPopup(ok, 'p1'), false);

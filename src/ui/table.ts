@@ -18,6 +18,7 @@ import { thinkingSeat } from './thinking.ts';
 import { isAwayPlayer } from '../net/away.ts';
 import { isBusyPlayer } from '../net/busy.ts';
 import { icon } from './icons.ts';
+import { getState, type Notice } from './store.ts';
 import type { PlayerId, Session } from '../session/types.ts';
 import type { PlayerView } from '../session/view.ts';
 import type { Suit } from '../rules/cards.ts';
@@ -447,6 +448,31 @@ export function middleBox(box: TableBox): Box {
   return { x: 0.32 * box.w, y: 0.27 * box.h, w: 0.36 * box.w, h: 0.36 * box.h };
 }
 
+/**
+ * 9aq.3 (2.39, Part C): the small notices, on the felt in the free band above the trick zone (or over its top
+ * edge when the band is short). `pointer-events: none` in CSS, so a notice never blocks a card tap. A notice
+ * slides in once (its first draw only) and fades in its last quarter second (`noticeFading`, game.ts).
+ */
+export function noticeStrip(box: TableBox, notices: readonly Notice[]): HTMLElement | null {
+  if (!notices.length) return null;
+  const mid = middleBox(box);
+  const top = Math.max(4, mid.y - 36);
+  return h('div', { class: 'notice-wrap', style: `top:${top.toFixed(0)}px`, 'aria-live': 'polite' },
+    notices.map((n) => {
+      const seen = noticeSeen.has(n);
+      noticeSeen.add(n);
+      return h('div', {
+        class: ['notice-strip', seen ? 'seen' : '', noticeFading.has(n.id) ? 'fading' : ''].filter(Boolean).join(' '),
+        'data-notice': String(n.id),
+      }, icon(n.icon), h('span', null, n.text ? `${n.title} · ${n.text}` : n.title));
+    }));
+}
+
+/** Notices already drawn once, so a redraw doesn't replay the slide-in. */
+const noticeSeen = new WeakSet<Notice>();
+/** Notices on their last quarter second (set by game.ts when their timer is due). */
+export const noticeFading = new Set<number>();
+
 /** True when two boxes overlap (touching edges do not count). */
 export function overlaps(a: Box, b: Box): boolean {
   return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
@@ -567,6 +593,7 @@ export function roundTable(s: Session, v: PlayerView, o0: TableOpts): HTMLElemen
     h('div', { class: 'table-oval', 'aria-hidden': 'true' },
       o.ledSuit ? h('span', { class: red ? 'led-mark red' : 'led-mark' }, SUIT_SYMBOL[o.ledSuit]) : null),
     h('div', { class: 'table-middle' }, o.middle ?? null),
+    noticeStrip(box, getState().notices ?? []),
     o.waste ?? null,
     o.last ? h('div', { class: 'table-last', style: lastStyle(n, box, !!o.lastSlap) }, o.last) : null,
     plays.length ? h('div', { class: 'trick-pile' },

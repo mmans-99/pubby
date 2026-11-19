@@ -1620,3 +1620,21 @@ html[data-rail="1"] .results-footer { flex: 1 1 0; min-width: 0; min-height: 0; 
 
 /* 9an.8 (2.38): the host's "Remove" link in a notice */
 .net-lost .link-btn { background: none; border: 0; padding: 0; color: inherit; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+
+/* 9aq (2.39): fewer pop-ups, tap or 3.5 s, small notices, What happened. */
+.round-end-box { margin-top: 10px; background: #fff8e7; color: #2a2116; border-radius: 10px; padding: 6px 10px; line-height: 1.35; }
+.tap-hint { margin-top: 8px; opacity: .7; }
+.done-row { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+.done-dot { width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; border: 2px dashed #9a927c; color: #8a8270; background: transparent; }
+.done-dot.done { border: 2px solid #d9a441; background: #d9a441; color: #2a2116; }
+.notice-wrap { position: absolute; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; z-index: 6; }
+.notice-strip { display: flex; align-items: center; gap: 6px; max-width: 260px; background: #fff8e7; color: #2a2116; border-radius: 999px; padding: 4px 12px; font-size: 14px; font-weight: 700; box-shadow: 0 2px 6px rgba(0, 0, 0, .25); animation: notice-in 180ms ease-out both; }
+.notice-strip.seen { animation: none; }
+.notice-strip.fading { opacity: 0; transition: opacity 250ms linear; }
+.notice-strip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@keyframes notice-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+.what-happened { margin-top: 10px; text-align: left; font-size: 13px; }
+.what-title { font-weight: 700; margin-bottom: 4px; }
+.what-line { opacity: .85; }
+.what-line.strong { font-weight: 700; }
+.what-age { display: inline-block; min-width: 44px; opacity: .6; }

@@ -466,11 +466,11 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 
 ## Phase 4z — One round-end pop-up, tap or 3.5 s pop-ups, notices, voice chat online (plan 2026-11-19 16:38, `PROJECT.md` 12z, build guide `CODE.md` 9aq, mockups https://claude.ai/artifact/EtHkCqc94hdHkajLMwB44S; approved; for Haiku)
 Build 1, 2.39.0:
-- [ ] Part A: one pop-up at the end of a round (`roundEnd`)
-- [ ] Part B: one phone tap anywhere (no timer); network 3.5 s, tap closes yours, done row
-- [ ] Part C: small notices on the felt (don't hold play)
-- [ ] Part D: "What happened" in the round note
-- [ ] Part E: 2.39.0, no-flash and overlap screenshots, checks, test build, phone checklist 9aq.7 items 1 to 8, push on "push"
+- [x] Part A: one pop-up at the end of a round (`roundEnd`) (built 2.39.0, not committed)
+- [x] Part B: one phone tap anywhere (no timer); network 3.5 s, tap closes yours, done row (built 2.39.0, not committed)
+- [x] Part C: small notices on the felt (don't hold play) (built 2.39.0, not committed)
+- [x] Part D: "What happened" in the round note (built 2.39.0, not committed)
+- [~] Part E: 2.39.0 built; checks run (see CODE.md 9aq.6); no-flash and overlap screenshots NOT yet done; test build published; phone checklist 9aq.7 items 1 to 8; push on "push"
 Build 2, 3.0.0 (after build 1 is pushed):
 - [ ] User: TURN key in Cloudflare and two GitHub secrets (9aq Part L), before the build 2 push
 - [ ] Part F: `/rooms/<id>/turn`, monthly cap 3000, STUN fallback, server tests

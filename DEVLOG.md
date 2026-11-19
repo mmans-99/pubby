@@ -4,6 +4,18 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-19 (16:48, Haiku) — Build 9aq part 1 (2.39.0): one round-end pop-up, tap or 3.5 s, notices, What happened (not committed)
+
+**User (16:48):** "build CODE.md 9aq build 1 (Parts A to E, 2.39.0)".
+
+**Done:** Parts A to E as in `CODE.md` 9aq.1 to 9aq.5. The round end is one `roundEnd` pop-up (`mergeRoundEnd`, `roundend.ts`). One phone: no timer, a tap closes it ("Tap anywhere"). Network: 3.5 s, a tap closes yours, the who's-done row. Joker, picked up, leads, pause and refused-watch messages are notices on the felt (`noticeStrip`, `NOTICE_ONLY`). The round note has "What happened" (`eventlog.ts`). Version 2.39.0.
+
+**Checks:** `npm run check` pass; `npm test` 582/582 (11 new); build OK. Browser: `popups_check.py` (rewritten for tap-to-close; places now passes again), `lasttwo_check.py` 16/16 (now taps pop-ups away), `netgame_check.py` 97/97 on the last run (one earlier run 96/97, not captured).
+
+**Not done (see `CODE.md` 9aq.6):** no-flash and overlap screenshots at the five viewports; the 10-redraw check; the timed 3.5 s two-phone check; one sound for the merged pop-up (sounds are still event-driven). Nothing committed or pushed; waiting for the user to test on a phone and say "push".
+
+**Bot and checks:** `testbed/bot.js` taps no-choice pop-ups closed (it used to wait for the 5 s).
+
 ## 2026-11-19 (16:15 to 16:40, Opus) — Plan 9aq: one round-end pop-up, tap or 3.5 s pop-ups, notices, voice chat online (docs only)
 
 **User (16:15):** wants voice chat (own mic on/off from the lobby to the game end, mute one player or all; where should it go?); too many pop-ups back to back at the end of a game; single player tap anywhere with no timer, multiplayer 3.5 s, without phones falling out of step; asked for other plans.

@@ -18,7 +18,17 @@ export const POPUP_EVENTS: ReadonlySet<SessionEvent['type']> = new Set<SessionEv
  */
 export function makesPopup(e: SessionEvent, me: PlayerId): boolean {
   if (!POPUP_EVENTS.has(e.type)) return false;
+  // 9aq.3 (2.39): these make only a notice on the felt, which never needs an ack, so the host doesn't wait for it.
+  if (NOTICE_ONLY.has(e.type)) return false;
   if (e.type === 'takeRequested') return me !== e.requester && me !== e.target;
   if (e.type === 'peekAnswered') return me === e.viewer && !e.accepted;
   return true;
 }
+
+/**
+ * 9aq.3 (2.39): the events whose messages are now small notices (game.ts `popupsFor`), so they make no pop-up:
+ * joker, picked up, "X leads", no pause, pause over, "X said no" (a refused watch), "removed by the host".
+ */
+export const NOTICE_ONLY: ReadonlySet<SessionEvent['type']> = new Set<SessionEvent['type']>([
+  'jokerPlayed', 'leaderChosen', 'pauseDeclined', 'peekAnswered', 'playerRemoved', 'resumed', 'wastePilePickedUp',
+]);

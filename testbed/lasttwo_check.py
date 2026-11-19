@@ -55,10 +55,13 @@ def run(browser, w, h):
             break
     check(found, f'{w}x{h}: reached the last two (Forfeit on the bottom row)')
     if found:
-        # 9ap.G (2.38.2): a pop-up that covers the screen closes by itself after 5 s (no tap), so run the clock until none is up.
-        for _ in range(40):
+        # 9aq.2 (2.39): on one phone a pop-up closes on a tap anywhere (the vote alert keeps its own 5 s), so tap
+        # each one away, and run the clock for the rest, until none is up.
+        for _ in range(80):
             if not page.locator('.popup-overlay').count():
                 break
+            if page.locator('.popup-overlay[data-skip]').count() and not page.locator('.popup-overlay button', has_text='Vote now').count():
+                page.locator('.popup-overlay[data-skip]').first.click()
             advance(page, 500)
         forfeit = page.evaluate(RECT, '.action-row .forfeit-btn')
         play = page.evaluate(RECT, '.action-row > button.grow')

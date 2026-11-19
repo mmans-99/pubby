@@ -7,9 +7,9 @@ looks at the screen, so it sees pop-ups, votes and take-cards as they appear.
 
 Checks. A check the random game never shows is reported as "not seen" and fails the run;
 rerun to get a different game.
-1. a pop-up shows a 5-second countdown bar (.slap-timer) and is still up after 4 s on the fake clock (CODE.md 9ap.G);
-2. a tap does not close it: it is still the same pop-up after a tap;
-3. no pop-up shows "Tap anywhere to close"; it closes by itself at 5 s (the vote alert has "Vote now" instead);
+1. a one-phone pop-up has no countdown bar and is still up after 4 s on the fake clock (CODE.md 9aq.2, 2.39);
+2. a tap closes it (the vote alert is the exception: a tap does not close it);
+3. a pop-up says "Tap anywhere" (the vote alert has "Vote now" instead);
 4. places: "X came 1st!" shows, and "is out" never does;
 5. the vote card lists one row per player, with YES and NO under the list;
 6. the take-cards card is solid (background alpha >= 0.8) with Give and Refuse;
@@ -131,26 +131,32 @@ def main():
             if not seen['tie'] and count(page, '.tie-band'):
                 seen['tie'] = True
                 page.screenshot(path='/tmp/popups-tie.png')
-            # 1 to 3 (9ap.G): the first pop-up on screen shows a countdown bar, a tap does not close it,
-            # and it closes by itself after 5 s (the next one in the queue, or none, shows then).
+            # 1 to 3 (9aq.2, 2.39): on one phone a pop-up has no countdown bar and no timer: it stays up
+            # until a tap, and a tap anywhere closes it ("Tap anywhere" under it). The vote alert keeps its
+            # own "Vote now" and is not closed by a tap.
             if not timer_done and count(page, '.popup-overlay[data-skip]'):
                 first = page.locator('.popup-overlay[data-skip] .popup').first.inner_text()
                 page.screenshot(path='/tmp/popups-popup.png')
-                record('bar', count(page, '.popup-overlay .slap-timer') > 0, 'a pop-up shows a 5-second countdown bar')
-                record('hint', count(page, '.tap-hint') == 0, 'no pop-up shows "Tap anywhere to close"')
+                vote_alert = 'Vote now' in first
+                record('bar', count(page, '.popup-overlay .slap-timer') == 0, 'a one-phone pop-up has no countdown bar')
+                record('hint', vote_alert or count(page, '.tap-hint') > 0, 'a one-phone pop-up says "Tap anywhere" (the vote alert has "Vote now")')
                 page.clock.run_for(4000)
                 # Compare the title line: a vote alert's text can change (a ballot arrives) while it is still up.
                 title = lambda t: t.split('\n')[0]
                 record('timer', count(page, '.popup-overlay') > 0 and title(page.locator('.popup-overlay[data-skip] .popup').first.inner_text()) == title(first),
-                       'still the same pop-up after 4 s')
+                       'still the same pop-up after 4 s (no timer on one phone)')
                 page.locator('.popup-overlay[data-skip]').first.click()
                 page.clock.run_for(200)
                 now_text = page.locator('.popup-overlay[data-skip] .popup').first.inner_text() if count(page, '.popup-overlay[data-skip] .popup') else '<gone>'
-                record('no tap close', now_text != '<gone>' and title(now_text) == title(first),
-                       f'a tap does not close the pop-up (before: {first[:40]!r}, after: {now_text[:40]!r})')
+                if vote_alert:
+                    record('no tap close', now_text != '<gone>' and title(now_text) == title(first),
+                           f'a tap does not close the vote alert (before: {first[:40]!r}, after: {now_text[:40]!r})')
+                else:
+                    record('no tap close', now_text == '<gone>' or title(now_text) != title(first),
+                           f'a tap closes the pop-up (before: {first[:40]!r}, after: {now_text[:40]!r})')
                 page.clock.run_for(1200)
                 after = page.locator('.popup-overlay[data-skip] .popup').first.inner_text() if count(page, '.popup-overlay[data-skip]') else ''
-                record('close', after != first, 'the pop-up closes by itself at 5 s (the next one in the queue, or none, shows)')
+                record('close', after != first, 'after the tap, the next pop-up shows (or none)')
                 timer_done = True
                 continue  # the bot taps the next pop-up on its own step
             # 5 (answer): the person's own vote and take answers, so the cards stay on screen long enough to check.

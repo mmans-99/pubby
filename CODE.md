@@ -4431,7 +4431,34 @@ Voice goes phone to phone (WebRTC). Phones on mobile data often can't reach each
 4. **Watching use (optional):** Cloudflare dashboard → Realtime → TURN Server → the key shows usage. The room server also stops handing out relay logins after 3000 in a month, so the free 1,000 GB can't be passed.
 
 ### 9aq.6 Built notes
-(Haiku: what was built, check results, notices list (Part C item 1), the backup check (Part J item 3), and anything that didn't match the plan.)
+
+**Build 1 (2.39.0, Haiku, built 2026-11-19, not committed, not pushed).**
+
+What was built:
+- **Part A:** `Popup` kind `roundEnd` (store.ts). The fold is a pure function, `mergeRoundEnd` (new `src/ui/roundend.ts`), called at the end of `popupsFor`. Head order: forfeit, round-ending slap, HAHAHA!, plain end. `popupLayer` draws it through `roundEndBody` (one cream box, at most two lines). The fast-forward/Skip filter and the winner mapping keep it. The trick animation's `slapPopup` also accepts it.
+- **Part B:** `popupMs` returns `null` on one phone (no timer, closed by a tap). A network pop-up runs 3500 ms (1750 ms in quick mode). A tap closes the top pop-up in every game (`closePopup`, which re-stamps the queue). The vote alert keeps its own button and 5 s. "Tap anywhere" shows on one phone. The who's-done row (`doneRow`) shows on network pop-ups.
+- **Part C:** `NOTICE_ONLY` in `popupevents.ts`: these events no longer make a pop-up and the host doesn't wait for them. `popupsFor` routes them into a notice list. `noticesWith` keeps two, each removed after 2500 ms (1250 ms in quick mode). `noticeStrip` (table.ts) draws them above the trick zone, `pointer-events: none`.
+- **Part D:** `src/ui/eventlog.ts` (last 8 lines in memory, cleared on `gameStarted`). The round note shows the newest 6 under "What happened", with ages worked out when drawn.
+- **Part E:** `package.json` 2.39.0. `tests/ui/roundend.test.ts` (7 tests) and `tests/ui/eventlog.test.ts` (4 tests). `tests/ui/popupevents.test.ts` changed: a refused watch is a notice now, so it makes no pop-up.
+
+Notices list (Part C item 1, as built): Joker (including "Missed round"), Picked up, "X leads" (missing-suit and Reaction Tap leads still make no message, as before), No pause, Pause over, "X said no" (a refused watch), "X was removed by the host".
+
+Checks run:
+- `npm run check`: pass. `npm test`: 582 of 582 pass (571 before, plus 11 new). After that, only comments changed.
+- `node build.mjs`: `dist/index.html` 418 KB, version 9644227ed8f7.
+- `testbed/popups_check.py`: the timer checks were rewritten for the new rule (no countdown on one phone; "Tap anywhere"; a tap closes it; the vote alert is not closed by a tap). Passes: places, vote card, whose turn, target sheet, round badge, and the timing checks. Not seen in these runs (random game, same as on 2.38.2): take-cards card and sheet, Fast forward stop, tie band.
+- `testbed/lasttwo_check.py`: 16 of 16 (it now taps pop-ups away).
+- `testbed/netgame_check.py`: 97 of 97 on the last run. One earlier run gave 96 of 97; the failing line was not captured, so treat it as unexplained until it recurs.
+
+Deviations from the plan, and what is not done:
+- **Part A item 5 (one sound for the merged pop-up):** not done. Sounds stay event-driven (`eventSounds`, `cardSound`, the trick animation), so a round that ends with a forfeit plays the same sounds as before. Changing this is a risk for little gain; say if you want it.
+- **Part C placement:** the strip sits at `middleBox` top minus 36 px. It is not measured against the seat name labels. Not checked on screen.
+- **Part B network timing:** NOT measured. `netgame_check.py` passes, but it does not time the 3.5 s close. The new check in 9aq.2 item 9 (two phones, timed close, one tap, both taps) was NOT written.
+- **Part E screenshots:** NOT done. The viewport screenshots (360×740 through 1180×820), the 10-redraw entrance-animation check, and the done-row half-filled screenshot were not taken. No flash or overlap has been checked by eye. This is required by 9aq.5 item 3 and must be done before the push.
+- **Test build:** published as a private link (see the Phase 4z task list). The test link cannot reach the room server, which matters only for build 2.
+- **Environment note:** `node_modules` was linked to the shared tool install (`/opt/npm-tools/node_modules`) to run the checks. It is not part of the repo.
+
+Phone checklist: 9aq.7 items 1 to 8 (build 1) are still to be tested on a phone.
 
 ### 9aq.7 Phone checklist
 

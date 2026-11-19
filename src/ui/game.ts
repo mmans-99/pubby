@@ -25,7 +25,8 @@ import { playerView, type PlayerView } from '../session/view.ts';
 import { cardFace, cardFaceFromId, fanCards, fanLayout, fitFan, hasFourAces, ordinal, shortLabel, sortHand, SUIT_NAME, SUIT_SYMBOL, trickFromPlay } from './cards.ts';
 import { h, type Child } from './dom.ts';
 import type { GameStage, LastTrick, SavedGame, TrickPlay } from './storage.ts';
-import { getState, say, update, type Popup } from './store.ts';
+import { getState, say, update, type Notice, type Popup } from './store.ts';
+import { addLogLines, ageText, clearLog, recentLines, type LogLine } from './eventlog.ts';
 import { saveFinishedGame } from './history.ts';
 import { miniDisc, reshuffleStage, resetTap, roundStartHolder, roundStartScreen, voteAlertBody, voteOutcome, voteResultBody } from './roundstart.ts';
 import { lockedSeats } from '../rules/deal.ts';
@@ -34,13 +35,16 @@ import { soundSettings } from '../audio/settings.ts';
 import { icon, type IconName } from './icons.ts';
 import { botsOnlyFor, botsTick, startFastForward, startSkip, stopFastForward } from './bots.ts';
 import { fastForwardOn, hostIsSkipping, instantSkipping, skipNote, skipping } from '../ai/fastforward.ts';
-import { anyoneBusy, reportMyBusy } from '../net/busy.ts';
+import { anyoneBusy, isBusyPlayer, reportMyBusy } from '../net/busy.ts';
+import { isAwayPlayer } from '../net/away.ts';
+import { seatInitials } from './initials.ts';
 import { hostBroadcast, hostClock, joinSend, sendMessage, sendReaction } from './netplay.ts';
 import { cleanMessage } from '../net/lobby.ts';
-import { handH, roundTable, wastePile } from './table.ts';
+import { handH, noticeFading, roundTable, wastePile } from './table.ts';
 import { joinNames } from '../session/names.ts';
 import { gameLayout, type GameLayout } from './layout.ts';
 import { forfeitLine } from './popuptext.ts';
+import { mergeRoundEnd } from './roundend.ts';
 import { watchAskCard, watchEyeButton, watchingBlock, watchPill, watchSheet } from './watch.ts';
 import { netGameBody, netMenu } from './netscreens.ts';
 import {
@@ -63,15 +67,35 @@ export const CATCH_PHRASES: string[] = catchPhrasesMd
  * same moment (its host-clock start, `popupAt`). There is no tap to close. Fast forward and Skip use half.
  */
 const POPUP_SHOW_MS = 5000;
-/** How long a pop-up stays up: 5 s, or half of that while Fast forward or Skip runs (its own shorter time for `info`: `ms`). */
-function popupMs(p: Popup): number {
-  const full = p.kind === 'info' && p.ms ? p.ms : POPUP_SHOW_MS;
-  return quickMode() ? full / 2 : full;
+/**
+ * 9aq.2 (2.39): a pop-up on a network game closes by itself after this long (every phone at the same moment),
+ * or as soon as this phone taps it. Fast forward and Skip use half.
+ */
+const POPUP_NET_MS = 3500;
+const POPUP_QUICK_NET_MS = 1750;
+/** 9aq.2 (2.39): one phone (pass-and-play, single player) has no timer; during Fast forward or Skip it closes after this. */
+const POPUP_QUICK_ONE_PHONE_MS = 2500;
+/** 9aq.2 (2.39): a pop-up that asks for an answer (the vote alert) keeps its own 5 s and is not closed by a tap. */
+function needsAnswer(p: Popup): boolean {
+  return p.kind === 'voteAlert';
+}
+/**
+ * How long a pop-up stays up on this phone, or null for no timer (a no-choice pop-up on one phone: it stays until
+ * tapped). Half time while Fast forward or Skip runs.
+ */
+function popupMs(p: Popup): number | null {
+  const quick = quickMode();
+  if (needsAnswer(p)) return quick ? POPUP_SHOW_MS / 2 : POPUP_SHOW_MS;
+  if (!getState().game?.net) return quick ? POPUP_QUICK_ONE_PHONE_MS : null;
+  return quick ? POPUP_QUICK_NET_MS : POPUP_NET_MS;
 }
 /** Host-clock start of each pop-up on screen (`at`). Set when it is made, or when it first shows on this phone. */
 const popupAt = new WeakMap<Popup, number>();
-/** "X leads" pop-up (who leads and any missing suits): the same 5 s as every pop-up (9ap.G). */
-const LEAD_MS = POPUP_SHOW_MS;
+/** 9aq.2 (2.39, item 6): the local time each pop-up first showed on this phone, and who has finished looking at it. */
+const popupShownAt = new WeakMap<Popup, number>();
+const popupDone = new WeakMap<Popup, Set<PlayerId>>();
+/** A person counts as done this long after the pop-up first shows, so a late busy report doesn't flash them gold. */
+const DONE_AFTER_MS = 600;
 /** A finished trick stays on the felt this long before its cards move. */
 const TRICK_HOLD_MS = 700;
 /** Cards sliding to the waste pile or into the slapped player's seat. */
@@ -276,14 +300,89 @@ export function receive(session: Session, events: readonly SessionEvent[], hostA
  */
 function stampPopups(existing: readonly Popup[], fresh: readonly Popup[], hostAt: number): Popup[] {
   const last = existing[existing.length - 1];
-  let tail: number | null = last === undefined ? hostAt : popupAt.has(last) ? Math.max(hostAt, popupAt.get(last)! + popupMs(last)) : null;
+  let tail: number | null = last === undefined ? hostAt : popupAt.has(last) ? Math.max(hostAt, popupAt.get(last)! + (popupMs(last) ?? 0)) : null;
   for (const p of fresh) {
     if (tail !== null) {
       popupAt.set(p, tail);
-      tail += popupMs(p);
+      tail += popupMs(p) ?? 0;
     }
   }
   return [...existing, ...fresh];
+}
+
+/** 9aq.3 (2.39): a notice before it has an id and a time. */
+type NoticeDraft = Omit<Notice, 'id' | 'at'>;
+let noticeSeq = 0;
+/** A notice stays on the felt this long (half in Fast forward and Skip). At most NOTICES_MAX show at once. */
+const NOTICE_MS = 2500;
+const NOTICE_QUICK_MS = 1250;
+const NOTICES_MAX = 2;
+/** Notices on their last quarter second, which fade out (a redraw sets the class, never a new animation). */
+const FADE_MS = 250;
+
+/** The notices after `made` is added: the newest NOTICES_MAX, each removed by its own timer. */
+function noticesWith(existing: readonly Notice[] | undefined, made: readonly NoticeDraft[]): Notice[] {
+  const now = Date.now();
+  const life = quickMode() ? NOTICE_QUICK_MS : NOTICE_MS;
+  const added: Notice[] = made.map((m) => ({ ...m, id: ++noticeSeq, at: now }));
+  for (const n of added) {
+    window.setTimeout(() => { noticeFading.add(n.id); update({}); }, life - FADE_MS);
+    window.setTimeout(() => dropNotice(n.id), life);
+  }
+  return [...(existing ?? []), ...added].slice(-NOTICES_MAX);
+}
+
+function dropNotice(id: number): void {
+  const cur = getState().notices ?? [];
+  if (cur.some((n) => n.id === id)) update({ notices: cur.filter((n) => n.id !== id) });
+  noticeFading.delete(id);
+}
+
+/**
+ * 9aq.4 (2.39): this batch's pop-ups and notices, as lines for the round note's "What happened". A new game
+ * clears the list first; a round does not.
+ */
+function logWhatHappened(s: Session, fresh: readonly Popup[], made: readonly NoticeDraft[], events: readonly SessionEvent[]): void {
+  if (events.some((e) => e.type === 'gameStarted')) clearLog();
+  const lines: Omit<LogLine, 'at'>[] = [];
+  for (const p of fresh) {
+    switch (p.kind) {
+      case 'roundEnd': {
+        const e = p.end;
+        const last = nameOf(s, e.order[e.order.length - 1]);
+        if (p.head === 'pathetic' && p.forfeiter) lines.push({ text: `PATHETIC!!! ${nameOf(s, p.forfeiter)} forfeited`, strong: true });
+        else if (p.head === 'slap' && p.slap) lines.push({ text: `SLAP! ${nameOf(s, p.slap.slapper)} slapped ${nameOf(s, p.slap.slapped)}`, strong: true });
+        else if (p.head === 'haha' && p.haha) lines.push({ text: `HAHAHA! ${nameOf(s, p.haha.laugher)} laughed at ${nameOf(s, p.haha.loser)}`, strong: true });
+        lines.push({ text: `${p.gameOver ? 'Game over' : 'Round over'} · ${last} came last`, strong: true });
+        break;
+      }
+      case 'slap':
+        lines.push({ text: `SLAP! ${nameOf(s, p.slapper)} slapped ${nameOf(s, p.slapped)}`, strong: true });
+        break;
+      case 'pathetic':
+        lines.push({ text: `PATHETIC!!! ${nameOf(s, p.player)} forfeited`, strong: true });
+        break;
+      case 'out':
+        lines.push({ text: `${nameOf(s, p.player)} came ${ordinal(p.place)}`, strong: false });
+        break;
+      case 'voteAlert':
+        lines.push({ text: `${nameOf(s, p.by)} called a vote`, strong: false });
+        break;
+      case 'vote':
+        lines.push({ text: `${p.result ? 'YES' : 'NO'} · ${p.text}`, strong: false });
+        break;
+      case 'take':
+        lines.push({ text: p.answer ? (p.answer.accepted ? `${nameOf(s, p.target)} gave ${nameOf(s, p.requester)} their cards` : `${nameOf(s, p.target)} said no to ${nameOf(s, p.requester)}`) : `${nameOf(s, p.requester)} asked ${nameOf(s, p.target)} for cards`, strong: false });
+        break;
+      case 'info':
+        lines.push({ text: p.text ? `${p.title} · ${p.text}` : p.title, strong: false });
+        break;
+      default:
+        break;
+    }
+  }
+  for (const m of made) lines.push({ text: m.text ? `${m.title} · ${m.text}` : m.title, strong: false });
+  addLogLines(lines, Date.now());
 }
 
 /** Seat that just got one card dealt (for the flying card), from the hand counts. */
@@ -401,11 +500,14 @@ function absorb(g: SavedGame, session: Session, events: readonly SessionEvent[],
   // 9v.4 / 2.32.1: while Fast forward or Skip runs, only the round-over pop-up (and the game-over one) is shown.
   // The round-over one names the round's winner (1st in the finishing order).
   const quiet = skipping() || instantSkipping();
-  const fresh = popupsFor(session, events, seat ?? null)
+  const made: NoticeDraft[] = [];
+  const fresh = popupsFor(session, events, seat ?? null, made)
     // 9ai.4: the asker doesn't get the vote alert (they already said YES).
     .filter((p) => !(p.kind === 'voteAlert' && p.by === seat))
-    .filter((p) => !quiet || p.kind === 'lastTwo' || (p.kind === 'slap' && p.over !== undefined))
-    .map((p) => (quiet && p.kind === 'lastTwo' && !p.shared ? { ...p, winner: p.order[0] } : p));
+    .filter((p) => !quiet || p.kind === 'lastTwo' || p.kind === 'roundEnd' || (p.kind === 'slap' && p.over !== undefined))
+    .map((p) => (quiet && p.kind === 'lastTwo' && !p.shared ? { ...p, winner: p.order[0] } : p))
+    // 9aq.1 (2.39): the round-end pop-up names the winner in Fast forward and Skip, the same as the last-two one.
+    .map((p) => (quiet && p.kind === 'roundEnd' && !p.end.shared ? { ...p, end: { ...p.end, winner: p.end.order[0] } } : p));
   const popups = stampPopups(getState().popups, fresh, opts.hostAt ?? hostClock());
 
   // Sound effects and animations for what just happened (PROJECT.md 12b). 2.32.1: none for an instant Skip.
@@ -422,7 +524,8 @@ function absorb(g: SavedGame, session: Session, events: readonly SessionEvent[],
       if (trickAnim?.timer) window.clearTimeout(trickAnim.timer);
       trickAnim = {
         plays: finished.plays, slapped: finished.slapped, step: 'hold', timer: null, flying: false, after: events,
-        slapPopup: finished.slapped ? fresh.find((p) => p.kind === 'slap') ?? null : null,
+        // 9aq.1 (2.39): a round-ending slap is the round-end pop-up (its head is SLAP! unless a forfeit came first).
+        slapPopup: finished.slapped ? fresh.find((p) => p.kind === 'slap' || (p.kind === 'roundEnd' && p.slap !== undefined)) ?? null : null,
         final: roundOver, tapped: false,
       };
     } else {
@@ -437,12 +540,16 @@ function absorb(g: SavedGame, session: Session, events: readonly SessionEvent[],
   const pausedNow = events.some((e) => e.type === 'paused');
   if (pausedNow) resetTap();
   const keep = !!seat && !opts.mine;
+  // 9aq.3 (2.39): the notices made by this batch, and the round note's "What happened" lines (9aq.4).
+  const notices = made.length ? noticesWith(getState().notices, made) : getState().notices;
+  logWhatHappened(session, fresh, made, events);
   update({
     game: {
       session, stage, holder, trickLog, lastTrick, notes, recordId,
       ...(g.net ? { net: g.net } : {}), ...(g.bots ? { bots: g.bots } : {}),
     },
     popups,
+    notices,
     ...(keep ? (pausedNow ? { armed: null } : {}) : { selected: null, armed: null }),
   });
 }
@@ -451,7 +558,7 @@ function absorb(g: SavedGame, session: Session, events: readonly SessionEvent[],
  * `seat`: the player whose phone this is (network game or single player), or null on one shared phone.
  * On one phone the take-cards requests stay private (9an.1), so they make no pop-up here.
  */
-function popupsFor(s: Session, events: readonly SessionEvent[], seat: PlayerId | null): Popup[] {
+function popupsFor(s: Session, events: readonly SessionEvent[], seat: PlayerId | null, notices: NoticeDraft[] = []): Popup[] {
   const out: Popup[] = [];
   const end = events.find((e) => e.type === 'roundEnded');
   const lastTwo = end && end.type === 'roundEnded' ? end.finishingOrder.slice(-2) : [];
@@ -463,7 +570,7 @@ function popupsFor(s: Session, events: readonly SessionEvent[], seat: PlayerId |
         break;
       case 'peekAnswered':
         // 9an.3 (2.38, item 10): a refused watch is a pop-up for the player who asked, only.
-        if (seat && seat === e.viewer && !e.accepted) out.push({ kind: 'info', icon: 'eye', title: `${nameOf(s, e.target)} said no`, text: '' });
+        if (seat && seat === e.viewer && !e.accepted) notices.push({ icon: 'eye', title: `${nameOf(s, e.target)} said no`, text: '' });
         break;
       case 'takeAnswered':
         // 9an.1 item 9: the answer, on every phone with a seat (the asked player's phone included).
@@ -485,14 +592,14 @@ function popupsFor(s: Session, events: readonly SessionEvent[], seat: PlayerId |
         const resolved = events.find((x) => x.type === 'trickResolved');
         if (resolved && resolved.type === 'trickResolved' && resolved.nextLeader
           && s.play?.trick.participants.length === 2 && !events.some((x) => x.type === 'cardPlayed')) {
-          out.push({
-            kind: 'info', icon: 'joker', title: 'Missed round',
+          notices.push({
+            icon: 'joker', title: 'Missed round',
             text: `Two jokers. ${nameOf(s, resolved.nextLeader)} leads again.`,
           });
           break;
         }
-        out.push({
-          kind: 'info', icon: 'joker', title: 'Joker',
+        notices.push({
+          icon: 'joker', title: 'Joker',
           text: `${nameOf(s, e.player)}${e.asLeader && jokerLed(s) && s.play?.turn ? ` · same trick, ${nameOf(s, s.play.turn)} plays any card` : ''}`,
         });
         break;
@@ -502,7 +609,7 @@ function popupsFor(s: Session, events: readonly SessionEvent[], seat: PlayerId |
         break;
       case 'playerRemoved':
         // 9an.8 (H-i, item 8): every other phone sees it. The removed player's phone gets its own screen instead.
-        if (seat && seat !== e.player) out.push({ kind: 'info', icon: 'x', title: `${nameOf(s, e.player)} was removed by the host`, text: '' });
+        if (seat && seat !== e.player) notices.push({ icon: 'x', title: `${nameOf(s, e.player)} was removed by the host`, text: '' });
         break;
       case 'forfeited':
         // 2.34.6: a forfeit is shown to everyone, in capitals.
@@ -515,8 +622,8 @@ function popupsFor(s: Session, events: readonly SessionEvent[], seat: PlayerId |
         break;
       }
       case 'wastePilePickedUp':
-        out.push({
-          kind: 'info', icon: 'take', title: 'Picked up',
+        notices.push({
+          icon: 'take', title: 'Picked up',
           text: `${nameOf(s, e.player)} · ${e.cards} cards · leads`,
         });
         break;
@@ -568,10 +675,10 @@ function popupsFor(s: Session, events: readonly SessionEvent[], seat: PlayerId |
         });
         break;
       case 'pauseDeclined':
-        out.push({ kind: 'info', icon: 'play', title: 'No pause', text: `${nameOf(s, s.hostId)} said no to ${nameOf(s, e.requester)}` });
+        notices.push({ icon: 'play', title: 'No pause', text: `${nameOf(s, s.hostId)} said no to ${nameOf(s, e.requester)}` });
         break;
       case 'resumed':
-        if (e.reason === 'timeLimit') out.push({ kind: 'info', icon: 'play', title: 'Pause over', text: 'Time limit reached' });
+        if (e.reason === 'timeLimit') notices.push({ icon: 'play', title: 'Pause over', text: 'Time limit reached' });
         break;
       case 'reactionTapReplay':
         // 2.30: the tie is a notice now (CODE.md 9y.3), so no pop-up for a shown notice.
@@ -582,14 +689,15 @@ function popupsFor(s: Session, events: readonly SessionEvent[], seat: PlayerId |
         const who = nameOf(s, e.leader);
         // Secret suits (2026-11-13): the pop-up never says which suit is missing.
         const why = e.reason === 'host' ? 'Host leads round 1' : '';
-        out.push({ kind: 'info', icon: 'play', title: `${who} leads`, text: why, ms: LEAD_MS });
+        notices.push({ icon: 'play', title: `${who} leads`, text: why });
         break;
       }
       default:
         break;
     }
   }
-  return out;
+  // 9aq.1 (2.39): a batch that ends the round shows one round-end pop-up, not a run of them.
+  return mergeRoundEnd(out, s.phase === 'gameOver');
 }
 
 // ---------------------------------------------------------------------------
@@ -733,9 +841,16 @@ function menuLayer(menu: HTMLElement): HTMLElement {
  * 9al.1 (2.37.1): it floats in a transparent full-screen layer (no dim), so the table never moves.
  */
 function noteLayer(s: Session): HTMLElement {
+  // 9aq.4 (2.39): "What happened", newest first, at most 6 lines. Times are worked out now, so it never ticks.
+  const lines = recentLines(6);
+  const now = Date.now();
   return h('div', { class: 'note-layer', onclick: () => update({ armed: null }) },
     h('div', { class: 'round-note' },
-      `Round ${s.round} · ${s.target !== null ? `first to ${s.target} points` : 'no target'}`));
+      `Round ${s.round} · ${s.target !== null ? `first to ${s.target} points` : 'no target'}`,
+      lines.length ? h('div', { class: 'what-happened' },
+        h('div', { class: 'what-title' }, 'What happened'),
+        lines.map((l) => h('div', { class: l.strong ? 'what-line strong' : 'what-line' },
+          h('span', { class: 'what-age' }, ageText(l.at, now)), ' ', l.text))) : null));
 }
 
 /** 9v.1: the Fast forward / Skip items, shown only while the game waits on computer players. */
@@ -1467,7 +1582,8 @@ function popupStart(p: Popup): number {
 
 /** How far a pop-up has been up, on the host's clock, so the countdown bar survives a redraw. */
 function popupElapsed(p: Popup): number {
-  return Math.min(popupMs(p), Math.max(0, hostClock() - popupStart(p)));
+  const ms = popupMs(p) ?? 0;
+  return Math.min(ms, Math.max(0, hostClock() - popupStart(p)));
 }
 
 /**
@@ -1478,9 +1594,49 @@ function quickMode(): boolean {
   return fastForwardOn() || skipping() || instantSkipping();
 }
 
-/** The countdown bar under every pop-up (9ap.G): it runs out at the moment the pop-up closes. */
-function popupTimer(p: Popup): HTMLElement {
-  return h('div', { class: 'slap-timer', 'aria-hidden': 'true' }, h('span', { style: `animation-duration:${popupMs(p)}ms;animation-delay:-${popupElapsed(p)}ms` }));
+/**
+ * The countdown bar under a pop-up on a network game (9ap.G, 9aq.2): it runs out at the moment the pop-up closes.
+ * None on one phone (no timer, closed by a tap).
+ */
+function popupTimer(p: Popup): HTMLElement | null {
+  const ms = popupMs(p);
+  if (ms === null) return null;
+  return h('div', { class: 'slap-timer', 'aria-hidden': 'true' }, h('span', { style: `animation-duration:${ms}ms;animation-delay:-${popupElapsed(p)}ms` }));
+}
+
+/**
+ * 9aq.2 (2.39): closes the top pop-up on this phone (a tap, or its timer). The pop-ups still queued behind it
+ * start from now, so their countdown bars don't start late.
+ */
+function closePopup(p: Popup): void {
+  const cur = getState().popups;
+  if (cur[0] !== p) return;
+  const rest = cur.slice(1);
+  let t = hostClock();
+  for (const q of rest) {
+    popupAt.set(q, t);
+    t += popupMs(q) ?? 0;
+  }
+  update({ popups: rest });
+}
+
+/**
+ * 9aq.2 item 6 (2.39), "who's done": one small initial per person at the table on a network pop-up. Gold = done
+ * (their phone is not busy, 600 ms after the pop-up first showed); dashed = still looking. Your own initial stays
+ * dashed until you tap. Computer players and Away seats are not shown.
+ */
+function doneRow(s: Session, p: Popup, me: PlayerId | null): HTMLElement {
+  const done = popupDone.get(p) ?? new Set<PlayerId>();
+  popupDone.set(p, done);
+  const shownAt = popupShownAt.get(p) ?? Date.now();
+  const elapsed = Date.now() - shownAt;
+  const people = s.players.filter((x) => !x.computer && !isAwayPlayer(x.id));
+  const initials = seatInitials(s.players.map((x) => ({ id: x.id, name: x.sessionName ?? x.profileName })));
+  for (const x of people) {
+    if (x.id !== me && !done.has(x.id) && elapsed >= DONE_AFTER_MS && !isBusyPlayer(x.id)) done.add(x.id);
+  }
+  return h('div', { class: 'done-row', 'aria-label': 'Who is done' },
+    people.map((x) => h('span', { class: `done-dot ${done.has(x.id) && x.id !== me ? 'done' : 'wait'}`, title: x.sessionName ?? x.profileName }, initials[x.id] ?? '?')));
 }
 
 /** Coloured place badge: 1st gold, 2nd silver, 3rd bronze, Last red. */
@@ -1500,10 +1656,16 @@ export function popupLayer(): HTMLElement | null {
   // During the end-of-trick animation only the SLAP! pop-up shows, at its turn.
   if (trickAnim && trickAnim.step !== 'wait') return null;
   const s = g.session;
-  const next = (): void => update({ popups: st.popups.slice(1) });
+  const next = (): void => closePopup(p);
   let body: Child;
   let cls = shownPopups.has(p) ? 'popup seen' : 'popup';
   const firstShow = !shownPopups.has(p);
+  // 9aq.2 (2.39): the time this pop-up first showed (for the who's-done row), and a redraw once the 600 ms are up.
+  if (firstShow && !popupShownAt.has(p)) {
+    popupShownAt.set(p, Date.now());
+    if (g.net && !needsAnswer(p)) window.setTimeout(() => { if (getState().popups[0] === p) update({}); }, DONE_AFTER_MS + 20);
+  }
+  const tapToClose = !needsAnswer(p);
   if (p.kind === 'pathetic') {
     cls += ' slap pathetic';
     body = [
@@ -1546,10 +1708,15 @@ export function popupLayer(): HTMLElement | null {
   } else if (p.kind === 'take') {
     cls += ' take-pop';
     body = takePopBody(s, p);
+  } else if (p.kind === 'roundEnd') {
+    // 9aq.1 (2.39): the round's end on one pop-up: the head word, then one small box with the last two.
+    const r = roundEndBody(s, p, ownSeat(g));
+    cls += r.cls;
+    body = r.body;
   } else if (p.kind === 'lastTwo') {
     body = lastTwoBody(s, p, ownSeat(g));
   } else if (p.kind === 'voteAlert') {
-    // 9ai.4 (2.36): solid; "Vote now" opens the vote (9ap.G: it closes by itself after 5 s).
+    // 9ai.4 (2.36): solid; "Vote now" opens the vote (it closes by itself after 5 s, 9aq.2).
     cls += ' vote-alert';
     body = voteAlertBody(s, p, next);
   } else if (p.kind === 'vote') {
@@ -1564,13 +1731,16 @@ export function popupLayer(): HTMLElement | null {
     ];
   }
   shownPopups.add(p);
-  // 9ap.G (2.38.2): every pop-up closes by itself after 5 s (no tap to close; see popupTimer). The vote alert keeps
-  // its own "Vote now" button (9ai.4).
+  // 9aq.2 (2.39): a no-choice pop-up closes on a tap anywhere (and by its timer on a network game); the vote alert keeps
+  // its own "Vote now" button (9ai.4) and its 5 s.
   // 9aj.2 (2.36): during Fast forward the pop-ups come back to back and cover the bottom Stop button,
   // so the Stop button is drawn here, above the overlay, and its tap does not also close the pop-up.
-  // 9ap.G (2.38.2): no tap closes a pop-up; it closes by itself after 5 s, with a countdown bar under it.
-  return h('div', { class: 'overlay popup-overlay', 'data-skip': 'true' },
-    h('div', { class: cls, role: 'alert' }, body, popupTimer(p)),
+  // 9aq.2 (2.39): a no-choice pop-up closes on a tap anywhere on this phone, in every game. One phone says so
+  // ("Tap anywhere"); a network game shows the countdown bar and who is done instead (no words, less text).
+  const hint = tapToClose && !g.net ? h('div', { class: 'tap-hint small' }, 'Tap anywhere') : null;
+  const done = tapToClose && g.net ? doneRow(s, p, ownSeat(g)) : null;
+  return h('div', { class: 'overlay popup-overlay', 'data-skip': 'true', ...(tapToClose ? { onclick: () => closePopup(p) } : {}) },
+    h('div', { class: cls, role: 'alert' }, body, hint, popupTimer(p), done),
     fastForwardOn()
       ? h('button', { class: 'secondary big ff-stop', onclick: (e: Event) => { e.stopPropagation(); stopFastForward(); } }, 'Stop fast forward')
       : null);
@@ -1616,6 +1786,64 @@ function lastTwoBody(s: Session, p: Extract<Popup, { kind: 'lastTwo' }>, me: Pla
       h('span', null, placeBadge('last'), ` ${nameOf(s, loser)}`)),
     forfeit,
   ];
+}
+
+/**
+ * 9aq.1 (2.39): the round-end pop-up. The head word is PATHETIC!!!, SLAP!, HAHAHA! or (plain end) "Round over" /
+ * "Game over". Under it, one small cream box with at most two lines: "Round over · Amy came last" (never names
+ * places; the results screen does), and "Ben: HAHAHA!" when a HAHAHA! came with a forfeit or a slap.
+ */
+function roundEndBody(s: Session, p: Extract<Popup, { kind: 'roundEnd' }>, me: PlayerId | null): { cls: string; body: Child[] } {
+  const prefix = p.gameOver ? 'Game over' : 'Round over';
+  const e = p.end;
+  const n = e.order.length;
+  const result = e.shared
+    ? `Both out on jokers: ${e.shared.map((x) => nameOf(s, x)).join(' and ')}`
+    : `${nameOf(s, e.order[n - 1]!)} came last`;
+  const laughLine = p.haha && (p.head === 'pathetic' || p.head === 'slap') ? `${nameOf(s, p.haha.laugher)}: HAHAHA!` : null;
+  const box = h('div', { class: 'small round-end-box' },
+    h('div', null, p.head === 'over' ? result : `${prefix} · ${result}`),
+    laughLine ? h('div', null, laughLine) : null);
+  if (p.head === 'pathetic') {
+    const who = p.forfeiter ?? e.forfeitedBy ?? e.order[n - 1]!;
+    return {
+      cls: ' slap pathetic',
+      body: [
+        h('div', { class: 'slap-word pathetic-word', 'aria-label': 'Pathetic!!!' }, 'PATHETIC!!!'),
+        h('div', { class: 'slap-who' }, forfeitLine(nameOf(s, who), me === who)),
+        box,
+      ],
+    };
+  }
+  if (p.head === 'slap' && p.slap) {
+    return {
+      cls: ' slap',
+      body: [
+        h('div', { class: 'slap-word', 'aria-label': 'Slap!' }, 'SLAP!'),
+        h('div', { class: 'slap-who' }, `${nameOf(s, p.slap.slapper)} slapped ${nameOf(s, p.slap.slapped)}`),
+        box,
+      ],
+    };
+  }
+  if (p.head === 'haha' && p.haha) {
+    return {
+      cls: ' slap haha',
+      body: [
+        h('div', { class: 'slap-word', 'aria-label': 'Ha ha ha!' }, 'HAHAHA!'),
+        h('div', { class: 'slap-who' }, `${nameOf(s, p.haha.laugher)} played a lower card than ${nameOf(s, p.haha.loser)}!`),
+        box,
+      ],
+    };
+  }
+  const title = e.winner ? `${nameOf(s, e.winner)} wins the round` : prefix;
+  return {
+    cls: '',
+    body: [
+      h('div', { class: 'popup-icon' }, icon('flag')),
+      h('div', { class: 'popup-title' }, title),
+      box,
+    ],
+  };
 }
 
 /**
@@ -1785,17 +2013,21 @@ export function afterRender(): void {
   pauseTick();
   driveTrickAnim();
   const top = trickAnim && trickAnim.step !== 'wait' ? undefined : getState().popups[0];
-  // 9ap.G (2.38.2): every pop-up closes by itself at its start + 5 s on the host's clock, so every phone closes it
+  // 9ap.G (2.38.2), 9aq.2 (2.39): a network pop-up closes by itself at its start + its time on the host's clock, so every phone closes it
   // at the same moment (the countdown bar runs on the same clock). Pop-ups queued behind one close one after another.
   if (top && slapTimer?.popup !== top) {
     if (slapTimer) window.clearTimeout(slapTimer.id);
-    const left = popupStart(top) + popupMs(top) - hostClock();
-    const id = window.setTimeout(() => {
-      slapTimer = null;
-      const cur = getState().popups;
-      if (cur[0] === top) update({ popups: cur.slice(1) });
-    }, Math.max(300, left));
-    slapTimer = { popup: top, id };
+    slapTimer = null;
+    // 9aq.2 (2.39): a no-timer pop-up (one phone) waits for a tap; the others close at their time.
+    const ms = popupMs(top);
+    if (ms !== null) {
+      const left = popupStart(top) + ms - hostClock();
+      const id = window.setTimeout(() => {
+        slapTimer = null;
+        closePopup(top);
+      }, Math.max(300, left));
+      slapTimer = { popup: top, id };
+    }
   } else if (slapTimer && (!top || slapTimer.popup !== top)) {
     window.clearTimeout(slapTimer.id);
     slapTimer = null;
