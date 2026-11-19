@@ -79,7 +79,8 @@ export function roomPassView(head: HTMLElement, o: {
   return [
     head,
     h('section', { class: 'panel' },
-      h('h2', null, o.name || 'Room'),
+      // 9aq.17: the list callback updates this heading in place (netlobby.ts), so the box is never rebuilt.
+      h('h2', { 'data-room-name': 'true' }, o.name || 'Room'),
       h('label', { class: 'field' },
         h('span', null, 'Passcode (4 digits)'),
         h('input', { type: 'text', inputmode: 'numeric', maxlength: 4, value: o.value, 'aria-label': 'Passcode', autocomplete: 'off', class: 'room-code-input', oninput: (e: Event) => o.onInput((e.target as HTMLInputElement).value) }),

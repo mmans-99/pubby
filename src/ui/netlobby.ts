@@ -435,7 +435,7 @@ function body(): View {
       onPick: (r) => { roomPick = { roomId: r.roomId, name: r.name }; roomPass = ''; roomPassError = ''; go('room-pass'); },
     });
     case 'room-pass': return roomPassView(topBar('Join a room'), {
-      name: rooms.find((r) => r.roomId === roomPick?.roomId)?.name ?? roomPick?.name ?? '',
+      name: passRoomName(),
       value: roomPass, error: roomPassError,
       onInput: (v) => { roomPass = v.replace(/\D/g, '').slice(0, 4); },
       onJoin: () => { void joinRoomNow(); },
@@ -1170,7 +1170,14 @@ function startList(): void {
   roomsLoaded = false;
   roomsProblem = '';
   stopRooms = watchRooms(
-    (list) => { rooms = list; roomsLoaded = true; if (step === 'room-list' || step === 'room-pass') draw(); },
+    (list) => {
+      rooms = list;
+      roomsLoaded = true;
+      // 9aq.17: on the passcode screen only the heading changes. A full redraw would replace the
+      // passcode box, and a digit typed at that moment is lost (the keyboard closes on a phone).
+      if (step === 'room-list') draw();
+      else if (step === 'room-pass') updatePassName();
+    },
     (text) => { roomsProblem = text; if (step === 'room-list') draw(); },
   );
 }
@@ -1178,6 +1185,17 @@ function startList(): void {
 function stopList(): void {
   stopRooms?.();
   stopRooms = null;
+}
+
+/** The picked room's name for the passcode heading: from the list, else from the invite or the pick. */
+function passRoomName(): string {
+  return rooms.find((r) => r.roomId === roomPick?.roomId)?.name ?? roomPick?.name ?? '';
+}
+
+/** 9aq.17: updates the passcode screen's room name in place, leaving the passcode box alone. */
+function updatePassName(): void {
+  const heading = root?.querySelector<HTMLElement>('[data-room-name]');
+  if (heading) heading.textContent = passRoomName() || 'Room';
 }
 
 /** Joins the picked room with the typed passcode, then connects like any joining phone. */

@@ -4,6 +4,14 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-19 (21:30, Haiku) — Build 9aq.17 (3.0.3) and the 9aq.16 open items (not committed, not pushed)
+
+- Fix A: the passcode screen updates only the room name heading when the room list changes (`netlobby.ts`, `online.ts`). Fix B: `online_check.py` phase F (failed 3.0.2, passes 3.0.3). Fix C: `voice_check.py` ends a run cleanly on a failed join.
+- Results: `npm run check` clean; `npm test` 638 of 638; `online_check.py` 53 of 53; `voice_check.py --repeat 20 --trace` 20 of 20 runs (640 of 640 checks).
+- Part C: `voice_shots.py` 264 of 276. The 12 failures are the bottom-button label at the table (see CODE 9aq.17 build 5). 8-player lobby and Voice sheet added. Not done: the four-marks seat and build 1's scenes (C7); both need a plan.
+- Bottom action button: the "Waiting for <names>" label runs past the right edge at all six sizes; 3.0.1 has the same fault (checked on 51e292c). Reported, not fixed.
+- Test build: https://claude.ai/artifact/UkdSyyRQmTbhLkL96bmXxM. Not committed, not pushed. Waiting for "push".
+
 ## 2026-11-19 (20:50, Opus) — voice_check join failure diagnosed; plan 9aq.17 (docs only)
 
 **User:** "Continue Pubby plan 9aq.16 … Start with item 1 and tell me what you find", then "I want haiku to do fix".

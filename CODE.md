@@ -4559,6 +4559,17 @@ Opus checked Haiku's 3.0.1 build (9aq.6 build 3) against the traces, the code an
 **Phone checklist addition:**
 21. Join a room: on the passcode screen, start typing, and have someone make or join any room at that moment. The keyboard stays up and every digit you typed is kept.
 
+**Build 5 (3.0.3, Haiku, built 2026-11-19, not committed, not pushed; plan 9aq.17 and the 9aq.16 open items).**
+- Fix A (`netlobby.ts`, `online.ts`): on the passcode screen the room list only updates the heading (`data-room-name`) in place. Built as planned.
+- Fix B (`testbed/online_check.py` phase F, `--only f`): on 3.0.2 it failed (box read "51", focus lost); on 3.0.3 it passes 5 of 5. Full `online_check.py`: 53 of 53.
+- Fix C (`testbed/voice_check.py`): a failed join records the check, prints each page's step and the first 300 characters of its screen, ends that run, and the batch goes on.
+- Checks: `npm run check` clean; `npm test` 638 of 638; build; **`voice_check.py --repeat 20 --trace`: 20 of 20 runs, 640 of 640 checks.**
+- 9aq.16 Part C: `voice_shots.py` now has the 8-player lobby, the Voice sheet with seven others, the dealing and table shots at 8 players, and a bottom-button check at every state. Result: 264 of 276 (the 12 failures are the bottom-button check, below). Looked at the contact sheets for 390 and 360 wide by eye (the other sizes are in `testbed/out/shots/`, not yet viewed one by one).
+- **Not done (9aq.16 C2 and C7):** the seat with all four marks at once (card count, hourglass, eye, keep marks) needs a test hook, since the marks come from game state that the script cannot set up. Build 1's scenes (C7: the round-end pop-up heads, notices at 4 and 8 players, the round note, a network pop-up with the done row half filled) are not in the script. Both need a plan before they are built.
+- **Bottom action button (9aq.16 open item), reported, not fixed:** the "Waiting for <names>" button runs past the right edge of the window on the table at all six sizes (for example at 390 wide the label needs 257 px in a 155 px button, and "Waiting for Ben" is cut at the edge). In landscape and on the tablet, "Deal again?" is also clipped inside its button. **3.0.1 has the same fault** (checked on commit 51e292c, same six sizes), so it is not new in 3.0.2 or 3.0.3. Needs a plan (Opus): the label is long for the bar's width, so the fix is either shorter text or a planned two-line label.
+- Other things seen in the contact sheets (not fixed): the "Hal joined" toast covers the Eve or Gus row in the 8-player lobby and Voice sheet; at 360 wide the Host chip hides the first letter of the host's name in the lobby list; "Start game · 8 players" wraps to two lines at 360.
+- Test build: https://claude.ai/artifact/UkdSyyRQmTbhLkL96bmXxM (voice does not run on it; the mic has not been tested on any version).
+
 ### 9aq.7 Phone checklist
 
 Build 1 (2.39.0, test link):

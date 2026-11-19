@@ -19,7 +19,9 @@ the built app (dist/) on phone-sized pages that all point at it with ?server=.
 Not checked here: a version mismatch (the relay's version check is a unit test,
 tests/server/room.test.ts) and frames over FRAME_MAX (unit test too).
 
-Usage: npm run build && python3 testbed/online_check.py
+  F  9aq.17: a room that appears while the passcode is typed keeps the typed digits and focus.
+
+Usage: npm run build && python3 testbed/online_check.py [--only a|b|c|d|e|f]
 """
 
 import sys
@@ -425,6 +427,37 @@ def phase_e(browser, base, errors):
         stop_relay(proc)
 
 
+def phase_f(browser, base, errors):
+    """9aq.17: a room that appears while the passcode is typed must not wipe the box or drop focus."""
+    proc, server = start_relay()
+    try:
+        amy = new_page(browser, base, server, errors, 'Amy')
+        ben = new_page(browser, base, server, errors, 'Ben')
+        cat = new_page(browser, base, server, errors, 'Cat')
+        host_room(amy, 'Amy', 'Typing table', '5150')
+        watch_list(ben, 'Ben')
+        wait_for(lambda: in_list(ben, 'Typing table'), 8)
+        ben.locator('.room-item', has_text='Typing table').click()
+        box = ben.locator('input[aria-label="Passcode"]')
+        box.click()
+        ben.keyboard.type('51')
+        host_room(cat, 'Cat', 'Second table', '1111')  # another room appears: the list pushes to Ben
+        time.sleep(1.5)
+        ben.keyboard.type('50')
+        time.sleep(0.3)
+        check('the passcode box keeps every digit typed (5150)', box.input_value() == '5150', repr(box.input_value()))
+        focused = ben.evaluate("() => { const a = document.activeElement; return !!a && a.getAttribute('aria-label') === 'Passcode'; }")
+        check('the passcode box keeps focus when the room list changes', focused)
+        check('the heading still shows the picked room’s name', ben.locator('h2', has_text='Typing table').count() == 1)
+        ben.get_by_role('button', name='Join the room').click()
+        check('Join works after the list changed', wait_for(lambda: step_of(ben) == 'lobby', 20))
+        check('no page errors in phase F', not errors, '; '.join(errors[:3]))
+        for p in (amy, ben, cat):
+            p.context.close()
+    finally:
+        stop_relay(proc)
+
+
 def main():
     dist = ROOT / 'dist'
     httpd = serve(dist)
@@ -432,11 +465,11 @@ def main():
     with sync_playwright() as pw:
         browser = pw.chromium.launch(args=['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'])
         errors = []
-        phase_a(browser, base, errors)
-        phase_b(browser, base, errors)
-        phase_c(browser, base, errors)
-        phase_d(browser, base, [])
-        phase_e(browser, base, errors)
+        only = sys.argv[sys.argv.index('--only') + 1].lower() if '--only' in sys.argv else None
+        phases = {'a': phase_a, 'b': phase_b, 'c': phase_c, 'd': lambda b, u, e: phase_d(b, u, []), 'e': phase_e, 'f': phase_f}
+        for key, fn in phases.items():
+            if only is None or only == key:
+                fn(browser, base, errors)
         browser.close()
     httpd.shutdown()
     print(f'\n{sum(results)} of {len(results)} checks passed')

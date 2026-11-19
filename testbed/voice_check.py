@@ -168,21 +168,48 @@ def diagnose(frames, talker, listener, host):
     return f'not on the list: level 0 with a live track, context {sorted(ctx_states)}'
 
 
+class RunAborted(Exception):
+    """9aq.17 C: a join failed. The run ends here; the batch goes on with the next run."""
+
+
+def abort_run(name, pages):
+    """Records the failed check, prints each page's step and the start of its screen, then ends the run."""
+    oc.check(name, False)
+    for label, page in pages.items():
+        try:
+            step = oc.step_of(page)
+        except Exception as e:  # the page may be gone
+            step = f'? ({str(e)[:80]})'
+        try:
+            text = page.inner_text('body')[:300]
+        except Exception as e:
+            text = f'? ({str(e)[:80]})'
+        print(f'  {label}: step {step}; screen: {text!r}', flush=True)
+    raise RunAborted(name)
+
+
 def run(browser, base, errors, run_no=1, trace=False):
     proc, server = oc.start_relay()
     try:
         amy = oc.new_page(browser, base, server, errors, 'Amy', DEBUG)
         ben = oc.new_page(browser, base, server, errors, 'Ben', DEBUG)
         cat = oc.new_page(browser, base, server, errors, 'Cat', DEBUG)
-        oc.host_room(amy, 'Amy', ROOM, CODE)
-        oc.watch_list(ben, 'Ben')
-        oc.wait_for(lambda: oc.in_list(ben, ROOM), 8)
+        pages = {'Amy': amy, 'Ben': ben, 'Cat': cat}
+        if not oc.host_room(amy, 'Amy', ROOM, CODE):
+            abort_run('Amy makes the voice table', pages)
+        oc.check('Amy makes the voice table', True)
+        if not (oc.watch_list(ben, 'Ben') and oc.wait_for(lambda: oc.in_list(ben, ROOM), 8)):
+            abort_run('Ben sees the voice table in the room list', pages)
         oc.join_room(ben, ROOM, CODE)
-        oc.check('Ben joins the voice table', oc.wait_for(lambda: oc.step_of(ben) == 'lobby', 20))
-        oc.watch_list(cat, 'Cat')
-        oc.wait_for(lambda: oc.in_list(cat, ROOM), 8)
+        if not oc.wait_for(lambda: oc.step_of(ben) == 'lobby', 20):
+            abort_run('Ben joins the voice table', pages)
+        oc.check('Ben joins the voice table', True)
+        if not (oc.watch_list(cat, 'Cat') and oc.wait_for(lambda: oc.in_list(cat, ROOM), 8)):
+            abort_run('Cat sees the voice table in the room list', pages)
         oc.join_room(cat, ROOM, CODE)
-        oc.check('Cat joins the voice table', oc.wait_for(lambda: oc.step_of(cat) == 'lobby', 20))
+        if not oc.wait_for(lambda: oc.step_of(cat) == 'lobby', 20):
+            abort_run('Cat joins the voice table', pages)
+        oc.check('Cat joins the voice table', True)
 
         # 1: the controls are there on every lobby.
         for label, p in (('Amy', amy), ('Ben', ben), ('Cat', cat)):
@@ -297,8 +324,12 @@ def main():
                 args=['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
                       f'--use-file-for-fake-audio-capture={tone_wav()}', '--autoplay-policy=no-user-gesture-required'],
             )
-            run(browser, base, errors, run_no=n, trace=args.trace)
-            browser.close()
+            try:
+                run(browser, base, errors, run_no=n, trace=args.trace)
+            except RunAborted as e:
+                print(f'run {n} ended early: {e}', flush=True)
+            finally:
+                browser.close()
         this = oc.results[start:]
         per_run.append(all(this))
         print(f'\nrun {n}: {sum(this)} of {len(this)} checks passed', flush=True)
