@@ -317,7 +317,8 @@ function errText(e: unknown): string {
 
 /** A short message that doesn't redraw the screen (so typing isn't cut off). */
 function flash(msg: string): void {
-  const el = h('div', { class: 'toast', role: 'status' }, msg);
+  // 9aq.18 B: the toast sits under the top bar, never over a player row or a button.
+  const el = h('div', { class: 'toast top-toast', role: 'status' }, msg);
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 2600);
 }
@@ -684,7 +685,8 @@ function hostLobbyView(): View {
 /** The Start button; online it sits in the voice bar beside the mic and Voice buttons. */
 function startGameButton(problems: string[], waiting: number, missing: string | null, l: Lobby): HTMLElement {
   const start = h('button', { class: online() ? 'big' : 'big sticky', disabled: problems.length > 0 || waiting > 0 || missing !== null || hostAway, onclick: startGame },
-    problems.length ? 'Start game' : missing ? missing : `Start game · ${l.seats.length} players`);
+    // 9aq.18 C: on narrow phones the label is one line ("Start · 8 players").
+    problems.length ? 'Start game' : missing ? missing : window.innerWidth < 380 ? `Start · ${l.seats.length} players` : `Start game · ${l.seats.length} players`);
   return online() ? h('div', { class: 'voice-wrap' }, micHint(), voiceBar(start)) : start;
 }
 

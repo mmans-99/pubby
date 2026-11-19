@@ -4,6 +4,14 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-19 (23:40, Haiku) — Build 9aq.18 (3.0.4): bottom button, toast, lobby name, all-marks test, build 1 scenes (not committed, not pushed)
+
+- Built plan 9aq.18: "Waiting for N" bottom button; round buttons stacked in landscape and on tablets; join toasts at the top; lobby name shrinks before the chips and Start reads "Start · N players" under 380 px.
+- Tests: all-marks seat as a DOM test; build 1 scenes via the bot (`run_build1`).
+- Results: `npm run check` clean; `npm test` 638 of 638; `online_check.py` 53 of 53 (rerun after the tablet CSS change); `voice_check.py --repeat 20 --trace` 20 of 20 runs (640 of 640 checks); `voice_shots.py` bottom-button check passes at all sizes after the tablet fix.
+- Open: 4-player notice and done-row scenes not reproduced in every run (game-dependent).
+- Test build: https://claude.ai/artifact/3TDCyFejepW9hASLY7NfwE. Waiting for the user's test and "push".
+
 ## 2026-11-19 (21:30, Haiku) — Build 9aq.17 (3.0.3) and the 9aq.16 open items (not committed, not pushed)
 
 - Fix A: the passcode screen updates only the room name heading when the room list changes (`netlobby.ts`, `online.ts`). Fix B: `online_check.py` phase F (failed 3.0.2, passes 3.0.3). Fix C: `voice_check.py` ends a run cleanly on a failed join.

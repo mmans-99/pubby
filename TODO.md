@@ -490,9 +490,9 @@ Fixes after the 3.0.1 check (plan `CODE.md` 9aq.16, Opus 2026-11-19 19:40; APPRO
 - [x] Fix 1: keep voice offers that arrive before the seat order (H6, confirmed); 10 s stuck-link retry; unit tests (built, 3.0.2)
 - [~] Fix 1 gate: `voice_check --repeat 20 --trace` NOT 20 of 20 (runs 1 to 3 31 of 31; run 4 failed at Ben's join step, batch stopped). Opus 20:45: cause found, an app bug (the passcode box is rebuilt by every room-list push and loses the typing); fix planned in `CODE.md` 9aq.17
 - [x] 9aq.17 (3.0.3): Fix A (passcode heading updated in place), Fix B (`online_check.py` phase F, 5 of 5; full 53 of 53), Fix C (`voice_check.py` ends a failed run cleanly); `voice_check --repeat 20 --trace` 20 of 20 runs (640 of 640 checks)
-- [ ] Bottom action button: "Waiting for <names>" runs past the right edge at all six sizes on the table; "Deal again?" clipped in landscape and on the tablet. Also in 3.0.1. NOT fixed; needs an Opus plan (CODE.md 9aq.17 build 5)
-- [ ] 9aq.16 C2 all-marks seat and C7 build 1 scenes: NOT done, need a test hook / plan
-- [ ] Lobby polish seen in screenshots (not fixed): join toast covers a row in 8-player lobby; host name hidden by Host chip at 360 wide; "Start game · 8 players" wraps at 360
+- [x] Bottom action button: "Waiting for N" and stacked round buttons on landscape and tablets (3.0.4, CODE.md 9aq.18 build 6); was also in 3.0.1
+- [~] 9aq.16 C2 all-marks seat (3.0.4, DOM test, passes) and C7 build 1 scenes (round-end and round note at 4 and 8 players; notice and done row at 8 players only, 4-player games didn't show them in every run)
+- [x] Lobby polish (3.0.4, CODE.md 9aq.18 build 6): toast at the top; name shrinks before the Host chip; "Start · N players" under 380 px
 - [x] Fix 2: portrait bar overflow: `barFit`, same menu shelf (built, 3.0.2; 9 tests)
 - [x] Fix 3: voice badge sized by `--u` (built, 3.0.2)
 - [~] Fix 4: `voice_shots.py` taps Auto and the first-card seat; 150 of 150 at six sizes; NOT done: 8-person lobby, Voice sheet with seven others, all-marks seat, build 1 scenes (C7); by-eye check partial

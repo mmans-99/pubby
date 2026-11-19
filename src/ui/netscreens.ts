@@ -157,9 +157,10 @@ function beforeRound(g: SavedGame): Child {
     ? h('button', {
       class: 'big grow',
       disabled: waiting.length > 0,
+      // 9aq.18 A: the button says how many; the names are in the label for screen readers and in the seat strip.
       'aria-label': waiting.length ? `Start the round: waiting for ${joinNames(waiting.map((p) => nameOf(s, p)))}` : 'Start the round',
       onclick: () => send([{ type: 'startRound', by: s.hostId }]),
-    }, icon('play'), waiting.length ? ` Waiting for ${joinNames(waiting.map((p) => nameOf(s, p)))}` : ' Start')
+    }, icon('play'), waiting.length ? ` Waiting for ${waiting.length}` : ' Start')
     : null;
   // The host can start without a player who is away; they count as kept.
   const skipBtn = host && awayWaiting.length
@@ -292,7 +293,8 @@ function results(g: SavedGame): Child {
         send([...acts, { type: 'advance', by: s.hostId }]);
       },
     }, icon('play'), missingOthers.length
-      ? ` Waiting for ${joinNames(missingOthers.map((p) => nameOf(s, p)))}`
+      // 9aq.18 A: the count only; the names are in the label for screen readers.
+      ? ` Waiting for ${missingOthers.length}`
       : s.ultimateRound ? ' Start the Ultimate Round' : ` Next round · ${nameOf(s, s.hostId)}`)
     : h('p', { class: 'rhost host-line muted small center' }, `${nameOf(s, s.hostId)} (host) starts the next round`);
   const ultimateButton: Child = s.ultimateRound

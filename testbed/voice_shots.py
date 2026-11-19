@@ -77,6 +77,55 @@ def bottom_check(page, tag, scene, results):
     return items
 
 
+TOAST_JS = """() => {
+  const t = document.querySelector('.toast');
+  if (!t) return { present: false, hits: 0 };
+  const a = t.getBoundingClientRect();
+  const hits = [...document.querySelectorAll('ol.seats li, .voice-row, button')].filter((e) => {
+    if (e === t || t.contains(e)) return false;
+    const r = e.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && a.left < r.right - 0.5 && r.left < a.right - 0.5 && a.top < r.bottom - 0.5 && r.top < a.bottom - 0.5;
+  }).length;
+  return { present: true, hits };
+}"""
+
+NAME_CHIP_JS = """() => {
+  const rects = (sel) => [...document.querySelectorAll(sel)].map((e) => e.getBoundingClientRect()).filter((r) => r.width > 0);
+  const names = rects('ol.seats .seat-top > .name');
+  const chips = rects('ol.seats .seat-top > .chip-info');
+  let overlaps = 0;
+  for (const n of names) for (const c of chips) {
+    if (n.left < c.right - 0.5 && c.left < n.right - 0.5 && n.top < c.bottom - 0.5 && c.top < n.bottom - 0.5) overlaps++;
+  }
+  const start = [...document.querySelectorAll('button.big')].find((b) => /Start game|Start ·/.test(b.innerText));
+  return { overlaps, startH: start ? start.getBoundingClientRect().height : null };
+}"""
+
+MARKS_JS = """() => {
+  // 9aq.18 D: one seat with all four marks (count, hourglass, eye, keep check) and its voice badge.
+  // The marks are the classes the table paints (table.ts seatTags); the test adds them to a seat that has a badge.
+  const seat = [...document.querySelectorAll('[data-seat]')].find((e) => e.querySelector('.voice-badge'))
+    || document.querySelector('.seat-disc[data-voice]')?.closest('[data-seat]') || document.querySelector('[data-seat]');
+  if (!seat) return false;
+  const mk = (cls, txt, label) => { const x = document.createElement('span'); x.className = cls; x.setAttribute('role', 'img'); x.setAttribute('aria-label', label); x.textContent = txt; seat.appendChild(x); };
+  mk('seat-watched', '\u25c9', 'Watching'); mk('seat-busy', '\u29d7', 'Busy'); mk('seat-kept', '\u2713', 'Kept');
+  seat.setAttribute('data-marks-test', 'all');
+  return true;
+}"""
+
+MARK_CHECK_JS = """() => {
+  const seat = document.querySelector('[data-marks-test="all"]');
+  if (!seat) return { found: false, overlaps: 0 };
+  const boxes = [...seat.querySelectorAll('.voice-badge, .disc-count, .seat-watched, .seat-busy, .seat-kept')].map((e) => ({ k: e.className, r: e.getBoundingClientRect() }));
+  let overlaps = 0;
+  for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+    const a = boxes[i].r, c = boxes[j].r;
+    if (a.width && c.width && a.left < c.right - 0.5 && c.left < a.right - 0.5 && a.top < c.bottom - 0.5 && c.top < a.bottom - 0.5) overlaps++;
+  }
+  const badge = seat.querySelector('.voice-badge');
+  return { found: true, overlaps, badge: !!badge, n: boxes.length };
+}"""
+
 RECT_JS = "sel => { const e = document.querySelector(sel); if (!e) return null; const r = e.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom, w: innerWidth, h: innerHeight }; }"
 
 
@@ -158,7 +207,7 @@ def run_size(browser, base, errors, w, h, results):
         oc.wait_for(lambda: vc.mic_button(ben).get_attribute('aria-pressed') == 'true', 15)
         for _, p in pages:
             p.locator('body').click(position={'x': 4, 'y': 4})
-        amy.get_by_role('button', name='Start game').click()
+        amy.get_by_role('button', name=re.compile(r'^Start( game)? ·')).click()
         oc.wait_for(lambda: all(p.locator('.screen.game').count() == 1 for _, p in pages), 25)
         time.sleep(2)
         shot(amy, w, h, 'dealing')
@@ -182,6 +231,15 @@ def run_size(browser, base, errors, w, h, results):
         info = amy.evaluate(OVERLAP_JS)
         shot(amy, w, h, 'table')
         bottom_check(amy, tag, 'table', results)
+        # 9aq.18 D: all four marks on one seat, then the automatic overlap check.
+        if amy.evaluate(MARKS_JS):
+            time.sleep(0.3)
+            mc = amy.evaluate(MARK_CHECK_JS)
+            shot(amy, w, h, 'marks-all')
+            results.append((f'{tag} all-marks seat: the badge, count, hourglass, eye and check do not overlap ({mc.get("overlaps")})',
+                            mc.get('found') and mc.get('overlaps') == 0 and mc.get('badge')))
+        else:
+            results.append((f'{tag} all-marks seat: a seat is there to mark', False))
         results.append((f'{tag} table: no two bar or rail boxes overlap ({info["barOverlaps"]})', info['barOverlaps'] == 0))
         results.append((f'{tag} table: no voice badge covers a card count ({info["badgeOverlaps"]})', info['badgeOverlaps'] == 0))
         results.append((f'{tag} table: nothing in the bar is outside the window', info['outside'] == 0))
@@ -266,12 +324,20 @@ def run_eight(browser, base, errors, w, h, results):
             joined = joined and ok
             if not ok:
                 break
+            # 9aq.18 B: the join toast is over no seat and no button (checked while it is up).
+            t = amy.evaluate(TOAST_JS)
+            results.append((f'{tag} after {name} joins: the toast covers no seat or button ({t["hits"]})',
+                            t['present'] and t['hits'] == 0 or not t['present']))
         if not joined:
             shot(amy, w, h, 'join-stuck-8')
             print('   steps: ' + ' '.join(f'{n}={oc.step_of(p)!r}' for n, p in pages), flush=True)
             return
         seats = oc.wait_for(lambda: amy.locator('ol.seats li').count() == 8, 15)
         results.append((f'{tag}: the host lobby lists all 8 people', seats))
+        # 9aq.18 C: the names never run under the Host or You chips, and Start is one line.
+        nc = amy.evaluate(NAME_CHIP_JS)
+        results.append((f'{tag} lobby: no name runs under a chip ({nc["overlaps"]}), Start is one line (h {nc["startH"]})',
+                        nc['overlaps'] == 0 and nc['startH'] is not None and nc['startH'] <= 56))
         shot(amy, w, h, 'lobby-8')
         bottom_check(amy, tag, 'lobby-8', results)
 
@@ -289,7 +355,7 @@ def run_eight(browser, base, errors, w, h, results):
         oc.wait_for(lambda: sheet.count() == 0, 8)
 
         # The table at 8 players: start, Auto, the first seat, the deal.
-        amy.get_by_role('button', name='Start game').click()
+        amy.get_by_role('button', name=re.compile(r'^Start( game)? ·')).click()
         oc.wait_for(lambda: all(p.locator('.screen.game').count() == 1 for _, p in pages), 25)
         time.sleep(2)
         shot(amy, w, h, 'dealing-8')
@@ -316,6 +382,67 @@ def run_eight(browser, base, errors, w, h, results):
         oc.stop_relay(proc)
 
 
+def run_build1(browser, base, errors, w, h, n, results):
+    """C7 (9aq.5 item 3, build 1): the round-end pop-up, a notice during play, the round note with
+    "What happened", and a network pop-up with the done row half filled. The bot plays the round."""
+    tag = f'{w}x{h} {n} players'
+    proc, server = oc.start_relay()
+    pages = []
+    try:
+        amy = new_sized_page(browser, base, server, errors, 'Amy', w, h)
+        names = ['Ben', 'Cat', 'Dan', 'Eve', 'Fay', 'Gus', 'Hal'][: n - 1]
+        others = [(nm, new_sized_page(browser, base, server, errors, nm, w, h)) for nm in names]
+        pages = [('Amy', amy)] + others
+        oc.host_room(amy, 'Amy', vc.ROOM, vc.CODE)
+        for nm, p in others:
+            oc.watch_list(p, nm)
+            oc.wait_for(lambda p=p: oc.in_list(p, vc.ROOM), 8)
+            oc.join_room(p, vc.ROOM, vc.CODE)
+            if not oc.wait_for(lambda p=p: oc.step_of(p) == 'lobby', 20):
+                results.append((f'{tag} build 1: {nm} joins', False))
+                return
+        amy.get_by_role('button', name=re.compile(r'^Start( game)? ·')).click()
+        oc.wait_for(lambda: all(p.locator('.screen.game').count() == 1 for _, p in pages), 25)
+        auto = amy.locator('.seg-btn', has_text='Auto')
+        if oc.wait_for(lambda: auto.count() == 1, 15) and auto.get_attribute('aria-pressed') != 'true':
+            auto.click()
+        first = amy.locator('button[data-seat][aria-label^="First card to"]')
+        if oc.wait_for(lambda: any(first.nth(i).is_visible() for i in range(first.count())), 15):
+            next(first.nth(i) for i in range(first.count()) if first.nth(i).is_visible()).click()
+        for _, p in pages:
+            p.evaluate(oc.BOT)
+        want = {'round-end': False, 'notice': False, 'round-note': False, 'done-row': False}
+        cfg = oc.GAME
+        t0 = time.time()
+        while time.time() - t0 < 420 and not all(want.values()):
+            for _, p in pages:
+                p.evaluate('c => window.pubbyBot.step(c)', cfg)
+            # Any pop-up is shot (its title goes in the log, so a Round over one can be picked out).
+            if not want['round-end'] and amy.locator('.popup').count() > 0:
+                title = amy.locator('.popup .popup-title').first.inner_text() if amy.locator('.popup .popup-title').count() else ''
+                print(f'   build 1 {n}p: pop-up "{title}"', flush=True)
+                time.sleep(0.4); shot(amy, w, h, f'build1-popup-{n}p'); want['round-end'] = True
+            if not want['notice'] and amy.locator('.notice-overlay, .notice-card, .notice').count() > 0:
+                time.sleep(0.3); shot(amy, w, h, f'build1-notice-{n}p'); want['notice'] = True
+                print(f'   build 1 {n}p: notice shown', flush=True)
+            if not want['done-row'] and amy.locator('.done-row .done-dot.wait').count() > 0 and amy.locator('.done-row .done-dot.done').count() > 0:
+                shot(amy, w, h, 'build1-done-row'); want['done-row'] = True
+            if not want['round-note'] and amy.locator('.round-chip').count() == 1:
+                amy.locator('.round-chip').click()
+                if oc.wait_for(lambda: amy.locator('.round-note').count() == 1, 3):
+                    time.sleep(0.3); shot(amy, w, h, 'build1-round-note'); want['round-note'] = True
+                    amy.locator('.note-layer').click(position={'x': 4, 'y': 4})
+            time.sleep(0.05)
+        for k, v in want.items():
+            results.append((f'{tag} build 1 {k}: seen and shot', v))
+        print(f'   build 1 {n}p summary: {want}', flush=True)
+        results.append((f'{tag} build 1: no page errors', not errors))
+    finally:
+        for _, p in pages:
+            p.context.close()
+        oc.stop_relay(proc)
+
+
 def main():
     httpd = oc.serve(ROOT / 'dist')
     base = f'http://127.0.0.1:{httpd.server_address[1]}/index.html'
@@ -336,6 +463,16 @@ def main():
                 import traceback
                 traceback.print_exc(limit=-3)
                 results.append((f'{w}x{h}: the run stopped early ({type(e).__name__})', False))
+            if __import__('os').environ.get('BUILD1'):
+                for players in (4, 8):
+                    if players == 8 and w != 390:
+                        continue
+                    try:
+                        run_build1(browser, base, [], w, h, players, results)
+                    except Exception as e:
+                        import traceback
+                        traceback.print_exc(limit=-3)
+                        results.append((f'{w}x{h} build 1 {players}p: the run stopped early ({type(e).__name__})', False))
             if not __import__('os').environ.get('NO8'):
                 try:
                     run_eight(browser, base, [], w, h, results)

@@ -177,6 +177,9 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 .seats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .seat { background: rgba(0, 0, 0, 0.2); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
 .seat-top, .seat-bottom { display: flex; align-items: center; gap: 8px; }
+/* 9aq.18 C: at 360 wide the name shortens with an ellipsis; the chips (Host, You) keep their room. */
+.seat-top > .name { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.seat-top > .chip-info, .seat-top > .seat-no { flex: 0 0 auto; }
 .seat-no {
   flex: none;
   width: 30px; height: 30px; border-radius: 50%;
@@ -328,6 +331,9 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 @keyframes slide-up { from { transform: translateY(40px); opacity: 0; } }
 
 /* 2.29 (CODE.md 9x.1): the "updated" notice is a button; a tap reloads Pubby. */
+/* 9aq.18 B: a join or leave toast under the top bar (netlobby flash), not over the seats or the buttons. */
+.toast.top-toast { top: calc(64px + env(safe-area-inset-top)); bottom: auto; }
+
 .toast.update-toast { border: 0; text-align: center; cursor: pointer; font-weight: 700; color: var(--cream); background: var(--felt-dark); }
 
 .toast {
@@ -1273,6 +1279,14 @@ html[data-rail="1"] .notice-overlay { padding-left: 64px; }
 .notice-card .big { width: 100%; }
 
 .round-buttons .big, .round-buttons .secondary { min-height: 44px; }
+/* 9aq.18 A: landscape phones (the rail): the round buttons stack, so each label has its full width. */
+html[data-rail="1"] .round-buttons { flex-direction: column; gap: 6px; }
+html[data-rail="1"] .round-buttons > button { width: 100%; min-width: 0; }
+/* 9aq.18 A: tablets (the bottom row is narrow, about 190 px): the same stacking, so both labels fit. */
+@media (min-width: 700px) {
+  .round-buttons { flex-direction: column; gap: 6px; }
+  .round-buttons > button { width: 100%; min-width: 0; }
+}
 .game-frame { flex: 1; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) var(--hand-h, 0px) var(--bar-h, 0px); row-gap: 6px; }
 .game-table-slot { position: relative; min-height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 /* 9ad.2 (2.34): the away notice floats in the empty band above the "You" pill; it never moves the rows. */

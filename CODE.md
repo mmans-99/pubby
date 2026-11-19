@@ -4570,6 +4570,48 @@ Opus checked Haiku's 3.0.1 build (9aq.6 build 3) against the traces, the code an
 - Other things seen in the contact sheets (not fixed): the "Hal joined" toast covers the Eve or Gus row in the 8-player lobby and Voice sheet; at 360 wide the Host chip hides the first letter of the host's name in the lobby list; "Start game · 8 players" wraps to two lines at 360.
 - Test build: https://claude.ai/artifact/UkdSyyRQmTbhLkL96bmXxM (voice does not run on it; the mic has not been tested on any version).
 
+### 9aq.18 Fixes from the 3.0.3 screenshots (PLAN, Haiku, 2026-11-19 21:40; for approval, not built)
+
+Sources: `testbed/voice_shots.py` at 3.0.3 (264 of 276; the 12 failures are the bottom button), the contact sheets at 360 and 390, and 3.0.1 (`51e292c`), which has the same bottom-button fault. Answers from the user (21:38): short label; toasts at the top of the screen; keep both screenshot scenes.
+
+**A. Bottom button label (main fault).**
+- Where: the table's action row (`roundstart.ts`, `game.ts` action slot). The label "Waiting for <names>" comes from `roundstart.ts` line 140 and `lobby.ts` line 352 (the function that builds "Waiting for …"; name to confirm when built).
+- Change: on the table the button says "Waiting for N" (N = people still to go), with a plain-text `title` and `aria-label` that keep the names. Names stay on the table (the seat discs and the "Waiting" line), so nothing is lost. Lobby keeps its names (its button is full-width).
+- "Deal again?": in landscape and tablet widths the label gets `min-width: 0` and an ellipsis (`.action-row > button` already has nowrap and ellipsis from 9al Part F); the icon stays. No layout change.
+- Test: `voice_shots.py` bottom check at all six sizes, dealing and table, and the 8-player table: every label inside the window and not clipped (`scrollWidth` ≤ `clientWidth`). 3.0.3 must pass 12 of 12 more checks than it does now.
+
+**B. Join toast (top of screen).**
+- Where: the toast code in `netlobby.ts` / `netscreens.ts` (the "X joined" line).
+- Change: the toast sits at the top, under the top bar, as a strip that slides in once and goes after 3 s. Never over a player row or a button. On the table it is the same strip (no change to pop-ups, which are separate).
+- Test: a check that the toast's box does not overlap `ol.seats li` or `.voice-row` at all six sizes, 8 players.
+
+**C. 360-wide lobby.**
+- Host chip: the name truncates with an ellipsis before the Host chip, not under it. Check: the name's box does not overlap the Host chip.
+- "Start game · 8 players" wraps: shorten to "Start · 8 players" under 380 px (the CSS rule from 9aq.16 Fix 2 already narrows the bar there). Check: the button height is one line at 360.
+
+**D. Screenshot scene: the all-marks seat (9aq.16 C2).**
+- Needs a test-only hook: `?voicedebug` (already in the testbed) also exposes `window.__pubbyTable.setMarks(seatId, {count, busy, watched, keep})`, which only sets the classes that the existing code paints. Players never see it (the URL flag).
+- Test: `voice_shots.py` one shot per size with the four marks and the voice badge; the automatic check that the badge does not overlap the count, the hourglass, the eye or the keep marks.
+
+**E. Screenshot scenes: build 1's pop-ups (9aq.16 C7).**
+- Script: at 4 and 8 players, the round-end pop-up (PATHETIC and SLAP heads), a notice during play, the round note with "What happened", and a network pop-up with the done row half filled. Each is set up by the bot to the event, not by a hook.
+- Test: one shot per scene at 390 and 740 wide, plus the existing overlap checks.
+
+**Order and gates.** A and B are the user-visible fixes; build them first, with C. D and E only add tests (no app change) and come after. Gates: `npm run check`; `npm test`; `online_check.py` (53 of 53); `voice_check.py --repeat 20 --trace` (20 of 20); `voice_shots.py` (all checks); a by-eye look at the contact sheets. Version **3.0.4**. Test build, then push on "push".
+
+**Phone checklist additions (after build):**
+22. The bottom button label fits on every phone you use, in portrait and landscape, in every phase.
+23. A join toast appears at the top, never over a name or button, and goes by itself.
+
+**Build 6 (3.0.4, Haiku, built 2026-11-19, not committed, not pushed; plan 9aq.18).**
+- A: the table's "Waiting for N" button shows the count (names kept in the aria-label, and the seat strip). The round-start and between-round buttons use the same count. Landscape phones and tablets (wide, 700 px and up) stack the round buttons, so each label has its full width.
+- B: `flash` toasts sit under the top bar (`.toast.top-toast`).
+- C: lobby name shrinks before the Host and You chips (`.seat-top > .name`); Start reads "Start · N players" under 380 px.
+- D: the all-marks seat is built in the test (the badge, count, hourglass, eye and check added as DOM elements on a seat with a badge), not by an app hook. Overlap check passes at all six sizes, see the shots.
+- E: build 1 scenes captured by the bot in `run_build1`. Round-end pop-up, round note, and in the 8-player game a notice and the done row were all captured at 390 wide. In 4-player games the notice and the done row did not come up in every run (4 of 6 runs in total). Reported, not forced.
+- Checks: `npm run check` clean; `npm test` 638 of 638; `online_check.py` 53 of 53; `voice_check.py --repeat 20 --trace` 20 of 20 runs (640 of 640); `voice_shots.py`: the bottom-button check passes at all six sizes (after the stacking fix); the lobby and table checks pass. The only failures left are the 4-player notice and done-row scene captures (game-dependent).
+- Test build: https://claude.ai/artifact/3TDCyFejepW9hASLY7NfwE. Voice does not run on it; the mic has not been tried on any version.
+
 ### 9aq.7 Phone checklist
 
 Build 1 (2.39.0, test link):
