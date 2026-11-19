@@ -4,6 +4,18 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-19 (23:55, Opus) — 3.0.3 phone test faults diagnosed; plan 9aq.19 (docs only)
+
+**User:** screenshots from 3.0.3: Host chip over the name in the Android host lobby; the iPad table not shown in full (fine on Android); the round end plays the victory fanfare and the loser sound one after the other whatever your place. Asked what else from 3.0.4 needs a look.
+
+**Found:**
+- iPad table: the layout sizes from `innerHeight` but the game screen is padded by the safe-area insets (0 on Android, about 24 + 20 px on the iPad home-screen app), so the table slot cuts the table's top and bottom. Reproduced in Chromium at 820×1180 by forcing that padding; `tablet_check.py` then fails. It passes today only because Chromium has no insets.
+- Round-end sound: `eventSounds` plays the last escape sound and then always the trombone, on every phone; it doesn't know which seat is this phone's.
+- Lobby: 3.0.4 stops the overlap (ellipsis), but with Host, You and Mic off the name is cut to "M…" at 412 wide.
+- Also on the iPad photo: the voice badge sits over the seat's name pill.
+
+**Plan:** `CODE.md` 9aq.19 (3.0.5, for Haiku). **23:58:** Q1 option 1 (each phone hears its own round-end sound: trombone only for the loser), Q2 option 1 (lobby chips on the second line); plan approved; "push" (docs only, still 3.0.4). No code changed. Still open from 3.0.4: the 4-player notice and done-row screenshot scenes (test only), and the phone checklist items 9 to 23 (mic and voice not tried on a phone yet).
+
 ## 2026-11-19 (23:40, Haiku) — Build 9aq.18 (3.0.4): bottom button, toast, lobby name, all-marks test, build 1 scenes (not committed, not pushed)
 
 - Built plan 9aq.18: "Waiting for N" bottom button; round buttons stacked in landscape and on tablets; join toasts at the top; lobby name shrinks before the chips and Start reads "Start · N players" under 380 px.

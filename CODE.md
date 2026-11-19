@@ -4612,6 +4612,38 @@ Sources: `testbed/voice_shots.py` at 3.0.3 (264 of 276; the 12 failures are the 
 - Checks: `npm run check` clean; `npm test` 638 of 638; `online_check.py` 53 of 53; `voice_check.py --repeat 20 --trace` 20 of 20 runs (640 of 640); `voice_shots.py`: the bottom-button check passes at all six sizes (after the stacking fix); the lobby and table checks pass. The only failures left are the 4-player notice and done-row scene captures (game-dependent).
 - Test build: https://claude.ai/artifact/3TDCyFejepW9hASLY7NfwE. Voice does not run on it; the mic has not been tried on any version.
 
+### 9aq.19 Fixes from the 3.0.3 phone test (PLAN, Opus, 2026-11-19 23:55; APPROVED 23:58, Q1 = 1, Q2 = 1; not built; for Haiku)
+
+3.0.4 is on main (79eec34). The user tested 3.0.3 on an Android phone (host lobby) and an iPad (table, 2 players). Three faults; causes found from the code, one reproduced in the browser.
+
+**A. iPad (iOS) table cut off at the top and bottom (reproduced).**
+- Cause: `gameLayout`, `tableBox`, `handH` and `railFit` size everything from `window.innerHeight`, but `.screen.game.fixed` pads the top and bottom by `env(safe-area-inset-top/bottom)`. Android Chrome gives 0 for both, so it looks right. On the iPad (home-screen app, `black-translucent` status bar) they are about 24 px and 20 px, so the rows are ~44 px taller than the screen, and `.game-table-slot` (overflow hidden, centred) cuts the table's top and bottom rail. Reproduced in Chromium at 820×1180 by forcing 28 px / 24 px padding: the same cut-off as the iPad photo, and `tablet_check.py` then fails (side fans cut). `tablet_check.py` passes today only because Chromium has no insets.
+- Fix: in `styles.css` `:root`, add `--sat: env(safe-area-inset-top, 0px)`, `--sab`, `--sal`, `--sar` the same way, and use those in every `.screen.game` padding rule. New `viewSize()` in `layout.ts`: reads the four values once per draw from a hidden probe (`getComputedStyle` of an element with `padding: var(--sat) var(--sar) var(--sab) var(--sal)`), returns `{ w: innerWidth - sal - sar, h: innerHeight - sat - sab }`. Every `window.innerWidth/innerHeight` that sizes the game (`game.ts` 797, 1189, 1262, 1489, 1494; `table.ts` 578; `watch.ts` 132) uses `viewSize()` instead. Landscape and portrait both (the iPad in landscape has a 20 px bottom inset too).
+- Test: `tablet_check.py --safe 24,20` sets `:root { --sat: 24px; --sab: 20px }` before load (the same CSS variables, so app and test agree) and runs every size: all checks pass, and a new check that the `.round-table` box is fully inside `.game-table-slot`. Also run without `--safe` (no change on Android).
+
+**B. Round end plays the fanfare and then the sad trombone, to everyone.**
+- Cause: `eventSounds` (`audio/sfx.ts` 261) plays the escape sound for the last `playerOut` (the fanfare when that is place 1, as in a 2-player game; else the bells) and then always `lastPlace`. It doesn't know which seat is this phone's.
+- Fix (Q1 below, option 1 recommended): `eventSounds(events, withTrick, me)`, where `me` is this phone's seat id (single player: the person's seat; watching: still your own seat). At round end exactly one sound: the trombone if `me` is the last player; otherwise the escape sound for your own place (fanfare if you came 1st, bells if not). Escapes before the round end stay as now (everyone hears them).
+- Test: unit tests in `tests/audio/` with a fake `sfx` queue: 2 players, winner phone hears only `roundWinner`, loser only `lastPlace`; 4 players, the 2nd and last phones; a slap ending and a forfeit ending.
+
+**C. Host lobby row: the Host chip covers the name (Android, 412 wide).**
+- Cause: the row has the number, the name and up to three chips (Host, You, Mic off; plus Away or a level). In 3.0.3 the name had no `overflow: hidden`, so it shrank to nothing and its text ran under the chips. 3.0.4 (9aq.18 C) adds the ellipsis, so it no longer overlaps, but at 412 wide the three chips take ~300 px and the name shows as "M…".
+- Fix (Q2 below, option 1 recommended): the chips move to the second line of the row (`.seat-bottom`, which already holds ▲ ▼ ✕ on the right and is empty on the left; joiners' rows get a `.seat-bottom` for them). Line 1 is just the number and the full name. The same in `joinLobbyView`, `startedView` and the Voice sheet rows if they share `seatTags`.
+- Test: `voice_shots.py` lobby scene at all six sizes with Host, You and Mic off on one row: the name's `scrollWidth` ≤ `clientWidth` for names up to 12 letters, and no chip overlaps the name or the arrows.
+
+**D. Seen on the iPad photo, to check while there:** the small voice badge on Murshed's seat disc sits over the name pill ("Mur▪hed"). Add the name pill to the 9aq.16 badge-overlap check at the tablet sizes (820×1180, 1024×1366); if it overlaps, move the badge to the disc's top-left (the count stays top-right).
+
+**Order and gates.** A, B, C, D. Gates: `npm run check`; `npm test`; `tablet_check.py` with and without `--safe 24,20`; `online_check.py` 53 of 53; `voice_shots.py` all checks; a by-eye look at 820×1180 with `--safe`. Version **3.0.5**. Test build, then push on "push". The iPad fix can only be confirmed on the iPad itself (Chromium has no real insets).
+
+**Questions (answered 23:58: Q1 option 1, Q2 option 1; build those):**
+- Q1 round-end sound: (1, recommended) each phone hears its own: trombone only for the loser, fanfare or bells for everyone else; (2) everyone hears only the trombone at round end; (3) everyone hears both, as now, but with the fanfare cut short.
+- Q2 lobby chips: (1, recommended) chips on the second line with the arrows; (2) keep one line and shrink chips to icons only (crown, person, mic) with text in the aria-label.
+
+**Phone checklist additions (after build):**
+24. iPad, home-screen app, portrait and landscape: the whole table shows, rail all round, and nothing is cut at the bottom.
+25. 2-player round: the winner's phone plays the fanfare only; the loser's phone plays the trombone only. 3 or more players: the same at the round end.
+26. Host lobby on your Android phone: the full name shows, with Host, You and Mic on the line under it.
+
 ### 9aq.7 Phone checklist
 
 Build 1 (2.39.0, test link):

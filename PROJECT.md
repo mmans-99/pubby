@@ -439,7 +439,7 @@ Chosen from a sample page the user listens to on their phone: **Pubby sound samp
 - **SLAP!:** the **Huge** version.
 - **Paused:** Click (one soft click down). **Resumed:** the matching click up.
 - **Take-cards request:** Knock knock (two knocks on a door).
-- **Every other effect exactly as on the sample page:** tap, shuffle, deal, play a card, picked up the pile, trick done, joker, got away, last place (sad trombone), round winner, Ultimate Winner, Coward!, vote result, Reaction Tap countdown, 😂 reaction, your turn, not allowed.
+- **Every other effect exactly as on the sample page:** tap, shuffle, deal, play a card, picked up the pile, trick done, joker, got away, last place (sad trombone; 3.0.5: at the round end each phone plays only its own sound, the trombone for the loser and the fanfare or bells for everyone else), round winner, Ultimate Winner, Coward!, vote result, Reaction Tap countdown, 😂 reaction, your turn, not allowed.
 
 **Sound at start (decided 2026-11-08 07:29, changed 08:56):** music starts switched off, effects on; both start at a lower volume than the sample page.
 

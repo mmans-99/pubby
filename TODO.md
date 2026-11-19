@@ -493,6 +493,7 @@ Fixes after the 3.0.1 check (plan `CODE.md` 9aq.16, Opus 2026-11-19 19:40; APPRO
 - [x] Bottom action button: "Waiting for N" and stacked round buttons on landscape and tablets (3.0.4, CODE.md 9aq.18 build 6); was also in 3.0.1
 - [~] 9aq.16 C2 all-marks seat (3.0.4, DOM test, passes) and C7 build 1 scenes (round-end and round note at 4 and 8 players; notice and done row at 8 players only, 4-player games didn't show them in every run)
 - [x] Lobby polish (3.0.4, CODE.md 9aq.18 build 6): toast at the top; name shrinks before the Host chip; "Start · N players" under 380 px
+- [ ] 9aq.19 (3.0.5, approved 23:58, Q1 = each phone its own round-end sound, Q2 = chips on line 2; for Haiku): A iPad table cut off (safe-area insets not counted in the layout); B round-end fanfare and trombone both play to everyone; C lobby chips crowd the name (move to line 2); D voice badge over the name pill on the iPad
 - [x] Fix 2: portrait bar overflow: `barFit`, same menu shelf (built, 3.0.2; 9 tests)
 - [x] Fix 3: voice badge sized by `--u` (built, 3.0.2)
 - [~] Fix 4: `voice_shots.py` taps Auto and the first-card seat; 150 of 150 at six sizes; NOT done: 8-person lobby, Voice sheet with seven others, all-marks seat, build 1 scenes (C7); by-eye check partial
