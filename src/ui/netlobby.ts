@@ -24,7 +24,7 @@ import { makeQr, qrSvg } from '../net/qr.ts';
 import { Peer } from '../net/peer.ts';
 import type { Link } from '../net/link.ts';
 import { HostRoom, createRoom, joinRoom, joinSocket, voiceIceServers, watchRooms, type OnlineLink, type RoomInfo } from '../net/online.ts';
-import { setVoicePlayers, setVoiceSheetOpen, voiceMic, voiceMicBlocked, voiceMicOn, voiceMute, voiceRunning, voiceSetPeers, voiceSheetIsOpen, voiceSignal, voiceStart, voiceStop, voiceTalking, type VoicePlayer } from './voiceglue.ts';
+import { setVoicePlayers, setVoiceSheetOpen, voiceMic, voiceMicBlocked, voiceMicOn, voiceMute, voiceNoteDrop, voiceRunning, voiceSetPeers, voiceSheetIsOpen, voiceSignal, voiceStart, voiceStop, voiceTalking, type VoicePlayer } from './voiceglue.ts';
 import { setMicAction, voiceSheetOverlay } from './voicetable.ts';
 import { isMutedName, loadVoice, saveVoice, setMutedName } from './voicestore.ts';
 import { AWAY_MS, PASSCODE_RE, ROOM_ID_RE, ROOM_NAME_MAX } from '../net/relayproto.ts';
@@ -853,9 +853,11 @@ function sendVoice(to: string, d: VoiceData): void {
   if (role === 'host') {
     const l = links.get(to);
     if (l?.seated) l.peer.send({ t: 'vsig', from: 'host', to, d } satisfies ToJoiner);
+    else voiceNoteDrop('host-send: target not seated');
     return;
   }
   if (peer?.isOpen) peer.send({ t: 'vsig', from: you, to, d } satisfies ToHost);
+  else voiceNoteDrop('join-send: no open link to host');
 }
 
 /** 9aq.9 (3.0.0): the call follows the lobby. Online rooms only; Nearby games never start voice. */
@@ -1360,11 +1362,19 @@ function hostGot(id: string, raw: unknown): void {
   }
   // 9aq.9 (3.0.0): a voice signal. The host checks `from` is this seat, then passes it on unchanged.
   if (m.t === 'vsig') {
-    if (!link.seated || m.from !== id) return;
+    if (!link.seated) {
+      voiceNoteDrop('relay: sender not seated');
+      return;
+    }
+    if (m.from !== id) {
+      voiceNoteDrop('relay: wrong from');
+      return;
+    }
     if (m.to === 'host') voiceSignal(id, m.d);
     else {
       const to = links.get(m.to);
       if (to?.seated) to.peer.send({ t: 'vsig', from: m.from, to: m.to, d: m.d } satisfies ToJoiner);
+      else voiceNoteDrop('relay: target not seated');
     }
     return;
   }

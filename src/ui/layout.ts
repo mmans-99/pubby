@@ -102,3 +102,25 @@ export function gameLayout(viewW: number, viewH: number, opts: LayoutOpts = {}):
   const tableH = Math.max(MIN_TABLE_LANDSCAPE, viewH - CHROME_LANDSCAPE - handH);
   return { landscape, tableW, tableH, handH, handW: inner - sideW, barH: 0, sideW, box: tableBoxFor(tableW, tableH, true), rail: false };
 }
+
+/**
+ * 9aq.15 A2 (3.0.1): the rail's top group. Each button is RAIL_BTN px, RAIL_ROW_GAP px apart, from the top
+ * padding (RAIL_TOP). The bottom group (quick rules, sound, 😂) floats from the bottom, so the top group
+ * must end above RAIL_FLOAT_H px from the bottom of the window.
+ */
+export const RAIL_BTN = 40;
+export const RAIL_ROW_GAP = 6;
+export const RAIL_TOP = 8;
+export const RAIL_FLOAT_H = 150;
+
+/**
+ * 9aq.15 A2: how many of `items` (in order of importance) fit in the rail's top group at this height.
+ * The rest are `overflow`: the game menu takes them. Items are never shrunk or hidden under the floating buttons.
+ * Sums: 320 high → 3, 360 → 4, 390 → 5, 412 → 5, 500 → 7.
+ */
+export function railFit<T>(viewH: number, items: readonly T[]): { shown: T[]; overflow: T[] } {
+  // n buttons take RAIL_TOP + n*RAIL_BTN + (n-1)*RAIL_ROW_GAP, which must stay above the floating group.
+  const room = viewH - RAIL_FLOAT_H - RAIL_TOP;
+  const n = Math.max(0, Math.min(items.length, Math.floor((room + RAIL_ROW_GAP) / (RAIL_BTN + RAIL_ROW_GAP))));
+  return { shown: items.slice(0, n) as T[], overflow: items.slice(n) as T[] };
+}

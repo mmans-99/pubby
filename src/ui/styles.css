@@ -1685,3 +1685,8 @@ button.voice-mute.gold { border: 2px solid var(--gold); }
 .voice-seat-layer { position: fixed; inset: 0; z-index: 35; background: transparent; display: flex; align-items: center; justify-content: center; padding: 16px; }
 .voice-seat-card { width: 100%; max-width: 300px; display: grid; gap: 12px; }
 .voice-seat-name { margin: 0; font-weight: 700; }
+
+/* 9aq.15 A2 (3.0.1): the rail's overflow shelf, at the top of the game menu (copies of the buttons that did not fit). */
+.menu-shelf { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid rgba(0, 0, 0, 0.15); }
+.menu-shelf > .icon-btn, .menu-shelf > .round-chip, .menu-shelf > .target-chip, .menu-shelf > .target-btn { width: 40px; height: 40px; min-width: 40px; min-height: 40px; }
+.menu-deal { display: flex; gap: 6px; align-items: center; }

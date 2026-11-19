@@ -109,14 +109,14 @@ def stop_relay(proc):
             pass
 
 
-def new_page(browser, base, server, errors, label):
+def new_page(browser, base, server, errors, label, extra=''):
     ctx = browser.new_context(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True)
     page = ctx.new_page()
     page.on('pageerror', lambda e: errors.append(f'{label}: {e}'))
     # A refused request (403 for a wrong passcode) is expected; only real errors count.
     page.on('console', lambda m: errors.append(f'{label} console: {m.text}')
             if m.type == 'error' and 'Failed to load resource' not in m.text else None)
-    page.goto(f'{base}?server={server}')
+    page.goto(f'{base}?server={server}{extra}')
     page.wait_for_selector('text=Multiplayer')
     return page
 

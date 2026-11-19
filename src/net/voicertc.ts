@@ -71,6 +71,8 @@ export function makeRtcLink(
   let stream: MediaStream | null = null;
   let wantMuted = false;
   const buf = new Uint8Array(512);
+  // 9aq.15 B1: the kind of candidate the link uses ("host", "srflx" or "relay"), read from getStats.
+  let pairType = '?';
 
   pc.onicecandidate = (e) => {
     if (e.candidate) out({ ice: { candidate: e.candidate.candidate, sdpMid: e.candidate.sdpMid, sdpMLineIndex: e.candidate.sdpMLineIndex } });
@@ -183,6 +185,33 @@ export function makeRtcLink(
         audio.remove();
         audio = null;
       }
+    },
+    /** 9aq.15 B1: read-only, for `?voicedebug`. Calls getStats for the candidate type, so it is not for normal play. */
+    debug() {
+      const tr = transceiver ?? pc.getTransceivers().find((t) => t.receiver.track.kind === 'audio') ?? null;
+      const rt = tr?.receiver.track ?? null;
+      void pc.getStats().then((rep) => {
+        rep.forEach((s) => {
+          const st = s as unknown as Record<string, unknown>;
+          if (st['type'] === 'candidate-pair' && st['nominated'] === true && st['state'] === 'succeeded') {
+            const local = rep.get(String(st['localCandidateId'] ?? ''));
+            const lt = (local as unknown as Record<string, unknown> | undefined)?.['candidateType'];
+            pairType = typeof lt === 'string' ? lt : '?';
+          }
+        });
+      }).catch(() => undefined);
+      return {
+        connectionState: pc.connectionState,
+        iceConnectionState: pc.iceConnectionState,
+        signalingState: pc.signalingState,
+        direction: tr?.currentDirection ?? null,
+        remoteTrack: rt === null ? null : { readyState: rt.readyState, muted: rt.muted },
+        hasStream: stream !== null,
+        audio: audio === null ? null : { paused: audio.paused, muted: audio.muted, volume: audio.volume },
+        meterOn: analyser !== null && meterStream === stream,
+        pairType,
+        sendingTrack: track !== null,
+      };
     },
   };
 }

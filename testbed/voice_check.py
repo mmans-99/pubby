@@ -15,9 +15,17 @@ with a beeping tone. Host Amy, joiners Ben and Cat.
   8  no page errors
 
 Usage: npm run build && python3 testbed/voice_check.py
+       python3 testbed/voice_check.py --repeat 20 --trace
+
+--repeat N   runs the whole check N times, each with a fresh relay and browser (9aq.15 B2).
+--trace      during step 3 saves the ?voicedebug snapshot of all three pages every 250 ms to
+             testbed/out/voice_trace_<run>.json, and prints a suggested H1 to H5 for a missed ring.
+             Every page loads with ?voicedebug (the testbed adds it; players never see it).
 """
 
+import argparse
 import array
+import json
 import math
 import struct
 import sys
@@ -35,6 +43,9 @@ import online_check as oc  # noqa: E402  (the room helpers and the local relay)
 
 ROOM = 'Voice table'
 CODE = '5150'
+OUT = ROOT / 'testbed' / 'out'
+TALK_LEVEL = 0.02  # src/net/voice.ts TALK_LEVEL
+DEBUG = '&voicedebug'
 
 
 def tone_wav(seconds=600, rate=48000):
@@ -90,12 +101,79 @@ def show_page(page):
     }""")
 
 
-def run(browser, base, errors):
+SNAP_JS = "() => (window.__pubbyVoice ? window.__pubbyVoice.snapshot() : null)"
+
+
+def watch_talk(pages, listeners, seconds, trace):
+    """9aq.15 B2: waits up to `seconds` for a talk ring on each listener, polling every 250 ms.
+
+    With trace, every page's snapshot is kept in each poll. Returns (rang per listener, frames).
+    """
+    frames = []
+    rang = {name: False for name in listeners}
+    end = time.time() + seconds
+    while time.time() < end:
+        frame = {'t': round(time.time(), 3)} if trace else None
+        for name, page in pages.items():
+            if trace:
+                try:
+                    frame[name] = page.evaluate(SNAP_JS)
+                except Exception as e:  # a page can close mid-run; the trace says so
+                    frame[name] = {'error': str(e)[:200]}
+        for name in listeners:
+            if not rang[name]:
+                rang[name] = pages[name].locator('[data-voice].talking').count() >= 1
+        if trace:
+            frames.append(frame)
+        if all(rang.values()):
+            break
+        time.sleep(0.25)
+    return rang, frames
+
+
+def diagnose(frames, talker, listener, host):
+    """9aq.15 B3: a suggested H1 to H5 for a missed ring, read from the trace. Opus confirms; this only points."""
+    if not frames:
+        return 'no trace'
+    talker_id = None
+    for f in reversed(frames):
+        snap = f.get(talker) or {}
+        if snap.get('me'):
+            talker_id = snap['me']
+            break
+    last_listener = next((f[listener] for f in reversed(frames) if f.get(listener)), None)
+    if not last_listener or talker_id is None:
+        return 'no snapshot for the listener or the talker'
+    host_snap = frames[-1].get(host) or {}
+    dropped = sum((host_snap.get('vsigDropped') or {}).values())
+    pair = (last_listener.get('peers') or {}).get(talker_id)
+    if pair is None:
+        return f'no pair with the talker ({talker_id}) on {listener}; host dropped {dropped}: H1 if dropped > 0'
+    link = pair.get('link') or {}
+    state = link.get('connectionState')
+    ctx_states = {f[listener].get('audioContext') for f in frames if f.get(listener)}
+    peak = max((f[listener]['peers'][talker_id].get('maxLevel2s', 0) for f in frames
+                if f.get(listener) and talker_id in (f[listener].get('peers') or {})), default=0)
+    track = link.get('remoteTrack') or {}
+    if state != 'connected':
+        return f'link {state}; host dropped {dropped}: ' + ('H1' if dropped > 0 else 'not connected and no drops counted (cause not on the list)')
+    if 'suspended' in ctx_states and peak == 0:
+        return 'H2: connected, AudioContext suspended, level 0'
+    if track.get('readyState') != 'live':
+        return f'H4: remote track {track.get("readyState")}'
+    if 0 < peak < TALK_LEVEL:
+        return f'H3: connected, context {sorted(ctx_states)}, peak level {peak} under {TALK_LEVEL}'
+    if peak >= TALK_LEVEL:
+        return f'H5: level fine (peak {peak}), the ring came late or not at all'
+    return f'not on the list: level 0 with a live track, context {sorted(ctx_states)}'
+
+
+def run(browser, base, errors, run_no=1, trace=False):
     proc, server = oc.start_relay()
     try:
-        amy = oc.new_page(browser, base, server, errors, 'Amy')
-        ben = oc.new_page(browser, base, server, errors, 'Ben')
-        cat = oc.new_page(browser, base, server, errors, 'Cat')
+        amy = oc.new_page(browser, base, server, errors, 'Amy', DEBUG)
+        ben = oc.new_page(browser, base, server, errors, 'Ben', DEBUG)
+        cat = oc.new_page(browser, base, server, errors, 'Cat', DEBUG)
         oc.host_room(amy, 'Amy', ROOM, CODE)
         oc.watch_list(ben, 'Ben')
         oc.wait_for(lambda: oc.in_list(ben, ROOM), 8)
@@ -123,8 +201,20 @@ def run(browser, base, errors):
         # 3: Ben talks (the fake tone); the others get a talk ring. Each phone is tapped once first, as a player would (sound needs a tap).
         for p in (amy, ben, cat):
             p.locator('body').click(position={'x': 4, 'y': 4})
-        oc.check('Amy sees a talk ring while Ben talks', oc.wait_for(lambda: talking_rings(amy) >= 1, 25))
-        oc.check('Cat sees a talk ring while Ben talks', oc.wait_for(lambda: talking_rings(cat) >= 1, 25))
+        pages = {'Amy': amy, 'Ben': ben, 'Cat': cat}
+        rang, frames = watch_talk(pages, ('Amy', 'Cat'), 25, trace)
+        if trace:
+            OUT.mkdir(exist_ok=True)
+            path = OUT / f'voice_trace_{run_no:02d}.json'
+            path.write_text(json.dumps(frames, indent=1))
+        oc.check('Amy sees a talk ring while Ben talks', rang['Amy'])
+        oc.check('Cat sees a talk ring while Ben talks', rang['Cat'])
+        if trace and not (rang['Amy'] and rang['Cat']):
+            for name in ('Amy', 'Cat'):
+                if not rang[name]:
+                    print(f'  H-suggest ({name} listening to Ben): {diagnose(frames, "Ben", name, "Amy")}', flush=True)
+                    last = next((f[name] for f in reversed(frames) if f.get(name)), None)
+                    print(f'  last snapshot on {name}: {json.dumps(last)}', flush=True)
 
         # 4 and 5: Cat mutes Ben, then unmutes.
         cat.get_by_role('button', name='Mute Ben').click()
@@ -191,18 +281,30 @@ def run(browser, base, errors):
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--repeat', type=int, default=1, help='runs of the whole check (fresh relay and browser each)')
+    ap.add_argument('--trace', action='store_true', help='save the step-3 snapshots to testbed/out/')
+    args = ap.parse_args()
     httpd = oc.serve(ROOT / 'dist')
     base = f'http://127.0.0.1:{httpd.server_address[1]}/index.html'
-    errors = []
-    with sync_playwright() as pw:
-        browser = pw.chromium.launch(
-            executable_path='/usr/bin/google-chrome',
-            args=['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
-                  f'--use-file-for-fake-audio-capture={tone_wav()}', '--autoplay-policy=no-user-gesture-required'],
-        )
-        run(browser, base, errors)
-        browser.close()
+    per_run = []
+    for n in range(1, args.repeat + 1):
+        errors = []
+        start = len(oc.results)
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(
+                executable_path='/usr/bin/google-chrome',
+                args=['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
+                      f'--use-file-for-fake-audio-capture={tone_wav()}', '--autoplay-policy=no-user-gesture-required'],
+            )
+            run(browser, base, errors, run_no=n, trace=args.trace)
+            browser.close()
+        this = oc.results[start:]
+        per_run.append(all(this))
+        print(f'\nrun {n}: {sum(this)} of {len(this)} checks passed', flush=True)
     httpd.shutdown()
+    if args.repeat > 1:
+        print(f'\n{sum(per_run)} of {len(per_run)} runs passed every check')
     print(f'\n{sum(oc.results)} of {len(oc.results)} checks passed')
     raise SystemExit(0 if all(oc.results) else 1)
 

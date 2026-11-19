@@ -42,7 +42,7 @@ import { hostBroadcast, hostClock, joinSend, sendMessage, sendReaction } from '.
 import { cleanMessage } from '../net/lobby.ts';
 import { handH, noticeFading, roundTable, wastePile } from './table.ts';
 import { joinNames } from '../session/names.ts';
-import { gameLayout, type GameLayout } from './layout.ts';
+import { gameLayout, railFit, type GameLayout } from './layout.ts';
 import { forfeitLine } from './popuptext.ts';
 import { mergeRoundEnd } from './roundend.ts';
 import { watchAskCard, watchEyeButton, watchingBlock, watchPill, watchSheet } from './watch.ts';
@@ -764,32 +764,53 @@ export function gameScreen(g: SavedGame): HTMLElement {
   const lastSeen = sheetSeen('last', lastOpen);
   // 2.31 (CODE.md 9aa Part A): the scrolling box is named, so a redraw keeps its place (app.ts render).
   const content: Child = framed ? body : h('div', { class: 'game-scroll', 'data-scroll': `game-${s.phase}-${s.round}` }, body);
+  // 9aq.15 A2 (3.0.1): every bar button, by key. In the rail the top group keeps what fits (railFit, in order of
+  // importance), and the rest goes into the game menu as a shelf (menuShelf). Portrait and tablets keep every button.
+  const slot: Record<BarKey, () => Child> = {
+    // 9ak.1 (2.37): while the menu is open the button reads as a close (×) and stays above the menu layer.
+    menu: () => h('button', {
+      class: st.menuOpen ? 'icon-btn menu-btn open' : 'icon-btn menu-btn',
+      'aria-label': st.menuOpen ? 'Close menu' : 'Menu',
+      'aria-expanded': st.menuOpen ? 'true' : 'false',
+      onclick: () => update({ menuOpen: !st.menuOpen, armed: null }),
+    }, icon(st.menuOpen ? 'x' : 'menu')),
+    // 9aq.11 item 1 (3.0.0): the mic, and the Voice button when the bar has room (not while dealing).
+    mic: () => tableMicButton(),
+    voice: () => tableVoiceButton(window.innerWidth >= 390 && s.phase !== 'dealing'),
+    round: () => roundChip(s, label),
+    pause: () => (ownSeat(g) ? netPauseButton(g) : pauseButton(s)),
+    // 9ak.1 (2.37): once a target is agreed, a gold "First to N" chip sits right after the pause button.
+    targetChip: () => (s.target !== null ? targetChip(s) : null),
+    // 9aj.5 (2.36): the target score, proposed from here (gold ring); it never shares the bar with Take cards.
+    targetButton: () => targetButton(s),
+    // 2.31 (CODE.md 9aa Part C item 3): the jokers and hidden-deck chips sit in the top bar while dealing.
+    jokers: () => (s.phase === 'dealing' ? dealJokers(s) : null),
+    hidden: () => (s.phase === 'dealing' ? dealHidden(s) : null),
+    take: () => takeButton(g),
+  };
+  const railBar = stageLayout(true, 52).rail;
+  const order = railBar ? RAIL_ORDER : PORTRAIT_ORDER;
+  const built = new Map<BarKey, Child>(order.map((k) => [k, slot[k]()]));
+  const present = order.filter((k) => k === 'menu' || (built.get(k) ?? null) !== null);
+  const fit = railBar ? railFit(window.innerHeight, present) : { shown: present, overflow: [] as BarKey[] };
+  // The menu shelf: the rail's buttons that did not fit, as copies (the voice item is already in the menu).
+  const shelfKeys = fit.overflow.filter((k) => k !== 'voice');
+  const shelf = shelfKeys.length === 0 ? null : h('div', {
+    class: 'menu-shelf', 'data-shelf': 'rail',
+    // A tap on one of the copies closes the menu, as the bar's own buttons do.
+    onclick: (e: Event) => { if ((e.target as Element).closest('button')) update({ menuOpen: false }); },
+  },
+    shelfKeys.filter((k) => k !== 'menu' && k !== 'jokers' && k !== 'hidden').map((k) => slot[k]()),
+    shelfKeys.some((k) => k === 'jokers' || k === 'hidden') ? h('div', { class: 'menu-deal' }, slot.jokers(), slot.hidden()) : null,
+  );
   return h('main', { class: framed ? 'screen game fixed framed' : 'screen game fixed' },
     h('div', { class: st.menuOpen ? 'game-bar menu-open' : 'game-bar' },
-      // 9ak.1 (2.37): while the menu is open the button reads as a close (×) and stays above the menu layer.
-      h('button', {
-        class: st.menuOpen ? 'icon-btn menu-btn open' : 'icon-btn menu-btn',
-        'aria-label': st.menuOpen ? 'Close menu' : 'Menu',
-        'aria-expanded': st.menuOpen ? 'true' : 'false',
-        onclick: () => update({ menuOpen: !st.menuOpen, armed: null }),
-      }, icon(st.menuOpen ? 'x' : 'menu')),
-      // 9aq.11 item 1 (3.0.0): the mic, and the Voice button when the bar has room (not while dealing).
-      tableMicButton(),
-      tableVoiceButton(window.innerWidth >= 390 && s.phase !== 'dealing'),
-      roundChip(s, label),
-      ownSeat(g) ? netPauseButton(g) : pauseButton(s),
-      // 9ak.1 (2.37): once a target is agreed, a gold "First to N" chip sits right after the pause button.
-      s.target !== null ? targetChip(s) : null,
-      // 9aj.5 (2.36): the target score, proposed from here (gold ring); it never shares the bar with Take cards.
-      targetButton(s),
-      // 2.31 (CODE.md 9aa Part C item 3): the jokers and hidden-deck chips sit in the top bar while dealing.
-      s.phase === 'dealing' ? dealChips(s) : null,
-      takeButton(g),
+      ...fit.shown.map((k) => built.get(k) ?? null),
     ),
     // 9al.1 (2.37.1): the round note floats over the table; it never pushes the table down.
     st.armed === 'roundinfo' ? noteLayer(s) : null,
     // 9ak.1 (2.37): the menu floats as a card over the table; a tap outside it closes it.
-    st.menuOpen ? menuLayer(g.net ? netMenu(g) : gameMenu(g)) : null,
+    st.menuOpen ? menuLayer(withShelf(g.net ? netMenu(g) : gameMenu(g), shelf)) : null,
     lastOpen && g.lastTrick ? lastSheet(s, g.lastTrick, lastSeen) : null,
     targetSheet(s, { me: ownSeat(g) ?? undefined }),
     seatCardLayer(),
@@ -888,15 +909,28 @@ function handFastItems(g: SavedGame): Child[] {
  * 2.31 (CODE.md 9aa Part C item 3): the jokers chip and the hidden-deck chip, in the top bar while dealing.
  * Both are short (a number beside the icon) so they fit on a 320 px phone.
  */
-function dealChips(s: Session): Child {
-  return [
-    h('span', { class: s.jokerRuleEnabled ? 'chip-info bar-chip gold' : 'chip-info bar-chip', 'aria-label': s.jokerRuleEnabled ? `${s.jokerTotal} jokers` : 'No jokers' },
-      icon('joker'), s.jokerRuleEnabled ? String(s.jokerTotal) : '0'),
-    s.order.length <= 3
-      ? h('button', { class: 'chip-info bar-chip', 'aria-label': `${s.order.length === 2 ? 2 : 1} hidden ${s.order.length === 2 ? 'decks' : 'deck'}: what is this?`, onclick: () => update({ rulesOpen: true, rulesTopic: 'Hidden decks' }) },
-        icon('eyeoff'), String(s.order.length === 2 ? 2 : 1))
-      : null,
-  ];
+function dealJokers(s: Session): HTMLElement {
+  return h('span', { class: s.jokerRuleEnabled ? 'chip-info bar-chip gold' : 'chip-info bar-chip', 'aria-label': s.jokerRuleEnabled ? `${s.jokerTotal} jokers` : 'No jokers' },
+    icon('joker'), s.jokerRuleEnabled ? String(s.jokerTotal) : '0');
+}
+
+/** 9aq.15 A2: the hidden-deck chip (its own slot, so the rail can count it). */
+function dealHidden(s: Session): HTMLElement | null {
+  return s.order.length <= 3
+    ? h('button', { class: 'chip-info bar-chip', 'aria-label': `${s.order.length === 2 ? 2 : 1} hidden ${s.order.length === 2 ? 'decks' : 'deck'}: what is this?`, onclick: () => update({ rulesOpen: true, rulesTopic: 'Hidden decks' }) },
+      icon('eyeoff'), String(s.order.length === 2 ? 2 : 1))
+    : null;
+}
+
+/** 9aq.15 A2: the bar's buttons, by key. The rail's order is the order of importance (railFit keeps the first ones). */
+type BarKey = 'menu' | 'mic' | 'voice' | 'round' | 'pause' | 'targetChip' | 'targetButton' | 'jokers' | 'hidden' | 'take';
+const PORTRAIT_ORDER: BarKey[] = ['menu', 'mic', 'voice', 'round', 'pause', 'targetChip', 'targetButton', 'jokers', 'hidden', 'take'];
+const RAIL_ORDER: BarKey[] = ['menu', 'mic', 'round', 'pause', 'take', 'targetChip', 'targetButton', 'jokers', 'hidden', 'voice'];
+
+/** 9aq.15 A2: puts the rail's overflow shelf at the top of the game menu. */
+function withShelf(menu: HTMLElement, shelf: HTMLElement | null): HTMLElement {
+  if (shelf) menu.prepend(shelf);
+  return menu;
 }
 
 /** 9v.1: the banner under the top bar while Fast forward or a skip runs, with Stop. */

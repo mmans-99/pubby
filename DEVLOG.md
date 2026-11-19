@@ -4,6 +4,28 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-19 (19:40, Opus) — Check of the 3.0.1 build; plan 9aq.16 (docs only)
+
+**User:** "Can you check" (after Haiku's 3.0.1 build and its H6 finding).
+
+**Found:** H6 confirmed from the traces and `VoiceMesh.onSignal` (offers that arrive before the `/turn` fetch ends are thrown away; the link waits in `new` forever). The landscape rail fix is correct (checked on the voice table shot at 740×360). Two faults the screenshots show and nobody had looked at: the portrait bar overflows at 390 wide while dealing (jokers chip under the sound button; from 3.0.0), and the voice badge covers the seat initial on phones. Part C's script fails because the deal is manual (no "Deal all").
+
+**Plan:** `CODE.md` 9aq.16 (Fixes 1 to 4, version 3.0.2). Approved 19:39. The user asked to commit and push 3.0.1 now (no phone test first) so Haiku can carry on in a new chat.
+
+---
+
+## 2026-11-19 (Haiku, 19:45) — Plan 9aq.15: build 3.0.1 (not committed, not pushed)
+
+**User:** build `CODE.md` 9aq.15 (3.0.1): Part B diagnosis first, then Part A rail, Part C screenshots, Part E checks and test build.
+
+**Done:** Part B: `?voicedebug` snapshot, `voice_check.py --repeat N --trace`, 20 traced runs: 4 misses, all Cat hears Ben, Cat's link stuck in `new`. New candidate H6 (offer dropped before the seat order is set); no fix. Part A: A1 before-screenshots (dealing overlap at 740×360), `railFit` + menu shelf (Option 1), 6 unit tests, after-screenshots clean. Part C: `voice_shots.py` written, not passing yet. Part E: check, 624 of 624 unit tests, build 3.0.1, online 48 of 48, landscape 24 of 24, voice_check x5 154 of 155. `testbed/out/` ignored.
+
+**Not done:** Part C (deal step and mic toggles in the script; 8-person lobby; all-marks seat; build 1 scenes; by-eye check). H6 fix (needs Opus). Push (waiting for "push").
+
+**Checks:** see CODE.md 9aq.6 build 3.
+
+---
+
 ## 2026-11-19 (18:25, Opus) — Plan 9aq.15: build 2 follow-ups (docs only)
 
 **User:** plan four open items after the 3.0.0 push (61716f1): the landscape rail; Cat's missed lobby talk ring (diagnose first); screenshots at six sizes, the seat card and the Voice sheet entrance; check the live server takes protocol 13 and `/rooms/<id>/turn`.

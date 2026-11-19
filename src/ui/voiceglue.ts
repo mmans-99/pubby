@@ -7,9 +7,14 @@
 import { ICE_MAX_AGE_MS, VoiceMesh, iceFresh } from '../net/voice.ts';
 import { acquireMicTrack, makeRtcLink, releaseMicTrack, setVoiceIce } from '../net/voicertc.ts';
 import type { VoiceData } from '../net/lobby.ts';
-import { setVoiceDuck } from '../audio/engine.ts';
+import { ctx, setVoiceDuck } from '../audio/engine.ts';
 
 let mesh: VoiceMesh | null = null;
+/** 9aq.15 B1: debug counters, read only by `?voicedebug`. Not used by the app's logic. */
+const vsigSent = new Map<string, number>();
+const vsigRecv = new Map<string, number>();
+const vsigDropped = new Map<string, number>();
+const levelHist = new Map<string, { t: number; v: number }[]>();
 let me = '';
 let sendTo: (to: string, d: VoiceData) => void = () => undefined;
 let iceAt = Number.NEGATIVE_INFINITY;
@@ -55,13 +60,13 @@ export function voiceStart(
   ice: () => Promise<RTCIceServer[] | null>,
 ): void {
   if (mesh !== null && me === myId) {
-    sendTo = send;
+    sendTo = countedSend(send);
     fetchIce = ice;
     return;
   }
   voiceStop();
   me = myId;
-  sendTo = send;
+  sendTo = countedSend(send);
   fetchIce = ice;
   mesh = new VoiceMesh({
     me: myId,
@@ -73,6 +78,22 @@ export function voiceStart(
   });
   tickTimer = window.setInterval(tick, 100);
   void refreshIce();
+}
+
+function countedSend(send: (to: string, d: VoiceData) => void): (to: string, d: VoiceData) => void {
+  return (to, d) => {
+    vsigSent.set(to, (vsigSent.get(to) ?? 0) + 1);
+    send(to, d);
+  };
+}
+
+function bump(map: Map<string, number>, key: string): void {
+  map.set(key, (map.get(key) ?? 0) + 1);
+}
+
+/** 9aq.15 B1: the host (or the sending screen) counts a signal it did not pass on, by reason. */
+export function voiceNoteDrop(reason: string): void {
+  bump(vsigDropped, reason);
 }
 
 /** Closes every link and the mic, and stops the level loop. The room closed or this phone left. */
@@ -122,6 +143,7 @@ export function voiceSetPeers(seatOrder: readonly string[], connected: readonly 
 
 /** A signal from `from`, passed on by the host (or from the host itself). */
 export function voiceSignal(from: string, d: VoiceData): void {
+  bump(vsigRecv, from);
   mesh?.onSignal(from, d);
 }
 
@@ -167,12 +189,55 @@ async function refreshIce(): Promise<void> {
 
 function tick(): void {
   if (!mesh) return;
-  mesh.tick(performance.now());
+  const now = performance.now();
+  mesh.tick(now);
   // Rings are set on the elements directly, so no redraw is needed (9aq.9 item 6).
   for (const el of document.querySelectorAll<HTMLElement>('[data-voice]')) {
     const id = el.dataset['voice'] ?? '';
     el.classList.toggle('talking', mesh.isTalking(id));
   }
   setVoiceDuck(mesh.anyoneTalking());
-  if (!iceFresh(iceAt, performance.now())) void refreshIce();
+  if (!iceFresh(iceAt, now)) void refreshIce();
+  if (debugOn) recordHistory(now);
+}
+
+/** 9aq.15 B1: whether `?voicedebug` is on. Off for players, so none of the debug reads run for them. */
+const debugOn = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('voicedebug');
+
+/** Keeps two seconds of levels per person, so the snapshot can give the highest level recently. */
+function recordHistory(now: number): void {
+  if (!mesh) return;
+  for (const id of mesh.peers()) {
+    const h = levelHist.get(id) ?? [];
+    h.push({ t: now, v: mesh.levelOf(id) });
+    while (h.length > 0 && now - (h[0]?.t ?? now) > 2000) h.shift();
+    levelHist.set(id, h);
+  }
+}
+
+/** 9aq.15 B1: a read-only snapshot for `?voicedebug`. Nothing in the app calls it. */
+export function voiceDebugSnapshot(): Record<string, unknown> {
+  const now = performance.now();
+  const peers = mesh ? mesh.debugPeers() : {};
+  for (const id of Object.keys(peers)) {
+    const h = levelHist.get(id) ?? [];
+    const max2s = h.filter((x) => now - x.t <= 2000).reduce((m, x) => Math.max(m, x.v), 0);
+    (peers[id] as Record<string, unknown>)['maxLevel2s'] = Math.round(max2s * 10000) / 10000;
+  }
+  return {
+    me,
+    audioContext: ctx === null ? 'none' : ctx.state,
+    talking: mesh?.anyoneTalking() ?? false,
+    peers,
+    vsigSent: Object.fromEntries(vsigSent),
+    vsigRecv: Object.fromEntries(vsigRecv),
+    vsigDropped: Object.fromEntries(vsigDropped),
+    at: Math.round(now),
+  };
+}
+
+if (debugOn && typeof window !== 'undefined') {
+  (window as unknown as { __pubbyVoice?: { snapshot: () => Record<string, unknown> } }).__pubbyVoice = {
+    snapshot: voiceDebugSnapshot,
+  };
 }

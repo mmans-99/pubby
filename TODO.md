@@ -482,10 +482,16 @@ Build 2, 3.0.0 (after build 1 is pushed):
 - [ ] Open bug, intermittent: Cat's lobby talk ring missed in 1 of 4 `voice_check.py` runs (not confirmed; see CODE.md 9aq.6)
 Build 2 follow-ups, 3.0.1 (plan `CODE.md` 9aq.15, Opus 2026-11-19 18:25; questions answered 18:35: Option 1, drop results-panel mic, no relay line, add build 1 screenshots; APPROVED 18:38):
 - [x] Part D: server and Pages deploys for 61716f1 green (user 18:37); `/turn` probe and two-phone join optional, the join is covered by the phone test
-- [ ] Part B: Cat's ring: `?voicedebug` snapshot, `voice_check.py --repeat 20 --trace`, sort misses into H1 to H5; no fix until found
-- [ ] Part A: landscape rail with voice (`railFit`, Option 1); screenshots of 3.0.0's rail first
-- [ ] Part C: `voice_shots.py`: six sizes, seat card at each edge, all marks on one seat, Voice sheet entrance once
-- [ ] Part E: 3.0.1, checks, push on "push", phone checklist 9aq.7 items 9 to 20
+- [x] Part B: Cat's ring: 20 traced runs, 4 misses, all "Cat hears Ben" with Cat's link stuck in `new`; not on the H1 to H5 list (new candidate H6, offer dropped before the seat order is set). Not fixed; Opus to plan the fix (CODE.md 9aq.6 build 3)
+- [x] Part A: landscape rail with voice (`railFit`, Option 1, 3.0.1); before: dealing overlap at 740×360 (jokers chip on 😂); after: no overlaps, menu shelf (built, not committed)
+- [~] Part C: `voice_shots.py` written; last run stopped early (deal step and mic toggles); not yet passing; 8-person lobby, all-marks seat and build 1 scenes NOT done; by-eye check NOT done
+- [x] Part E: 3.0.1 committed and pushed on the user's word (19:39), phone test skipped by the user; check, unit tests 624 of 624, online 48 of 48, landscape 24 of 24, voice_check x5 154 of 155; test build published (private link, no voice); NOT pushed (waiting for "push"); phone checklist 9aq.7 items 9 to 20
+Fixes after the 3.0.1 check (plan `CODE.md` 9aq.16, Opus 2026-11-19 19:40; APPROVED 19:39):
+- [ ] Fix 1: keep voice offers that arrive before the seat order (H6, confirmed); 10 s stuck-link retry; unit tests; 20 of 20 traced runs
+- [ ] Fix 2: portrait bar overflow (jokers chip under the sound button at 390 wide while dealing): `barFit`, same menu shelf
+- [ ] Fix 3: voice badge sized by `--u` (it covers the seat initial on phones)
+- [ ] Fix 4: `voice_shots.py` taps Auto; finish Part C scenes and by-eye check
+- [ ] 3.0.2, checks, test build, push on "push"
 
 ## Phase 5 — Polish
 

@@ -77,6 +77,8 @@ export interface VoiceLink {
   /** The other person's level, 0 to 1. 0 when nothing is playing. */
   level(): number;
   close(): void;
+  /** 9aq.15 B1: a read-only snapshot for `?voicedebug` only. Optional, so tests need not write it. */
+  debug?(): Record<string, unknown>;
 }
 
 export interface VoiceDeps {
@@ -108,6 +110,8 @@ export class VoiceMesh {
   private order: string[] = [];
   private links = new Map<string, VoiceLink>();
   private detectors = new Map<string, TalkDetector>();
+  /** 9aq.15 B1: the level read on the last tick, per person (debug snapshot only). */
+  private lastLevel = new Map<string, number>();
   private muted = new Set<string>();
   private retried = new Set<string>();
   private track: unknown | null = null;
@@ -190,9 +194,30 @@ export class VoiceMesh {
         this.detectors.set(id, det);
       }
       const before = det.talking;
-      if (det.update(link.level(), now) !== before) changed = true;
+      const level = link.level();
+      this.lastLevel.set(id, level);
+      if (det.update(level, now) !== before) changed = true;
     }
     return changed;
+  }
+
+  /** 9aq.15 B1: the level read on the last tick (0 when there is no link). */
+  levelOf(id: string): number {
+    return this.lastLevel.get(id) ?? 0;
+  }
+
+  /** 9aq.15 B1: for `?voicedebug`: each link's state, read only. Never used by the app's logic. */
+  debugPeers(): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const [id, link] of this.links) {
+      out[id] = {
+        level: this.levelOf(id),
+        talking: this.isTalking(id),
+        muted: this.muted.has(id),
+        link: link.debug?.() ?? null,
+      };
+    }
+    return out;
   }
 
   /** Talking, to this phone: a muted person never shows as talking. */
@@ -235,6 +260,7 @@ export class VoiceMesh {
     this.links.get(peer)?.close();
     this.links.delete(peer);
     this.detectors.delete(peer);
+    this.lastLevel.delete(peer);
     this.retried.delete(peer);
   }
 
