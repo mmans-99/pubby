@@ -464,6 +464,22 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [x] Part H: Deal again once per round (built, not committed)
 - [ ] Phone checklist 9ap.7 (phone test pending)
 
+## Phase 4z — One round-end pop-up, tap or 3.5 s pop-ups, notices, voice chat online (plan 2026-11-19 16:38, `PROJECT.md` 12z, build guide `CODE.md` 9aq, mockups https://claude.ai/artifact/EtHkCqc94hdHkajLMwB44S; approved; for Haiku)
+Build 1, 2.39.0:
+- [ ] Part A: one pop-up at the end of a round (`roundEnd`)
+- [ ] Part B: one phone tap anywhere (no timer); network 3.5 s, tap closes yours, done row
+- [ ] Part C: small notices on the felt (don't hold play)
+- [ ] Part D: "What happened" in the round note
+- [ ] Part E: 2.39.0, no-flash and overlap screenshots, checks, test build, phone checklist 9aq.7 items 1 to 8, push on "push"
+Build 2, 3.0.0 (after build 1 is pushed):
+- [ ] User: TURN key in Cloudflare and two GitHub secrets (9aq Part L), before the build 2 push
+- [ ] Part F: `/rooms/<id>/turn`, monthly cap 3000, STUN fallback, server tests
+- [ ] Part G: `src/net/voice.ts` (mesh, signals through the host, mic off by default, page hidden turns it off, talk detection, music dip)
+- [ ] Part H: lobby mic and Voice buttons, per-player mute buttons, mic state
+- [ ] Part I: top bar / rail buttons, seat talk ring and badges, seat card
+- [ ] Part J: Voice sheet, storage `pubby.voice` (mutes remembered)
+- [ ] Part K: 3.0.0, `voice_check.py`, screenshots, flash check, push on "push", phone checklist 9aq.7 items 9 to 18 on the live app
+
 ## Phase 5 — Polish
 
 - [ ] Animations for slap and trick resolution

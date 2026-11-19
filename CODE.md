@@ -4223,6 +4223,240 @@ Tried in a browser (2.38.1 build, 390x844, single player vs 3 computers): auto d
 - **Playthrough script (slice 5):** `python3 testbed/playthrough.py` (needs Python Playwright and a built `dist/index.html`). `testbed/bot.js` is injected into the page and plays like a person: it only taps what is on screen (pop-ups, pass-the-phone, votes, swap, Reaction Tap, deal, cards, final-two choice, results). Four full games: 2 players (manual deal, swap, forfeits), 3 players (reshuffle vote, swap, Ultimate Round played), 5 players (manual deal, jokers off, Ultimate Round voted down), 8 players (reshuffle vote, Ultimate Round played). Then it checks Past games, profile totals, the CSV sheets and a page reload. Pass player counts to run only some games (`python3 testbed/playthrough.py 2 8`). The bot also flags an uneven manual deal and a turn with no playable card.
 - Every test build comes with a short checklist: what to try and what should happen.
 
+
+## 9aq. Fewer pop-ups at the round end, tap or 3.5 s pop-ups, small notices, voice chat online (PLAN, Opus, user 2026-11-19 16:15 to 16:38; spec `PROJECT.md` 12z; mockups https://claude.ai/artifact/EtHkCqc94hdHkajLMwB44S; written for Haiku; APPROVED 16:38)
+
+Two builds, in this order. Each one gets its own test build, phone checklist and "push" from the user.
+- **Build 1 = 2.39.0:** Parts A to E (pop-ups and notices). No network protocol changes.
+- **Build 2 = 3.0.0:** Parts F to L (voice chat, Online rooms only). A whole number because it is a big feature (user rule). The voice phone test needs two phones on the live app, because the test link can't reach the room server (`ALLOWED_ORIGINS` is GitHub Pages only). So for build 2 the order is: browser checks, push on the user's "push", then the phone test on the live app, then fixes.
+
+**User rule for both builds (16:38): nothing may flash or overlap.** Every new sheet, pop-up, notice and badge follows Part E (build 1) and Part K (build 2). They are not optional.
+
+### 9aq.1 Part A: one pop-up at the end of a round (build 1)
+
+Today a round can end with SLAP!, then "came 1st", PATHETIC!!!, HAHAHA! and the last-two pop-up, each one 5 s.
+
+1. **New pop-up kind** in `src/ui/store.ts`:
+   `{ kind: 'roundEnd'; head: 'pathetic' | 'slap' | 'haha' | 'over'; slap?: { slapper; slapped; cards }; forfeiter?: PlayerId; haha?: { laugher; loser }; end: Extract<Popup, { kind: 'lastTwo' }>; gameOver: boolean }`.
+2. **`popupsFor` (`game.ts`)**: when the events hold `roundEnded`, build `out` as today and then merge. Take out of `out`: the `slap` with `over` set, `pathetic`, `haha`, `lastTwo`, and every `out` pop-up for a player who went out in this same batch of events. Put one `roundEnd` in their place, where the first of them was. Pop-ups from earlier batches (a "came 1st" earlier in the round) are not touched. Every other pop-up in the batch (a vote result, info) stays as it is.
+3. **Which word leads (`head`), first match wins:** `pathetic` (a forfeit) → `slap` (a slap that ended the round) → `haha` → `over`. Ultimate Badboy happens at the start of a round, so it never merges.
+4. **Drawing (`popupLayer`)**:
+   - `pathetic`: the PATHETIC!!! card (same classes as now) with the `forfeitLine` under it.
+   - `slap`: the SLAP! card with "Ben slapped Amy".
+   - `haha`: the HAHAHA! card with its line.
+   - `over`: the plain cream card with title "Round over" (or "Game over").
+   - Under the word, one cream box (`.small`) with **at most two lines**. Line 1 is "Round over · Amy came last", or "Game over · …" when `gameOver`. Keep what `lastTwoBody` says today for shared last place and forfeits: reuse its text, don't invent new wording. Line 2 is "Ben: HAHAHA!" only when `head` is `pathetic` or `slap` and a `haha` was merged. The head's own line is never repeated.
+   - Places are not listed: the results screen shows them.
+5. **Sound:** only the head's sound (slap, pathetic, haha, or none for `over`), played once on first show (`shownPopups`).
+6. **Trick animation:** where `absorb` sets `trickAnim.slapPopup = fresh.find((p) => p.kind === 'slap')`, also accept the `roundEnd` with `head === 'slap'`. Every check of `a.slapPopup` keeps working, so the trick holds, the pop-up shows, then the cards fly.
+7. **Fast forward / Skip filter** in `absorb` (`quiet`): keep `roundEnd`, the same as `lastTwo` and the round-ending slap today. Set its `end.winner` the same way.
+8. **One phone and single player:** the same merge.
+9. The last trick still waits on the felt with "Tap to see the results" (9ah.1, unchanged). The merged pop-up shows where the old ones did.
+10. Unit tests (`tests/ui/` or wherever `popupsFor` is tested; if it isn't exported, export it for tests): forfeit + haha → one `roundEnd` head `pathetic` with the HAHAHA line; a round-ending slap → head `slap`; a plain end → `over`; a "came 1st" from an earlier batch is untouched; game over → `gameOver: true`.
+
+### 9aq.2 Part B: tap anywhere on one phone, 3.5 s or everyone taps in network games (build 1)
+
+Replaces 9ap Part G's 5 s for every game. Pop-ups that need an answer are unchanged.
+
+1. **Constants (`game.ts`):** `NET_POPUP_MS = 3500` (network games: `g.net` set) and `QUICK_NET_MS = 1750` (Fast forward / Skip in a network game). On one phone (single player and pass-and-play: `!g.net`) a no-choice pop-up has **no timer**. During Fast forward / Skip on one phone it closes after `2500` ms (as before 9ap, no one to wait for). `info` pop-ups with their own `ms` keep it only in quick mode.
+2. **`popupMs(p)`** returns `null` for "no timer". `afterRender` sets no timer for those, and `popupTimer` (the countdown bar) is not drawn for them.
+3. **Tap anywhere closes the top pop-up on this phone, in every game.** Put the tap handler on the pop-up overlay (the whole screen), only for no-choice kinds. A tap that lands on a button inside a decision pop-up is not this handler. Restore the 9ai `tapHint` line "Tap anywhere" on one phone only. Network games have the countdown bar instead, and no hint text (less text, user rule).
+4. **Early close keeps the queue honest:** when a pop-up is closed by a tap, re-stamp the pop-ups still queued behind it from now: `popupAt` of the next one = `hostClock()`, each following one = previous + its `popupMs`. Without this the next pop-up's bar would start late (its stamp is in the future).
+5. **Network games:** nothing new goes over the network. A tap closes the pop-up on that phone, and `afterRender` → `reportMyBusy` already tells the host. The 9an.5 gate already holds play until every person's phone is clear. So play carries on as soon as everyone has tapped, and at the latest when the 3.5 s run out. A phone that tapped early sees the table, with the flipping hourglass on players still looking (9ai.3, unchanged).
+6. **"Who's done" row on network pop-ups (mockup 7):** under the countdown bar, one small initial per **person** at the table (not computer players, not Away seats), in seat order, your own included.
+   - Gold = done. Dashed outline = still looking.
+   - **No flashing:** keep a `Set<PlayerId>` of "done" per pop-up (a `WeakMap<Popup, Set>`). A player is added once they are not `isBusyPlayer` at a check at least 600 ms after this pop-up first showed. Busy reports take a moment to arrive, so before 600 ms nobody turns gold. Once gold, a player never turns back for that pop-up. Your own initial stays dashed (you are still looking).
+   - Only the initial's colour changes: no movement, no entrance animation.
+   - If the game screen doesn't redraw when the busy set changes, call `update({})` from the place that calls `setBusyPlayers` / `setPendingPlayers`, but only while `getState().popups.length > 0`.
+7. `phoneBusyNow()` is unchanged (pop-ups open = busy, except in quick mode).
+8. `PROJECT.md` 12u item 1 is updated by this plan (done).
+9. **Checks:** `popups_check.py` and `netvotes_check.py` wait for 5 s today. Change them to: one phone: the pop-up is still there after 6 s, and gone after a tap. Network: two phones, nobody taps → both close within 3.5 s ± 0.5 s of each other. One phone taps → that phone is clear at once, and the other closes at 3.5 s. Both tap → play resumes (a computer player moves) within 1 s of the second tap.
+
+### 9aq.3 Part C: small notices that don't stop play (build 1)
+
+1. These `info` pop-ups become **notices**:
+   - Joker ("Joker · Ben", including "Missed round · Two jokers…")
+   - Picked up
+   - "X leads"
+   - No pause
+   - Pause over
+   - "Ben said no" (watch refused)
+   - "Ben was removed by the host"
+
+   Every other pop-up stays a pop-up. `grep "kind: 'info'" src/ui/game.ts`, put each one in one list or the other in `popupevents.ts`, and list them in 9aq.6. Also update `makesPopup` (`popupevents.ts`): a notice is not a pop-up, so the host doesn't wait for an ack for it.
+2. **State:** `notices: Notice[]` in the store (`{ id, icon, text, at }`), separate from `popups`. Notices never count for `phoneBusyNow`, never hold play, and never need a tap. Each one lasts **2.5 s** (1.25 s in quick mode). At most 2 show; a third pushes out the oldest at once.
+3. **Drawing:** `.notice-strip`, a cream pill (icon + one line, 14 px bold, `max-width: 260px`, text truncated with an ellipsis). It sits on the felt, centred, in the free band between the top seat's name label and the trick zone (use the boxes `table.ts` already works out). If that band is shorter than 36 px (7 and 8 players), it sits over the top edge of the trick zone. `pointer-events: none`, so it never blocks a card tap. Same place in landscape, inside the felt.
+4. **Animation, once only:** slide down 8 px and fade in 180 ms the first time (a `WeakSet` like `shownPopups`), fade out over the last 250 ms by a class set from the timer. A redraw never replays either.
+5. While a pop-up is up, notices still count down underneath it (the overlay covers them). They don't wait.
+
+### 9aq.4 Part D: "What happened" in the round note (build 1)
+
+1. New `src/ui/eventlog.ts`: a list of the last 8 lines `{ at: number; text: string; strong: boolean }`.
+   - Add a line every time this phone makes a pop-up or a notice. Use the text already built: the title plus the who-line, for example "SLAP! Cat slapped Amy" (strong) or "Amy picked up 6 cards · leads".
+   - Clear it when a new game starts (not between rounds).
+   - Pure functions plus one module-level array; unit test the trimming.
+2. The round note (`noteLayer`, opened by the round chip and the target chip) gets a first section, "What happened": newest first, at most 6 lines, each with a small time ("now", "10 s", "2 min"), worked out when the note is drawn. It never ticks, so it never flashes. No lines yet → no section.
+3. The note keeps its `sheetSeen` handling. It floats and never pushes the table down (9al.1).
+
+### 9aq.5 Part E: build 1 version, no-flash check, test build
+
+1. `package.json` **2.39.0**.
+2. `npm run check`, `npm test`, `node build.mjs`.
+3. **No flash, no overlap (user rule):** screenshots at 360×740, 390×844, 412×915, 844×390 and 1180×820. Cover 2, 4 and 8 players, single player and a two-tab network game (local relay as in `netgame_check.py`). Show:
+   - the merged round-end pop-up (each head)
+   - a notice during play (4 and 8 players)
+   - the round note with What happened
+   - a network pop-up with the done row half filled
+
+   Check: notices don't cover a seat disc, a name, your hand or the Play button. Record 10 redraws during a notice and a pop-up (send a typed message from the other tab every 300 ms) and check that the entrance animation runs once (no `animation` restart: compare `getAnimations()` start times, or count `animationstart` events).
+4. Browser checks: `popups_check.py` (updated), `netvotes_check.py` (updated), `netgame_check.py`, `lasttrick_check.py`, `lasttwo_check.py`, `react_check.py`, `landscape_check.py`, `sound_check.py`. Record pass counts in 9aq.6. Failures that also fail on 2.38.2 are listed, not fixed.
+5. Publish the private test build. Give the user checklist 9aq.7 items 1 to 8. Wait for "push".
+
+---
+
+### 9aq.8 Part F: the voice server: TURN keys (build 2)
+
+Voice goes phone to phone (WebRTC). Phones on mobile data often can't reach each other directly, so the room server hands out short-lived Cloudflare TURN (relay) logins. The first 1,000 GB a month is free and resets each month.
+
+1. **Secrets (the user sets them up, see 9aq.11):** `TURN_KEY_ID` and `TURN_KEY_API_TOKEN`, as Worker secrets. `server.yml`: add to the wrangler-action step
+   ```yaml
+   secrets: |
+     TURN_KEY_ID
+     TURN_KEY_API_TOKEN
+   env:
+     TURN_KEY_ID: ${{ secrets.TURN_KEY_ID }}
+     TURN_KEY_API_TOKEN: ${{ secrets.TURN_KEY_API_TOKEN }}
+   ```
+   Add both (optional, `?:`) to `server/src/env.ts`. If either is missing the server still works, and `/turn` answers with STUN only.
+2. **Route `POST /rooms/<roomId>/turn`**, body `{ "token": "<hostToken or joinToken>" }` (`index.ts`, same CORS and origin check as the other routes).
+   - The Room object gets `knowsToken(token): boolean` (the host token, or a join token it handed out and that is still valid). Unknown → 403 `{ error: 'token' }`.
+   - The Directory gets `takeTurnCredit(month: string): boolean` (`month` = "2026-11", UTC). It counts credentials handed out per month in storage and answers `false` at **3000**. Worst case a credential is one phone hearing 7 relayed voices for 3 hours (about 0.3 GB), so 3000 a month stays under about 900 GB. The count resets each month.
+   - Credit given and secrets set: `fetch('https://rtc.live.cloudflare.com/v1/turn/keys/' + TURN_KEY_ID + '/credentials/generate-ice-servers', { method: 'POST', headers: { Authorization: 'Bearer ' + TURN_KEY_API_TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify({ ttl: 10800 }) })`. Read `{ iceServers }`, drop any URL with port `:53` (browsers block it), and answer `{ iceServers, relay: true }`.
+   - Otherwise (no secrets, the month is used up, or Cloudflare's call failed) answer `{ iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }], relay: false }`. Voice then still works where phones can reach each other directly.
+   - Never log tokens or credentials.
+3. Server unit tests (`server/` tests as for 9r): bad token → 403; no secrets → STUN only; the 3001st credit in a month → STUN only, and the next month works again; Cloudflare's call failing → STUN only; port 53 URLs dropped (mock `fetch`).
+4. `RELAY_PROTOCOL` is unchanged: the relay frames don't change. Voice signals are game payloads (Part G).
+
+### 9aq.9 Part G: the voice connections (build 2): `src/net/voice.ts`
+
+**Online games only.** In Nearby games (QR) players are in the same room, and phones on speaker would echo and howl, so there is no voice at all: no buttons, no code paths. Not on one phone, and not with computer players (they have no voice).
+
+1. **Shape:** one `RTCPeerConnection` per pair of **people** (a mesh). It is separate from the game link, so voice can never break or slow the game.
+   - In each pair the player with the lower number (`p1` < `p3`) makes the offer, so two offers never cross.
+   - Each connection gets `addTransceiver('audio', { direction: 'sendrecv' })` with no track at first.
+   - ICE servers come from Part F's `/turn`, fetched once when the phone enters the room (lobby). Keep the answer for the room's life; fetch again if it is older than 2.5 hours.
+2. **Signals:** voice messages ride on the game links as normal payloads: `{ t: 'vsig', from: PlayerId, to: PlayerId, d: { sdp } | { ice } }`. A joining phone sends to the host. The host forwards it **unchanged** to `to`'s link (or uses it itself when `to` is the host). Add `vsig` to the `ToHost` / host-to-join message types and handle it in `netlobby.ts` and `netplay.ts`, the same places as `say`. The host checks that `from` is the sender's own seat; it drops anything else.
+3. **When connections start and stop:**
+   - They start when a person's seat is filled in an online lobby: every phone connects to every other person.
+   - A pair's connection closes when either player leaves, is removed (9an.8) or is Away, and starts again when they come back or rejoin (9an.7).
+   - Everything closes when the room closes or this phone leaves it.
+   - A connection that fails (`connectionState` `failed`) is retried once after 3 s with an ICE restart, then left. Its seat then shows no talk ring. That's all: no error pop-up.
+4. **Your mic:**
+   - **Off by default, every time** (it is never remembered as on). The phone asks for mic permission only the first time it is turned on.
+   - On: `getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false })`, then `sender.replaceTrack(track)` on every connection. No new offer is needed. Cap the sender at 32 kbps (`setParameters`, `encodings[0].maxBitrate = 32000`).
+   - Off: `replaceTrack(null)` everywhere and **stop the track**, so the phone's mic light goes off.
+   - It also turns off by itself when the page is hidden (`visibilitychange`), so a phone in a pocket is never a live mic, and when leaving the room or the game ending.
+   - Permission refused → a notice (Part C style): "Mic blocked · allow it in your browser". The button shows the mic-off icon with a small red dot until a later tap works.
+5. **Hearing others:**
+   - Each remote stream plays in its own hidden `<audio autoplay playsinline>`, added straight to `document.body` (**not** inside the app root, so redraws never remove or restart it).
+   - Mute = `audio.muted = true`. The voice volume (Part J) = `audio.volume`.
+   - Browsers block sound until a tap: on the first `pointerdown` after a stream arrives, call `play()` on any paused voice element.
+6. **Who's talking:** a shared `AudioContext` (reuse `audio/engine.ts`'s context) with an `AnalyserNode` per remote stream and one for your own mic.
+   - Every 100 ms, a player is talking when the level is above a threshold for 150 ms; they stop 400 ms after it drops.
+   - Expose `isTalking(id)` and `onTalkChange(f)`.
+   - **No redraw for talking:** the 100 ms loop toggles the class `talking` straight on elements with `data-voice="<playerId>"` (seat discs, lobby rows, Voice sheet rows). Drawing code also reads `isTalking(id)`, so a redraw keeps the class. A muted player never shows as talking to you.
+7. **Music dips while people talk:** a new `voiceDuck` gain on the music bus only (`engine.ts`, next to `duckGain`), down to 0.35 while any player you haven't muted is talking, back up over 600 ms after. Effects are not dipped.
+8. Unit tests with a fake `RTCPeerConnection` and fake `getUserMedia` (no browser): who offers, signal forwarding and the `from` check, connections closed on leave / remove / away, mic off stops the track, page hidden turns the mic off, muted player not talking, the 2.5 hour refetch.
+
+### 9aq.10 Part H: voice in the lobby (build 2), mockup 1
+
+1. **Online lobby only.** Bottom bar, left of the Start / I'm ready button: the **mic button** (56 px circle; icons `mic` / `mic-off`, new line icons in `icons.ts` drawn like the others) and the **Voice button** (56 px, icon `speaker`), which opens the Voice sheet (Part J). The Start / Ready button keeps its full height and takes the rest of the row.
+2. Mic on: a green ring (`#6fd08c`, 2 px border) and the icon in light green. Off: as the other round buttons.
+3. One line under the bar, only until this phone has turned the mic on once (remember that in storage): "Mic is off until you tap it." 12 px, muted colour.
+4. Each **person** row (not you, not computer players) gets a 44 px speaker button at the right end: tap = mute or unmute that player (Part J storage).
+   - Muted: the button is gold-outlined with `speaker-off`, and the status line says "Muted by you".
+   - Their status line also shows "Talking" (green) or a small "Mic off" with `mic-off`. Every phone sends its own mic state as `{ t: 'vmic', on }` through the host, so the host includes `micOn` in the lobby seats it already sends, like `busy`.
+   - Your own row shows "Mic on" / "Mic off".
+5. The row's disc gets `data-voice` and the talking ring (Part K).
+
+### 9aq.11 Part I: voice at the table (build 2), mockups 2 and 4
+
+1. **Portrait top bar:** the mic button (44 px, same states as the lobby) goes right after the menu button. The Voice button (44 px) goes after the mic button **only if the bar has room**. Work it out from the layout width, not by trial: show it when `window.innerWidth >= 390` **and** the bar isn't in the dealing state with deal chips (`dealChips`) and the target button and the take button all at once. Otherwise "Voice" is in the menu only. "Voice" is always in the game menu as well (netMenu).
+   - The bar must never wrap or squeeze a chip: check every state in Part K's screenshots.
+2. **Landscape rail (`lay.rail`):** mic then Voice, right under the menu button, 44 px each, the same states. The rail already has room; check at 844×390 and 740×360.
+3. **Seat discs (`table.ts`):** add `data-voice="<id>"` to `.seat-disc` and to your own pill.
+   - Talking: `box-shadow: 0 0 0 3px #6fd08c, 0 0 0 7px rgba(111,208,140,.35)`, done with a box-shadow transition of 120 ms. It changes no size or position, so nothing moves.
+   - Muted by you: a 22 px badge at the disc's bottom right (gold ring, `speaker-off`).
+   - Mic off: the same badge in grey with `mic-off`.
+   - Mic on and not muted: no badge.
+   - The badge sits where `disc-count` isn't: if `disc-count` is `at-right`, the voice badge goes bottom-left, and the other way round. Never on top of the card count.
+   - It must also stay clear of the hourglass (9ai.3), the eye (9an.3) and the keep marks (9an.4). Check all four together on one seat.
+4. **Tapping a seat:** when nothing else is using seat taps (no `o.onTap` from take-cards, watch or remove), tapping another person's seat opens a small **seat card** next to it, with their name and one button "Mute Ben" / "Unmute Ben".
+   - If the host's seat tap for Remove (9an.8, `removesheet.ts`) is built, put the mute row in that same card instead of making a second one.
+   - The card stays inside the screen (flip side if needed), closes on a tap outside, uses `sheetSeen`, and never covers your hand's Play button.
+   - Computer players' seats and your own: no card.
+5. Results screen and game over: the mic button stays in the fixed ready panel (results B, 9ak), left of I'm ready, 44 px.
+
+### 9aq.12 Part J: the Voice sheet and storage (build 2), mockup 3
+
+1. A bottom sheet (`.sheet`, cream, like the target sheet), opened from the Voice button, the menu item or the lobby. It contains:
+   - the title "Voice" and a close button (44 px)
+   - a green row "Your mic" with a switch
+   - two buttons side by side, "Mute all" (dark) and "Unmute all" (outlined)
+   - one row per other person (disc with `data-voice`, name, status "Talking" / "Muted by you" / "Mic off", switch on = hearing them)
+   - a "Voice volume" slider
+   - one line: "Muting only stops you hearing them. Mutes are remembered on this phone."
+
+   It uses `sheetSeen('voice', open)`, so it never replays its slide-up while people talk or play.
+2. **Volume slider:** Android and desktop only. On iPhone and iPad the browser ignores `audio.volume`, so hide the slider there (`/iPad|iPhone|iPod/` or `navigator.maxTouchPoints > 1 && /Mac/`) and show nothing in its place.
+3. **Storage (`storage.ts`, key `pubby.voice`):** `{ muted: string[]; volume: number; micTried: boolean }`. `muted` holds players' names in lower case and trimmed (the name is what a person keeps between games).
+   - Mute all = add every current person's name.
+   - Unmute all = clear the list.
+   - Never stored: mic on.
+   - The profile reset rule applies: never wipe this on a version update. Include it in the backup and restore (2.34) if that copies all `pubby.*` keys; check, and note it in 9aq.6.
+
+### 9aq.13 Part K: build 2 no-flash, no-overlap checks, version, test build
+
+1. `package.json` **3.0.0**. `npm run check`, `npm test`, `server` check and tests, `node build.mjs`.
+2. **Browser run** with the local relay (as `online_check.py`). Chrome flags `--use-fake-ui-for-media-stream --use-fake-device-for-media-stream` give a fake mic with a tone. Use three tabs (host and two joiners): voice connects, mic on in one tab → talking ring on the other two, mute in one tab → no ring and no sound there, page hidden → mic off, a tab leaves → its connections close. New `testbed/voice_check.py`. Record the results in 9aq.6.
+3. **Screenshots** at 360×740, 390×844, 412×915, 844×390, 740×360 and 1180×820. Cover the lobby with 2 and 8 people, the top bar while dealing with the target button and take button, all four seat badges and marks on one seat, the seat card at each edge, the Voice sheet with 7 people (it scrolls inside, never off screen), and the results panel. Check that nothing wraps, overlaps or is cut off.
+4. **Flash check:** with the fake mic talking, record 5 s on the table and in the Voice sheet. The talk ring may change, but nothing else redraws (count `render` calls through a test hook, or check that `.seat-disc` elements keep the same identity), and the sheet's entrance animation runs once.
+5. The private test build can't reach the room server, so voice can't be tried on it. Say so plainly to the user. Give checklist 9aq.7 items 9 to 18 for after the push. Push only on "push"; the server deploys by itself (`server.yml`). The user must add the two GitHub secrets **before** that push (9aq.14), or voice works with STUN only (fine on Wi-Fi, often not on mobile data).
+
+### 9aq.14 Part L: what the user sets up in Cloudflare and GitHub (build 2; give these steps to the user word for word)
+
+1. **Create the TURN key.** Log in at dash.cloudflare.com (the account that runs `pubby-rooms`). In the left menu open **Realtime** (older screens call it **Calls**), then **TURN Server**, then **Create**. Name it `pubby-voice`. Cloudflare shows two values: the **Turn Token ID** and the **API Token**. Copy both now: the API token is shown only once.
+2. **Add them to GitHub.** github.com/mmans-99/pubby → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**. Add the name `TURN_KEY_ID` with the Turn Token ID as its value, and the name `TURN_KEY_API_TOKEN` with the API token. These sit next to the existing `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+3. **Deploy.** The next push that changes `server/` deploys the server with the secrets. To check: on a phone, open Pubby, make an Online room, turn the mic on and talk with a second phone on mobile data (Wi-Fi off). If voice works on mobile data, the relay is working.
+4. **Watching use (optional):** Cloudflare dashboard → Realtime → TURN Server → the key shows usage. The room server also stops handing out relay logins after 3000 in a month, so the free 1,000 GB can't be passed.
+
+### 9aq.6 Built notes
+(Haiku: what was built, check results, notices list (Part C item 1), the backup check (Part J item 3), and anything that didn't match the plan.)
+
+### 9aq.7 Phone checklist
+
+Build 1 (2.39.0, test link):
+1. Single player: a SLAP!, a came-1st and the round-end pop-up all stay until you tap anywhere. No bar, small "Tap anywhere" line.
+2. Single player: end a round with a forfeit. You see **one** pop-up (PATHETIC!!! with "Round over · … came last"), then the results.
+3. End a round with a slap. One SLAP! pop-up that also says round over. The trick cards still fly after it.
+4. Joker, Picked up and "X leads" show as a small strip on the felt for 2.5 s, play doesn't stop, and the strip never covers a name, your cards or Play.
+5. Tap the round chip: "What happened" lists the last few events, newest first.
+6. Fast forward (only computers left): pop-ups close by themselves quickly, the same as before.
+7. Two phones (Nearby or Online, after the push if needed): a pop-up closes on both phones together after 3.5 s. If you tap, yours closes and you see the hourglass on the other player. If both tap, play carries on at once. The initials row turns gold without flickering.
+8. Nothing flashes or jumps when messages or reactions arrive while a pop-up or notice is up. Portrait and landscape.
+
+Build 2 (3.0.0, live app after push, two or three phones, at least one on mobile data):
+9. Online lobby: mic and Voice buttons next to Start or Ready. The mic is off at first, and the phone asks for permission once.
+10. Talk: the other phones show a green ring on your row or disc and hear you. The music goes quieter while you talk.
+11. Mute one player from their lobby row, their seat (tap it) and the Voice sheet. You stop hearing them, and they still hear everyone.
+12. Mute all and Unmute all work. Leave and join a new game with the same people: mutes are remembered, and the mic starts off.
+13. Turn the screen off or switch app: your mic goes off by itself.
+14. One phone on mobile data (Wi-Fi off) still hears and is heard (relay).
+15. iPad: voice works. Do game sounds and music get quieter once the mic is on? (Apple can do this; tell me.)
+16. Top bar and landscape rail: no buttons squashed or wrapped, in every phase (dealing, playing, results).
+17. Seat badges never cover the card count, hourglass or eye.
+18. Nearby (QR) games: no voice buttons anywhere.
+
 ## 9. Conventions
 
 - Language: TypeScript, strict mode.

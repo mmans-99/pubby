@@ -4,6 +4,19 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-19 (16:15 to 16:40, Opus) — Plan 9aq: one round-end pop-up, tap or 3.5 s pop-ups, notices, voice chat online (docs only)
+
+**User (16:15):** wants voice chat (own mic on/off from the lobby to the game end, mute one player or all; where should it go?); too many pop-ups back to back at the end of a game; single player tap anywhere with no timer, multiplayer 3.5 s, without phones falling out of step; asked for other plans.
+**(16:27):** Online only (asked whether the free limit resets: yes, monthly); mutes remembered; close early when everyone taps; mockups wanted. **(16:38):** happy with the mockups; nothing must flash or overlap; plan it for Haiku.
+
+**Found:** the end of a round queues `slap` (over), `out`, `pathetic`, `haha` and `lastTwo` from one batch of events (`popupsFor`, `game.ts`), 5 s each. Online play is a star through the relay (host forwards), so voice signals can ride on the game links; the server needs a TURN route for phones on mobile data (Cloudflare Realtime TURN, free 1,000 GB a month, resets monthly). The existing busy gate (9an.5) already holds play until every phone is clear, so "close early when everyone taps" needs no new network message.
+
+**Mockups:** https://claude.ai/artifact/EtHkCqc94hdHkajLMwB44S (9 screens: lobby, table, Voice sheet, landscape; two round-end pop-ups, network timing, single player, notices).
+
+**Plan:** `CODE.md` 9aq, `PROJECT.md` 12z (and 12u item 1 updated), `TODO.md` Phase 4z. Build 1 = 2.39.0 (pop-ups, Parts A to E); build 2 = 3.0.0 (voice, Parts F to L; the user sets up a TURN key and two GitHub secrets first). No code changed.
+
+---
+
 ## 2026-11-18 (20:37, Haiku) — Build 9ap: 2.38.2, watched hand fan, no flash on sheets, computers ask less, Deal again once per round, 5 s pop-ups (not committed)
 
 **Built:** `CODE.md` 9ap Parts A, B, C, D, G, H, and E (checks, test build). Part F (deal stop with messages) is parked, not built, per the user (19:13).
