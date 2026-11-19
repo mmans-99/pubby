@@ -16,6 +16,7 @@ import { pathToFileURL } from 'node:url';
 import { WebSocket, WebSocketServer } from 'ws';
 import { RoomCore, LIMITS, type Effect, type Limits } from '../server/src/core/room.ts';
 import { DirectoryCore, type ListEntry } from '../server/src/core/directory.ts';
+import { stunOnly } from '../server/src/core/turn.ts';
 import { makeRoomId, makeToken, passcodeHash } from '../server/src/core/ids.ts';
 import { originCheck, parseCreate, parseJoin } from '../server/src/core/api.ts';
 import { frame, PONG_TEXT, PING_TEXT, RELAY_PROTOCOL } from '../src/net/relayproto.ts';
@@ -191,6 +192,18 @@ export function startRelay(opts: RelayOptions): Promise<Relay> {
       const body: { error: string; need?: string } = { error: answer.error };
       if (answer.need !== undefined) body.need = answer.need;
       return sendJson(res, JOIN_STATUS[answer.error] ?? 503, body, origin);
+    }
+
+    // 9aq.8 (3.0.0): the voice relay login. Same token rule as the Worker; no secrets here, so STUN only.
+    const turn = /^\/rooms\/([a-z0-9]{8})\/turn$/.exec(url.pathname);
+    if (turn && req.method === 'POST') {
+      const roomId = turn[1] ?? '';
+      const body = await readJson(req);
+      const token = typeof body === 'object' && body !== null ? (body as { token?: unknown }).token : undefined;
+      if (typeof token !== 'string' || token === '') return sendJson(res, 400, { error: 'bad-request' }, origin);
+      const room = rooms.get(roomId);
+      if (!room || !room.core.knowsToken(token, Date.now())) return sendJson(res, 403, { error: 'token' }, origin);
+      return sendJson(res, 200, stunOnly(), origin);
     }
 
     sendJson(res, 404, { error: 'not-found' }, origin);

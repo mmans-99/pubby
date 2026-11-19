@@ -190,6 +190,18 @@ export class RoomCore {
     return { ok: true, joinToken, effects: [{ save: true }] };
   }
 
+  /**
+   * 9aq.8: may this token ask for a voice relay login? The host's token always;
+   * a join token once it is in use, or while it is still young (it expires as
+   * for a socket). A kicked phone's token never counts.
+   */
+  knowsToken(token: string, now: number): boolean {
+    if (token === this.hostToken) return true;
+    const info = this.tokens.get(token);
+    if (info === undefined || info.kicked) return false;
+    return info.linkId !== null || now - info.issuedAt < this.limits.tokenMs;
+  }
+
   /** A socket opened with a token: the host's, or a joining phone's. */
   connect(token: string, socketId: string, now: number): ConnectResult {
     if (this.gone) return { ok: false, code: 4003, reason: 'not-allowed' };

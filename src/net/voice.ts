@@ -1,0 +1,257 @@
+/**
+ * Voice chat for online rooms (CODE.md 9aq.9, Part G, 3.0.0). This file is the
+ * pure logic: who makes the offer, who is talking, when to retry, and the mesh
+ * that holds one link per other person. It has no browser APIs, so the tests
+ * run with fake links. The WebRTC links are in voicertc.ts.
+ *
+ * Voice is online rooms only. Nearby games never use this file.
+ */
+import type { VoiceData } from './lobby.ts';
+
+/** A talking player's level must be above this (0 to 1) for TALK_ON_MS to count as talking. */
+export const TALK_LEVEL = 0.02;
+export const TALK_ON_MS = 150;
+/** A talking player stops this long after the level drops. */
+export const TALK_OFF_MS = 400;
+/** A failed connection is retried once after this long, with an ICE restart. */
+export const RETRY_MS = 3000;
+/** The relay logins from /turn are kept this long, then asked for again (9aq.9 item 1). */
+export const ICE_MAX_AGE_MS = 2.5 * 60 * 60_000;
+
+/**
+ * In each pair the player earlier in the seat order makes the offer, so two offers never cross.
+ * False when either player is not in the order.
+ */
+export function offersTo(me: string, other: string, order: readonly string[]): boolean {
+  const a = order.indexOf(me);
+  const b = order.indexOf(other);
+  return a !== -1 && b !== -1 && a < b;
+}
+
+/** True while the relay logins are young enough to use. */
+export function iceFresh(fetchedAt: number, now: number): boolean {
+  return now - fetchedAt < ICE_MAX_AGE_MS;
+}
+
+/** Turns a stream of levels into "talking" yes or no, with the on and off delays. */
+export class TalkDetector {
+  private loudSince: number | null = null;
+  private lastLoud = Number.NEGATIVE_INFINITY;
+  private on = false;
+
+  constructor(
+    private readonly level = TALK_LEVEL,
+    private readonly onMs = TALK_ON_MS,
+    private readonly offMs = TALK_OFF_MS,
+  ) {}
+
+  update(level: number, now: number): boolean {
+    if (level > this.level) {
+      this.lastLoud = now;
+      if (this.loudSince === null) this.loudSince = now;
+      if (!this.on && now - this.loudSince >= this.onMs) this.on = true;
+    } else {
+      this.loudSince = null;
+      if (this.on && now - this.lastLoud >= this.offMs) this.on = false;
+    }
+    return this.on;
+  }
+
+  get talking(): boolean {
+    return this.on;
+  }
+}
+
+export type LinkState = 'connected' | 'failed' | 'other';
+
+/** One connection to one other person. The browser version is in voicertc.ts; tests use a fake. */
+export interface VoiceLink {
+  /** A signal from the other person (an offer, an answer or one ICE candidate). */
+  signal(d: VoiceData): void;
+  /** The mic track to send, or null for silence. The track is opaque to this file. */
+  setTrack(track: unknown | null): void;
+  /** Hearing: true mutes the other person's sound on this phone. */
+  setMuted(muted: boolean): void;
+  /** Starts again after a failure (ICE restart). Only the offering side sends a new offer. */
+  restart(): void;
+  /** The other person's level, 0 to 1. 0 when nothing is playing. */
+  level(): number;
+  close(): void;
+}
+
+export interface VoiceDeps {
+  /** This phone's seat id. */
+  me: string;
+  /** Makes the link to `peer`. `offer` says whether this phone makes the first offer. */
+  makeLink(
+    peer: string,
+    offer: boolean,
+    out: (d: VoiceData) => void,
+    state: (s: LinkState) => void,
+  ): VoiceLink;
+  /** Passes one signal to `to`, through the host. */
+  send(to: string, d: VoiceData): void;
+  /** Gets the mic. Rejects when the person refuses it. */
+  acquireMic(): Promise<unknown>;
+  /** Stops a mic track, so the phone's mic light goes off. */
+  releaseMic(track: unknown): void;
+  /** Runs `f` after `ms`. */
+  later(f: () => void, ms: number): void;
+}
+
+/**
+ * The voice mesh of one phone: a link to every other person who is in the call.
+ * The caller says who is in the call (`setPeers`, after the seats change) and feeds
+ * levels in (`tick`, every 100 ms).
+ */
+export class VoiceMesh {
+  private order: string[] = [];
+  private links = new Map<string, VoiceLink>();
+  private detectors = new Map<string, TalkDetector>();
+  private muted = new Set<string>();
+  private retried = new Set<string>();
+  private track: unknown | null = null;
+  private micSeq = 0;
+  /** This phone's mic is on. */
+  micOn = false;
+  /** The person refused the mic (or the browser refused it). */
+  micBlocked = false;
+
+  constructor(private readonly deps: VoiceDeps) {}
+
+  /** The people in the call, in seat order. Links to people no longer here are closed, and new ones are opened. */
+  setPeers(order: readonly string[], peers: readonly string[]): void {
+    this.order = [...order];
+    for (const p of [...this.links.keys()]) if (!peers.includes(p)) this.drop(p);
+    for (const p of peers) if (p !== this.deps.me && !this.links.has(p)) this.open(p, offersTo(this.deps.me, p, this.order));
+  }
+
+  /** A signal from `from`, passed on by the host. Opens the link if the other side started first. */
+  onSignal(from: string, d: VoiceData): void {
+    if (from === this.deps.me) return;
+    if (!this.links.has(from)) {
+      if (!this.order.includes(from)) return;
+      this.open(from, offersTo(this.deps.me, from, this.order));
+    }
+    this.links.get(from)?.signal(d);
+  }
+
+  /** The mic on or off. On asks the person (once); off stops the track everywhere. */
+  async setMic(on: boolean): Promise<void> {
+    const seq = ++this.micSeq;
+    if (!on) {
+      this.micOn = false;
+      this.stopTrack();
+      return;
+    }
+    if (this.micOn) return;
+    let track: unknown;
+    try {
+      track = await this.deps.acquireMic();
+    } catch {
+      if (seq === this.micSeq) {
+        this.micBlocked = true;
+        this.micOn = false;
+      }
+      return;
+    }
+    // The person turned it off while the browser was asking: give the track back.
+    if (seq !== this.micSeq) {
+      this.deps.releaseMic(track);
+      return;
+    }
+    this.micBlocked = false;
+    this.micOn = true;
+    this.track = track;
+    for (const l of this.links.values()) l.setTrack(track);
+  }
+
+  /** Mutes what this phone hears from `id`. Remembered by the caller, not here. */
+  setMuted(id: string, muted: boolean): void {
+    if (muted) this.muted.add(id);
+    else this.muted.delete(id);
+    this.links.get(id)?.setMuted(muted);
+  }
+
+  isMuted(id: string): boolean {
+    return this.muted.has(id);
+  }
+
+  /**
+   * Runs the talk detectors from the current levels. Returns true when someone's
+   * talking state changed, so the caller updates the rings (no redraw is needed).
+   */
+  tick(now: number): boolean {
+    let changed = false;
+    for (const [id, link] of this.links) {
+      let det = this.detectors.get(id);
+      if (det === undefined) {
+        det = new TalkDetector();
+        this.detectors.set(id, det);
+      }
+      const before = det.talking;
+      if (det.update(link.level(), now) !== before) changed = true;
+    }
+    return changed;
+  }
+
+  /** Talking, to this phone: a muted person never shows as talking. */
+  isTalking(id: string): boolean {
+    return (this.detectors.get(id)?.talking ?? false) && !this.muted.has(id);
+  }
+
+  /** Anyone this phone hears is talking (drives the music dip, 9aq.9 item 7). */
+  anyoneTalking(): boolean {
+    for (const id of this.links.keys()) if (this.isTalking(id)) return true;
+    return false;
+  }
+
+  /** Connected people (for the Voice sheet and the table). */
+  peers(): string[] {
+    return [...this.links.keys()];
+  }
+
+  /** Closes every link and the mic. Called when the room closes or this phone leaves it. */
+  close(): void {
+    for (const p of [...this.links.keys()]) this.drop(p);
+    this.stopTrack();
+    this.micOn = false;
+    this.micBlocked = false;
+  }
+
+  private open(peer: string, offer: boolean): void {
+    const link = this.deps.makeLink(
+      peer,
+      offer,
+      (d) => this.deps.send(peer, d),
+      (s) => this.linkState(peer, s),
+    );
+    this.links.set(peer, link);
+    link.setMuted(this.muted.has(peer));
+    if (this.track !== null) link.setTrack(this.track);
+  }
+
+  private drop(peer: string): void {
+    this.links.get(peer)?.close();
+    this.links.delete(peer);
+    this.detectors.delete(peer);
+    this.retried.delete(peer);
+  }
+
+  private linkState(peer: string, s: LinkState): void {
+    if (s === 'connected') {
+      this.retried.delete(peer);
+      return;
+    }
+    if (s !== 'failed' || this.retried.has(peer)) return;
+    // Once only: the second failure leaves the seat with no talk ring (9aq.9 item 3).
+    this.retried.add(peer);
+    this.deps.later(() => this.links.get(peer)?.restart(), RETRY_MS);
+  }
+
+  private stopTrack(): void {
+    if (this.track !== null) this.deps.releaseMic(this.track);
+    this.track = null;
+    for (const l of this.links.values()) l.setTrack(null);
+  }
+}

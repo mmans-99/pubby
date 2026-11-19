@@ -13,7 +13,7 @@ import { joinNames } from '../session/names.ts';
 import type { Level, Speed } from '../ai/persona.ts';
 
 /** Bumped when the messages change, so mixed phones refuse each other. 2: game messages (slice 2). 3: reactions, host adding (2.4). 4: online rooms (2.18). 5: ready at the table (2.19). 6: cards seen after the swap (2.20). 7: away seats and the away/back messages (2.25). 8: computer players in the lobby (2.26). 9: typed messages (2.34). 10: busy, a pop-up open (2.36). 11: un-ready on the results screen (2.37). 12: peeks, keep cards, update seq, remove player, rejoin (2.38). */
-export const LOBBY_PROTOCOL = 12; // 12: peeks, keep cards, update seq, remove player, rejoin (2.38).
+export const LOBBY_PROTOCOL = 13; // 13: voice chat, mic state, voice signals (3.0.0). 12: peeks, keep cards, update seq, remove player, rejoin (2.38).
 export const NAME_MAX = 16;
 
 export interface LobbySeat {
@@ -35,7 +35,14 @@ export interface LobbySeat {
   removed?: true;
   /** CODE.md 9u Part C (2.26): a computer player, on the host's phone only. Its id is "b1", "b2"… */
   bot?: { level: Level };
+  /** CODE.md 9aq.10 (3.0.0): this phone's mic is on (voice chat, online rooms). Not set for computer players. */
+  micOn?: boolean;
 }
+
+/** CODE.md 9aq.9 (3.0.0): what a voice connection carries: a session description or one ICE candidate. */
+export type VoiceData =
+  | { sdp: { type: 'offer' | 'answer'; sdp: string } }
+  | { ice: { candidate: string; sdpMid: string | null; sdpMLineIndex: number | null } | null };
 
 export interface Lobby {
   seats: LobbySeat[];
@@ -74,7 +81,11 @@ export type ToHost =
   | { t: 'away' }
   | { t: 'back' }
   /** CODE.md 9ai.3 (2.36): this phone has a pop-up open (on) or has closed them all (off). */
-  | { t: 'busy'; on: boolean; seq?: number };
+  | { t: 'busy'; on: boolean; seq?: number }
+  /** CODE.md 9aq.9 (3.0.0): a voice signal for player `to`; the host checks `from` is this phone's seat. */
+  | { t: 'vsig'; from: string; to: string; d: VoiceData }
+  /** CODE.md 9aq.10 (3.0.0): this phone's mic is on (true) or off (false). */
+  | { t: 'vmic'; on: boolean };
 
 /** Host → joining phone. */
 export type ToJoiner =
@@ -93,7 +104,9 @@ export type ToJoiner =
   | { t: 'hostAway' }
   | { t: 'hostBack' }
   /** 2.27 (CODE.md 9v.5): the host's phone is skipping to the end of the round, or has stopped. */
-  | { t: 'skipping'; on: boolean };
+  | { t: 'skipping'; on: boolean }
+  /** CODE.md 9aq.9 (3.0.0): a voice signal from `from`, passed on unchanged. */
+  | { t: 'vsig'; from: string; to: string; d: VoiceData };
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null;
 const isStr = (x: unknown): x is string => typeof x === 'string';
@@ -134,6 +147,8 @@ export function readToHost(raw: unknown): ToHost | null {
     case 'sync': return { t: 'sync' };
     case 'react': return Number.isInteger(raw['r']) ? { t: 'react', r: raw['r'] as number } : null;
     case 'say': { const text = cleanMessage(raw['text']); return text ? { t: 'say', text } : null; }
+    case 'vsig': { const d = readVoiceData(raw['d']); return isStr(raw['from']) && isStr(raw['to']) && d ? { t: 'vsig', from: raw['from'], to: raw['to'], d } : null; }
+    case 'vmic': return typeof raw['on'] === 'boolean' ? { t: 'vmic', on: raw['on'] } : null;
   }
   return null;
 }
@@ -152,6 +167,7 @@ export function readToJoiner(raw: unknown): ToJoiner | null {
         if (typeof s['awaySince'] === 'number') seat.awaySince = s['awaySince'];
         if (s['busy'] === true) seat.busy = true;
         if (s['removed'] === true) seat.removed = true;
+        if (s['micOn'] === true) seat.micOn = true;
         const bot = s['bot'];
         if (isObj(bot) && (bot['level'] === 'easy' || bot['level'] === 'normal' || bot['level'] === 'hard')) seat.bot = { level: bot['level'] };
         seats.push(seat);
@@ -177,6 +193,7 @@ export function readToJoiner(raw: unknown): ToJoiner | null {
     case 'hostAway': return { t: 'hostAway' };
     case 'hostBack': return { t: 'hostBack' };
     case 'skipping': return typeof raw['on'] === 'boolean' ? { t: 'skipping', on: raw['on'] } : null;
+    case 'vsig': { const d = readVoiceData(raw['d']); return isStr(raw['from']) && isStr(raw['to']) && d ? { t: 'vsig', from: raw['from'], to: raw['to'], d } : null; }
   }
   return null;
 }
@@ -269,6 +286,29 @@ export function setConnected(lobby: Lobby, id: string, connected: boolean): Lobb
 /** CODE.md 9u A5: a phone left the screen (or lost its link) at host time `at`. The seat is kept. 9ai.3: an away phone is not busy. */
 export function setAway(lobby: Lobby, id: string, at: number): Lobby {
   return { ...lobby, seats: lobby.seats.map((s) => (s.id === id && !s.isHost && s.awaySince === undefined ? { ...s, awaySince: at, busy: undefined } : s)) };
+}
+
+/** CODE.md 9aq.9 (3.0.0): reads a voice payload, or null if it isn't one. */
+export function readVoiceData(raw: unknown): VoiceData | null {
+  if (!isObj(raw)) return null;
+  if (isObj(raw['sdp'])) {
+    const sdp = raw['sdp'];
+    return (sdp['type'] === 'offer' || sdp['type'] === 'answer') && isStr(sdp['sdp']) ? { sdp: { type: sdp['type'], sdp: sdp['sdp'] } } : null;
+  }
+  if ('ice' in raw) {
+    const ice = raw['ice'];
+    if (ice === null) return { ice: null };
+    if (!isObj(ice) || !isStr(ice['candidate'])) return null;
+    const mid = typeof ice['sdpMid'] === 'string' ? ice['sdpMid'] : null;
+    const idx = typeof ice['sdpMLineIndex'] === 'number' ? ice['sdpMLineIndex'] : null;
+    return { ice: { candidate: ice['candidate'], sdpMid: mid, sdpMLineIndex: idx } };
+  }
+  return null;
+}
+
+/** CODE.md 9aq.10 (3.0.0): a phone's mic is on or off. The host's own seat counts too. */
+export function setMic(lobby: Lobby, id: string, on: boolean): Lobby {
+  return { ...lobby, seats: lobby.seats.map((s) => (s.id === id && (s.micOn === true) !== on ? { ...s, micOn: on || undefined } : s)) };
 }
 
 /** CODE.md 9ai.3 (2.36): a phone has (on) or has not got (off) a pop-up open. The host's own seat counts too. */

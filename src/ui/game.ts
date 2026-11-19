@@ -47,6 +47,8 @@ import { forfeitLine } from './popuptext.ts';
 import { mergeRoundEnd } from './roundend.ts';
 import { watchAskCard, watchEyeButton, watchingBlock, watchPill, watchSheet } from './watch.ts';
 import { netGameBody, netMenu } from './netscreens.ts';
+import { seatCardLayer, tableMicButton, tableVoiceButton, voiceSheetOverlay } from './voicetable.ts';
+import { voicePlayer } from './voiceglue.ts';
 import {
   askPausePanel, gameOverStage, netPauseButton, notesPanel, passOnButton, pauseButton, pausePanel, pauseRequestsBanner,
   pauseTick, resultsStage, sheetSeen, takeButton, takeControls, takeHolder, takePrompts, takeStatus, targetButton, targetSheet,
@@ -771,6 +773,9 @@ export function gameScreen(g: SavedGame): HTMLElement {
         'aria-expanded': st.menuOpen ? 'true' : 'false',
         onclick: () => update({ menuOpen: !st.menuOpen, armed: null }),
       }, icon(st.menuOpen ? 'x' : 'menu')),
+      // 9aq.11 item 1 (3.0.0): the mic, and the Voice button when the bar has room (not while dealing).
+      tableMicButton(),
+      tableVoiceButton(window.innerWidth >= 390 && s.phase !== 'dealing'),
       roundChip(s, label),
       ownSeat(g) ? netPauseButton(g) : pauseButton(s),
       // 9ak.1 (2.37): once a target is agreed, a gold "First to N" chip sits right after the pause button.
@@ -787,6 +792,8 @@ export function gameScreen(g: SavedGame): HTMLElement {
     st.menuOpen ? menuLayer(g.net ? netMenu(g) : gameMenu(g)) : null,
     lastOpen && g.lastTrick ? lastSheet(s, g.lastTrick, lastSeen) : null,
     targetSheet(s, { me: ownSeat(g) ?? undefined }),
+    seatCardLayer(),
+    voiceSheetOverlay(ownSeat(g) ? (voicePlayer(ownSeat(g)!)?.seat ?? '') : '', () => update({})),
     fastBanner(g),
     pausePanel(g),
     askPausePanel(g),

@@ -191,19 +191,8 @@ export function targetButton(s: Session): HTMLElement | null {
 }
 
 /** Sheets that were on screen at the last redraw (9ak.1). */
-const sheetsOpen = new Set<string>();
-
-/**
- * 9ak.1 (2.37): every redraw rebuilds the page, so an open sheet would replay its entrance animation on each
- * − / + / quick-chip tap. Returns true when this sheet was already open at the last redraw (the caller adds
- * the `seen` class, which turns the animation off). Call it on every redraw, open or not, so it resets.
- */
-export function sheetSeen(key: string, open: boolean): boolean {
-  if (!open) { sheetsOpen.delete(key); return false; }
-  const seen = sheetsOpen.has(key);
-  sheetsOpen.add(key);
-  return seen;
-}
+import { sheetSeen } from './sheetseen.ts';
+export { sheetSeen };
 
 /**
  * 9aj.5 (2.36): the target sheet, drawn from the game screen like the take sheet.

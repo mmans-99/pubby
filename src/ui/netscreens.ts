@@ -24,6 +24,7 @@ import { ordinal } from './cards.ts';
 import { scoreRows } from './scores.ts';
 import { playerView } from '../session/view.ts';
 import { netSeats } from './netlobby.ts';
+import { voiceMenuItem } from './voicetable.ts';
 import { removeSheet, clockText } from './removesheet.ts';
 import { HINT_AWAY_MS, HINT_TURN_MS, hostClock, linkIdOf, playerOfLink, turnIdleMs } from './netplay.ts';
 import { roundTable, wastePile } from './table.ts';
@@ -332,6 +333,7 @@ export function netMenu(g: SavedGame): HTMLElement {
   return h('div', { class: 'panel menu' },
     // 9v.5: only the host's phone runs the computer players, so only the host sees these items.
     ...(host ? fastForwardMenuItems(g) : []),
+    voiceMenuItem(), // 9aq.11 item 5 (3.0.0): Voice is always in the game menu
     h('button', {
       class: armed ? 'danger' : 'secondary',
       onclick: () => {

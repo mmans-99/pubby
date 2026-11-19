@@ -86,6 +86,20 @@ export async function createRoom(o: { name: string; passcode: string; hostName: 
 }
 
 /** Checks the passcode and gets a seat token for the room. */
+/**
+ * 9aq.8 / 9aq.9 (3.0.0): the voice relay logins for this room, for a phone that knows
+ * the room's token (host or joiner). Null when the server can't be reached: voice
+ * then uses STUN only, which still works on Wi-Fi.
+ */
+export async function voiceIceServers(roomId: string, token: string): Promise<RTCIceServer[] | null> {
+  try {
+    const body = await post(`/rooms/${roomId}/turn`, { token }) as { iceServers?: unknown };
+    return Array.isArray(body.iceServers) ? (body.iceServers as RTCIceServer[]) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function joinRoom(roomId: string, passcode: string): Promise<{ joinToken: string }> {
   if (!ROOM_ID_RE.test(roomId)) throw new OnlineError('That room has closed.');
   if (!PASSCODE_RE.test(passcode)) throw new OnlineError('The passcode is 4 digits.');

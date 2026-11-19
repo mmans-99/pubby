@@ -29,6 +29,13 @@ export class Directory extends DurableObject<Env> {
     return answer;
   }
 
+  /** 9aq.8: one voice relay login for this month, if the monthly cap allows. Does not change the room list. */
+  async takeTurnCredit(month: string, limit: number): Promise<boolean> {
+    const ok = this.core.takeTurnCredit(month, limit);
+    await this.save();
+    return ok;
+  }
+
   async upsert(entry: ListEntry): Promise<void> {
     this.core.upsert(entry);
     await this.changed();

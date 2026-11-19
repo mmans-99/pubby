@@ -27,6 +27,20 @@ export class DirectoryCore {
   private reserved = new Map<string, number>();
   private makes = new Map<string, number[]>();
   private dirty = false;
+  /** 9aq.8: voice relay logins handed out, by month ("2026-11"). Only the current month is kept. */
+  private turns = new Map<string, number>();
+
+  /**
+   * 9aq.8: counts one voice relay login for `month`. False once TURN_MONTHLY_LIMIT
+   * are used that month. Older months are dropped, so the stored map stays one entry.
+   */
+  takeTurnCredit(month: string, limit: number): boolean {
+    const used = this.turns.get(month) ?? 0;
+    for (const m of [...this.turns.keys()]) if (m !== month) this.turns.delete(m);
+    if (used >= limit) return false;
+    this.turns.set(month, used + 1);
+    return true;
+  }
 
   /**
    * Holds a room id for a room about to be made. 'too-many-rooms' when this
@@ -75,6 +89,7 @@ export class DirectoryCore {
       entries: [...this.entries.entries()],
       reserved: [...this.reserved.entries()],
       makes: [...this.makes.entries()],
+      turns: [...this.turns.entries()],
     };
   }
 
@@ -83,11 +98,13 @@ export class DirectoryCore {
       entries: [string, ListEntry][];
       reserved: [string, number][];
       makes: [string, number[]][];
+      turns?: [string, number][];
     };
     const core = new DirectoryCore();
     core.entries = new Map(s.entries);
     core.reserved = new Map(s.reserved);
     core.makes = new Map(s.makes);
+    core.turns = new Map(s.turns ?? []);
     return core;
   }
 }

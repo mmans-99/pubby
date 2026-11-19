@@ -4,6 +4,25 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-19 (Haiku) — Build 9aq part 2 (3.0.0): voice chat in online rooms (not committed)
+
+**User:** "build CODE.md 9aq build 2 (Parts F to K, 3.0.0)"; "TURN secrets are set directly on the Worker in Cloudflare; skip the server.yml secrets change in 9aq Part F."
+
+**Done:** Parts F to K as in `CODE.md` 9aq.8 to 9aq.13, with the deviations listed in 9aq.6 (build 2). Voice server (`server/src/core/turn.ts`, `POST /rooms/<id>/turn`, monthly cap 3000, STUN fallback). Voice mesh (`src/net/voice.ts`, `voicertc.ts`, `voiceglue.ts`), lobby buttons (`LOBBY_PROTOCOL` 13), table rings and badges, the Voice sheet and `pubby.voice` mutes. Version 3.0.0.
+
+**Bugs found and fixed while testing:**
+- Answering side attached the mic to a transceiver that wasn't negotiated (`adopt()`).
+- The level meter stayed on the first remote stream after a renegotiation (at game start), so it read silence for the rest of the game. It now follows the current stream.
+- The fake mic (steady tone) read as background to noise suppression. It now plays speech-like phrases.
+- The test turned Ben's mic off (hidden-phone check) and never turned it back on before the table checks.
+- `online_check.py` expected a removal message the app never used. Now matches the app.
+
+**Checks:** `npm run check` pass; `npm test` 618 of 618; `node build.mjs` pass (v3.0.0); `voice_check.py` 31 of 31 on the last two runs (one earlier run lost Cat's lobby ring; intermittent, not confirmed); `online_check.py` 48 of 48. Server type check not run (no network for `@cloudflare/workers-types`).
+
+**Not done:** the landscape rail (Part I item 2); screenshots at six sizes (Part K item 3); seat card on screen; Voice sheet entrance-once check; the build-2 test link; the phone checklist 9aq.7 items 9 to 18 (live app only). Nothing committed or pushed; waiting for the user's test and "push".
+
+---
+
 ## 2026-11-19 (16:48, Haiku) — Build 9aq part 1 (2.39.0): one round-end pop-up, tap or 3.5 s, notices, What happened (not committed)
 
 **User (16:48):** "build CODE.md 9aq build 1 (Parts A to E, 2.39.0)".

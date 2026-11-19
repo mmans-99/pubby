@@ -247,8 +247,8 @@ def phase_a(browser, base, errors):
         # 6. The host removes Cat (two taps: Remove, then Remove?). Cat sees it and joins again.
         amy.get_by_role('button', name='Remove Cat').click()
         amy.get_by_role('button', name='Remove Cat').click()
-        check('removed phone sees "The host took you out of this game."',
-              wait_for(lambda: cat.get_by_text('The host took you out of this game.').count() == 1, 10))
+        check('removed phone sees "The host removed you from the game."',
+              wait_for(lambda: cat.get_by_text('The host removed you from the game.').count() == 1, 10))
         check('host shows 3 / 8 after the removal', wait_for(lambda: seat_count(amy) == '3 / 8', 10))
         cat.get_by_role('button', name='Join again').click()
         check('removed phone is back on the room list, not the Nearby screen', wait_for(lambda: step_of(cat) == 'room-list', 8))

@@ -6,12 +6,14 @@
 import { DIRECTORY_NAME, type Env } from './env.ts';
 import { makeRoomId, makeToken, passcodeHash } from './core/ids.ts';
 import { originCheck, parseCreate, parseJoin } from './core/api.ts';
+import { monthKey, turnAnswer, TURN_MONTHLY_LIMIT, type TurnAnswer } from './core/turn.ts';
 import { RELAY_PROTOCOL } from '../../src/net/relayproto.ts';
+import type { Directory } from './directory.ts';
 
 export { Room } from './room.ts';
 export { Directory } from './directory.ts';
 
-const ROOM_ID = /^\/rooms\/([23456789abcdefghjkmnpqrstuvwxyz]{8})(\/join|\/socket)?$/;
+const ROOM_ID = /^\/rooms\/([23456789abcdefghjkmnpqrstuvwxyz]{8})(\/join|\/socket|\/turn)?$/;
 const JOIN_STATUS: Record<string, number> = {
   'wrong-passcode': 403,
   'no-room': 404,
@@ -26,6 +28,16 @@ function json(body: unknown, status: number, cors: Record<string, string>): Resp
     status,
     headers: { 'content-type': 'application/json', ...cors },
   });
+}
+
+/** 9aq.8: the rule lives in core/turn.ts (turnAnswer), where the tests are. */
+function turnFor(env: Env, dir: DurableObjectStub<Directory>, now: number): Promise<TurnAnswer> {
+  return turnAnswer(
+    env.TURN_KEY_ID,
+    env.TURN_KEY_API_TOKEN,
+    () => dir.takeTurnCredit(monthKey(now), TURN_MONTHLY_LIMIT),
+    (url, init) => fetch(url, init),
+  );
 }
 
 async function readBody(request: Request): Promise<unknown> {
@@ -108,6 +120,15 @@ async function route(request: Request, env: Env): Promise<Response> {
       const body: { error: string; need?: string } = { error: answer.error };
       if (answer.need !== undefined) body.need = answer.need;
       return json(body, JOIN_STATUS[answer.error] ?? 503, cors);
+    }
+
+    // 9aq.8: a voice relay login for a phone that knows the room's token.
+    if (what === '/turn' && request.method === 'POST') {
+      const body = await readBody(request);
+      const token = typeof body === 'object' && body !== null ? (body as { token?: unknown }).token : undefined;
+      if (typeof token !== 'string' || token === '') return json({ error: 'bad-request' }, 400, cors);
+      if (!(await room.knowsToken(token))) return json({ error: 'token' }, 403, cors);
+      return json(await turnFor(env, directory(), Date.now()), 200, cors);
     }
 
     if (what === '/socket' && request.method === 'GET') {

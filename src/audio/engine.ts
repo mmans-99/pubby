@@ -17,6 +17,8 @@ export let ctx: AudioContext | null = null;
 let musicBus: GainNode;
 /** Dips the music under big effects (separate from the music volume). */
 let duckGain: GainNode;
+/** 9aq.9 (3.0.0): dips the music only (not effects) while someone is talking. */
+let voiceDuck: GainNode;
 let sfxBus: GainNode;
 let noiseBuf: AudioBuffer;
 let reverbIR: AudioBuffer | null = null;
@@ -41,7 +43,8 @@ function make(): void {
   const master = ctx.createGain(); master.gain.value = 0.9;
   master.connect(comp); comp.connect(ctx.destination);
   duckGain = ctx.createGain(); duckGain.connect(master);
-  musicBus = ctx.createGain(); musicBus.connect(duckGain);
+  voiceDuck = ctx.createGain(); voiceDuck.connect(duckGain);
+  musicBus = ctx.createGain(); musicBus.connect(voiceDuck);
   sfxBus = ctx.createGain(); sfxBus.connect(master);
   applyVolumes(soundSettings(), true);
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
@@ -88,6 +91,13 @@ export function duckMusic(at: number, dur: number): void {
   const g = duckGain.gain;
   g.setTargetAtTime(0.35, at, 0.04);
   g.setTargetAtTime(1, at + dur, 0.25);
+}
+/** 9aq.9 (3.0.0): music down to 0.35 while a player you hear is talking; back up 600 ms after. */
+export function setVoiceDuck(talking: boolean): void {
+  if (!ctx || !voiceDuck) return;
+  const g = voiceDuck.gain;
+  if (talking) g.setTargetAtTime(0.35, ctx.currentTime, 0.05);
+  else g.setTargetAtTime(1, ctx.currentTime + 0.6, 0.2);
 }
 export function musicOut(): AudioNode { return musicBus; }
 

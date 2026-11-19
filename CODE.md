@@ -4460,6 +4460,39 @@ Deviations from the plan, and what is not done:
 
 Phone checklist: 9aq.7 items 1 to 8 (build 1) are still to be tested on a phone.
 
+**Build 2 (3.0.0, Haiku, built 2026-11-19, not committed, not pushed).**
+
+What was built:
+- **Part F (TURN, server):** `server/src/core/turn.ts` (new): `TURN_TTL_S` 10800, `TURN_MONTHLY_LIMIT` 3000, `monthKey` (UTC "YYYY-MM"), `dropPort53`, `relayLogin` (Cloudflare Realtime `generate-ice-servers`), `stunOnly`, `turnAnswer` (no secrets, credit used up, or any failure → STUN only). `POST /rooms/<id>/turn` (`src/index.ts`): 400 without a token, 403 `{error:'token'}` for an unknown token (`RoomCore.knowsToken`: the host always; a join token while linked or within its window and not kicked), else the answer. Monthly credit kept in `DirectoryCore` (`takeTurnCredit`, not a room-list broadcast). `env.ts`: optional `TURN_KEY_ID`, `TURN_KEY_API_TOKEN`. Tests: `tests/server/turn.test.ts` (16 tests).
+- **Part G (voice connections):** `src/net/voice.ts` (new, `VoiceMesh`): one connection per pair, offered by the earlier seat, signalling relayed through the host (`vsig`, the host checks the sender's link id), mic off until tapped, page hidden → mic off, talk detection (RMS of the analyser, threshold 0.02, 150 ms on, 400 ms off), one retry after 3 s. `src/net/voicertc.ts` (new): the RTC link, the sender at max 32 kbps, `<audio playsinline>` appended to `document.body` (a redraw never restarts it), the level meter. `src/ui/voiceglue.ts` (new): the singleton and a 100 ms tick that sets the `talking` class directly on `[data-voice]` elements (no redraw) and dips the music (`voiceDuck` in `src/audio/engine.ts`, 0.35 while talking). TURN login from `src/net/online.ts` (`voiceIceServers`); ICE refreshed every 2.5 h.
+- **Part H (lobby):** `LOBBY_PROTOCOL` 12 → **13**. Seats carry `micOn`; `ToHost` gains `vsig` and `vmic`, `ToJoiner` gains `vsig`. `src/ui/netlobby.ts`: mic and Voice buttons beside Start or Ready (online only), status chips (Talking, Muted by you, Mic on, Mic off), a speaker mute button per row, `syncVoice()` follows the lobby. `tests/net/lobby.test.ts` protocol asserts changed to 13.
+- **Part I (table):** `src/ui/table.ts`: each disc carries `data-voice` and its badge (muted gold speaker, mic off grey). `src/ui/game.ts`: the top bar has the table mic button, and the Voice button at 390 px and wider, not while dealing (`src/ui/voicetable.ts`). Tapping another person's seat opens its card with Mute.
+- **Part J (Voice sheet, storage):** `src/ui/voicesheet.ts` (new): "Your mic", Mute all, Unmute all, a row per person (status, hear toggle), a volume slider (hidden on iOS, where the volume can't be set). `src/ui/voicestore.ts` (new): `pubby.voice` = `{muted: [names lower-case], volume 0–100, micTried}`. Mutes are kept by name, so a new game with the same people keeps them. `src/ui/sheetseen.ts` (new, moved out of `between.ts` to break an import cycle that pulled `catch-phrases.md` into the table tests).
+- **Part K (checks, version):** `package.json` **3.0.0**. `testbed/voice_check.py` (new, 31 checks), `testbed/online_check.py` (48 checks, see below), `testbed/relay_server.ts` (`/rooms/<id>/turn`: 403 for an unknown token, else STUN only).
+
+Fixes made while testing (all in build 2):
+- **Answering side:** the answer side now adopts the transceiver created by the remote offer and sets it to sendrecv (`adopt()` in `voicertc.ts`). Before, the mic was attached to a transceiver that was never negotiated.
+- **Meter followed a dead stream (real bug, found by `voice_check.py`):** the level meter was built once from the first remote stream. When the connection renegotiated (for example at game start), `ontrack` gave a new stream, but the meter kept reading the old one, which had ended, so it showed silence for the rest of the game. `level()` now rebuilds the meter whenever the stream changes.
+- **Test fake mic:** a steady 300 Hz tone reads as background to noise suppression, so the level flickered. The fake mic is now phrases of a wandering tone with short pauses (`tone_wav()` in `voice_check.py`).
+- **Test order:** the hidden-phone check turns Ben's mic off, and it stays off when the phone shows again (by design, the person taps it on). The check now taps it back on before the table checks. Without this the table checks ran with the mic off.
+- **Removal wording (`online_check.py`):** the check expected "The host took you out of this game." The app has always said "The host removed you from the game." (already at HEAD). The check now uses the app's wording. This is a stale test expectation, not a change to the game.
+
+Checks run:
+- `npm run check`: pass (both tsconfig files). `npm test`: 618 of 618 pass (includes the server tests in `tests/server/`).
+- `node build.mjs`: `dist/index.html` 437 KB, "Pubby v3.0.0", version 03c92d5bccb8.
+- `testbed/voice_check.py`: **31 of 31** on the last two runs. Earlier runs: 27, then 28, then 30 of 31; each failure traced and fixed as above. One earlier run lost **Cat's lobby talk ring** (1 run in 4). It passed on the next runs, but the cause of that one miss is not confirmed. Treat it as intermittent until it recurs.
+- `testbed/online_check.py`: **48 of 48** (after the wording fix above).
+- Server type check (`tsc` on `server/`): not run here; `@cloudflare/workers-types` can't be fetched offline. Server logic is tested through `tests/server/turn.test.ts` only.
+
+Deviations from the plan, and what is not done:
+- **Part F secrets:** the user set `TURN_KEY_ID` and `TURN_KEY_API_TOKEN` directly on the Worker in Cloudflare. As instructed, `server.yml` was NOT changed (no GitHub secrets step added to the deploy). Part L step 2 (GitHub secrets) therefore does not apply; the Cloudflare key steps still do.
+- **Part I item 2, landscape rail:** NOT built. Landscape shows the same top bar. Report to the user before the push.
+- **Part I item 3, seat card at each edge:** not checked on screen. The `voice_check.py` seat card check is SKIPPED at the deal stage (other seats are game buttons then, so a tap is a game action, not a voice action). Not verified.
+- **Part K item 3, screenshots at six sizes:** NOT done. Nothing checked by eye for wrap, overlap or cut-off.
+- **Part K item 4, flash check:** the disc identity check passes (`.seat-disc` elements keep their identity while people talk, the table's no-redraw check). The Voice sheet entrance-runs-once check is NOT measured.
+- **Part K item 5, test build:** voice can't be tried on the private test build, because it can't reach the room server. Say so to the user. Checklist 9aq.7 items 9 to 18 are for the live app after the push.
+- **Not in plan but noted:** voice uses STUN only when the TURN key is missing (fine on Wi-Fi, often not on mobile data).
+
 ### 9aq.7 Phone checklist
 
 Build 1 (2.39.0, test link):

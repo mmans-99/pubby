@@ -23,7 +23,10 @@ import { addProfile, findProfile, saveProfiles } from './storage.ts';
 import { makeQr, qrSvg } from '../net/qr.ts';
 import { Peer } from '../net/peer.ts';
 import type { Link } from '../net/link.ts';
-import { HostRoom, createRoom, joinRoom, joinSocket, watchRooms, type OnlineLink, type RoomInfo } from '../net/online.ts';
+import { HostRoom, createRoom, joinRoom, joinSocket, voiceIceServers, watchRooms, type OnlineLink, type RoomInfo } from '../net/online.ts';
+import { setVoicePlayers, setVoiceSheetOpen, voiceMic, voiceMicBlocked, voiceMicOn, voiceMute, voiceRunning, voiceSetPeers, voiceSheetIsOpen, voiceSignal, voiceStart, voiceStop, voiceTalking, type VoicePlayer } from './voiceglue.ts';
+import { setMicAction, voiceSheetOverlay } from './voicetable.ts';
+import { isMutedName, loadVoice, saveVoice, setMutedName } from './voicestore.ts';
 import { AWAY_MS, PASSCODE_RE, ROOM_ID_RE, ROOM_NAME_MAX } from '../net/relayproto.ts';
 import { setAwayPlayers } from '../net/away.ts';
 import { onMyBusyChange, setBusyPlayers } from '../net/busy.ts';
@@ -36,8 +39,8 @@ import { canScan, startScanner, type Scanner } from '../net/scan.ts';
 import {
   addSeat, cleanName, joinProblem, jokerLine, LOBBY_PROTOCOL, lobbyProblems, moveSeat, NAME_MAX, newLobby,
   readToHost, readToJoiner, removeSeat, renameSeat, seatName, sessionPlayers, setConnected, setReady, waitingText, markRemoved,
-  setAway, setBack, setBusy, isAway, addBot, setBotLevel, nextBotId,
-  type Lobby, type LobbySeat, type ToHost, type ToJoiner,
+  setAway, setBack, setBusy, setMic, isAway, addBot, setBotLevel, nextBotId,
+  type Lobby, type LobbySeat, type ToHost, type ToJoiner, type VoiceData,
 } from '../net/lobby.ts';
 import { MAX_PLAYERS } from '../rules/cards.ts';
 import { createSession } from '../session/session.ts';
@@ -233,6 +236,7 @@ export function netLobbyBack(): boolean {
 // ---------------------------------------------------------------------------
 
 function reset(): void {
+  voiceStop();
   hostAway = false;
   joinAway = null;
   clearInterval(joinSaveTimer);
@@ -385,6 +389,8 @@ function watchVisibility(): void {
   visibilityWatched = true;
   document.addEventListener('visibilitychange', () => {
     const hidden = document.visibilityState === 'hidden';
+    // 9aq.9 item 4: a hidden phone is never a live mic.
+    if (hidden && voiceRunning() && voiceMicOn()) void voiceMic(false).then(reportMic);
     if (role === 'join') {
       if (peer?.isOpen) peer.send(({ t: hidden ? 'away' : 'back' }) satisfies ToHost);
     } else if (role === 'host') {
@@ -589,6 +595,7 @@ function seatTags(seat: LobbySeat, mine: boolean): (HTMLElement | null)[] {
       : seat.connected ? null : h('span', { class: 'chip-info lost' }, 'Lost link'),
     // CODE.md 9u C2: a computer player shows its level (no controls on other phones).
     seat.bot ? h('span', { class: 'chip-info' }, icon('bot'), ` ${BOT_LEVEL_LABEL[seat.bot.level]}`) : null,
+    ...voiceTags(seat, mine),
   ];
 }
 
@@ -669,9 +676,16 @@ function hostLobbyView(): View {
       ),
     ),
     problems.length && l.seats.length > 1 ? h('p', { class: 'warn' }, problems.join(' ')) : null,
-    h('button', { class: 'big sticky', disabled: problems.length > 0 || waiting > 0 || missing !== null || hostAway, onclick: startGame },
-      problems.length ? 'Start game' : missing ? missing : `Start game · ${l.seats.length} players`),
+    startGameButton(problems, waiting, missing, l),
+    voiceSheetFor(),
   ];
+}
+
+/** The Start button; online it sits in the voice bar beside the mic and Voice buttons. */
+function startGameButton(problems: string[], waiting: number, missing: string | null, l: Lobby): HTMLElement {
+  const start = h('button', { class: online() ? 'big' : 'big sticky', disabled: problems.length > 0 || waiting > 0 || missing !== null || hostAway, onclick: startGame },
+    problems.length ? 'Start game' : missing ? missing : `Start game · ${l.seats.length} players`);
+  return online() ? h('div', { class: 'voice-wrap' }, micHint(), voiceBar(start)) : start;
 }
 
 /** The room’s name and passcode, at the top of the lobby (online). */
@@ -687,7 +701,7 @@ function hostSeatRow(seat: LobbySeat, i: number, n: number): HTMLElement {
   const key = `remove:${seat.id}`;
   return h('li', { class: 'seat' },
     h('div', { class: 'seat-top' },
-      h('span', { class: 'seat-no' }, String(i + 1)),
+      h('span', { class: voiceTalking(seat.id) ? 'seat-no talking' : 'seat-no', 'data-voice': seat.id }, String(i + 1)),
       h('span', { class: 'grow name' }, seatName(seat), seatSub(seat)),
       ...seatTags(seat, seat.isHost),
     ),
@@ -834,6 +848,125 @@ function removeInGame(linkId: string): void {
 }
 setOnRemovedLink(removeInGame);
 
+/** 9aq.9 (3.0.0): sends one voice signal: the host to a seat, a joiner to the host. */
+function sendVoice(to: string, d: VoiceData): void {
+  if (role === 'host') {
+    const l = links.get(to);
+    if (l?.seated) l.peer.send({ t: 'vsig', from: 'host', to, d } satisfies ToJoiner);
+    return;
+  }
+  if (peer?.isOpen) peer.send({ t: 'vsig', from: you, to, d } satisfies ToHost);
+}
+
+/** 9aq.9 (3.0.0): the call follows the lobby. Online rooms only; Nearby games never start voice. */
+function syncVoice(): void {
+  const l = role === 'host' ? lobby : seen;
+  const me = role === 'host' ? 'host' : you;
+  if (mode !== 'online' || !l || !me) {
+    if (voiceRunning()) voiceStop();
+    return;
+  }
+  if (!voiceRunning()) {
+    const token = role === 'host' ? hostToken : joinToken;
+    const room = roomId;
+    voiceStart(me, sendVoice, () => voiceIceServers(room, token));
+  }
+  // 9aq.9 / 9aq.10: the table names players p1, p2… in seat order; the rings and badges use the seats.
+  setVoicePlayers(l.seats.map((s, i): [string, VoicePlayer] => [`p${i + 1}`, { seat: s.id, name: seatName(s), micOn: s.micOn === true, bot: s.bot !== undefined }]));
+  const humans = l.seats.filter((s) => s.bot === undefined);
+  const connected = humans
+    .filter((s) => s.id !== me && s.connected && s.awaySince === undefined && s.removed !== true)
+    .map((s) => s.id);
+  voiceSetPeers(humans.map((s) => s.id), connected);
+  // 9aq.12 item 3: mutes are kept by name, so they hold across games.
+  const saved = loadVoice();
+  for (const s of humans) if (s.id !== me) voiceMute(s.id, isMutedName(saved, seatName(s)));
+}
+
+/** 9aq.12 (3.0.0): the Voice sheet on the lobby (online only), built by the shared sheet code. */
+function voiceSheetFor(): HTMLElement | null {
+  return voiceSheetOverlay(role === 'host' ? 'host' : you, () => draw());
+}
+
+/** 9aq.10 item 3: one line until this phone has turned the mic on once. */
+function micHint(): HTMLElement | null {
+  return loadVoice().micTried ? null : h('p', { class: 'muted small voice-hint' }, 'Mic is off until you tap it.');
+}
+
+function online(): boolean {
+  return mode === 'online';
+}
+
+/** 9aq.10 item 1: the mic and Voice buttons, with the main button taking the rest of the row. */
+function voiceBar(main: HTMLElement): HTMLElement {
+  const on = voiceMicOn();
+  const blocked = voiceMicBlocked();
+  return h('div', { class: 'voice-bar sticky-row' },
+    h('button', {
+      class: `round-btn mic-btn${on ? ' on' : ''}${blocked ? ' blocked' : ''}`,
+      'aria-label': on ? 'Mic on. Tap to turn it off.' : blocked ? 'Mic blocked. Allow it in your browser.' : 'Mic off. Tap to turn it on.',
+      'aria-pressed': on ? 'true' : 'false',
+      disabled: !voiceRunning(),
+      onclick: () => { void toggleMic(); },
+    }, icon(on ? 'mic' : 'micoff'), blocked ? h('span', { class: 'red-dot', 'aria-hidden': 'true' }) : null),
+    h('button', { class: 'round-btn voice-btn', 'aria-label': 'Voice', onclick: () => { setVoiceSheetOpen(true); draw(); } }, icon('speaker')),
+    main,
+  );
+}
+
+/** 9aq.10 item 4: a person's voice status, and their mute button (not for you or a computer player). */
+function voiceTags(seat: LobbySeat, mine: boolean): (HTMLElement | null)[] {
+  if (!online() || seat.bot) return [];
+  if (mine) {
+    return [h('span', { class: 'chip-info voice-chip' }, icon(voiceMicOn() ? 'mic' : 'micoff'), voiceMicOn() ? ' Mic on' : ' Mic off')];
+  }
+  const muted = isMutedName(loadVoice(), seatName(seat));
+  const talking = voiceTalking(seat.id) && !muted;
+  const label = muted ? 'Muted by you' : talking ? 'Talking' : seat.micOn ? 'Mic on' : 'Mic off';
+  const chip = h('span', { class: `chip-info voice-chip${talking ? ' ok' : ''}` }, icon(muted ? 'speakeroff' : seat.micOn ? 'mic' : 'micoff'), ` ${label}`);
+  const button = h('button', {
+    class: `icon voice-mute${muted ? ' gold' : ''}`,
+    'aria-label': `${muted ? 'Unmute' : 'Mute'} ${seatName(seat)}`,
+    onclick: () => {
+      saveVoice(setMutedName(loadVoice(), seatName(seat), !muted));
+      voiceMute(seat.id, !muted);
+      draw();
+    },
+  }, icon(muted ? 'speakeroff' : 'speaker'));
+  return [chip, button];
+}
+
+// 9aq.10 (3.0.0): the table's and the lobby's mic buttons both call toggleMic.
+setMicAction(() => { void toggleMic(); });
+
+/** 9aq.10 (3.0.0): the mic button. Tells the host (or updates the host's own seat). */
+export async function toggleMic(): Promise<void> {
+  if (!voiceRunning()) return;
+  if (!voiceMicOn()) saveVoice({ ...loadVoice(), micTried: true });
+  await voiceMic(!voiceMicOn());
+  reportMic();
+}
+
+/** This phone's mic changed: the host keeps the seat's mic state; a joiner tells the host. */
+function reportMic(): void {
+  const on = voiceMicOn();
+  update({}); // the table's badges follow the mic (9aq.11 item 3)
+  if (role === 'host') {
+    if (lobby && (lobby.seats.find((s) => s.id === 'host')?.micOn === true) !== on) {
+      lobby = setMic(lobby, 'host', on);
+      broadcast();
+    }
+  } else if (peer?.isOpen) {
+    peer.send({ t: 'vmic', on } satisfies ToHost);
+  }
+  draw();
+}
+
+/** 9aq.10 (3.0.0): the mic state for the buttons. */
+export function micState(): { on: boolean; blocked: boolean; running: boolean } {
+  return { on: voiceMicOn(), blocked: voiceMicBlocked(), running: voiceRunning() };
+}
+
 function broadcast(): void {
   if (!lobby) return;
   // 2.4: the other phones see when the host is adding a player.
@@ -843,6 +976,7 @@ function broadcast(): void {
   }
   // Online: the room list shows the seats and whether the game has started.
   hostRoom?.update(lobby.seats.length, lobby.started);
+  syncVoice(); // 9aq.9 (3.0.0)
   // G-d (2.38): every lobby change is saved too (away, back), for a reload of the host's page.
   saveHostNow();
 }
@@ -1224,6 +1358,25 @@ function hostGot(id: string, raw: unknown): void {
     netChanged();
     return;
   }
+  // 9aq.9 (3.0.0): a voice signal. The host checks `from` is this seat, then passes it on unchanged.
+  if (m.t === 'vsig') {
+    if (!link.seated || m.from !== id) return;
+    if (m.to === 'host') voiceSignal(id, m.d);
+    else {
+      const to = links.get(m.to);
+      if (to?.seated) to.peer.send({ t: 'vsig', from: m.from, to: m.to, d: m.d } satisfies ToJoiner);
+    }
+    return;
+  }
+  // 9aq.10 (3.0.0): a joining phone's mic is on or off.
+  if (m.t === 'vmic') {
+    if (!link.seated || !lobby) return;
+    lobby = setMic(lobby, id, m.on);
+    broadcast();
+    draw();
+    update({}); // 9aq.11 item 3: the table's badges follow the mic
+    return;
+  }
   // 9ai.3 (2.36): a seated phone has, or has closed, its pop-ups.
   if (m.t === 'busy') {
     if (!link.seated) return;
@@ -1371,7 +1524,7 @@ function joinLobbyView(): View {
       h('ol', { class: 'seats' }, l.seats.map((seat, i) =>
         h('li', { class: 'seat' },
           h('div', { class: 'seat-top' },
-            h('span', { class: 'seat-no' }, String(i + 1)),
+            h('span', { class: voiceTalking(seat.id) ? 'seat-no talking' : 'seat-no', 'data-voice': seat.id }, String(i + 1)),
             h('span', { class: 'grow name' }, seatName(seat), seatSub(seat)),
             ...seatTags(seat, seat.id === you),
           ),
@@ -1384,7 +1537,10 @@ function joinLobbyView(): View {
       myNameBox(me?.sessionName ?? ''),
     ),
     problems.length ? h('p', { class: 'warn' }, problems.join(' ')) : null,
-    h('button', { class: 'big secondary', onclick: () => { leaveAsk = true; draw(); } }, 'Leave'),
+    online()
+      ? h('div', { class: 'voice-wrap' }, micHint(), voiceBar(h('button', { class: 'big secondary', onclick: () => { leaveAsk = true; draw(); } }, 'Leave')))
+      : h('button', { class: 'big secondary', onclick: () => { leaveAsk = true; draw(); } }, 'Leave'),
+    voiceSheetFor(),
   ];
 }
 
@@ -1463,6 +1619,8 @@ function joinGotNow(raw: unknown): void {
     joinGotGame(m);
   } else if (m.t === 'react') {
     joinGotReact(m.from, m.r);
+  } else if (m.t === 'vsig') {
+    voiceSignal(m.from, m.d); // 9aq.9 (3.0.0)
   } else if (m.t === 'say') {
     joinGotSay(m.from, m.text); // 9ad.5 (2.34)
   } else if (m.t === 'nope') {
@@ -1470,6 +1628,7 @@ function joinGotNow(raw: unknown): void {
   } else if (m.t === 'lobby') {
     seen = m.lobby;
     you = m.you;
+    syncVoice(); // 9aq.9 (3.0.0)
     if (step !== 'lobby') go('lobby'); else draw();
     // Phase 4d: this phone is now at the table. Sent once per join: the host
     // sends the lobby again on every change, so it must not be sent per lobby.

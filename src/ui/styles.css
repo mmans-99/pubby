@@ -1638,3 +1638,50 @@ html[data-rail="1"] .results-footer { flex: 1 1 0; min-width: 0; min-height: 0; 
 .what-line { opacity: .85; }
 .what-line.strong { font-weight: 700; }
 .what-age { display: inline-block; min-width: 44px; opacity: .6; }
+
+/* ----- Voice chat (CODE.md 9aq.9 to 9aq.12, 3.0.0) ----- */
+.voice-wrap { position: sticky; bottom: calc(12px + env(safe-area-inset-bottom)); display: grid; gap: 6px; }
+.voice-bar { display: flex; align-items: center; gap: 8px; }
+.voice-bar > .big { flex: 1; margin: 0; }
+.round-btn {
+  position: relative; flex: none; width: 56px; height: 56px; min-height: 56px; padding: 0;
+  border-radius: 50%; display: grid; place-items: center;
+  background: var(--cream); color: var(--ink); border: 2px solid transparent;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+.round-btn .ic { width: 26px; height: 26px; }
+.round-btn:disabled { opacity: 0.45; }
+.mic-btn.on { border-color: #6fd08c; color: #1f7a45; }
+.mic-btn.blocked { color: #a0501c; }
+.red-dot { position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; border-radius: 50%; background: #d64545; }
+.voice-hint { margin: 0; color: var(--cream); text-align: left; }
+.voice-chip { font-size: 12px; }
+.voice-chip.ok { color: #9fe8b6; }
+button.voice-mute { min-width: 44px; min-height: 44px; }
+button.voice-mute.gold { border: 2px solid var(--gold); }
+/* 9aq.9 item 6: the talk ring is set on the element, so it changes no size or position. */
+[data-voice].talking { box-shadow: 0 0 0 3px #6fd08c, 0 0 0 7px rgba(111, 208, 140, 0.35); transition: box-shadow 120ms; }
+.voice-all { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+.voice-all .outlined { background: transparent; border: 2px solid var(--ink); color: var(--ink); }
+.voice-sheet { max-height: 88vh; }
+.voice-volume { display: grid; gap: 6px; margin-top: 12px; }
+/* 9aq.12 item 1: an open sheet is not replayed on a redraw. */
+.overlay.seen, .overlay.seen .sheet { animation: none; }
+
+/* 9aq.11 (3.0.0): voice on the table. Badges sit on the seat disc, opposite the card count. */
+.seat-disc .voice-badge {
+  position: absolute; bottom: -4px; width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--cream); color: var(--ink);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); pointer-events: none;
+}
+.seat-disc .voice-badge.at-right { right: -4px; }
+.seat-disc .voice-badge.at-left { left: -4px; }
+.seat-disc .voice-badge .ic { width: 14px; height: 14px; }
+.seat-disc .voice-badge.gold { border: 2px solid var(--gold); }
+.seat-disc .voice-badge.grey { color: #6b6455; }
+.table-mic.on { color: #1f7a45; }
+.table-mic.blocked { color: #a0501c; }
+.table-mic .red-dot, .table-mic .red-dot { top: 4px; right: 4px; }
+.voice-seat-layer { position: fixed; inset: 0; z-index: 35; background: transparent; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.voice-seat-card { width: 100%; max-width: 300px; display: grid; gap: 12px; }
+.voice-seat-name { margin: 0; font-weight: 700; }

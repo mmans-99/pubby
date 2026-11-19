@@ -47,6 +47,11 @@ export class Room extends DurableObject<Env> {
     return r.need === undefined ? { ok: false, error: r.error } : { ok: false, error: r.error, need: r.need };
   }
 
+  /** 9aq.8: may this token ask for a voice relay login? */
+  async knowsToken(token: string): Promise<boolean> {
+    return this.core ? this.core.knowsToken(token, Date.now()) : false;
+  }
+
   /** A WebSocket upgrade: the host's socket or a joining phone's, decided by the token in the URL. */
   override async fetch(request: Request): Promise<Response> {
     if (request.headers.get('Upgrade') !== 'websocket') {

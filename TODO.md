@@ -472,13 +472,14 @@ Build 1, 2.39.0:
 - [x] Part D: "What happened" in the round note (built 2.39.0, not committed)
 - [~] Part E: 2.39.0 built; checks run (see CODE.md 9aq.6); no-flash and overlap screenshots NOT yet done; test build published; phone checklist 9aq.7 items 1 to 8; push on "push"
 Build 2, 3.0.0 (after build 1 is pushed):
-- [ ] User: TURN key in Cloudflare and two GitHub secrets (9aq Part L), before the build 2 push
-- [ ] Part F: `/rooms/<id>/turn`, monthly cap 3000, STUN fallback, server tests
-- [ ] Part G: `src/net/voice.ts` (mesh, signals through the host, mic off by default, page hidden turns it off, talk detection, music dip)
-- [ ] Part H: lobby mic and Voice buttons, per-player mute buttons, mic state
-- [ ] Part I: top bar / rail buttons, seat talk ring and badges, seat card
-- [ ] Part J: Voice sheet, storage `pubby.voice` (mutes remembered)
-- [ ] Part K: 3.0.0, `voice_check.py`, screenshots, flash check, push on "push", phone checklist 9aq.7 items 9 to 18 on the live app
+- [x] User: TURN key in Cloudflare; the secrets are set directly on the Worker (the user's instruction: `server.yml` NOT changed, so the GitHub secrets step in 9aq Part L does not apply)
+- [x] Part F: `/rooms/<id>/turn`, monthly cap 3000, STUN fallback, server tests (built 3.0.0, not committed; see CODE.md 9aq.6)
+- [x] Part G: `src/net/voice.ts` (mesh, signals through the host, mic off by default, page hidden turns it off, talk detection, music dip) (built 3.0.0)
+- [x] Part H: lobby mic and Voice buttons, per-player mute buttons, mic state; `LOBBY_PROTOCOL` 13 (built 3.0.0)
+- [~] Part I: top bar buttons, seat talk ring and badges, seat card built. NOT built: landscape rail (item 2). Seat card not checked on screen (skipped in `voice_check.py` at the deal stage)
+- [x] Part J: Voice sheet, storage `pubby.voice` (mutes remembered by name) (built 3.0.0)
+- [~] Part K: 3.0.0; `voice_check.py` 31 of 31 (two runs); `online_check.py` 48 of 48; NOT done: screenshots at six sizes, flash check of the Voice sheet entrance, test build for build 2 (voice can't be tried on it). Push on "push"; phone checklist 9aq.7 items 9 to 18 on the live app
+- [ ] Open bug, intermittent: Cat's lobby talk ring missed in 1 of 4 `voice_check.py` runs (not confirmed; see CODE.md 9aq.6)
 
 ## Phase 5 — Polish
 

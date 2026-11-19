@@ -22,6 +22,7 @@ import { getState, type Notice } from './store.ts';
 import type { PlayerId, Session } from '../session/types.ts';
 import type { PlayerView } from '../session/view.ts';
 import type { Suit } from '../rules/cards.ts';
+import { discVoice, openSeatCard, seatTapsVoice } from './voicetable.ts';
 
 export interface TableOpts {
   /** Who sits at the bottom (this phone's player, or whoever holds the phone). */
@@ -549,12 +550,13 @@ function seatTags(id: PlayerId, p: PlayerRow, o: TableOpts, thinking: boolean, p
 }
 
 /** A seat as a button when it can be tapped, else a plain element. */
-function seatEl(o: TableOpts, id: PlayerId, cls: string, style: string, label: string, kids: Child[]): HTMLElement {
+function seatEl(o: TableOpts, id: PlayerId, cls: string, style: string, label: string, kids: Child[], voiceTap = false): HTMLElement {
   const disabled = o.disabled?.includes(id) ?? false;
   const full = `${cls}${disabled ? ' disabled' : ''}`;
-  return o.onTap
-    ? h('button', { class: full, style, 'data-seat': id, disabled, 'aria-label': `${o.tapLabel ?? ''} ${label}`.trim(), onclick: () => o.onTap!(id) }, kids)
-    : h('div', { class: full, style, 'data-seat': id }, kids);
+  if (o.onTap) return h('button', { class: full, style, 'data-seat': id, disabled, 'aria-label': `${o.tapLabel ?? ''} ${label}`.trim(), onclick: () => o.onTap!(id) }, kids);
+  // 9aq.11 item 4: with nothing else using seat taps, a tap on another person's seat opens its seat card.
+  if (voiceTap) return h('div', { class: full, style, 'data-seat': id, onclick: () => openSeatCard(id) }, kids);
+  return h('div', { class: full, style, 'data-seat': id }, kids);
 }
 
 export function roundTable(s: Session, v: PlayerView, o0: TableOpts): HTMLElement {
@@ -644,13 +646,17 @@ export function roundTable(s: Session, v: PlayerView, o0: TableOpts): HTMLElemen
       if (!out && p.cardCount > 0) kids.push(edgeFan(p.cardCount, L.edge, rel(L.fan.x, L.fan.y)));
       // 9ac.3: the initial disc (always shown, fades when out); the card count is a badge on it (hidden when out).
       const tag = discTags[id] ?? '?';
-      kids.push(h('span', { class: `seat-disc${out ? ' out-disc' : ''}`, 'aria-hidden': 'true', style: `${rel(L.bubble.x, L.bubble.y)}` },
+      // 9aq.11 item 3 (3.0.0): the talk ring target and the voice badge. The badge sits opposite the count.
+      const countAt = L.edge === 'right' ? 'at-left' : 'at-right';
+      const voice = discVoice(id, countAt === 'at-right' ? 'at-left' : 'at-right');
+      kids.push(h('span', { class: `seat-disc${out ? ' out-disc' : ''}`, 'aria-hidden': 'true', style: `${rel(L.bubble.x, L.bubble.y)}`, ...voice.attrs },
         h('span', { class: `seat-initial${tag.length >= 3 ? ' three' : tag.length === 2 ? ' two' : ''}` }, tag),
-        !out ? h('span', { class: `disc-count ${L.edge === 'right' ? 'at-left' : 'at-right'}` }, String(p.cardCount)) : null));
+        !out ? h('span', { class: `disc-count ${countAt}` }, String(p.cardCount)) : null,
+        !out ? voice.badge : null));
       kids.push(h('span', { class: `seat-label al-${align}${turnText ? ' turn-name' : ''}`, style: `${rel(L.name.x, L.name.y)};translate:${tx} 0` }, [...nameKids, ...tags]));
       const seatCls = cls(`seat-quiet edge-${L.edge}`);
       const hitStyle = `left:${L.hit.x.toFixed(1)}px;top:${L.hit.y.toFixed(1)}px;width:${L.hit.w.toFixed(1)}px;height:${L.hit.h.toFixed(1)}px`;
-      return seatEl(o, id, seatCls, hitStyle, p.sessionName, kids);
+      return seatEl(o, id, seatCls, hitStyle, p.sessionName, kids, seatTapsVoice(id, undefined));
     }),
   );
 }
