@@ -4537,6 +4537,28 @@ Opus checked Haiku's 3.0.1 build (9aq.6 build 3) against the traces, the code an
 - Results: `npm run check` clean; `npm test` 638 of 638; `voice_shots.py` 150 of 150 (six sizes); `rail_shots.py after` 40 of 40; `online_check.py` 48 of 48; `landscape_check.py` 24 of 24; `voice_check.py --repeat 20 --trace` NOT 20 of 20 (runs 1 to 3 31 of 31; run 4 failed at Ben's join step before any voice step, and the batch stopped). Part C scenes C2 and C7 not done.
 - Test build: https://claude.ai/artifact/3Y4a4YKJayvBL6RgkMrpiX (voice does not run on it).
 
+### 9aq.17 The passcode box loses typing when the room list changes (PLAN, Opus, 2026-11-19 20:50; written for Haiku; APPROVED 20:51 by the user: "I want haiku to do fix")
+
+**Finding (Opus, 2026-11-19 20:45): voice_check run 4's join failure is an app bug, not a relay flake, and not voice.**
+- A scratch probe (host plus two joins only, fresh relay with `--verbose` each time, 20 runs) failed once: Ben on `room-pass` with an **empty** passcode box and "The passcode is 4 digits."; the relay got no `POST /join`. The script's `fill('5150')` landed just as a room-list frame arrived.
+- Deterministic repro: on the passcode screen type "51", make another room appear (any room, from another page), type "50". After the list push `document.activeElement` is `BODY`, and the box reads "51". Every time.
+- Cause: `startList`'s list callback (`netlobby.ts`, around line 1173) calls `draw()` when `step === 'room-pass'`, and `draw()` rebuilds the whole screen with `replaceChildren`, so the passcode `<input>` is a new element. On a phone the keyboard closes and a digit typed at that moment is lost. `draw()` already guards the name box (line 346) but not this box.
+- When it happens: the server (and `relay_server.ts`) pushes the list 500 ms after **any** room changes (made, host connects, seat count changes, host away, removed), and the list holds every open room, so someone else's room can interrupt. `voice_check` starts each join right after a host connect (Ben) or a seat change (Cat), which is why the test hits it. Present since online rooms; not new in 3.0.x.
+
+**Fix A, app (`src/ui/netlobby.ts`):**
+- In the list callback, `room-list` redraws as now. On `room-pass` do **not** call `draw()`; only update the room name heading in place (the `h2` in `roomPassView`), so an invite opened before the list arrived still shows the room's name. Keep a reference to that heading (for example a `data-room-name` attribute on the `h2`, found with `root.querySelector`), and set its `textContent` to the same name rule as now (`rooms.find(...)?.name ?? roomPick?.name ?? ''`, `'Room'` if empty).
+- Do **not** use the name box's "draw later on blur" rule here: tapping "Join the room" blurs the box first, and a redraw on blur would replace the button before the tap's `click`, so the tap could be lost.
+- Nothing else on the screen changes. Errors (`roomPassError`) still redraw as now (they come after the Join tap, not while typing).
+
+**Fix B, browser check (`testbed/online_check.py`, a new small phase, or a new step in an existing one):** host a room on page A; page B opens the list, picks the room, taps the passcode box and types "51" with `keyboard.type`; page C hosts a second room; wait 1.5 s (the list push); B types "50". Checks: the box reads "5150"; the box still has focus (`document.activeElement` is the passcode input); the heading still shows the first room's name; then Join works (B reaches `lobby`).
+
+**Fix C, `testbed/voice_check.py`:** use the result of the room-list wait and the join wait. If either fails, record a failed check, print each page's step and the first 300 characters of its screen text, end that run (skip the voice steps), and go on to the next run. The batch must never crash on a failed join. Same for Cat.
+
+**Then:** version **3.0.3**; `npm run check`, `npm test`, build; `online_check.py` (all pass, including the new check); `voice_check.py --repeat 20 --trace`: must be 20 of 20. If a run still fails, stop and report (Opus), with the printed screens. Then carry on with 9aq.16's open items (Part C scenes C2 and C7; the bottom action button at 360, 390 and 740 wide, and whether 3.0.1 does the same). Test build, then push on "push".
+
+**Phone checklist addition:**
+21. Join a room: on the passcode screen, start typing, and have someone make or join any room at that moment. The keyboard stays up and every digit you typed is kept.
+
 ### 9aq.7 Phone checklist
 
 Build 1 (2.39.0, test link):

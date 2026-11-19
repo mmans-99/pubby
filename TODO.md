@@ -488,11 +488,12 @@ Build 2 follow-ups, 3.0.1 (plan `CODE.md` 9aq.15, Opus 2026-11-19 18:25; questio
 - [x] Part E: 3.0.1 committed and pushed on the user's word (19:39), phone test skipped by the user; check, unit tests 624 of 624, online 48 of 48, landscape 24 of 24, voice_check x5 154 of 155; test build published (private link, no voice); NOT pushed (waiting for "push"); phone checklist 9aq.7 items 9 to 20
 Fixes after the 3.0.1 check (plan `CODE.md` 9aq.16, Opus 2026-11-19 19:40; APPROVED 19:39):
 - [x] Fix 1: keep voice offers that arrive before the seat order (H6, confirmed); 10 s stuck-link retry; unit tests (built, 3.0.2)
-- [~] Fix 1 gate: `voice_check --repeat 20 --trace` NOT 20 of 20 (runs 1 to 3 31 of 31; run 4 failed at Ben's join step, batch stopped); needs Opus
+- [~] Fix 1 gate: `voice_check --repeat 20 --trace` NOT 20 of 20 (runs 1 to 3 31 of 31; run 4 failed at Ben's join step, batch stopped). Opus 20:45: cause found, an app bug (the passcode box is rebuilt by every room-list push and loses the typing); fix planned in `CODE.md` 9aq.17
+- [ ] 9aq.17 (3.0.3, for Haiku, APPROVED 20:51): Fix A, no redraw of the passcode screen on list pushes (heading updated in place); Fix B, browser check in `online_check.py`; Fix C, `voice_check.py` ends a run cleanly on a failed join; then `voice_check --repeat 20 --trace` 20 of 20
 - [x] Fix 2: portrait bar overflow: `barFit`, same menu shelf (built, 3.0.2; 9 tests)
 - [x] Fix 3: voice badge sized by `--u` (built, 3.0.2)
 - [~] Fix 4: `voice_shots.py` taps Auto and the first-card seat; 150 of 150 at six sizes; NOT done: 8-person lobby, Voice sheet with seven others, all-marks seat, build 1 scenes (C7); by-eye check partial
-- [~] 3.0.2: check clean, 638 of 638 tests, build ok, online 48 of 48, landscape 24 of 24, rail after 40 of 40; test build published (private link: https://claude.ai/artifact/3Y4a4YKJayvBL6RgkMrpiX); NOT committed, NOT pushed (waiting for "push" after the phone test)
+- [~] 3.0.2: check clean, 638 of 638 tests, build ok, online 48 of 48, landscape 24 of 24, rail after 40 of 40; test build published (private link: https://claude.ai/artifact/3Y4a4YKJayvBL6RgkMrpiX); committed and pushed (main dcd6b4e); phone test not done yet (the user has not tried the mic on any version)
 
 ## Phase 5 — Polish
 

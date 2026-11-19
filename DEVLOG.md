@@ -4,6 +4,14 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-19 (20:50, Opus) — voice_check join failure diagnosed; plan 9aq.17 (docs only)
+
+**User:** "Continue Pubby plan 9aq.16 … Start with item 1 and tell me what you find", then "I want haiku to do fix".
+
+**Found:** the `voice_check` run-4 failure is an app bug. Every room-list push rebuilds the passcode screen, so the passcode box loses focus and any digit typed at that moment (on the phone the keyboard closes). Scratch probe: 1 of 20 join runs failed this way (empty box, "The passcode is 4 digits.", no join request at the relay); a deterministic repro loses the typing every time. Not voice, not new in 3.0.x. Details in `CODE.md` 9aq.17.
+
+**Plan:** `CODE.md` 9aq.17 (3.0.3, for Haiku): update only the heading on list pushes, a browser check, `voice_check.py` ends a run cleanly on a failed join, then 20 of 20. No code changed. Note: 3.0.2 is on main (dcd6b4e), although the 20:30 entry says not pushed. The user has not tested the mic on any version yet (3.0.0 to 3.0.2). The probe scripts were kept outside the repo. To build locally without network, `node_modules` can be a link to `/opt/npm-tools/node_modules` (added to `.git/info/exclude`).
+
 ## 2026-11-19 (20:30, Haiku) — Build of plan 9aq.16 (3.0.2), test build; NOT committed, NOT pushed
 
 **User:** "Build CODE.md 9aq.16 (Fixes 1 to 4, version 3.0.2) on main at 51e292c."
