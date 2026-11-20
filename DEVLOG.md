@@ -4,7 +4,7 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
-## 2026-11-20 (00:40, Haiku) — Build 9aq.19 (3.0.5): iPad insets, round-end sound per phone, lobby chips on line 2 (not committed, not pushed)
+## 2026-11-20 (00:40, Haiku) — Build 9aq.19 (3.0.5): iPad insets, round-end sound per phone, lobby chips on line 2 (committed beba563, pushed to main)
 
 **User:** "build CODE.md 9aq.19 (3.0.5)". Plan approved 23:58 (Q1 = 1, Q2 = 1).
 
@@ -31,7 +31,7 @@ Newest entries at the top. One entry per session, added before each commit.
 
 **Test build:** https://claude.ai/artifact/Uv6CtjBqygNtrXYWzzwt2t (private). The preview blocks service workers and WebRTC, so offline, network play and voice can't be tried there.
 
-Nothing committed or pushed. Waiting for the user's test and "push".
+Committed and pushed: main beba563 ("9aq.19 (3.0.5)"). Still waiting for the phone test (checklist 24 to 26).
 
 ## 2026-11-19 (23:55, Opus) — 3.0.3 phone test faults diagnosed; plan 9aq.19 (docs only)
 
