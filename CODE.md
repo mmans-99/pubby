@@ -4644,6 +4644,20 @@ Sources: `testbed/voice_shots.py` at 3.0.3 (264 of 276; the 12 failures are the 
 25. 2-player round: the winner's phone plays the fanfare only; the loser's phone plays the trombone only. 3 or more players: the same at the round end.
 26. Host lobby on your Android phone: the full name shows, with Host, You and Mic on the line under it.
 
+**Build 7 (3.0.5, Haiku, built 2026-11-20, not committed, not pushed; plan 9aq.19).**
+- **A (insets):** `styles.css` `:root` has `--sat/--sab/--sal/--sar` (`env(safe-area-inset-*, 0px)`); the game-screen padding rules (`.screen.game`, `.screen.game.fixed`, the rail rules) use them. Deviation: `viewSize()` is in a new file, `src/ui/viewsize.ts`, not `layout.ts` (`layout.ts` is pure and `table.ts` imports it; a second import would be a cycle). It reads the four values through a hidden probe. Call sites: `game.ts` (railFit, barKeysFit, gameLayout, stageLayout, landscape and width, handH), `table.ts` (tableBox), `watch.ts` (landscape). Left as they were: `game.ts` voice-button width (779) and the popup positions (2041 onward, which are relative to the pointer).
+- **B (round-end sound):** `eventSounds(events, withTrick, me?)` (`src/audio/sfx.ts`). In a batch with `roundEnded`, a phone with a seat plays only: the trombone if it is the last place, otherwise the escape sound for its own place (fanfare for 1st, bells otherwise). Escapes in earlier batches still play for everyone. Callers: `absorb` (game.ts, `seat`) and `driveTrickAnim` (`ownSeat` of the saved game). A phone with no seat gets the old rule.
+- **C (chips):** `netlobby.ts`: `seatTags` moved to `.seat-bottom`, on the left, before the arrows, in the host row; a `.seat-bottom` added to the joiner rows and to the started view. Line 1 is the number and the full name.
+- **D (badge):** `testbed/voice_shots.py` counts `.pill-label` (the name pill) with `.disc-count`. No overlap, so the badge was not moved.
+- **Test tools:** `testbed/tablet_check.py --safe T,B` (new) sets the insets before load; new check "table cut off by its slot" for every size.
+- **Version:** `package.json` 3.0.5. Test build: https://claude.ai/artifact/Uv6CtjBqygNtrXYWzzwt2t (private; no service worker or WebRTC in the preview).
+
+Checks (this build): `npm run check` clean; `npm test` 644 of 644 (6 new in `tests/audio/eventsounds.test.ts`); `tablet_check.py` 61 of 61 without insets; with `--safe 24,20` 61 of 63, the two failures are "saw the person's turn" at 1366×1024 and 844×390 (bot timing; the geometry checks pass in the same run); 820×1180 with `--safe` 9 of 9. Proof the check bites: the unchanged 3.0.4 with the same padding forced (scratch copy) fails the table-fit check at 1180×820 and 390×844. `online_check.py` 53 of 53. `voice_shots.py` 330 of 330 at the six default sizes; 110 of 110 at 820×1180 and 1024×1366. By eye: 820×1180 with insets (whole table and rail shown); 412×915 lobby (full name on line 1, Host, You and Mic off on line 2).
+
+Not verified: the iPad itself (Chromium has no real insets); the long name from the iPad photo (the checks use Amy, Ben, Cat and Dan).
+
+Seen, not fixed: the "Mic off" chip wraps to two lines in the host row at 412 px; the "Mic is off until you tap it." hint sits under the bottom voice bar at 412×915.
+
 ### 9aq.7 Phone checklist
 
 Build 1 (2.39.0, test link):

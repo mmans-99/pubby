@@ -258,18 +258,28 @@ export function cardSound(events: readonly SessionEvent[]): void {
  * the pick-up of the trick and the trick-done swish are played by the trick
  * animation (game.ts); `withTrick` plays them here when there is none.
  */
-export function eventSounds(events: readonly SessionEvent[], withTrick: boolean): void {
+export function eventSounds(events: readonly SessionEvent[], withTrick: boolean, me?: string): void {
   const has = (t: SessionEvent['type']): boolean => events.some((e) => e.type === t);
   if (withTrick) {
     if (has('slapped')) { sfx('slap'); sfx('pickUp'); } else if (has('trickResolved')) sfx('trickDone');
   }
   if (has('wastePilePickedUp') || has('cardsTaken')) sfx('pickUp');
   const end = events.find((e) => e.type === 'roundEnded');
-  const loserPlace = end && end.type === 'roundEnded' ? end.finishingOrder.length : 0;
-  for (const e of events) {
-    if (e.type === 'playerOut' && e.place !== loserPlace) sfx(e.place === 1 ? 'roundWinner' : 'gotAway');
+  if (end && end.type === 'roundEnded' && me !== undefined) {
+    // 9aq.19 B (3.0.5): at the round end each phone plays only its own sound: the trombone on the
+    // loser's phone, the fanfare or bells on every other phone (for its own place). Nobody hears the others'.
+    if (end.finishingOrder[end.finishingOrder.length - 1] === me) sfx('lastPlace');
+    else {
+      const mine = events.find((e) => e.type === 'playerOut' && e.player === me);
+      if (mine && mine.type === 'playerOut') sfx(mine.place === 1 ? 'roundWinner' : 'gotAway');
+    }
+  } else {
+    const loserPlace = end && end.type === 'roundEnded' ? end.finishingOrder.length : 0;
+    for (const e of events) {
+      if (e.type === 'playerOut' && e.place !== loserPlace) sfx(e.place === 1 ? 'roundWinner' : 'gotAway');
+    }
+    if (end) sfx('lastPlace');
   }
-  if (end) sfx('lastPlace');
   if (events.some((e) => e.type === 'ultimateLabels' && e.winner)) sfx('ultimateWinner');
   if (has('drawCoward')) sfx('coward');
   else if (has('voteResolved')) sfx('voteResult');

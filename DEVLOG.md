@@ -4,6 +4,35 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-20 (00:40, Haiku) — Build 9aq.19 (3.0.5): iPad insets, round-end sound per phone, lobby chips on line 2 (not committed, not pushed)
+
+**User:** "build CODE.md 9aq.19 (3.0.5)". Plan approved 23:58 (Q1 = 1, Q2 = 1).
+
+**Done:** Parts A to D as in `CODE.md` 9aq.19. Details and deviations in `CODE.md` 9aq.19 (build 7).
+- A: `:root` has `--sat/--sab/--sal/--sar` (the env insets, 0 fallback), used by the game-screen padding rules. `src/ui/viewsize.ts` (new, DOM) gives the window less the insets; it sits outside `layout.ts` because `layout.ts` is documented as pure and `table.ts` imports it. Call sites: game.ts, table.ts, watch.ts. `tablet_check.py --safe T,B` (new) sets the insets before load and checks the round table fits its slot.
+- B: `eventSounds(events, withTrick, me?)`. At a round end each phone plays only its own sound. Tests: `tests/audio/eventsounds.test.ts` (6).
+- C: lobby chips on the second line (host row, joiner rows, started view).
+- D: `voice_shots.py` counts the name pill as well as the card count. No overlap, so the badge was not moved.
+- Version 3.0.5 in `package.json`.
+
+**Checks:**
+- `npm run check` clean. `npm test` 644 of 644.
+- `tablet_check.py` (all sizes, no insets) 61 of 61. With `--safe 24,20`: 61 of 63; the two failures are "saw the person's turn" at 1366×1024 and 844×390 (bot timing, passed on rerun). 820×1180 with `--safe`: 9 of 9.
+- The check bites: the unchanged 3.0.4, with the same iPad padding forced in a scratch copy, fails the table-fit check at 1180×820 and 390×844 (4 of 10 pass).
+- `online_check.py` 53 of 53. `voice_shots.py` at the six default sizes 330 of 330; at 820×1180 and 1024×1366 110 of 110.
+- By eye: 820×1180 with insets (whole table, rail, nothing cut); 412×915 lobby (full name on line 1, Host, You, Mic off on line 2).
+
+**Not done / open:**
+- iPad fix only confirmable on the iPad (Chromium has no real insets).
+- The name check uses the short test names; the iPad photo had a long name. Re-check on the iPad.
+- Phone checklist 24 to 26 (`CODE.md` 9aq.19) waits for the test.
+- Seen, not fixed: "Mic off" chip wraps to two lines in the host row at 412 px; the "Mic is off until you tap it." hint sits under the bottom voice bar at 412×915.
+- Flaky: `tablet_check` "saw the person's turn" fails about one run in three (bot timing).
+
+**Test build:** https://claude.ai/artifact/Uv6CtjBqygNtrXYWzzwt2t (private). The preview blocks service workers and WebRTC, so offline, network play and voice can't be tried there.
+
+Nothing committed or pushed. Waiting for the user's test and "push".
+
 ## 2026-11-19 (23:55, Opus) — 3.0.3 phone test faults diagnosed; plan 9aq.19 (docs only)
 
 **User:** screenshots from 3.0.3: Host chip over the name in the Android host lobby; the iPad table not shown in full (fine on Android); the round end plays the victory fanfare and the loser sound one after the other whatever your place. Asked what else from 3.0.4 needs a look.

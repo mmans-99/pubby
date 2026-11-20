@@ -42,7 +42,8 @@ OVERLAP_JS = """() => {
     if (a.left < c.right - 0.5 && c.left < a.right - 0.5 && a.top < c.bottom - 0.5 && c.top < a.bottom - 0.5) overlaps.push(i + '/' + j);
   }
   const badges = boxes('.voice-badge');
-  const counts = boxes('.disc-count');
+  // 9aq.19 D (3.0.5): the name pill counts too (on the iPad a badge sat over "Murshed").
+  const counts = boxes('.disc-count, .pill-label');
   let badgeOverlaps = 0;
   for (const a of badges) for (const c of counts) {
     if (a.left < c.right - 0.5 && c.left < a.right - 0.5 && a.top < c.bottom - 0.5 && c.top < a.bottom - 0.5) badgeOverlaps++;
@@ -241,7 +242,7 @@ def run_size(browser, base, errors, w, h, results):
         else:
             results.append((f'{tag} all-marks seat: a seat is there to mark', False))
         results.append((f'{tag} table: no two bar or rail boxes overlap ({info["barOverlaps"]})', info['barOverlaps'] == 0))
-        results.append((f'{tag} table: no voice badge covers a card count ({info["badgeOverlaps"]})', info['badgeOverlaps'] == 0))
+        results.append((f'{tag} table: no voice badge covers a card count or a name ({info["badgeOverlaps"]})', info['badgeOverlaps'] == 0))
         results.append((f'{tag} table: nothing in the bar is outside the window', info['outside'] == 0))
 
         # The Voice sheet. The entrance listener is added before the sheet opens.
@@ -374,7 +375,7 @@ def run_eight(browser, base, errors, w, h, results):
         info = amy.evaluate(OVERLAP_JS)
         shot(amy, w, h, 'table-8')
         bottom_check(amy, tag, 'table-8', results)
-        results.append((f'{tag} table: no voice badge covers a card count ({info["badgeOverlaps"]})', info['badgeOverlaps'] == 0))
+        results.append((f'{tag} table: no voice badge covers a card count or a name ({info["badgeOverlaps"]})', info['badgeOverlaps'] == 0))
         results.append((f'{tag}: no page errors', not errors))
     finally:
         for _, p in pages:

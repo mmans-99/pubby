@@ -53,6 +53,7 @@ import {
   askPausePanel, gameOverStage, netPauseButton, notesPanel, passOnButton, pauseButton, pausePanel, pauseRequestsBanner,
   pauseTick, resultsStage, sheetSeen, takeButton, takeControls, takeHolder, takePrompts, takeStatus, targetButton, targetSheet,
 } from './between.ts';
+import { viewSize } from './viewsize.ts';
 
 const rng = defaultRng();
 const AUTO_DEAL_MS = 150;
@@ -531,7 +532,7 @@ function absorb(g: SavedGame, session: Session, events: readonly SessionEvent[],
         final: roundOver, tapped: false,
       };
     } else {
-      eventSounds(events, true);
+      eventSounds(events, true, seat ?? undefined);
     }
     if (events.some((e) => e.type === 'reshuffled' || e.type === 'roundStarted')) startShuffle();
   }
@@ -794,7 +795,7 @@ export function gameScreen(g: SavedGame): HTMLElement {
   const present = order.filter((k) => k === 'menu' || (built.get(k) ?? null) !== null);
   // 9aq.16 Fix 2: the portrait bar keeps the buttons that fit the width (barFit), the rest goes to the menu shelf.
   // Where every button fits, nothing changes from 3.0.0.
-  const fit = railBar ? railFit(window.innerHeight, present) : barKeysFit(window.innerWidth, present);
+  const fit = railBar ? railFit(viewSize().h, present) : barKeysFit(viewSize().w, present);
   // The menu shelf: the rail's buttons that did not fit, as copies (the voice item is already in the menu).
   const shelfKeys = fit.overflow.filter((k) => k !== 'voice');
   const shelf = shelfKeys.length === 0 ? null : h('div', {
@@ -1133,7 +1134,8 @@ function driveTrickAnim(): void {
       if (trickAnim !== a) return;
       trickAnim = null;
       shownTrickCount = 0;
-      eventSounds(a.after, false);
+      const g0 = getState().game;
+      eventSounds(a.after, false, (g0 && ownSeat(g0)) || undefined);
       update({});
     });
   }
@@ -1186,7 +1188,7 @@ function hasFrame(c: Child): boolean {
 
 /** The sizes of a stage's rows for this window (layout.ts). `bar` is the action bar's height (CODE.md 9x.2). */
 export function stageLayout(hasHand: boolean, bar: number): GameLayout {
-  return gameLayout(window.innerWidth, window.innerHeight, { hand: hasHand, bar });
+  return gameLayout(viewSize().w, viewSize().h, { hand: hasHand, bar });
 }
 
 /**
@@ -1259,7 +1261,7 @@ export function dealingStage(g: SavedGame): Child {
   // 2.31 (CODE.md 9aa Part C item 4): the jokers and hidden-deck chips moved to the top bar (dealChips),
   // so the deal bar holds two rows: the hint and the deal buttons. Portrait: 76 px (was 92 with the chips).
   // 2.34 fix: on a phone the deal bar (hint + Manual/Auto/Deal all) needs about 88px to stay whole.
-  const lay = stageLayout(false, window.innerWidth > window.innerHeight ? 64 : 88);
+  const lay = stageLayout(false, viewSize().w > viewSize().h ? 64 : 88);
   if (shuffling()) {
     return gameFrame(lay, {
       table: roundTable(s, v, {
@@ -1486,12 +1488,12 @@ export function handBlock(
   const hand = sortHand(v.myHand);
   // The fanned hand (CODE.md 9u Part D): card size and place from the phone's width (portrait only).
   // CODE.md 9w.5: the hand uses the window's width (not the 520 px menu column); in landscape the cards fit the shorter hand area.
-  const landscape = window.innerWidth > window.innerHeight;
+  const landscape = viewSize().w > viewSize().h;
   // 2.29: the hand fits its fixed row (`fit`), one row up to 15 cards; its width comes from the stage's layout.
-  const width = opts.width ?? Math.min(window.innerWidth, 1100) - 12;
+  const width = opts.width ?? Math.min(viewSize().w, 1100) - 12;
   // 2.34.5 (CODE.md 9ag.3 fix 1): the fan fits the hand slot's real width and height; cards get smaller when needed.
   const fan = landscape
-    ? fitFan(hand.length, width, opts.fit ?? handH(window.innerWidth, window.innerHeight), true)
+    ? fitFan(hand.length, width, opts.fit ?? handH(viewSize().w, viewSize().h), true)
     // Portrait: the 😂 button reaches 6 px up into the hand row, so the cards keep 8 px clear at the bottom (styles.css).
     : opts.fit !== undefined ? fitFan(hand.length, width, opts.fit - 8, false) : fanLayout(hand.length, width, undefined, 64, opts.fit);
   const legal = new Set(opts.all ? v.myHand.map((c) => c.id) : v.legalCardIds);

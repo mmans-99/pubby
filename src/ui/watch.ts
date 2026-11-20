@@ -15,6 +15,7 @@ import { nameOf, send } from './game.ts';
 import { icon } from './icons.ts';
 import { miniDisc } from './roundstart.ts';
 import { getState, update } from './store.ts';
+import { viewSize } from './viewsize.ts';
 
 /** Out of the round, the round still on, no watch of mine open, and someone left to watch. */
 export function canAskToWatch(s: Session, v: PlayerView): boolean {
@@ -129,7 +130,7 @@ export function watchingBlock(s: Session, v: PlayerView, opts: { fit: number; wi
   const target = v.watching.target;
   const who = nameOf(s, target);
   const cards = sortHand(v.watching.cards);
-  const landscape = window.innerWidth > window.innerHeight;
+  const landscape = viewSize().w > viewSize().h;
   // Same fit rule as handBlock: portrait keeps 8 px clear at the bottom; the head line takes its own height.
   const fan = landscape
     ? fitFan(cards.length, opts.width, opts.fit - WATCH_HEAD_PX, true)

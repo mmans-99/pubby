@@ -23,6 +23,7 @@ import type { PlayerId, Session } from '../session/types.ts';
 import type { PlayerView } from '../session/view.ts';
 import type { Suit } from '../rules/cards.ts';
 import { discVoice, openSeatCard, seatTapsVoice } from './voicetable.ts';
+import { viewSize } from './viewsize.ts';
 
 export interface TableOpts {
   /** Who sits at the bottom (this phone's player, or whoever holds the phone). */
@@ -575,7 +576,7 @@ export function roundTable(s: Session, v: PlayerView, o0: TableOpts): HTMLElemen
   const seats = tableOrder(s, o.bottom);
   const n = seats.length;
   const discTags = seatInitials(s.players.map((p) => ({ id: p.id, name: p.sessionName ?? p.profileName })));
-  const box = fitBox(n, o.box ?? tableBox(typeof window === 'undefined' ? 390 : window.innerWidth, typeof window === 'undefined' ? 844 : window.innerHeight));
+  const box = fitBox(n, o.box ?? tableBox(viewSize().w, viewSize().h));
   const { bw, bh } = cardBackSize(box.u);
   const layout = seatLayout(n, box);
   const red = o.ledSuit === 'hearts' || o.ledSuit === 'diamonds';

@@ -13,7 +13,12 @@ and checks with bounding boxes:
   - no page errors.
 Screenshots go to /tmp/tablet/.
 
-Usage: node build.mjs && python3 testbed/tablet_check.py [--quick]
+9aq.19 A (3.0.5): `--safe T,B` sets the safe-area insets to T px at the top and B px at the bottom
+(the iPad's status-bar band and home bar, which Chromium does not have). The app reads the same
+--sat/--sab variables, so the layout and the test agree. It also checks that the round table is fully
+inside its slot (the table was cut off on an iPad).
+
+Usage: node build.mjs && python3 testbed/tablet_check.py [--quick] [--safe 24,20]
 """
 import json
 import pathlib
@@ -38,6 +43,10 @@ SIZES = [
 ]
 if '--quick' in sys.argv:
     SIZES = [(1180, 820), (390, 844)]
+SAFE = None
+if '--safe' in sys.argv:
+    _top, _bottom = sys.argv[sys.argv.index('--safe') + 1].split(',')
+    SAFE = (int(_top), int(_bottom))
 LIFT = 14  # the raised card's lift (styles.css .card.selected: 10 px) plus a little rounding
 
 checks = []
@@ -88,6 +97,9 @@ GEOM = r"""
     if (tslot && !inside(r(f), r(tslot))) { out.problems.push(`side fan cut by the table edge ${JSON.stringify(r(f))}`); break; }
   }
   if (toggle && vis(toggle) && !inside(r(toggle), win)) out.problems.push('😂 button off screen');
+  // 9aq.19 A: the round table is never cut off by its slot (the iPad cut its top and bottom rail).
+  const table = document.querySelector('.round-table');
+  if (table && tslot && vis(table) && !inside(r(table), r(tslot))) out.problems.push(`table cut off by its slot ${JSON.stringify(r(table))} slot ${JSON.stringify(r(tslot))}`);
   return out;
 }
 """
@@ -121,6 +133,11 @@ def look(page, tag, what):
 def run_size(browser, w, h):
     tag = f'{w}x{h}'
     ctx = browser.new_context(viewport={'width': w, 'height': h}, is_mobile=w < 700 or h < 500, has_touch=True)
+    if SAFE:
+        # 9aq.19 A: the same variables the app reads (styles.css :root), set before the page loads.
+        ctx.add_init_script(
+            "document.addEventListener('DOMContentLoaded', () => { const st = document.createElement('style');"
+            f" st.textContent = ':root {{ --sat: {SAFE[0]}px; --sab: {SAFE[1]}px; }}'; document.head.appendChild(st); }});")
     page = ctx.new_page()
     errors = []
     page.on('pageerror', lambda e: errors.append(str(e)))
