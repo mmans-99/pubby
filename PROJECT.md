@@ -954,7 +954,7 @@ No rule changes.
 
 ### 12aa. Fixes and changes after the 3.0.5 test (PLAN, user 2026-11-21 03:35, answers 03:40; build guide `CODE.md` 9ar; builds 3.0.6, 3.1.0, 3.2.0; APPROVED 03:49)
 
-**Status (2026-11-21):** build 1 (3.0.6) built and committed locally, not pushed. Build 2 (3.1.0, Parts K to P) committed locally as "9ar build 2 (3.1.0)", not pushed, waiting for the phone test. Build 3 (3.2.0, Parts Q to S) committed locally as "9ar build 3 (3.2.0)", not pushed; the iPad check and the phone test are the user's. Build notes: `CODE.md` 9ar.5.
+**Status (2026-11-21):** builds 1 (3.0.6, 3d27c10), 2 (3.1.0, c7a98c5) and 3 (3.2.0, 6313be3) are committed and pushed to main. Waiting for the phone tests; the iPad check is the user's. Build notes: `CODE.md` 9ar.5.
 
 **User (03:35):** Skip to end of round in multiplayer shows every pop-up at once; iPad landscape still doesn't fit and the typing bar covers the ✕; portrait buttons can be cut off ("any way to fully fix any screen size"); time to look at cards before a Deal again vote; a joker sits on top of the trick whenever it's played; confirm before an Ultimate Round vote; the 😂 button goes after typing a message; the take-cards list goes when someone plays; the last-two pick-up only once per round; the winner picks the next dealer; the watch button is a dark circle; stats for players who are out; the take-cards "no" stays on screen; are re-deals random; phrases to add and remove.
 

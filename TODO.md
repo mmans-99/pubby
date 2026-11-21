@@ -465,10 +465,10 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [ ] Phone checklist 9ap.7 (phone test pending)
 
 ## Phase 4ab — Plan 9ar: fixes after the 3.0.5 test (`PROJECT.md` 12aa; build guide `CODE.md` 9ar; approved 03:49 2026-11-21; builds 3.0.6, 3.1.0, 3.2.0)
-- [x] Build 1 (3.0.6, Parts A to J): built and committed locally; checks in DEVLOG 2026-11-21 04:10. Not pushed.
+- [x] Build 1 (3.0.6, Parts A to J): built and committed; checks in DEVLOG 2026-11-21 04:10. Pushed (3d27c10).
 - [ ] Build 1 open: online phase for Part A (3 phones, one round-end pop-up); `voice_shots.py` check for Part B; joining-phone check for Part H
-- [x] Build 2 (3.1.0, Parts K to P): built and committed locally, not pushed (gates in CODE.md 9ar.5 and DEVLOG 2026-11-21). K: last-two pick-up once per round; L: winner picks the dealer (`chooseDealer`); M: Ultimate Round confirm; N: "Look at my cards"; O: Stats for players out; P: version 3.1.0. Waiting for the phone test.
-- [x] Build 3 (3.2.0, Parts Q to S): built and committed locally, not pushed (gates in CODE.md 9ar.5 and DEVLOG 2026-11-21). Q: rows never exceed the window, table scaled to its measured slot (`ui/fit.ts`); R: 15-size matrix in `tablet_check.py` (`--safe`, `--vote`); S: version 3.2.0. Open: iPad check (Safari and home-screen app), item 13 of 9ar.4.
+- [x] Build 2 (3.1.0, Parts K to P): built, committed and pushed (c7a98c5; gates in CODE.md 9ar.5 and DEVLOG 2026-11-21). K: last-two pick-up once per round; L: winner picks the dealer (`chooseDealer`); M: Ultimate Round confirm; N: "Look at my cards"; O: Stats for players out; P: version 3.1.0. Waiting for the phone test.
+- [x] Build 3 (3.2.0, Parts Q to S): built, committed and pushed (6313be3; gates in CODE.md 9ar.5 and DEVLOG 2026-11-21). Q: rows never exceed the window, table scaled to its measured slot (`ui/fit.ts`); R: 15-size matrix in `tablet_check.py` (`--safe`, `--vote`); S: version 3.2.0. Open: iPad check (Safari and home-screen app), item 13 of 9ar.4.
 - [ ] Phone checklist 9ar.4 on the test builds (items 1 to 12 on 3.1.0, item 13 on 3.2.0)
 
 ## Phase 4z — One round-end pop-up, tap or 3.5 s pop-ups, notices, voice chat online (plan 2026-11-19 16:38, `PROJECT.md` 12z, build guide `CODE.md` 9aq, mockups https://claude.ai/artifact/EtHkCqc94hdHkajLMwB44S; approved; for Haiku)

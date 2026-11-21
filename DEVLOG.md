@@ -4,7 +4,7 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
-## 2026-11-21 (Haiku) — Plan 9ar build 3 (3.2.0), local commit, not pushed
+## 2026-11-21 (Haiku) — Plan 9ar build 3 (3.2.0), committed and pushed (6313be3)
 
 **Built from `CODE.md` 9ar.3 (Parts Q to S).** Q: the portrait rows can no longer exceed the window (table height floors at 0, the hand keeps 120 px when there is room, the table is scaled to its measured slot after each draw and on resize: `ui/fit.ts`, `scaleToFit`); the action row is sized to its buttons. Not as the plan wrote it: the top bar is still outside the grid and the hand height is still the layout's estimate. R: `tablet_check.py` runs the 15 sizes of the matrix; vote, results and game over are checked (`--vote` for the vote; results and game over in the default run); screens not reached are reported. S: version 3.2.0, `tests/ui/matrix.test.ts`.
 
@@ -18,7 +18,7 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
-## 2026-11-21 (08:50, Haiku) — Plan 9ar build 2 (3.1.0), local commit, not pushed
+## 2026-11-21 (08:50, Haiku) — Plan 9ar build 2 (3.1.0), committed and pushed (c7a98c5)
 
 **Built from `CODE.md` 9ar.2 (Parts K to P).** The 0002 patch was not in the session (only the plan), so K was built from its text. K: the one pick-up per round (`finalTwoPickUpUsed`, `roundEnded.reason: 'secondHigher'`, "played higher again" pop-up, "Higher again" CSV row, "No pick-up left" notice on the felt, computers play a joker first when the pick-up is gone). L: the winner of the last round picks who deals at the table (phase `chooseDealer`, action `chooseDealer`, event `dealerChosen`; round 1 host deals; Ultimate Round the same; computers pick weighted to whoever is ahead; `LOBBY_PROTOCOL` 14). M: Ultimate Round confirm sheet (`ui/ultimateconfirm.ts`). N: "Look at my cards" on deal-again alerts; hand above YES / NO. O: Stats sheet for players out (`ui/stats.ts`). P: version 3.1.0.
 
@@ -32,7 +32,7 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
-## 2026-11-21 (04:10, Haiku) — Plan 9ar build 1 (3.0.6), local commit, not pushed
+## 2026-11-21 (04:10, Haiku) — Plan 9ar build 1 (3.0.6), committed and pushed (3d27c10)
 
 **Built from `CODE.md` 9ar.1 (Parts A to J):** Skip sends the skipping flag to joining phones and they stay quiet (A); typing bar and reactions sheet start right of the rail (B); message bar focus-out and visual-viewport resize redraw (C); the take-cards sheet stays open during the trick animation (D, cause: `trickFinishStage` left it out); the felt follows play order, jokers included (E, 3 unit tests); the eye is cream with a gold ring and says "Watch" (F); no take-cards note on a phone with a seat, shared phones clear it on the requester's play or the trick end (G); reshuffle proof test, 2,000 reshuffles for 2 and 4 players (H); phrase file split into "Everyone" and "Computer players only", sheet shows Everyone only (I); version 3.0.6 (J).
 
