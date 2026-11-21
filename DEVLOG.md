@@ -4,6 +4,20 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-21 (Haiku) — Plan 9ar build 3 (3.2.0), local commit, not pushed
+
+**Built from `CODE.md` 9ar.3 (Parts Q to S).** Q: the portrait rows can no longer exceed the window (table height floors at 0, the hand keeps 120 px when there is room, the table is scaled to its measured slot after each draw and on resize: `ui/fit.ts`, `scaleToFit`); the action row is sized to its buttons. Not as the plan wrote it: the top bar is still outside the grid and the hand height is still the layout's estimate. R: `tablet_check.py` runs the 15 sizes of the matrix; vote, results and game over are checked (`--vote` for the vote; results and game over in the default run); screens not reached are reported. S: version 3.2.0, `tests/ui/matrix.test.ts`.
+
+**Bot fix:** `testbed/bot.js` now answers a tied "Deal again?" vote when the host must decide (it used to stop there, "stuck", on a 2–2 tie). Found by a diagnostic run: 1 stall in 4 plain 390×844 games.
+
+**Checks:** `npm run check` clean; `npm test` 670 of 670; `npm run build` ok (3.2.0); `tablet_check.py` plain 140 of 140, `--safe 24,20` 177 of 177, `--vote` 163 of 163 (all after the bot fix); `online_check.py` 53 of 53; `voice_shots.py` 330 of 330; `playthrough.py` 53 of 53.
+
+**Open flake:** before the bot fix, the turn check ("saw the person's turn with 13 or more cards") missed in five reruns of the matrix (390×844, 678×1024, 360×640, 430×932, 600×960). Each of those passed on its own rerun. 430×932 with `--safe` missed in the matrix and in one rerun, and passed when run alone. After the fix the full runs passed. Not confirmed as the same cause; watch it.
+
+**Not done here:** the iPad check (Safari and the home-screen app) and the phone test. Push waits for "push".
+
+---
+
 ## 2026-11-21 (08:50, Haiku) — Plan 9ar build 2 (3.1.0), local commit, not pushed
 
 **Built from `CODE.md` 9ar.2 (Parts K to P).** The 0002 patch was not in the session (only the plan), so K was built from its text. K: the one pick-up per round (`finalTwoPickUpUsed`, `roundEnded.reason: 'secondHigher'`, "played higher again" pop-up, "Higher again" CSV row, "No pick-up left" notice on the felt, computers play a joker first when the pick-up is gone). L: the winner of the last round picks who deals at the table (phase `chooseDealer`, action `chooseDealer`, event `dealerChosen`; round 1 host deals; Ultimate Round the same; computers pick weighted to whoever is ahead; `LOBBY_PROTOCOL` 14). M: Ultimate Round confirm sheet (`ui/ultimateconfirm.ts`). N: "Look at my cards" on deal-again alerts; hand above YES / NO. O: Stats sheet for players out (`ui/stats.ts`). P: version 3.1.0.

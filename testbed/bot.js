@@ -66,6 +66,9 @@
     if (done) return window.pubbyBotHold ? 'wait' : click(done, 'done');
 
     // Votes.
+    // 9ar.3 (R): a tie on a Deal again vote: the host decides (their own buttons). The bot used to stop here (stuck).
+    const hostTie = /you decide/.test(text()) ? buttons().find((b) => b.textContent.trim() === 'Deal again') : null;
+    if (hostTie) return click(hostTie, 'host decides a tied deal-again vote: deal again');
     const yes = buttons().find((b) => b.textContent.trim() === 'YES');
     const no = buttons().find((b) => b.textContent.trim() === 'NO');
     // 9ai.7 (2.36): popups_check.py answers votes and take-cards itself when cfg.holdVotes / cfg.holdTakes is set.

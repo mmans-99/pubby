@@ -45,6 +45,7 @@ import { joinNames } from '../session/names.ts';
 import { BAR_NARROW_MAX_W, barFit, gameLayout, railFit, type GameLayout } from './layout.ts';
 import { forfeitLine } from './popuptext.ts';
 import { statsButton, statsSheet } from './stats.ts';
+import { scheduleTableFit } from './fit.ts';
 import { mergeRoundEnd } from './roundend.ts';
 import { watchAskCard, watchEyeButton, watchingBlock, watchPill, watchSheet } from './watch.ts';
 import { netGameBody, netMenu } from './netscreens.ts';
@@ -1248,6 +1249,8 @@ export function gameFrame(lay: GameLayout, parts: { table: Child; hand?: Child; 
   if (lay.rail) root.dataset['rail'] = '1'; else delete root.dataset['rail'];
   // 9al.5 (2.37.1): the reactions sheet sits above the action row (CSS reads --bar-h on the root).
   root.style.setProperty('--bar-h', `${lay.barH.toFixed(1)}px`);
+  // 9ar.3 (Q): after the draw, the table is measured and scaled to its slot (fit.ts).
+  scheduleTableFit();
   return h('div', { class: 'game-frame', style: `--hand-h:${lay.handH.toFixed(1)}px;--bar-h:${lay.barH.toFixed(1)}px;--side-w:${lay.sideW.toFixed(1)}px` },
     h('div', { class: 'game-table-slot' }, parts.table,
       parts.extra ? h('div', { class: parts.extraAt === 'top' ? 'game-extra at-top' : 'game-extra', 'data-scroll': 'extra' }, parts.extra) : null),

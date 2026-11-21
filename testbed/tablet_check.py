@@ -18,7 +18,7 @@ Screenshots go to /tmp/tablet/.
 --sat/--sab variables, so the layout and the test agree. It also checks that the round table is fully
 inside its slot (the table was cut off on an iPad).
 
-Usage: node build.mjs && python3 testbed/tablet_check.py [--quick] [--safe 24,20]
+Usage: node build.mjs && python3 testbed/tablet_check.py [--quick] [--safe 24,20] [--vote]
 """
 import json
 import pathlib
@@ -36,17 +36,24 @@ OUT.mkdir(exist_ok=True)
 for old in OUT.glob('*.png'):
     old.unlink()
 
+# 9ar.3 (R): the screen-size matrix. Phones, iPad Safari (the tab bar takes about 70 px), iPad portrait and
+# landscape, the iPad split view (678 wide), and a foldable (600 × 960). Each size runs with and without --safe 24,20.
 SIZES = [
-    (1180, 820), (1024, 768), (1366, 1024), (1194, 834),  # iPad landscape
-    (820, 1180), (1024, 1366),                              # iPad portrait
-    (390, 844), (844, 390),                                 # phones
+    (320, 568), (360, 640), (390, 844), (412, 915), (430, 932),   # phones, portrait
+    (844, 390), (915, 412),                                         # phones, landscape
+    (768, 1024), (1024, 768),                                       # iPad Safari tab (about 70 px less high)
+    (820, 1180), (1180, 820), (1024, 1366), (1366, 1024),           # iPad, full screen
+    (678, 1024),                                                    # iPad split view
+    (600, 960),                                                     # foldable
 ]
 if '--quick' in sys.argv:
-    SIZES = [(1180, 820), (390, 844)]
+    SIZES = [(1180, 820), (390, 844), (320, 568)]
 SAFE = None
 if '--safe' in sys.argv:
     _top, _bottom = sys.argv[sys.argv.index('--safe') + 1].split(',')
     SAFE = (int(_top), int(_bottom))
+# --vote: the bot calls a reshuffle vote, so the vote screen is checked (the turn count is then not checked).
+VOTE = '--vote' in sys.argv
 LIFT = 14  # the raised card's lift (styles.css .card.selected: 10 px) plus a little rounding
 
 checks = []
@@ -165,11 +172,22 @@ def run_size(browser, w, h):
             if page.locator('.deal-bar button', has_text='Deal all').count():
                 look(page, tag, 'deal-auto')
     page.evaluate(BOT)
-    cfg = {'players': 4, 'rounds': 1, 'manualDeal': False, 'swap': False, 'reshuffle': False, 'ultimate': False,
+    cfg = {'players': 4, 'rounds': 1, 'manualDeal': False, 'swap': False, 'reshuffle': VOTE, 'ultimate': False,
            'voteYes': True, 'forfeitChance': 0.0, 'jokers': True, 'stayAtEnd': True}
     most, seen_turn, seen_choice = 0, False, False
+    seen_results = seen_vote = seen_over = False
     t0 = time.time()
     while time.time() - t0 < 120:
+        # 9ar.3 (R): the vote, results and game over screens are checked when the run reaches them.
+        if not seen_vote and page.locator('.vote-card').count():
+            seen_vote = True
+            look(page, tag, 'vote')
+        if not seen_results and page.locator('.results-frame').count() and not page.locator('.popup-overlay').count():
+            seen_results = True
+            look(page, tag, 'results')
+        if not seen_over and page.locator('.banner-big', has_text=re.compile('wins the game|share the top score')).count():
+            seen_over = True
+            look(page, tag, 'game-over')
         play_btn = page.locator('.game-action-slot button', has_text=re.compile('^(Pick a card|Play )'))
         if play_btn.count() and not page.locator('.popup-overlay, .anim-block').count():
             n = page.locator('.game-hand-slot .hand .card').count()
@@ -185,9 +203,19 @@ def run_size(browser, w, h):
         action = page.evaluate('cfg => window.pubbyBot.step(cfg)', cfg)
         page.clock.run_for(800)
         if action == 'GAME OVER':
+            if not seen_over:
+                page.wait_for_timeout(300)
+                if page.locator('.banner-big', has_text=re.compile('wins the game|share the top score')).count():
+                    seen_over = True
+                    look(page, tag, 'game-over')
             break
         page.wait_for_timeout(5)
-    check(seen_turn and most >= 13, f'{tag}: saw the person\'s turn with {most} cards (13 or more)')
+    if not VOTE:
+        check(seen_turn and most >= 13, f'{tag}: saw the person\'s turn with {most} cards (13 or more)')
+    # The vote, results and game-over screens depend on how the computer players play out; a screen the run did
+    # not reach is reported, not failed (CODE.md 9ar.3 R).
+    for name, got in (('vote', seen_vote), ('results', seen_results), ('game over', seen_over)):
+        print(('  reached ' if got else '  not reached in this run: ') + f'{tag} {name}', flush=True)
     check(not errors, f'{tag}: no page errors {errors[:2]}')
     ctx.close()
 

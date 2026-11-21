@@ -80,11 +80,13 @@ export function gameLayout(viewW: number, viewH: number, opts: LayoutOpts = {}):
   const bar = opts.bar ?? 52;
   const rail = landscape && viewH <= RAIL_MAX_H;
   if (!landscape) {
-    const room = viewH - CHROME_PORTRAIT - bar; // for the table and the hand together
+    // 9ar.3 (Q): no minimum can push the rows past the window. The hand keeps its share first (at least 120 px
+    // when there is room), the table takes what is left, and it is scaled down to that room (fit.ts) if it is short.
+    const room = Math.max(0, viewH - CHROME_PORTRAIT - bar); // for the table and the hand together
     let handH = wantHand ? clamp(0.2 * viewH, 120, 190) : 0;
-    if (wantHand && room - handH < MIN_TABLE_H) handH = Math.max(120, room - MIN_TABLE_H);
+    if (wantHand && room - handH < MIN_TABLE_H) handH = Math.min(room, Math.max(120, room - MIN_TABLE_H));
     const tableW = Math.min(viewW - 16, 760);
-    const tableH = room - handH;
+    const tableH = Math.max(0, room - handH);
     return { landscape, tableW, tableH, handH, handW: inner, barH: bar, sideW: 0, box: tableBoxFor(tableW, tableH, false), rail: false };
   }
   // 9ak.6 (2.37): a short landscape phone: the rail, the table and the hand are taller, and the action column is 150 px.
@@ -155,3 +157,11 @@ export function barFit(viewW: number, widths: readonly number[]): number {
 }
 
 
+/**
+ * 9ar.3 (Q): how much a table must shrink to fit its slot. 1 when it already fits; otherwise the smaller of the
+ * width and height ratios, so the whole table scales down together (never cut off).
+ */
+export function scaleToFit(slotW: number, slotH: number, contentW: number, contentH: number): number {
+  if (!(contentW > 0) || !(contentH > 0) || !(slotW > 0) || !(slotH > 0)) return 1;
+  return Math.min(1, slotW / contentW, slotH / contentH);
+}

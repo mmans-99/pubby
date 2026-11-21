@@ -1292,7 +1292,8 @@ html[data-rail="1"] .round-buttons > button { width: 100%; min-width: 0; }
   .round-buttons { flex-direction: column; gap: 6px; }
   .round-buttons > button { width: 100%; min-width: 0; }
 }
-.game-frame { flex: 1; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) var(--hand-h, 0px) var(--bar-h, 0px); row-gap: 6px; }
+.game-frame { flex: 1; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) minmax(0, var(--hand-h, 0px)) auto; row-gap: 6px; }
+/* 9ar.3 (Q): the action row is as tall as its buttons (never shrunk); the hand gives way next; the table takes what is left. */
 .game-table-slot { position: relative; min-height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 /* 9ad.2 (2.34): the away notice floats in the empty band above the "You" pill; it never moves the rows. */
 .game-table-slot > .table-notice {
@@ -1363,7 +1364,7 @@ html[data-rail="1"] .round-buttons > button { width: 100%; min-width: 0; }
   .screen.game.fixed .game-bar { height: 40px; }
   .screen.game.fixed .game-bar .icon-btn, .screen.game.fixed .game-bar .round-chip { width: 36px; height: 36px; min-width: 36px; min-height: 36px; }
   /* 2.29 landscape (CODE.md 9x.3): the action bar is a column at the right of the hand. */
-  .game-frame { row-gap: 4px; grid-template-columns: minmax(0, 1fr) var(--side-w, 0px); grid-template-rows: minmax(0, 1fr) var(--hand-h, 0px); }
+  .game-frame { row-gap: 4px; grid-template-columns: minmax(0, 1fr) var(--side-w, 0px); grid-template-rows: minmax(0, 1fr) minmax(0, var(--hand-h, 0px)); }
   .game-table-slot { grid-column: 1 / -1; grid-row: 1; }
   .game-hand-slot { grid-column: 1; grid-row: 2; }
   /* 9al.5 (2.37.1): the action column: the inline 😂 at its top (centred), then the buttons. */
