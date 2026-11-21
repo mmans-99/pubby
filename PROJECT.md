@@ -182,6 +182,7 @@ The Ace of Spades has no special rule. It is an ordinary card.
 - **Last card lower** than the other player's card, or **a slap**: that player goes out and **wins** the round.
 - **Last card higher** than the other player's card: that player must choose:
   - **Pick up the whole waste pile** (including this trick) and play on. They lead next. They keep the option to forfeit at any time while two players are left.
+  - **Once per round (planned, section 12aa):** if a higher last card happens again in the same round, there is no pick-up: that player comes last and the round ends.
   - **Forfeit:** they take last place (the same as a Bhabhi) and the other player takes the higher place. The round ends.
 - **Forfeit at any time (user 2026-11-15 23:00, section 12s):** either of the last two players may forfeit at any time while only the two of them are left in the round: on their turn or not, mid-trick, and while the other player is choosing pick up or forfeit. This is in every game size, so in a 2-player game it is there from the first trick. They take last place and the other player takes the higher place; the round ends. It needs two taps ("Forfeit", then "Tap again to forfeit (last place)"). This is **added** to the pick-up-or-forfeit choice above, which stays as it is. **Computer players do not use it**; they keep their existing pick-up-or-forfeit choice only.
 - **Jokers in the final two:** Jokers can always be played, including against a last card. A last card that meets only a joker (no normal card from the other player) goes out unopposed and **wins** (section 7).
@@ -950,6 +951,20 @@ No rule changes.
 6. **Cost (16:27 answer):** voice goes phone to phone. When phones can't reach each other (often on mobile data), it goes through Cloudflare's relay. The first 1,000 GB a month is free and resets each month; the room server stops handing out relay logins after 3000 in a month, so it can't go over (voice then still works where phones connect directly). The user creates a TURN key in Cloudflare and adds two GitHub secrets (`CODE.md` 9aq Part L).
 7. **No flashing or overlapping (user rule):** nothing new may replay its animation on a redraw or cover another control; the build guide lists the screen sizes and checks.
 8. **Build status (2026-11-19, Haiku):** build 2 (3.0.0) is built, not committed or pushed. Voice runs as specified in items 5 and 6. Not built: the landscape rail (CODE.md 9aq.11 item 2). Not checked by eye: the screen sizes and the seat card. See CODE.md 9aq.6 (build 2) and TODO.md Phase 4z.
+
+### 12aa. Fixes and changes after the 3.0.5 test (PLAN, user 2026-11-21 03:35, answers 03:40; build guide `CODE.md` 9ar; builds 3.0.6, 3.1.0, 3.2.0; APPROVED 03:49)
+
+**User (03:35):** Skip to end of round in multiplayer shows every pop-up at once; iPad landscape still doesn't fit and the typing bar covers the ✕; portrait buttons can be cut off ("any way to fully fix any screen size"); time to look at cards before a Deal again vote; a joker sits on top of the trick whenever it's played; confirm before an Ultimate Round vote; the 😂 button goes after typing a message; the take-cards list goes when someone plays; the last-two pick-up only once per round; the winner picks the next dealer; the watch button is a dark circle; stats for players who are out; the take-cards "no" stays on screen; are re-deals random; phrases to add and remove.
+
+**Rule changes (answers 03:40):**
+1. **Last two, one pick-up per round** (section 6): the first higher last card in a round may pick up the waste pile, as now. If it happens again in the same round there is no choice: the player with the higher last card comes last and the round ends. Forfeit any time is unchanged.
+2. **The winner picks who deals** (round 2 on, Ultimate Round too): at the start of the next round, at the table, the winner taps any player to deal, the same way they pick who leads; they still pick who leads, as now. Round 1: the host deals.
+3. **Phrases:** add "Thank you", "Sorry", "It's ok", "Pathetic", "It's about the friends we make along the way". Fourteen phrases leave the reactions sheet (list in `CODE.md` 9ar.1 I); computer players keep saying them.
+
+**Deal again (03:48):** no lock; when someone calls it, the alert has "Look at my cards" and the vote screen shows your cards above YES / NO. **Claude's calls (say if wrong):** a computer winner picks a dealer at random, weighted to whoever is ahead; "Stats" for players who are out shows the game so far and this round's public events only.
+
+**Checked, no change:** re-deals after a passed vote are a fresh, properly random shuffle (a test will prove it).
+
 
 ## 13. Quick rules (in-game help)
 

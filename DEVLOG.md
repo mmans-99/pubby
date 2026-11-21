@@ -4,6 +4,14 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-21 (03:45, Opus) — Plan 9ar after the 3.0.5 test (docs only, pushed)
+
+**User:** 15 reports and requests after 3.0.5 (list in `PROJECT.md` 12aa). Answers 03:40: higher last card a second time loses; the winner picks the dealer and still picks the leader; computers keep the removed phrases; the vanishing list is the take-cards list.
+
+**Found in the code:** Skip doesn't tell joining phones it is skipping, so their pop-ups pile up; the rail's typing bar sits over the ✕; no redraw when the keyboard closes; `trickFromPlay` puts jokers last; the eye is dark on dark; take-cards notes last the whole round; re-deals are random (fresh deck, crypto shuffle). The layout cut-offs come from guessed row heights plus minimums that can overflow.
+
+**Plan:** `CODE.md` 9ar, three builds (3.0.6 fixes, 3.1.0 rules and screens, 3.2.0 any screen size). No code changed; still 3.0.5. **03:48:** no 5-second lock on Deal again (only one per round anyway); the vote alert gets "Look at my cards" instead. The dealer is picked at the table, like the leader. **03:49:** approved; Haiku builds all three builds in one chat (run order in `CODE.md` 9ar); "push" (docs only, still 3.0.5).
+
 ## 2026-11-20 (00:40, Haiku) — Build 9aq.19 (3.0.5): iPad insets, round-end sound per phone, lobby chips on line 2 (committed beba563, pushed to main)
 
 **User:** "build CODE.md 9aq.19 (3.0.5)". Plan approved 23:58 (Q1 = 1, Q2 = 1).

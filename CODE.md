@@ -4770,6 +4770,120 @@ Phone checklist additions:
 - **Q4: yes, add build 1's scenes** (9aq.5 item 3: each round-end pop-up head, a notice during play at 4 and 8 players, the round note with What happened, a network pop-up with the done row half filled, and the 10-redraw entrance check) to `voice_shots.py`. They have never been checked, and the notice strip's place was never measured against the seat name labels (9aq.6 build 1).
 
 
+## 9ar. Fixes and changes after the 3.0.5 test (PLAN, Opus, user 2026-11-21 03:35; answers 03:40 and 03:48; spec `PROJECT.md` 12aa; written for Haiku; APPROVED 03:49, Haiku builds all three)
+
+Three builds, written for **Haiku to build all of them in one chat**, in order: build 1 (Parts A to J), build 2 (K to P), build 3 (Q to S). APPROVED 2026-11-21 03:49 ("plan all the parts and push"; Haiku builds it all).
+
+**How Haiku runs it:**
+- Build the parts in the order written. After each build, run the gates: `npm run check`, `npm test`, `tablet_check.py` (with and without `--safe 24,20`), `online_check.py`, `voice_shots.py`. All must pass before starting the next build.
+- Commit locally after each build passes (one commit per build, message "9ar build N (version)"), but **do not push** until the user has tried the test build and says "push" (CLAUDE.md rules 3 and 5).
+- Version: 3.0.6 after build 1, 3.1.0 after build 2, 3.2.0 after build 3. The pushed version is 3.2.0.
+- One test build at the end (3.2.0), with the full phone checklist 9ar.4. If a build stops, give a test build of what is done so far.
+- Part D (take-cards list) is diagnose-first. If the cause can't be found in about 30 minutes, apply the safe fix (keep `armed === 'take'` and draw the sheet on every redraw while `takeTargets` is not empty, including during the trick animation), note it in 9ar.5, and carry on; don't stop the whole run for it.
+- Stop and report (🔁 Switch to Opus) only if: a gate still fails after 2 fix attempts, the code doesn't match the plan, or a part needs a choice the plan doesn't make.
+- Write what was built, deviations and check results into a new 9ar.5 "Built notes", and update all five MD files before each commit.
+
+### 9ar.1 Build 1 (3.0.6): bug fixes
+
+**A. Skip to end of round: every pop-up arrives at once on the other phones (found in the code).**
+- Cause: `startSkip` (`bots.ts`) runs the whole round in one loop with `instantSkipping` on, but it never calls `setSkippingNow(true)`, so joining phones are never told. On the host, `absorb` filters the pop-ups (`quiet`), but a joining phone's `quiet` is `skipping() || instantSkipping()`, both false there, so every slap, "came 2nd", PATHETIC and HAHAHA from the skipped moves queues up and they show one after another at the end.
+- Fix: `startSkip` calls `setSkippingNow(true)` before the loop and `setSkippingNow(false)` in the `finally` (the messages arrive in order, so the "on" lands before the moves). In `absorb`, `quiet` also includes `hostIsSkipping()`. The round-end pop-up still shows, naming the winner, as on the host.
+- Test: `online_check.py` new phase: 3 phones (host + 1 person + computers), the person goes out, the host taps Skip; the joiner gets exactly one pop-up (the round end).
+
+**B. Typing bar covers the ✕ (rail landscape, iPad and phones).**
+- Cause: in the rail, `.reactions-toggle` is fixed at `bottom: 104px; left: 8px`, and `.msg-bar` is fixed full width at `bottom: 84px` (about 44 px tall, z-index 60), so the bar sits on top of the ✕.
+- Fix: in `html[data-rail="1"]` the `.msg-bar` and `.reactions-sheet` start right of the rail (`left: calc(64px + var(--sal))`). Same check for the `data-side` column. `voice_shots.py`: new check, with the sheet open, the ✕ and the Send button don't overlap and both are fully on screen, at all sizes.
+
+**C. The 😂 button vanishes after sending a typed message until a card is played (found in the code).**
+- Cause: `app.ts` skips the resize redraw while a text box has focus (2.28.1). Opening and closing the keyboard resizes the window while the box has focus, so nothing redraws when the keyboard goes; the layout stays sized for the keyboard and the button is off where the keyboard was. The next move redraws it.
+- Fix: the message bar's input gets a `focusout` handler that runs the same 150 ms resize redraw. The message bar is on `document.body`, outside the page, so the resize redraw may also run while *it* has focus (only other text boxes block it). Also listen to `visualViewport` `resize` where it exists (iPad Safari).
+
+**D. Take-cards list ("Take whose cards?") disappears when someone else plays a card (user answer 03:40: the take-cards list).**
+- Diagnose first, then fix: open the sheet as the next leader while the last trick is still on the felt (another player's card ends the trick and it animates to the waste pile), and with a network update arriving (busy flags, a message). Find which redraw drops it: most likely the trick animation's hold/fly steps redraw the stage without `takeControls`, or `betweenTricks` is false for a moment. Fix so the sheet stays open from the tap until Cancel, a pick, or the take is no longer allowed. If it can't be reproduced, stop and report (screenshot from the user).
+- Test: DOM test with a fake trick animation: the sheet is in the page on every redraw while `armed === 'take'`.
+
+**E. A joker always sits on top of the trick (found in the code).**
+- Cause: `trickFromPlay` (`cards.ts`) puts the normal cards first and the jokers after them, whatever the order. Since 9an.6 the felt is rebuilt from it on every update, so a joker played first jumps to the top.
+- Fix: `trickFromPlay` takes `trick.acted` (the play order) and lays the cards out in that order. Unit test: joker first, joker middle, joker last.
+
+**F. "See other people's cards" is a dark circle (found in the code).**
+- Cause: `.watch-btn { color: var(--ink) }` on `.icon-btn`'s dark background, so the eye is dark on dark.
+- Fix: cream eye with a gold ring (like the take button when open), and the word "Watch" under it where there's room (portrait action row); aria-label stays. Check by eye at 412×915 and 820×1180.
+
+**G. The take-cards "said no" message stays on screen (found in the code).**
+- Cause: the refusal goes into the private `notes`, which are only cleared at `roundStarted`, so `notesPanel` shows it for the rest of the round. Phones with a seat also get the take answer pop-up, so it's said twice.
+- Fix: with a seat (network or single player), no note for a refusal or an agreement: the pop-up says it. One shared phone: the note is cleared when the requester next plays a card or the trick ends.
+
+**H. Deal again: are the new cards random? (checked in the code)**
+- The code is fine: a passed vote builds a fresh 52-card deck (+ jokers), shuffles with the phone's crypto random numbers (Fisher-Yates) and deals again, hidden decks too. Holding a joker again is common: in a 2-player game you hold at least one joker about 45% of the time.
+- Add proof: unit test, 2,000 passed reshuffle votes in a 2-player and a 4-player game; the share of cards a player keeps from the hand before matches chance (within 3 points), and the joker rate matches the maths. Online check: after a reshuffle the joining phone's hand on screen equals its session hand (no old hand left on screen).
+
+**I. Phrases (user list).**
+- Add: "Thank you", "Sorry", "It's ok", "Pathetic", "It's about the friends we make along the way".
+- Remove from the reactions list: Nope, I'm having fun!! · Keep picking up!! · Not a chance!! · Ultimate time!! · Not so easy, sweetheart!! · Nice try, sweetheart!! · Not so clever now!! · Enjoy the pile!! · Oh no, oh no, oh no!! · Ha! Caught you!! · Sit down, sweetheart!! · Dirty move!! · Did you see that?! · Wow, what a hand!!
+- Computers keep them (answer 03:40): split `catch-phrases.md` into two lists, "Everyone" (the reactions sheet) and "Computer players only". A reaction is sent as an index, so the wire index covers both lists (everyone's first, then the computer-only ones) and every phone shows the same text; the sheet shows only the first list. `react.ts` looks up text in the joined list. Old saved games are fine (indexes are not saved).
+
+**J. Version 3.0.6.**
+
+### 9ar.2 Build 2 (3.1.0): rule and screen changes
+
+**K. Last two: the waste pile can be picked up once per round (answer 03:40: higher card loses).**
+- `PlayState` gets `finalTwoPickUpUsed: boolean` (false at each deal). Picking up sets it.
+- When it is already used and a last card is higher again: no choice. That player takes last place, the other the higher place, the round ends (`roundEnded` with a new `reason: 'secondHigher'`; record and CSV show it like a forfeit but labelled "Higher again"). The round-end pop-up head is HAHAHA! with "Ben played higher again".
+- Forfeit any time stays. A shared phone and network games the same.
+- On the felt in the last two, once used, a small notice: "No pick-up left this round".
+- Computers: `chooseFinalTwo` and the last-two card choice know the pick-up is gone (public info) and play to avoid a higher last card.
+- Tests: rules (second higher card ends the round, slap and lower card unchanged, jokers set aside return as today), session, AI fixture regenerated, arena 500 games no errors.
+
+**L. The winner picks who deals next round, at the table (answers 03:40 and 03:48: the winner picks the dealer and still picks who leads; the dealer pick is at the table like the leader pick).**
+- Round 2 on: the dealer is no longer the loser. Next round starts with a new phase `chooseDealer`, shown at the round table exactly like `chooseLeader` (`chooseLeaderStage`): the winner taps a seat (any player, themselves included); every other phone sees "Amy is picking who deals" with the hourglass. Then the shuffle and deal start as now. Round 1: the host deals, no pick. Ultimate Round: the same pick.
+- A computer winner picks after its thinking time (random among the others, weighted to whoever is ahead).
+- Removed players (9an.8): if the winner is removed, the job passes as now (next in the finishing order who is still in).
+- Session: new phase `chooseDealer`, action `chooseDealer { by, dealer }`, event `dealerChosen` (a small notice "Ben deals"). `startNextRound` goes to `chooseDealer` instead of dealing at once. Saved games from 3.0.x that are already dealing carry on.
+- Update the quick rules ("Who deals").
+
+**M. Ultimate Round: confirm before the vote.**
+- Tapping Ultimate Round opens a small sheet: "Call an Ultimate Round vote? You vote YES." with Call vote / Cancel. One phone: the existing "who is calling" list, then the same confirm.
+
+**N. Deal again: time to look at your cards before voting (03:48: no lock on calling it; there is still only one Deal again per round).**
+- The vote screen puts your own cards above the YES / NO buttons (today they are under the vote card and can be off screen).
+- The "Vote now" alert gets a second button, "Look at my cards", which closes it so you can see your hand; you then vote from the vote screen, which waits for everyone as now.
+
+**O. Stats while you wait (players who are out).**
+- Out of the round: a "Stats" button (bar chart icon) next to Watch. It opens a sheet with the Places / Points / Awards tabs from the results screen, for the game so far (finished rounds), and a "This round" line (slaps so far, pick-ups, fastest Reaction Tap). Uses only the public event log (fair play). Closes by Cancel or a tap outside; the round end closes it.
+
+**P. Version 3.1.0.**
+
+### 9ar.3 Build 3 (3.2.0): the game fits any screen
+
+The table and buttons have been cut off on the iPad four times (2.34.5, 9ag, 3.0.5 and now). Root cause: `gameLayout` (`layout.ts`) works out every row from guessed heights (`CHROME_PORTRAIT`, `CHROME_LANDSCAPE`, `CHROME_RAIL`) and the window size, and then forces minimums (`MIN_TABLE_H` and the hand's 120 px). When the real top bar, notices or action row are taller than the guess, or the screen is short (iPad Safari with its toolbars, split view, a small phone), the rows add up to more than the screen and the bottom row (the buttons) is cut.
+
+**Q. Measure, don't guess.**
+- `.screen.game` becomes a CSS grid: `grid-template-rows: auto minmax(0, 1fr) auto auto` (bar, table, hand, actions); the action row is never shrunk.
+- After each render, measure the real free height of the table + hand area (`getBoundingClientRect` of the slot) and lay the table and hand out from that, not from `innerHeight` minus guesses. A `ResizeObserver` on the screen redraws when it changes (keyboard, toolbars, rotation, split view).
+- No minimums that can overflow: if there isn't room, the hand gets its share first (cards readable), then the table scales down (`transform: scale`) to whatever is left. The action row and top bar always show in full.
+- Keep `viewSize()` for the insets.
+
+**R. A screen-size matrix in `tablet_check.py`:** 320×568, 360×640, 390×844, 412×915, 430×932, 844×390, 915×412, 768×1024 and 1024×768 (iPad Safari tab, toolbars: about 70 px less), 820×1180, 1180×820, 1024×1366, 1366×1024, 678×1024 (iPad split view), 600×960 (foldable), each with and without `--safe 24,20`. Checks: table inside its slot, every button fully on screen and not covered, hand cards not cut, at the deal, play, last two, vote, results and game over.
+
+**S. Version 3.2.0.** The iPad itself is the final check (both Safari and the home-screen app).
+
+### 9ar.4 Phone checklist (after each build)
+1. Multiplayer: go out, host taps Skip to end of round: one round-end pop-up only.
+2. Landscape (iPad and phone): open reactions, type: the ✕ and Send both show. Send a message, close the keyboard: 😂 is still there.
+3. Your lead, open Take cards: it stays open while the last trick flies to the pile.
+4. Play a joker 2nd or 3rd in a trick: it sits in that place, not on top.
+5. Out of the round: the eye button is clear, labelled Watch.
+6. Ask for cards and get a no: the message goes when the pop-up closes.
+7. New phrases are in the sheet; removed ones are gone; computers still say theirs.
+8. Last two: pick up once; the second higher last card loses the round.
+9. Win a round: at the table you tap who deals (then who leads, as now); everyone sees it.
+10. Ultimate Round asks "Call an Ultimate Round vote?" first.
+11. When someone calls Deal again: "Look at my cards" on the alert; the vote screen shows your cards above YES / NO.
+12. Out of the round: Stats shows the game so far.
+13. Build 3: iPad portrait and landscape, Safari and home-screen app: nothing cut off, at the deal, play, vote and results.
+
+
 ## 9. Conventions
 
 - Language: TypeScript, strict mode.

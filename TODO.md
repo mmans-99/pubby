@@ -499,6 +499,12 @@ Fixes after the 3.0.1 check (plan `CODE.md` 9aq.16, Opus 2026-11-19 19:40; APPRO
 - [~] Fix 4: `voice_shots.py` taps Auto and the first-card seat; 150 of 150 at six sizes; NOT done: 8-person lobby, Voice sheet with seven others, all-marks seat, build 1 scenes (C7); by-eye check partial
 - [~] 3.0.2: check clean, 638 of 638 tests, build ok, online 48 of 48, landscape 24 of 24, rail after 40 of 40; test build published (private link: https://claude.ai/artifact/3Y4a4YKJayvBL6RgkMrpiX); committed and pushed (main dcd6b4e); phone test not done yet (the user has not tried the mic on any version)
 
+## Phase 4aa — Fixes and changes after the 3.0.5 test (plan 2026-11-21, `PROJECT.md` 12aa, build guide `CODE.md` 9ar; APPROVED 03:49, Haiku builds all three in one chat)
+
+- [ ] Build 1 (3.0.6): A skip pop-ups on joining phones; B typing bar over ✕ in landscape; C 😂 gone after typing; D take-cards list vanishing (diagnose first); E joker order on the felt; F watch button; G take "no" note; H re-deal randomness test; I phrases (two lists)
+- [ ] Build 2 (3.1.0): K one pick-up per round in the last two; L winner picks the dealer at the table; M Ultimate Round confirm; N look at your cards before the Deal again vote; O Stats while out
+- [ ] Build 3 (3.2.0): Q measured layout (grid, no overflowing minimums); R screen-size matrix in tablet_check; iPad test
+
 ## Phase 5 — Polish
 
 - [ ] Animations for slap and trick resolution
