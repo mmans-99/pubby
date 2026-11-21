@@ -4910,6 +4910,30 @@ The table and buttons have been cut off on the iPad four times (2.34.5, 9ag, 3.0
 - Checks (build 3): `npm run check` clean; `npm test` 670 of 670; `online_check.py` 53 of 53; `voice_shots.py` 330 of 330; `playthrough.py` 53 of 53 (after the bot change); `tablet_check.py --quick` 31 of 31 (before the vote flag); full matrix without `--safe` 140 of 140; with `--safe 24,20` 177 of 177; `--vote` run 163 of 163 after the bot fix (96 of 96 before it). Before the bot fix, 5 turn-count misses at 390×844, 678×1024, 360×640, 430×932, 600×960 were rerun: all pass with 14 to 17 cards in the rerun. Before the bot fix, 430×932 with `--safe 24,20` missed in two reruns and passed in one. The tie stall was found on a plain 390×844 game and I did not confirm it as the cause of those misses. After the fix both full runs passed (140 of 140 plain, 177 of 177 with `--safe 24,20`), so the misses are recorded as a flake to watch, not a fixed bug.
 - iPad: the user's check (Safari and home-screen app, portrait and landscape), item 13 of 9ar.4.
 
+### 9ar.6 Follow-up after build 3 (3.2.1): Opus answers to Haiku's review list (Opus, user 2026-11-21 11:18; APPROVED, for Haiku)
+
+Answers to the 10 points Haiku raised after building 9ar. Build as **3.2.1**, then one test build for the phone and iPad check (9ar.4 item 13). Push only on "push".
+
+1. **Q layout: accepted as built.** The top bar is a fixed 48 px `flex: none` row above `.game-frame` (flex 1), which is the same as a grid row; don't move it. The hand row is `minmax(0, var(--hand-h))`, so the estimate is only a maximum and can't overflow; the table row gives way first. `transform: scale` is fine on the iPad (taps scale with it). **Do:** `tablet_check.py` prints the table scale at each size and flags any size under 0.7 (that is the only case that would need its own layout; report it, don't fix it).
+2. **K: confirmed** (user 03:40). Once per round; computers play a joker first when the pick-up is gone (public info only); "played higher again" and the CSV "Higher again" row as built. **Do:** the 500-game arena run with no errors (asked for in K, not in the logged checks).
+3. **L: confirmed.** Ultimate Round uses the same pick; round 1 the host deals (user 03:40). Computer weighting "total score + 1", never itself: keep (Opus call, the user can change it).
+4. **"Look at my cards": correct as built** (Deal again votes only).
+5. **Stats: confirmed** ("Pick-ups" = waste-pile pick-ups only). **Do:** add one line to "This round": "Out so far: 1st Amy, 2nd Ben" (public).
+6. **Protocol 13 → 14: fine, no deploy note.** Phones must already have the same version to join (`lobby.ts` line 251) and get the "update Pubby" message.
+7. **Forfeit rows in the CSV: keep.** Nothing reads the CSV back (backup and restore doesn't use it).
+8. **Browser checks not in the 9ar gates.** **Do:** run each at 3.0.5 (`beba563`) first. Passed at 3.0.5 and fails now → 9ar broke it, fix the app. Failed at 3.0.5 too → update the test.
+   - `solo_check`: rerun first (build 3's tied-vote bot fix probably covers it).
+   - `sound_check`: since 3.0.5 each phone plays only its own round-end sound; update the expectation.
+   - `netvotes_check`: point it at the take-cards-on-your-lead flow (9an).
+   - `popups_check`: scenarios that don't come up report "not reached" (as `tablet_check`), not a failure.
+   - `lasttrick_check`, `lobby_check`: diagnose first (away and back is real game logic).
+   - `netgame_check`: compare phones only after the deal ends and every phone has the same update number. Still different after that = a real sync bug: stop and report.
+   - Two fix attempts each, then stop and report (🔁 Switch to Opus).
+9. **Turn-count flake: limited chase.** **Do:** 3 more full matrix runs, plain and `--safe 24,20`. On a miss, save a screenshot and the bot log. Hand and turn on screen → bot timing, give the check a longer wait. Hand not drawn or cut → real layout bug: stop and report.
+10. **Build 1 open checks: run now, before the phone test** (local relay, as `online_check` uses). **Do:** the online phase for A (host Skips, the joiner gets exactly one pop-up); the ✕ and Send check in `voice_shots.py` for B; for H, the joining phone's hand equals its session hand after a reshuffle.
+
+Gates for 3.2.1: `npm run check`, `npm test`, `tablet_check.py` (plain and `--safe 24,20`), `online_check.py`, `voice_shots.py`, `playthrough.py`, plus the checks from 8 and 10. Write results into 9ar.5 and update all five MD files.
+
 
 ## 9. Conventions
 

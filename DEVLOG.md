@@ -4,6 +4,14 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-21 (11:20, Opus) — Answers to Haiku's 9ar review list; plan 9ar.6 (docs only)
+
+**User:** pasted Haiku's 10 points after 3.2.0 (layout Q, rules K and L, Look at my cards, Stats, protocol 14, CSV forfeit rows, failing browser checks, turn-count flake, build 1's missing checks) and asked for a decision on each.
+
+**Decided:** Q accepted as built (the grid already does what the plan wanted; add a scale report, flag under 0.7). K, L, N, protocol 14 and the CSV rows confirmed. Stats adds "Out so far". Old browser checks: compare with 3.0.5 first, then fix the app or the test. Turn flake: 3 more runs with screenshots. Build 1's online and voice checks run now. Plan `CODE.md` 9ar.6 (3.2.1, for Haiku). No code changed; still 3.2.0. "push" (docs only).
+
+---
+
 ## 2026-11-21 (Haiku) — Plan 9ar build 3 (3.2.0), committed and pushed (6313be3)
 
 **Built from `CODE.md` 9ar.3 (Parts Q to S).** Q: the portrait rows can no longer exceed the window (table height floors at 0, the hand keeps 120 px when there is room, the table is scaled to its measured slot after each draw and on resize: `ui/fit.ts`, `scaleToFit`); the action row is sized to its buttons. Not as the plan wrote it: the top bar is still outside the grid and the hand height is still the layout's estimate. R: `tablet_check.py` runs the 15 sizes of the matrix; vote, results and game over are checked (`--vote` for the vote; results and game over in the default run); screens not reached are reported. S: version 3.2.0, `tests/ui/matrix.test.ts`.
