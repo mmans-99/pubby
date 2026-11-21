@@ -55,6 +55,8 @@ export interface PlayerView {
   readonly trick: readonly { readonly player: PlayerId; readonly card: StandardCard }[];
   readonly wastePileCount: number;
   readonly pendingFinalTwo: PlayerId | null;
+  /** 9ar.2 (K): the one pick-up of the round is used; a higher last card now ends the round. */
+  readonly finalTwoPickUpUsed: boolean;
   readonly canForfeit: boolean;
   /** Take-cards requests involving this player only. */
   readonly myTakeRequests: readonly { readonly requester: PlayerId; readonly target: PlayerId; readonly agreed: boolean }[];
@@ -129,7 +131,7 @@ export function playerView(s: Session, me: PlayerId): PlayerView {
     cardCheck: s.phase === 'cardCheck' ? { seen: s.handSeen } : null,
     reactionTap:
       s.phase === 'reactionTap' && s.tap ? { players: s.tap.players, tapped: Object.keys(s.tap.results) } : null,
-    chooser: s.phase === 'chooseLeader' ? (s.previous?.winner ?? null) : null,
+    chooser: s.phase === 'chooseLeader' || s.phase === 'chooseDealer' ? (s.previous?.winner ?? null) : null,
     notice: s.phase === 'leadNotice' ? s.notice : null,
     noticeSeen: s.phase === 'leadNotice' ? s.noticeSeen : [],
     turn: play?.turn ?? null,
@@ -138,6 +140,7 @@ export function playerView(s: Session, me: PlayerId): PlayerView {
     trick: play ? play.trick.plays.map((t) => ({ player: t.player, card: t.card })) : [],
     wastePileCount: play?.wastePile.length ?? 0,
     pendingFinalTwo: play?.pendingFinalTwo ?? null,
+    finalTwoPickUpUsed: play?.finalTwoPickUpUsed ?? false,
     myTakeRequests: s.takeRequests.filter((r) => r.requester === me || r.target === me),
     peeks: s.peeks,
     keepOn: keepOn(s),

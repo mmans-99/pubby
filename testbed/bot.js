@@ -97,6 +97,9 @@
     const ult = byText('Start the Ultimate Round');
     if (ult) return click(ult, 'start ultimate round');
     const next = byText('Next round');
+    // 9ar.2 (M): the Ultimate Round vote is confirmed ("Call an Ultimate Round vote?") before it is called.
+    const ultConfirm = document.querySelector('.ultimate-confirm .big');
+    if (ultConfirm) return click(ultConfirm, 'confirm ultimate vote');
     if (next) {
       const m = /Round (\d+)/.exec(document.querySelector('.round-chip')?.getAttribute('aria-label') || '');
       const round = m ? Number(m[1]) : 0;
@@ -202,6 +205,9 @@
     // Winner picks who leads.
     const leads = byLabel('Leads:');
     if (leads.length) return click(pick(leads), 'choose leader');
+    // 9ar.2 (L): the winner picks who deals, at the table (seat labels read "Deals: name").
+    const deals = byLabel('Deals:');
+    if (deals.length) return click(pick(deals), 'choose dealer');
 
     return 'stuck';
   }

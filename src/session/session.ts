@@ -51,7 +51,7 @@ import type {
 } from './types.ts';
 
 /** Phases that are part of a round. The host can pause during these. */
-const ROUND_PHASES: readonly SessionPhase[] = ['dealing', 'reshuffle', 'swap', 'cardCheck', 'leadNotice', 'reactionTap', 'chooseLeader', 'playing'];
+const ROUND_PHASES: readonly SessionPhase[] = ['dealing', 'reshuffle', 'swap', 'cardCheck', 'leadNotice', 'reactionTap', 'chooseLeader', 'chooseDealer', 'playing'];
 
 /** Collects events, stamped with the round they happened in. */
 class Out {
@@ -192,12 +192,18 @@ function startNextRound(prev: Session, rng: Rng, out: Out): Session {
     ready: [],
     pauseRequests: [],
   };
-  const dealer = dealerFor(roundSetup(s));
+  // 9ar.2 (L): from round 2 on, the winner of the last round picks who deals, at the table, before the shuffle.
+  if (s.previous) return { ...s, phase: 'chooseDealer', deal: null, dealMode: 'manual', hiddenDecks: {} };
+  return dealRound(s, dealerFor(roundSetup(s)), rng, out);
+}
+
+/** The shuffle and deal for a round, with `dealer` as the dealer (round 1: the host; later: the one picked). */
+function dealRound(s: Session, dealer: PlayerId, rng: Rng, out: Out): Session {
   // The deal starts in manual mode; the dealer can switch to auto at any time.
   const deal = shuffleAndStartDeal(roundSetup(s), rng, 'manual');
-  s = { ...s, dealer, deal, dealMode: 'manual', hiddenDecks: deal.hiddenDecks };
-  out.emit(s, { type: 'roundStarted', round: s.round, dealer, ultimate: s.ultimateRound });
-  return s;
+  const next: Session = { ...s, phase: 'dealing', dealer, deal, dealMode: 'manual', hiddenDecks: deal.hiddenDecks };
+  out.emit(next, { type: 'roundStarted', round: next.round, dealer, ultimate: next.ultimateRound });
+  return next;
 }
 
 // ---------------------------------------------------------------------------
@@ -353,6 +359,15 @@ function reduce(s: Session, a: SessionAction, rng: Rng, out: Out): Session {
       if (a.by !== winner) fail(`Only ${nameOf(s, winner)} (last round's winner) picks who leads`);
       assertPlayer(s, a.leader);
       return beginPlay(s, a.leader, 'winnerChose', out);
+    }
+    case 'chooseDealer': {
+      // 9ar.2 (L): the last round's winner picks who shuffles and deals; then the deal starts as before.
+      assertPhase(s, 'chooseDealer');
+      const winner = s.previous!.winner;
+      if (a.by !== winner) fail(`Only ${nameOf(s, winner)} (last round's winner) picks who deals`);
+      assertPlayer(s, a.dealer);
+      out.emit(s, { type: 'dealerChosen', by: a.by, dealer: a.dealer });
+      return dealRound(s, a.dealer, rng, out);
     }
 
     // ----- Play -----
@@ -856,6 +871,7 @@ function finishRound(s: Session, end: RoundEnd, out: Out): Session {
           totals: s.scores,
           sharedSecondLast: end.sharedSecondLast,
           forfeitedBy: end.forfeitedBy,
+          higherAgain: end.reason === 'secondHigher',
           ...removedRecord,
         },
       ],
@@ -884,6 +900,7 @@ function finishRound(s: Session, end: RoundEnd, out: Out): Session {
         totals,
         sharedSecondLast: end.sharedSecondLast,
         forfeitedBy: end.forfeitedBy,
+        higherAgain: end.reason === 'secondHigher',
         ...removedRecord,
       },
     ],
@@ -1115,6 +1132,7 @@ function phaseAfterRemoval(
       if (involved.tap) return redecideLeader(s, out);
       return completeTap(s, out);
     case 'chooseLeader':
+    case 'chooseDealer':
       // The fixed previous winner now chooses (fixPrevious); nothing else to do.
       return s;
     default:

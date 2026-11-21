@@ -192,6 +192,7 @@ export function targetButton(s: Session): HTMLElement | null {
 
 /** Sheets that were on screen at the last redraw (9ak.1). */
 import { sheetSeen } from './sheetseen.ts';
+import { ultimateConfirm } from './ultimateconfirm.ts';
 export { sheetSeen };
 
 /**
@@ -252,10 +253,18 @@ export function targetSheet(s: Session, opts: { me?: PlayerId } = {}): HTMLEleme
 
 /** R4: Ultimate Round button next to Next round; tap it, then pick who is calling. */
 function ultimateCall(s: Session): HTMLElement | null {
-  if (s.ultimateRound || getState().armed !== 'ultimatecaller') return null;
+  if (s.ultimateRound) return null;
+  const st = getState();
+  // 9ar.2 (M): the caller is picked, then the vote is confirmed before it is called.
+  if (st.armed === 'ultimateconfirm' && st.ultimateBy) {
+    const by = st.ultimateBy as PlayerId;
+    const clear = (): void => update({ armed: null, ultimateBy: null });
+    return ultimateConfirm({ voter: nameOf(s, by), you: false, onCancel: clear, onCall: () => { clear(); send([{ type: 'callVote', by, kind: 'ultimate' }]); } });
+  }
+  if (st.armed !== 'ultimatecaller') return null;
   return h('section', { class: 'panel' },
     h('p', { class: 'small center' }, s.order.length === 2 ? 'Who is asking for the Ultimate Round?' : 'Who is calling the Ultimate Round vote?'),
-    nameChips(s, (id) => send([{ type: 'callVote', by: id, kind: 'ultimate' }]), { label: 'Called by' }),
+    nameChips(s, (id) => update({ armed: 'ultimateconfirm', ultimateBy: id }), { label: 'Called by' }),
     h('button', { class: 'ghost', onclick: () => update({ armed: null }) }, 'Cancel'),
   );
 }
@@ -528,7 +537,7 @@ export function notesPanel(g: SavedGame, me: PlayerId): HTMLElement | null {
 // Pause (PROJECT.md section 8)
 // ---------------------------------------------------------------------------
 
-const ROUND_PHASES: readonly SessionPhase[] = ['dealing', 'reshuffle', 'swap', 'cardCheck', 'leadNotice', 'reactionTap', 'chooseLeader', 'playing'];
+const ROUND_PHASES: readonly SessionPhase[] = ['dealing', 'reshuffle', 'swap', 'cardCheck', 'leadNotice', 'reactionTap', 'chooseLeader', 'chooseDealer', 'playing'];
 
 export function canPause(s: Session): boolean {
   return ROUND_PHASES.includes(s.phase) && !s.vote && !s.paused && !s.ended;

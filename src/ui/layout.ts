@@ -154,3 +154,4 @@ export function barFit(viewW: number, widths: readonly number[]): number {
   return n;
 }
 
+

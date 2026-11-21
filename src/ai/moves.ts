@@ -136,6 +136,8 @@ function leadCard(
     // 12r (9af.3): prefer a suit the other player is not known to be missing.
     const safe = std.filter((c) => !knownSlap(m, seen, c.suit));
     const low = lowestOf(safe.length > 0 ? safe : std);
+    // 9ar.2 (K): the pick-up is gone, so a higher last card ends the round for me. A joker never does.
+    if (seen.view.finalTwoPickUpUsed && jokerId) return jokerId;
     if (low && jokerId && low.rank > avgUnknownRank(m, seen)) return jokerId;
     return low?.id;
   }
@@ -400,6 +402,23 @@ export function chooseLeader(seen: AiSeen, rng: Rng): SessionAction {
   if (loser && loser !== seen.me && holding.includes(loser) && rng() < 0.6) leader = loser;
   else leader = pickRandom(holding, rng) ?? seen.me;
   return { type: 'chooseLeader', by: seen.me, leader };
+}
+
+/**
+ * 9ar.2 (L): as last round's winner, who deals. A random other player, weighted to whoever is ahead
+ * (weight = 1 + total score). Never myself: the computer deals only when no one else is left.
+ */
+export function chooseDealer(seen: AiSeen, rng: Rng): SessionAction {
+  const others = seen.session.order.filter((p) => p !== seen.me);
+  const weights = others.map((p) => 1 + Math.max(0, seen.session.scores[p] ?? 0));
+  const total = weights.reduce((a, b) => a + b, 0);
+  let x = rng() * total;
+  let dealer: PlayerId = seen.me;
+  for (let i = 0; i < others.length; i++) {
+    x -= weights[i] ?? 0;
+    if (x < 0) { dealer = others[i] as PlayerId; break; }
+  }
+  return { type: 'chooseDealer', by: seen.me, dealer };
 }
 
 /** As dealer: switch to auto deal and start it from a random seat (the app animates the rest). */

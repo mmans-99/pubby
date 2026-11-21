@@ -274,6 +274,7 @@ function rulesTopicFor(st: State): string | null {
     case 'leadNotice': return 'Missing a suit';
     case 'reactionTap': return 'Missing a suit';
     case 'chooseLeader': return 'How to win';
+    case 'chooseDealer': return 'Who deals';
     case 'results': return 'Scoring';
     case 'gameOver': return 'Ultimate Round';
     case 'playing': {

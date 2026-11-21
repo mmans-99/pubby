@@ -4,7 +4,7 @@ import { seededRng } from '../../src/rules/rng.ts';
 import { pointsFor } from '../../src/rules/scoring.ts';
 import { applyAction, createSession, finalStandings, removeAllowed } from '../../src/session/session.ts';
 import type { Session, SessionSetup } from '../../src/session/types.ts';
-import { act, dealAll, playRound, setupFor, startedRound, step } from './helpers.ts';
+import { act, dealAll, pickDealer, playRound, setupFor, startedRound, step } from './helpers.ts';
 
 // 9an.8 (Part H): the host removes a player (CODE.md 9an.8 H-b to H-k).
 
@@ -23,7 +23,7 @@ function toPlaying(n: number, seed: number): { s: Session; rng: ReturnType<typeo
 /** Everyone who is still in the game readies up, and the host starts the next round. */
 function nextRound(s: Session, rng: ReturnType<typeof seededRng>): Session {
   for (const p of s.order) s = act(s, { type: 'readyUp', by: p }, rng);
-  return act(s, { type: 'advance', by: s.hostId }, rng);
+  return pickDealer(act(s, { type: 'advance', by: s.hostId }, rng), rng);
 }
 
 test('removeAllowed: refusals (not the host, the host, a computer, one phone, already removed)', () => {

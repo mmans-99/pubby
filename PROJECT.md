@@ -39,7 +39,7 @@ Pubby is a multiplayer shedding card game based on Bhabhi (also called Get Away)
 A **game** is a match made of several **rounds**. Each round ends when one player is left holding cards.
 
 - **Round 1:** The host shuffles, deals, and leads.
-- **Later rounds:** The round loser (Bhabhi) shuffles and deals.
+- **Later rounds (3.1.0, section 12aa):** the winner of the last round picks who shuffles and deals. They tap a player's seat at the table (themselves included), the same way they pick who leads, and then the shuffle and deal start. Until 3.1.0 the round loser (Bhabhi) dealt. The Ultimate Round uses the same pick.
 - **Who leads after round 1:** The round winner chooses who leads, including themselves.
 - **Missing-suit override:** A player who is missing a suit leads regardless of the above (section 5).
 
@@ -182,7 +182,7 @@ The Ace of Spades has no special rule. It is an ordinary card.
 - **Last card lower** than the other player's card, or **a slap**: that player goes out and **wins** the round.
 - **Last card higher** than the other player's card: that player must choose:
   - **Pick up the whole waste pile** (including this trick) and play on. They lead next. They keep the option to forfeit at any time while two players are left.
-  - **Once per round (planned, section 12aa):** if a higher last card happens again in the same round, there is no pick-up: that player comes last and the round ends.
+  - **Once per round (built 3.1.0, section 12aa):** the pick-up can be used once per round. If a higher last card happens again in the same round, there is no pick-up: that player comes last and the round ends (the round-end pop-up says "played higher again"). The felt shows "No pick-up left this round" once it is used.
   - **Forfeit:** they take last place (the same as a Bhabhi) and the other player takes the higher place. The round ends.
 - **Forfeit at any time (user 2026-11-15 23:00, section 12s):** either of the last two players may forfeit at any time while only the two of them are left in the round: on their turn or not, mid-trick, and while the other player is choosing pick up or forfeit. This is in every game size, so in a 2-player game it is there from the first trick. They take last place and the other player takes the higher place; the round ends. It needs two taps ("Forfeit", then "Tap again to forfeit (last place)"). This is **added** to the pick-up-or-forfeit choice above, which stays as it is. **Computer players do not use it**; they keep their existing pick-up-or-forfeit choice only.
 - **Jokers in the final two:** Jokers can always be played, including against a last card. A last card that meets only a joker (no normal card from the other player) goes out unopposed and **wins** (section 7).
@@ -954,7 +954,7 @@ No rule changes.
 
 ### 12aa. Fixes and changes after the 3.0.5 test (PLAN, user 2026-11-21 03:35, answers 03:40; build guide `CODE.md` 9ar; builds 3.0.6, 3.1.0, 3.2.0; APPROVED 03:49)
 
-**Status (2026-11-21 04:10):** build 1 (3.0.6) built and committed locally, not pushed. Builds 2 (3.1.0) and 3 (3.2.0) to do. Build notes: `CODE.md` 9ar.5.
+**Status (2026-11-21):** build 1 (3.0.6) built and committed locally, not pushed. Build 2 (3.1.0, Parts K to P) committed locally as "9ar build 2 (3.1.0)", not pushed, waiting for the phone test. Build 3 (3.2.0) to do. Build notes: `CODE.md` 9ar.5.
 
 **User (03:35):** Skip to end of round in multiplayer shows every pop-up at once; iPad landscape still doesn't fit and the typing bar covers the ✕; portrait buttons can be cut off ("any way to fully fix any screen size"); time to look at cards before a Deal again vote; a joker sits on top of the trick whenever it's played; confirm before an Ultimate Round vote; the 😂 button goes after typing a message; the take-cards list goes when someone plays; the last-two pick-up only once per round; the winner picks the next dealer; the watch button is a dark circle; stats for players who are out; the take-cards "no" stays on screen; are re-deals random; phrases to add and remove.
 

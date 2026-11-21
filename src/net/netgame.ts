@@ -133,7 +133,7 @@ const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object
 const PHONE_ACTIONS = new Set<string>([
   'setDealMode', 'autoDealStart', 'autoDealStep', 'autoDealAll', 'manualDealCard',
   'callVote', 'castVote', 'closeVote', 'hostDecides',
-  'startRound', 'swap', 'seenHand', 'seenNotice', 'reactionTap', 'chooseLeader',
+  'startRound', 'swap', 'seenHand', 'seenNotice', 'reactionTap', 'chooseLeader', 'chooseDealer',
   'playCard', 'pickUpWastePile', 'forfeit',
   'requestTake', 'answerTake', 'withdrawTake',
   'requestPeek', 'answerPeek', 'stopPeek',

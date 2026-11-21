@@ -298,6 +298,10 @@ export function voteAlertBody(s: Session, p: Extract<Popup, { kind: 'voteAlert' 
     h('div', { class: 'popup-text' }, line),
     h('div', { class: 'vote-said' }, miniDisc(s, p.by, '28px'), h('span', null, `${who} has voted YES`)),
     h('button', { class: 'big vote-now', onclick: (e: Event) => { e.stopPropagation(); next(); } }, 'Vote now'),
+    // 9ar.2 (N): a deal-again vote: close the alert to look at your cards first; the vote waits on its screen.
+    p.vote === 'reshuffle'
+      ? h('button', { class: 'secondary look-cards', onclick: (e: Event) => { e.stopPropagation(); next(); } }, 'Look at my cards')
+      : null,
   ];
 }
 
@@ -368,7 +372,9 @@ function voteStage(g: SavedGame, me: PlayerId): Child {
   const open = !!ownSeat(g);
   const cast = (yes: boolean): void => { send([{ type: 'castVote', by: me, ballot: yes ? 'yes' : 'no' }]); };
   // 9ai.4 (2.36): the solid card with the list; YES and NO sit under it, side by side.
+  // 9ar.2 (N): your own cards come first, above the vote card and its YES / NO buttons, so they are on screen.
   return h('div', { class: 'stack' },
+    v.kind === 'reshuffle' ? handBlock(s, view, null) : null,
     voteCard(s, me, open, voteWho(s, v, open, me), [
       h('div', { class: 'vote-buttons' },
         h('button', { class: 'big vote-yes', onclick: () => cast(true) }, 'YES'),
@@ -376,7 +382,6 @@ function voteStage(g: SavedGame, me: PlayerId): Child {
       ),
     ]),
     open && me === s.hostId && Object.keys(v.ballots).length > 0 ? countNowButton(s) : null,
-    v.kind === 'reshuffle' ? handBlock(s, view, null) : null,
   );
 }
 

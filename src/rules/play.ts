@@ -79,6 +79,12 @@ export interface PlayState {
    * decides anything (either of the last two can forfeit at any time, 2.34.5).
    */
   readonly forfeitAllowed: readonly PlayerId[];
+  /**
+   * 9ar.2 (K): the waste pile has been picked up once this round. A second higher
+   * last card then ends the round (no pick-up). False at each deal; missing in
+   * saved games counts as false.
+   */
+  readonly finalTwoPickUpUsed?: boolean;
   /** Jokers set aside with a player's last normal card (PROJECT.md 7). Thrown away if that player goes out; back into the hand if they pick up (slapped, or the final-two pick-up). */
   readonly asideJokers?: Readonly<Record<PlayerId, readonly Card[]>>;
   /** Set when the round ends: the player left holding cards. */
@@ -98,6 +104,8 @@ export interface RoundEnd {
    */
   readonly sharedSecondLast: readonly PlayerId[] | null;
   readonly forfeitedBy: PlayerId | null;
+  /** 9ar.2 (K): 'secondHigher' when the last card was higher again after the one pick-up. */
+  readonly reason?: 'secondHigher' | null;
 }
 
 export type PlayEvent =
@@ -197,7 +205,7 @@ function endRound(
   events: PlayEvent[],
   orderFirstToLast: readonly PlayerId[],
   wastePile: readonly Card[],
-  extra: { sharedSecondLast?: readonly PlayerId[]; forfeitedBy?: PlayerId } = {},
+  extra: { sharedSecondLast?: readonly PlayerId[]; forfeitedBy?: PlayerId; reason?: 'secondHigher' } = {},
 ): PlayResult {
   const state = settleAsideJokers(stateIn, events);
   for (let i = state.finished.length; i < orderFirstToLast.length - 1; i++) {
@@ -209,6 +217,7 @@ function endRound(
     loser: last,
     sharedSecondLast: extra.sharedSecondLast ?? null,
     forfeitedBy: extra.forfeitedBy ?? null,
+    ...(extra.reason ? { reason: extra.reason } : {}),
   };
   events.push({ type: 'roundEnded', ...end });
   return {
@@ -247,6 +256,7 @@ export function startPlay(
     finished: [],
     pendingFinalTwo: null,
     forfeitAllowed: [],
+    finalTwoPickUpUsed: false,
     asideJokers: {},
     loser: null,
     over: false,
@@ -410,6 +420,13 @@ function resolveFinalTwo(state: PlayState, events: PlayEvent[]): PlayResult {
     return endRound(state, events, [...state.finished, x, o], wastePile);
   }
 
+  // 9ar.2 (K): the one pick-up is used: a higher last card again. No choice;
+  // x takes last place and o the higher place.
+  if (state.finalTwoPickUpUsed) {
+    const wastePile = [...state.wastePile, ...waste];
+    return endRound(state, events, [...state.finished, o, x], wastePile, { reason: 'secondHigher' });
+  }
+
   // Higher last card: x must pick up the waste pile or forfeit.
   events.push({ type: 'trickResolved', nextLeader: null });
   events.push({ type: 'finalTwoChoice', player: x });
@@ -490,6 +507,7 @@ export function pickUpWastePile(state: PlayState, player: PlayerId): PlayResult 
     hands,
     wastePile: [],
     pendingFinalTwo: null,
+    finalTwoPickUpUsed: true,
     forfeitAllowed: state.forfeitAllowed.includes(player) ? state.forfeitAllowed : [...state.forfeitAllowed, player],
     turn: player,
     trick: newTrick({ order: state.order, hands }, player),

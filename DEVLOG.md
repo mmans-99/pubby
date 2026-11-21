@@ -4,6 +4,20 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-21 (08:50, Haiku) — Plan 9ar build 2 (3.1.0), local commit, not pushed
+
+**Built from `CODE.md` 9ar.2 (Parts K to P).** The 0002 patch was not in the session (only the plan), so K was built from its text. K: the one pick-up per round (`finalTwoPickUpUsed`, `roundEnded.reason: 'secondHigher'`, "played higher again" pop-up, "Higher again" CSV row, "No pick-up left" notice on the felt, computers play a joker first when the pick-up is gone). L: the winner of the last round picks who deals at the table (phase `chooseDealer`, action `chooseDealer`, event `dealerChosen`; round 1 host deals; Ultimate Round the same; computers pick weighted to whoever is ahead; `LOBBY_PROTOCOL` 14). M: Ultimate Round confirm sheet (`ui/ultimateconfirm.ts`). N: "Look at my cards" on deal-again alerts; hand above YES / NO. O: Stats sheet for players out (`ui/stats.ts`). P: version 3.1.0.
+
+**Checks:** `npm run check` clean; `npm test` 663 of 663; `npm run build` ok; `playthrough.py` 53 of 53 (the bot now picks the dealer and confirms the Ultimate call; before that it stopped at "who deals?"); `online_check.py` 53 of 53; `voice_shots.py` 330 of 330; `tablet_check.py --quick` 18 of 18.
+
+**Already failing at 3.0.6 (build 1), checked against a 3.0.6 worktree:** `solo_check` (the 2-2 reshuffle tie waits for the host), `netvotes_check` (waits for "Ask to take someone's cards"), `lobby_check`, `lasttrick_check` (round-over pop-up after the tap), `popups_check` (random "not seen" scenarios), `sound_check` (1 of 44), `netgame_check` (Next round waiting text). `drawer_check` counted all phrases at build 1; fixed to count the Everyone list (28 + 1).
+
+**Flakes seen:** full `tablet_check` 60 of 61 once (1366×1024 "saw the person's turn", bot timing); `netgame_check` 95 of 97 once (an "every phone agreed" snapshot taken mid-deal); `landscape_check` crashed once at 3.0.6 and passed 24 of 24 here.
+
+**Not done here:** the phone test (the user). Push waits for "push".
+
+---
+
 ## 2026-11-21 (04:10, Haiku) — Plan 9ar build 1 (3.0.6), local commit, not pushed
 
 **Built from `CODE.md` 9ar.1 (Parts A to J):** Skip sends the skipping flag to joining phones and they stay quiet (A); typing bar and reactions sheet start right of the rail (B); message bar focus-out and visual-viewport resize redraw (C); the take-cards sheet stays open during the trick animation (D, cause: `trickFinishStage` left it out); the felt follows play order, jokers included (E, 3 unit tests); the eye is cream with a gold ring and says "Watch" (F); no take-cards note on a phone with a seat, shared phones clear it on the requester's play or the trick end (G); reshuffle proof test, 2,000 reshuffles for 2 and 4 players (H); phrase file split into "Everyone" and "Computer players only", sheet shows Everyone only (I); version 3.0.6 (J).

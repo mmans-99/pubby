@@ -19,8 +19,18 @@ export function act(s: Session, a: SessionAction, rng: Rng): Session {
   return applyAction(s, a, rng).session;
 }
 
+/**
+ * 9ar.2 (L): if the dealer is still to be picked, the last round's winner picks the last round's loser
+ * (the rule before 9ar.2, so the older tests keep their meaning).
+ */
+export function pickDealer(s: Session, rng: Rng): Session {
+  if (s.phase !== 'chooseDealer') return s;
+  return act(s, { type: 'chooseDealer', by: s.previous!.winner, dealer: s.previous!.loser }, rng);
+}
+
 /** Deal every card (auto, starting from the dealer). */
 export function dealAll(s: Session, rng: Rng): Session {
+  s = pickDealer(s, rng);
   s = act(s, { type: 'autoDealStart', by: s.dealer, firstSeat: s.dealer }, rng);
   return act(s, { type: 'autoDealAll', by: s.dealer }, rng);
 }
@@ -69,6 +79,9 @@ export function step(s: Session, rng: Rng): Session {
       const who = s.tap!.players.find((p) => !s.tap!.results[p])!;
       return act(s, { type: 'reactionTap', by: who, ms: Math.floor(rng() * 500) + 100, falseStart: false }, rng);
     }
+    case 'chooseDealer':
+      // 9ar.2 (L): the winner picks who deals. The old rule (the loser deals) keeps the older tests as they were.
+      return act(s, { type: 'chooseDealer', by: s.previous!.winner, dealer: s.previous!.loser }, rng);
     case 'chooseLeader':
       return act(s, { type: 'chooseLeader', by: s.previous!.winner, leader: s.previous!.winner }, rng);
     case 'playing': {

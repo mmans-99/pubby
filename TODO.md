@@ -467,7 +467,7 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 ## Phase 4ab — Plan 9ar: fixes after the 3.0.5 test (`PROJECT.md` 12aa; build guide `CODE.md` 9ar; approved 03:49 2026-11-21; builds 3.0.6, 3.1.0, 3.2.0)
 - [x] Build 1 (3.0.6, Parts A to J): built and committed locally; checks in DEVLOG 2026-11-21 04:10. Not pushed.
 - [ ] Build 1 open: online phase for Part A (3 phones, one round-end pop-up); `voice_shots.py` check for Part B; joining-phone check for Part H
-- [ ] Build 2 (3.1.0, Parts K to P): last-two pick-up once per round; winner picks the dealer; Ultimate Round confirm; "Look at my cards"; Stats for players out; version
+- [x] Build 2 (3.1.0, Parts K to P): built and committed locally, not pushed (gates in CODE.md 9ar.5 and DEVLOG 2026-11-21). K: last-two pick-up once per round; L: winner picks the dealer (`chooseDealer`); M: Ultimate Round confirm; N: "Look at my cards"; O: Stats for players out; P: version 3.1.0. Waiting for the phone test.
 - [ ] Build 3 (3.2.0, Parts Q to S): measured layout (CSS grid, ResizeObserver), screen-size matrix in `tablet_check.py`, iPad check
 - [ ] Phone checklist 9ar.4 on the test build (after build 3)
 

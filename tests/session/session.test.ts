@@ -5,7 +5,7 @@ import { applyAction, createSession, finalStandings } from '../../src/session/se
 import type { Session } from '../../src/session/types.ts';
 import { legalCards } from '../../src/rules/play.ts';
 import { playerView } from '../../src/session/view.ts';
-import { act, dealAll, playRound, setupFor, start, step, voteRest, startedRound } from './helpers.ts';
+import { act, dealAll, pickDealer, playRound, setupFor, start, step, voteRest, startedRound } from './helpers.ts';
 
 const types = (s: Session) => s.log.map((e) => e.event.type);
 
@@ -202,6 +202,11 @@ test('a full round: scores, results screen, ready up, loser deals next, winner p
   assert.throws(() => act(s, { type: 'advance', by: 'p3' }, rng), /host/);
   s = act(s, { type: 'advance', by: 'p1' }, rng);
   assert.equal(s.round, 2);
+  // 9ar.2 (L): the winner of round 1 picks who deals; nobody deals until then.
+  assert.equal(s.phase, 'chooseDealer');
+  const notWinner = s.order.find((p) => p !== r.finishingOrder[0])!;
+  assert.throws(() => act(s, { type: 'chooseDealer', by: notWinner, dealer: notWinner }, rng), /winner/);
+  s = act(s, { type: 'chooseDealer', by: r.finishingOrder[0]!, dealer: r.finishingOrder[4]! }, rng);
   assert.equal(s.dealer, r.finishingOrder[4]);
   s = dealAll(s, rng);
   s = startedRound(s, rng, 'p1');
@@ -334,7 +339,7 @@ test('many full sessions at every player count run without errors', () => {
 test('the log stamps each event with its round', () => {
   const rng = seededRng(16);
   let s = playRound(start(4, rng), rng);
-  s = act(s, { type: 'advance', by: 'p1' }, rng);
+  s = pickDealer(act(s, { type: 'advance', by: 'p1' }, rng), rng);
   const r2 = s.log.find((e) => e.event.type === 'roundStarted' && e.event.round === 2)!;
   assert.equal(r2.round, 2);
   const res = applyAction(s, { type: 'autoDealStart', by: s.dealer, firstSeat: s.dealer }, rng);
@@ -539,7 +544,7 @@ test('deal again works the same in round 2', () => {
   for (let i = 0; i < 50 && s.phase !== 'dealing'; i++) {
     if (s.phase === 'results') {
       for (const p of s.order) if (!s.ready.includes(p)) s = act(s, { type: 'readyUp', by: p }, rng);
-      s = act(s, { type: 'advance', by: s.hostId }, rng);
+      s = pickDealer(act(s, { type: 'advance', by: s.hostId }, rng), rng);
     }
   }
   assert.equal(s.round, 2);

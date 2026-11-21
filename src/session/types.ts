@@ -45,6 +45,7 @@ export type SessionPhase =
   | 'leadNotice' // 2.30: the missing-suit and Reaction Tap notices, until every person has tapped OK
   | 'reactionTap' // two or more players missing a suit
   | 'chooseLeader' // last round's winner picks who leads
+  | 'chooseDealer' // 9ar.2 (L): last round's winner picks who deals (round 2 on, and the Ultimate Round)
   | 'playing'
   | 'results' // results screen after a round
   | 'gameOver';
@@ -78,6 +79,8 @@ export interface RoundRecord {
   readonly totals: Readonly<Record<PlayerId, number>>;
   readonly sharedSecondLast: readonly PlayerId[] | null;
   readonly forfeitedBy: PlayerId | null;
+  /** 9ar.2 (K): the last card was higher again after the one pick-up, so the round ended with no pick-up. Absent in older games. */
+  readonly higherAgain?: boolean;
   /** 9an.8 (2.38): players removed during this round, after everyone who stayed (absent in older games). */
   readonly removed?: readonly PlayerId[];
 }
@@ -223,6 +226,7 @@ export type SessionAction =
   | { type: 'seenNotice'; by: PlayerId } // 2.30: OK on a leadNotice
   | { type: 'reactionTap'; by: PlayerId; ms: number; falseStart: boolean }
   | { type: 'chooseLeader'; by: PlayerId; leader: PlayerId }
+  | { type: 'chooseDealer'; by: PlayerId; dealer: PlayerId }
   // Play
   | { type: 'playCard'; by: PlayerId; cardId: string }
   | { type: 'pickUpWastePile'; by: PlayerId }
@@ -283,6 +287,8 @@ export type SessionEvent =
   | { readonly type: 'reactionTapStarted'; readonly players: readonly PlayerId[] }
   | { readonly type: 'reactionTapped'; readonly player: PlayerId; readonly ms: number; readonly falseStart: boolean }
   | { readonly type: 'reactionTapReplay'; readonly players: readonly PlayerId[] }
+  /** 9ar.2 (L): the winner of the last round picked who deals. */
+  | { readonly type: 'dealerChosen'; readonly by: PlayerId; readonly dealer: PlayerId }
   | {
       readonly type: 'leaderChosen';
       readonly leader: PlayerId;

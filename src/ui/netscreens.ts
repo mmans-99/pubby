@@ -17,11 +17,12 @@ import type { PlayerId, Session, SessionAction } from '../session/types.ts';
 import { joinNames } from '../session/names.ts';
 import { isAwayPlayer } from '../net/away.ts';
 import { getState, update } from './store.ts';
-import { chooseLeaderStage, dealingStage, fastForwardMenuItems, gameFrame, handBlock, isHostSeat, nameOf, noticeStage, ownSeat, playHandStage, publicView, reactionsToggle, send, stageLayout } from './game.ts';
+import { chooseDealerStage, chooseLeaderStage, dealingStage, fastForwardMenuItems, gameFrame, handBlock, isHostSeat, nameOf, noticeStage, ownSeat, playHandStage, publicView, reactionsToggle, send, stageLayout } from './game.ts';
 import { miniDisc, netRoundStart } from './roundstart.ts';
 import { awardCards, gameOverStage, scoreSheet, slappedByTable } from './between.ts';
 import { ordinal } from './cards.ts';
 import { scoreRows } from './scores.ts';
+import { ultimateConfirm } from './ultimateconfirm.ts';
 import { playerView } from '../session/view.ts';
 import { netSeats } from './netlobby.ts';
 import { voiceMenuItem } from './voicetable.ts';
@@ -45,6 +46,8 @@ export function netGameBody(g: SavedGame): Child {
       case 'dealing': body = dealingStage(g); break;
       case 'reshuffle': body = beforeRound(g); break;
       case 'chooseLeader': body = s.previous?.winner === me ? chooseLeaderStage(g) : waitingFor(g, `${nameOf(s, s.previous?.winner)} picks who leads`); break;
+      // 9ar.2 (L): the winner picks who deals; the others wait with the hourglass.
+      case 'chooseDealer': body = s.previous?.winner === me ? chooseDealerStage(g) : waitingFor(g, `${nameOf(s, s.previous?.winner)} is picking who deals`); break;
       case 'leadNotice': body = noticeStage(g); break;
       case 'playing': body = playHandStage(g); break;
       case 'results': body = results(g); break;
@@ -297,12 +300,22 @@ function results(g: SavedGame): Child {
       ? ` Waiting for ${missingOthers.length}`
       : s.ultimateRound ? ' Start the Ultimate Round' : ` Next round · ${nameOf(s, s.hostId)}`)
     : h('p', { class: 'rhost host-line muted small center' }, `${nameOf(s, s.hostId)} (host) starts the next round`);
+  // 9ar.2 (M): the vote is confirmed before it is called ("Call an Ultimate Round vote? You vote YES.").
+  const ultimateWaits = getState().armed === 'ultimateconfirm' && getState().ultimateBy === me;
   const ultimateButton: Child = s.ultimateRound
     ? null
     : h('button', {
       class: 'secondary ultimate-btn',
-      onclick: () => send([{ type: 'callVote', by: me, kind: 'ultimate' }]),
+      onclick: () => update({ armed: 'ultimateconfirm', ultimateBy: me }),
     }, icon('bolt'), s.order.length === 2 ? ' Ask for the Ultimate Round' : ' Ultimate Round vote');
+  const ultimateSheet: Child = !s.ultimateRound && ultimateWaits
+    ? ultimateConfirm({
+      voter: nameOf(s, me),
+      you: true,
+      onCancel: () => update({ armed: null, ultimateBy: null }),
+      onCall: () => { update({ armed: null, ultimateBy: null }); send([{ type: 'callVote', by: me, kind: 'ultimate' }]); },
+    })
+    : null;
   const endButton: Child = host
     ? h('button', {
       class: armed ? 'danger end-btn' : 'ghost end-btn',
@@ -317,6 +330,7 @@ function results(g: SavedGame): Child {
     h('div', { class: 'results-scroll', 'data-scroll': `results-${rec.round}-${resultsTab}` },
       winCard,
       s.ultimateRound ? h('p', { class: 'center' }, h('span', { class: 'chip-info gold' }, icon('bolt'), ' Next: Ultimate Round')) : null,
+      ultimateSheet,
       tabs,
       body),
     h('div', { class: 'results-footer' },

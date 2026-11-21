@@ -62,6 +62,8 @@ export type Popup =
       order: readonly PlayerId[];
       shared: readonly PlayerId[] | null;
       forfeitedBy: PlayerId | null;
+      /** 9ar.2 (K): the last card was higher again after the one pick-up. */
+      higherAgain?: boolean;
       /** 2.32.1: set only for the round-over pop-up of a Skip to end of round: the round's winner (1st). */
       winner?: PlayerId;
     }
@@ -122,6 +124,8 @@ export interface State {
   menuOpen: boolean;
   /** Something that needs a second tap to confirm (e.g. "delete:Sam"). */
   armed: string | null;
+  /** 9ar.2 (M): who is calling the Ultimate Round vote while it waits for confirmation (armed 'ultimateconfirm'). */
+  ultimateBy?: string | null;
   message: string | null;
   popups: Popup[];
   /** 9aq.3 (2.39): small notices on the felt, newest last. Optional so existing state literals still compile. */

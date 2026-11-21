@@ -217,6 +217,10 @@ export function sessionCsv(r: GameRecord): string {
         round.totals[id] ?? 0,
       ]);
     });
+    // 9ar.2 (K): how the round ended, when it was a forfeit or a second higher last card.
+    const last = round.finishingOrder[round.finishingOrder.length - 1];
+    if (round.higherAgain && last) lines.push([round.round, 'Round ended', 'Higher again', name(last)]);
+    else if (round.forfeitedBy) lines.push([round.round, 'Round ended', 'Forfeit', name(round.forfeitedBy)]);
   }
   lines.push([], ['Final place', 'Session name', 'Profile name', 'Score', 'Title']);
   r.final.standings.forEach((id, i) => {

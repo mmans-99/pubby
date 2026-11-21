@@ -44,6 +44,7 @@ import { handH, noticeFading, roundTable, wastePile } from './table.ts';
 import { joinNames } from '../session/names.ts';
 import { BAR_NARROW_MAX_W, barFit, gameLayout, railFit, type GameLayout } from './layout.ts';
 import { forfeitLine } from './popuptext.ts';
+import { statsButton, statsSheet } from './stats.ts';
 import { mergeRoundEnd } from './roundend.ts';
 import { watchAskCard, watchEyeButton, watchingBlock, watchPill, watchSheet } from './watch.ts';
 import { netGameBody, netMenu } from './netscreens.ts';
@@ -652,9 +653,20 @@ function popupsFor(s: Session, events: readonly SessionEvent[], seat: PlayerId |
           text: `${nameOf(s, e.player)} · ${e.cards} cards · leads`,
         });
         break;
-      case 'roundEnded':
-        out.push({ kind: 'lastTwo', order: e.finishingOrder, shared: e.sharedSecondLast, forfeitedBy: e.forfeitedBy });
+      case 'dealerChosen':
+        // 9ar.2 (L): a small notice on every phone: "Ben deals".
+        notices.push({ icon: 'shuffle', title: `${nameOf(s, e.dealer)} deals`, text: '' });
         break;
+      case 'roundEnded': {
+        // 9ar.2 (K): a higher last card again: HAHAHA! from the lower card, the round's end in the same pop-up.
+        const higherAgain = e.reason === 'secondHigher';
+        if (higherAgain) {
+          const n = e.finishingOrder.length;
+          out.push({ kind: 'haha', laugher: e.finishingOrder[n - 2]!, loser: e.finishingOrder[n - 1]! });
+        }
+        out.push({ kind: 'lastTwo', order: e.finishingOrder, shared: e.sharedSecondLast, forfeitedBy: e.forfeitedBy, higherAgain });
+        break;
+      }
       case 'voteCalled': {
         // 9ai.4 (2.36): the alert; the asker's own phone doesn't get it (filtered where the seat is known).
         if (!e.by) break;
@@ -735,7 +747,7 @@ function popupsFor(s: Session, events: readonly SessionEvent[], seat: PlayerId |
  * deal and after the swap, once per deal per player. Nothing is logged or sent.
  */
 const badboyShown = new Set<string>();
-const BADBOY_PHASES: readonly string[] = ['reshuffle', 'swap', 'cardCheck', 'leadNotice', 'reactionTap', 'chooseLeader'];
+const BADBOY_PHASES: readonly string[] = ['reshuffle', 'swap', 'cardCheck', 'leadNotice', 'reactionTap', 'chooseLeader', 'chooseDealer'];
 
 function badboyCheck(g: SavedGame): void {
   const s = g.session;
@@ -1263,6 +1275,7 @@ function tableStage(g: SavedGame): Child {
     case 'reactionTap': return roundStartScreen(g) ?? h('p', null, 'Waiting…');
     case 'leadNotice': return noticeStage(g);
     case 'chooseLeader': return chooseLeaderStage(g);
+    case 'chooseDealer': return chooseDealerStage(g);
     case 'results': return resultsStage(g);
     case 'gameOver': return gameOverStage(g);
     case 'playing': return playHandoffStage(g);
@@ -1399,6 +1412,16 @@ function noticeCard(s: Session, n: LeadNotice, onOk: () => void): HTMLElement {
 let leaderPeek: object | null = null;
 
 export function chooseLeaderStage(g: SavedGame): Child {
+  return seatPickStage(g, 'leader');
+}
+
+/** 9ar.2 (L): the winner of the last round picks who shuffles and deals, at the table. */
+export function chooseDealerStage(g: SavedGame): Child {
+  return seatPickStage(g, 'dealer');
+}
+
+/** The round table pick: the winner taps a seat (leads, or deals). Everyone else waits, see netscreens. */
+function seatPickStage(g: SavedGame, kind: 'leader' | 'dealer'): Child {
   const s = g.session;
   const v = publicView(s);
   const winner = s.previous!.winner;
@@ -1408,9 +1431,13 @@ export function chooseLeaderStage(g: SavedGame): Child {
   const oneOwnPhone = ownSeat(g) === null;
   const showHand = mine || (oneOwnPhone && leaderPeek === s.previous);
   const lay = stageLayout(showHand, 52);
-  const question = h('h2', { class: 'center' }, `${ownSeat(g) ? 'You' : nameOf(s, winner)}: who leads?`);
+  const verb = kind === 'leader' ? 'who leads?' : 'who deals?';
+  const question = h('h2', { class: 'center' }, `${ownSeat(g) ? 'You' : nameOf(s, winner)}: ${verb}`);
+  const pick = (id: PlayerId): SessionAction => (kind === 'leader'
+    ? { type: 'chooseLeader', by: winner, leader: id }
+    : { type: 'chooseDealer', by: winner, dealer: id });
   return gameFrame(lay, {
-    table: roundTable(s, v, { bottom: bottomSeat(g, winner), you: ownSeat(g) !== null, onTap: (id) => send([{ type: 'chooseLeader', by: winner, leader: id }]), tapLabel: 'Leads:', box: lay.box }),
+    table: roundTable(s, v, { bottom: bottomSeat(g, winner), you: ownSeat(g) !== null, onTap: (id) => send([pick(id)]), tapLabel: kind === 'leader' ? 'Leads:' : 'Deals:', box: lay.box }),
     hand: showHand ? handBlock(s, playerView(s, winner), null, { head: false, fit: lay.handH, width: lay.handW }) : undefined,
     action: oneOwnPhone && !showHand
       ? h('div', { class: 'row round-buttons' }, question,
@@ -1607,6 +1634,10 @@ export function playHandStage(g: SavedGame): Child {
         forfeitBtn,
       )
       : null,
+    // 9ar.2 (K): in the last two, once the one pick-up is used, say so on the felt.
+    s.play && s.play.finalTwoPickUpUsed && !s.play.over && !choosing && s.play.order.filter((p) => !s.play!.finished.includes(p)).length === 2
+      ? h('p', { class: 'note center' }, 'No pick-up left this round')
+      : null,
     myTurn && jokerLed(s) && s.play
       ? h('p', { class: 'note center' }, icon('joker'), ` Joker lead by ${nameOf(s, s.play.trick.acted[0] as string)}: same trick, play any card`)
       : null,
@@ -1619,6 +1650,7 @@ export function playHandStage(g: SavedGame): Child {
       : null,
     takeControls(s, v.me),
     watchSheet(s, v),
+    statsSheet(s, v),
     watchAskCard(s, v),
     watchPill(s, v),
     !ownSeat(g) && !myTurn && !choosing && !s.takeRequests.some((r) => r.target === v.me && !r.agreed)
@@ -1632,8 +1664,10 @@ export function playHandStage(g: SavedGame): Child {
   const barForfeit = choosing ? null : forfeitBtn;
   // 9an.3 (2.38, item 8): out of the round, the eye (Watch a hand) sits beside Forfeit.
   const eye = watchEyeButton(s, v);
-  const action: Child = barForfeit || eye || playButton || waitHint
-    ? h('div', { class: 'action-row' }, barForfeit, eye, playButton ?? waitHint)
+  // 9ar.2 (O): out of the round, Stats sits beside Watch.
+  const stats = statsButton(s, v);
+  const action: Child = barForfeit || eye || stats || playButton || waitHint
+    ? h('div', { class: 'action-row' }, barForfeit, eye, stats, playButton ?? waitHint)
     : null;
   return gameFrame(lay, {
     table: trickArea(s, g, v, v.me, actor ?? v.me, lay, myTurn ? turnLabel(s, v) : undefined),
@@ -1916,11 +1950,15 @@ function roundEndBody(s: Session, p: Extract<Popup, { kind: 'roundEnd' }>, me: P
     };
   }
   if (p.head === 'haha' && p.haha) {
+    // 9ar.2 (K): the higher-again end names the player who played higher again.
+    const who = p.end.higherAgain
+      ? `${nameOf(s, p.haha.loser)} played higher again`
+      : `${nameOf(s, p.haha.laugher)} played a lower card than ${nameOf(s, p.haha.loser)}!`;
     return {
       cls: ' slap haha',
       body: [
         h('div', { class: 'slap-word', 'aria-label': 'Ha ha ha!' }, 'HAHAHA!'),
-        h('div', { class: 'slap-who' }, `${nameOf(s, p.haha.laugher)} played a lower card than ${nameOf(s, p.haha.loser)}!`),
+        h('div', { class: 'slap-who' }, who),
         box,
       ],
     };

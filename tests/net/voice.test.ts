@@ -295,8 +295,8 @@ test('links send their signals out through the host, one person at a time', () =
   assert.deepEqual(h.sent, [{ to: 'c1', d: ICE }]);
 });
 
-test('lobby: the voice messages read back, a bad one is refused, and the protocol is 13', () => {
-  assert.equal(LOBBY_PROTOCOL, 13);
+test('lobby: the voice messages read back, a bad one is refused, and the protocol is 14', () => {
+  assert.equal(LOBBY_PROTOCOL, 14);
   const sdp = { t: 'vsig', from: 'c1', to: 'c2', d: { sdp: { type: 'answer', sdp: 'x' } } };
   assert.deepEqual(readToHost(sdp), sdp);
   assert.deepEqual(readToJoiner(sdp), sdp);

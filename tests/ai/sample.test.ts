@@ -20,6 +20,8 @@ test('imagined deals keep every hand size and every known card (3 and 5 players)
       seed: 7000 + n,
       onDecision: ({ seen, memory }) => {
         if (checked >= 400) return;
+        // 9ar.2 (L): the dealer pick comes before any card is dealt: nothing to sample yet.
+        if (seen.view.phase === 'chooseDealer') return;
         const deals = sampleDeals(memory, seen, 3, seededRng(checked + 1));
         for (const deal of deals) {
           for (const p of memory.order) {

@@ -23,7 +23,7 @@ On the table: **bright** cards are the ones you can play. The **faint** big suit
 
 ## How to win a round
 Get rid of all your cards. First out is 1st. The last player still holding cards loses the round.
-Next round: the loser deals, and the winner picks who leads (they can pick themselves).
+Next round: the winner of the last round picks who deals, then picks who leads (they can pick themselves for either).
 
 ## Dealing
 The dealer shuffles and deals one 52-card deck. Hidden decks (2 and 3 players) are dealt face down first.

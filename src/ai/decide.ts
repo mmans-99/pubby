@@ -29,6 +29,7 @@ import {
   chooseDeal,
   chooseFinalTwo,
   chooseLeader,
+  chooseDealer,
   choosePeekAnswer,
   chooseReady,
   chooseSeenHand,
@@ -79,6 +80,8 @@ export function decide(seen: AiSeen, m: Memory, persona: Persona, rng: Rng, habi
     return one(chooseTap(persona, rng, me), 'forced');
   }
 
+  // 9ar.2 (L): the winner picks who deals, before the deal.
+  if (v.phase === 'chooseDealer' && v.chooser === me) return one(chooseDealer(seen, rng), 'hard');
   if (v.chooser === me) return one(chooseLeader(seen, rng), 'hard');
 
   if (v.phase === 'playing') {
