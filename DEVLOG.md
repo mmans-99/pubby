@@ -4,6 +4,18 @@ Newest entries at the top. One entry per session, added before each commit.
 
 ---
 
+## 2026-11-21 (04:10, Haiku) — Plan 9ar build 1 (3.0.6), local commit, not pushed
+
+**Built from `CODE.md` 9ar.1 (Parts A to J):** Skip sends the skipping flag to joining phones and they stay quiet (A); typing bar and reactions sheet start right of the rail (B); message bar focus-out and visual-viewport resize redraw (C); the take-cards sheet stays open during the trick animation (D, cause: `trickFinishStage` left it out); the felt follows play order, jokers included (E, 3 unit tests); the eye is cream with a gold ring and says "Watch" (F); no take-cards note on a phone with a seat, shared phones clear it on the requester's play or the trick end (G); reshuffle proof test, 2,000 reshuffles for 2 and 4 players (H); phrase file split into "Everyone" and "Computer players only", sheet shows Everyone only (I); version 3.0.6 (J).
+
+**Checks:** `tsc` (app and rules configs) exit 0 with the shared `node_modules` linked (not committed); `npm test` 649 of 649; `npm run build` ok; `tablet_check.py --quick` 21 of 21 (one earlier run failed one harness check and passed on rerun, flaky); `tablet_check.py --quick --safe 24,20` 41 of 41; `online_check.py` 53 of 53; `voice_shots.py` 330 of 330.
+
+**Not done in build 1:** the new online phase for Part A (3 phones, one pop-up at the round end) and the new `voice_shots.py` check for Part B (✕ and Send not covered), and the joining-phone side of Part H. Both need a browser run on a live relay.
+
+**Next:** builds 2 (3.1.0, Parts K to P) and 3 (3.2.0, Parts Q to S). Pushed only after the user tests and says "push".
+
+---
+
 ## 2026-11-21 (03:45, Opus) — Plan 9ar after the 3.0.5 test (docs only, pushed)
 
 **User:** 15 reports and requests after 3.0.5 (list in `PROJECT.md` 12aa). Answers 03:40: higher last card a second time loses; the winner picks the dealer and still picks the leader; computers keep the removed phrases; the vanishing list is the take-cards list.

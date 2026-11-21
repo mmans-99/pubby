@@ -35,7 +35,8 @@ export function watchEyeButton(s: Session, v: PlayerView): HTMLElement | null {
     'aria-label': 'Watch a hand',
     'aria-expanded': open ? 'true' : 'false',
     onclick: () => update({ armed: open ? null : 'watch', watchPick: null, menuOpen: false }),
-  }, icon('eye'));
+  // 3.0.6 (9ar.1 F): a cream eye with a gold ring and the word "Watch" under it (aria-label unchanged).
+  }, icon('eye'), h('span', { class: 'watch-word', 'aria-hidden': 'true' }, 'Watch'));
 }
 
 /** The sheet: one row per player with cards, then a confirm view for the one picked. */

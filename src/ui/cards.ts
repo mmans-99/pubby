@@ -203,9 +203,21 @@ export function ordinal(n: number): string {
 export function trickFromPlay(
   plays: readonly { readonly player: string; readonly card: Card }[],
   jokers: readonly { readonly player: string; readonly card: string; readonly label: string }[] = [],
+  acted: readonly string[] = [],
 ): { player: string; card: string; label: string }[] {
-  return [
+  const all: { player: string; card: string; label: string }[] = [
     ...plays.map((p) => ({ player: p.player, card: p.card.id, label: shortLabel(p.card) })),
     ...jokers.map((j) => ({ player: j.player, card: j.card, label: j.label })),
   ];
+  // 3.0.6 (9ar.1 E): the felt lays the cards out in the order they were played (trick.acted), so a
+  // joker played first, middle or last stays in that place. Anything not in `acted` keeps its place at the end.
+  if (acted.length === 0) return all;
+  const ordered: { player: string; card: string; label: string }[] = [];
+  const used = new Set<number>();
+  for (const who of acted) {
+    const i = all.findIndex((x, k) => !used.has(k) && x.player === who);
+    if (i >= 0) { used.add(i); ordered.push(all[i]!); }
+  }
+  all.forEach((x, k) => { if (!used.has(k)) ordered.push(x); });
+  return ordered;
 }

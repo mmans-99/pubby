@@ -4884,6 +4884,10 @@ The table and buttons have been cut off on the iPad four times (2.34.5, 9ag, 3.0
 13. Build 3: iPad portrait and landscape, Safari and home-screen app: nothing cut off, at the deal, play, vote and results.
 
 
+### 9ar.5 Built notes
+
+**Build 1 (3.0.6), 2026-11-21:** Parts A to J built as written. Deviations and results are in DEVLOG 2026-11-21 04:10. Cause for D: `trickFinishStage` (game.ts) drew the animation stage without `takeControls`, so the open take sheet vanished until the trick ended; fixed by keeping the sheet in that stage's extra slot while `armed === 'take'`. Part E: `trickFromPlay` takes `trick.acted` as the play order. Part I: the phrase file has an "Everyone" list (the sheet and the computers) and a "Computer players only" list; `SHEET_PHRASES` is the sheet, `CATCH_PHRASES` the full wire list. Part H proof: `tests/rules/reshuffle.test.ts`. Not yet built: the online phase for A, the `voice_shots.py` check for B, the joining-phone check for H. Builds 2 and 3 still to do.
+
 ## 9. Conventions
 
 - Language: TypeScript, strict mode.

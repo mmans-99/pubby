@@ -29,3 +29,34 @@ test('jokers the phone already logged are kept after the session cards', () => {
 test('an empty trick gives an empty felt', () => {
   assert.deepEqual(trickFromPlay([]), []);
 });
+
+// 3.0.6 (CODE.md 9ar.1 E): the felt follows the play order, so a joker keeps its place.
+test('a joker played first stays first', () => {
+  const out = trickFromPlay(
+    [{ player: 'p2', card: c('s10', 10, 'spades') }, { player: 'p3', card: c('c2', 2, 'clubs') }],
+    [{ player: 'p1', card: 'joker', label: 'Joker' }],
+    ['p1', 'p2', 'p3'],
+  );
+  assert.deepEqual(out.map((x) => x.player), ['p1', 'p2', 'p3']);
+  assert.equal(out[0]?.card, 'joker');
+});
+
+test('a joker played in the middle stays in the middle', () => {
+  const out = trickFromPlay(
+    [{ player: 'p1', card: c('h7', 7, 'hearts') }, { player: 'p3', card: c('c2', 2, 'clubs') }],
+    [{ player: 'p2', card: 'joker', label: 'Joker' }],
+    ['p1', 'p2', 'p3'],
+  );
+  assert.deepEqual(out.map((x) => x.player), ['p1', 'p2', 'p3']);
+  assert.equal(out[1]?.card, 'joker');
+});
+
+test('a joker played last stays last', () => {
+  const out = trickFromPlay(
+    [{ player: 'p1', card: c('h7', 7, 'hearts') }, { player: 'p2', card: c('s10', 10, 'spades') }],
+    [{ player: 'p3', card: 'joker', label: 'Joker' }],
+    ['p1', 'p2', 'p3'],
+  );
+  assert.deepEqual(out.map((x) => x.player), ['p1', 'p2', 'p3']);
+  assert.equal(out[2]?.card, 'joker');
+});

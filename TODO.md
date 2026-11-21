@@ -464,6 +464,13 @@ Order against Phase 4b slice E is the user's call. One slice at a time; each nee
 - [x] Part H: Deal again once per round (built, not committed)
 - [ ] Phone checklist 9ap.7 (phone test pending)
 
+## Phase 4ab — Plan 9ar: fixes after the 3.0.5 test (`PROJECT.md` 12aa; build guide `CODE.md` 9ar; approved 03:49 2026-11-21; builds 3.0.6, 3.1.0, 3.2.0)
+- [x] Build 1 (3.0.6, Parts A to J): built and committed locally; checks in DEVLOG 2026-11-21 04:10. Not pushed.
+- [ ] Build 1 open: online phase for Part A (3 phones, one round-end pop-up); `voice_shots.py` check for Part B; joining-phone check for Part H
+- [ ] Build 2 (3.1.0, Parts K to P): last-two pick-up once per round; winner picks the dealer; Ultimate Round confirm; "Look at my cards"; Stats for players out; version
+- [ ] Build 3 (3.2.0, Parts Q to S): measured layout (CSS grid, ResizeObserver), screen-size matrix in `tablet_check.py`, iPad check
+- [ ] Phone checklist 9ar.4 on the test build (after build 3)
+
 ## Phase 4z — One round-end pop-up, tap or 3.5 s pop-ups, notices, voice chat online (plan 2026-11-19 16:38, `PROJECT.md` 12z, build guide `CODE.md` 9aq, mockups https://claude.ai/artifact/EtHkCqc94hdHkajLMwB44S; approved; for Haiku)
 Build 1, 2.39.0:
 - [x] Part A: one pop-up at the end of a round (`roundEnd`) (built 2.39.0, not committed)

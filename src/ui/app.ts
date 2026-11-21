@@ -93,7 +93,7 @@ export function startApp(target: HTMLElement): void {
   // CODE.md 9w.4 rule 5: turning the phone or resizing re-fits the table and hand. Debounced (150 ms);
   // not while a trick flies or the deck shuffles: those end with their own redraw.
   let resizeTimer = 0;
-  window.addEventListener('resize', () => {
+  const scheduleResizeRedraw = (): void => {
     window.clearTimeout(resizeTimer);
     resizeTimer = window.setTimeout(() => {
       if (trickAnimating() || shuffling()) return;
@@ -103,7 +103,14 @@ export function startApp(target: HTMLElement): void {
       if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement || active instanceof HTMLSelectElement) return;
       update({});
     }, 150);
+  };
+  window.addEventListener('resize', scheduleResizeRedraw);
+  // 3.0.6 (9ar.1 C): the typing bar is outside the page, so closing the keyboard after a message
+  // does not redraw on its own; the 😂 button then stayed where the keyboard had been.
+  document.addEventListener('focusout', (e) => {
+    if (e.target instanceof HTMLElement && e.target.closest('.msg-bar')) scheduleResizeRedraw();
   });
+  window.visualViewport?.addEventListener('resize', scheduleResizeRedraw);
   // A join link tapped while Pubby is already open (iPhone Safari reuses the
   // tab and only changes the #lobby=… part, so the page doesn't start again).
   // Back from the app switcher after Exit: show the main menu again.

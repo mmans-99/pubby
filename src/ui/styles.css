@@ -1484,6 +1484,10 @@ html[data-rail="1"] .rules-btn { position: fixed; top: auto; right: auto; left: 
 html[data-rail="1"] .sound-btn { position: fixed; top: auto; right: auto; left: calc(8px + var(--sal)); bottom: 56px; width: 40px; height: 40px; min-height: 40px; z-index: 21; }
 html[data-rail="1"] .reactions-toggle { left: calc(8px + var(--sal)); right: auto; bottom: 104px; width: 40px; height: 40px; min-height: 40px; font-size: 1.2rem; border-width: 2px; }
 html[data-rail="1"] .reactions-toggle.on { font-size: 1rem; }
+/* 3.0.6 (9ar.1 B): the typing bar and the reactions sheet start right of the rail, so they never cover the ✕ or 😂. */
+html[data-rail="1"] .msg-bar { left: calc(64px + var(--sal)); right: 8px; }
+html[data-rail="1"] .reactions-sheet { left: calc(64px + var(--sal)); right: 8px; }
+html[data-side="1"] .msg-bar { right: calc(var(--side-w, 170px) + 8px); }
 /* The 😂 button is in the rail now, so the action column has no top padding for it. */
 html[data-rail="1"] .game-action-slot { padding-top: 0; display: flex; flex-direction: column; justify-content: flex-end; }
 html[data-rail="1"] .action-main { justify-content: flex-end; }
@@ -1622,7 +1626,12 @@ html[data-rail="1"] .results-footer { flex: 1 1 0; min-width: 0; min-height: 0; 
 .take-pop .take-pop-disc { margin-bottom: 4px; }
 .seat-watched { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: rgba(20, 14, 8, 0.7); color: var(--gold); }
 .seat-watched .ic { width: 14px; height: 14px; }
-.watch-btn { color: var(--ink); }
+/* 3.0.6 (9ar.1 F): the eye reads on the dark felt: cream, with a gold ring; "Watch" sits under it. */
+.watch-btn { color: var(--cream); box-shadow: inset 0 0 0 2px var(--gold); display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+.watch-btn.on { background: var(--cream); color: var(--ink); }
+.watch-btn .watch-word { font-size: 0.62rem; line-height: 1; margin-left: 2px; color: var(--cream); }
+.watch-btn.on .watch-word { color: var(--ink); }
+html[data-rail="1"] .watch-btn .watch-word { display: none; }
 .watch-pill { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 6px auto; padding: 6px 12px; border-radius: 999px; background: var(--cream); color: var(--ink); font-weight: 700; width: max-content; max-width: 100%; }
 .watch-pill .ic { width: 16px; height: 16px; color: var(--gold); }
 .watch-pill button { min-height: 36px; padding: 0 12px; }

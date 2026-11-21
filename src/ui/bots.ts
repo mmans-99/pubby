@@ -325,6 +325,8 @@ export function startSkip(): void {
   setSkipNote(null);
   skipToken++; // any Fast forward chunk still waiting does nothing
   setInstantSkipping(true);
+  // 3.0.6 (9ar.1 A): tell the joining phones the host is skipping, so their pop-ups stay quiet too.
+  setSkippingNow(true);
   let moves = 0;
   try {
     while (moves < SKIP_CAP) {
@@ -345,6 +347,7 @@ export function startSkip(): void {
     }
   } finally {
     setInstantSkipping(false);
+    setSkippingNow(false);
   }
   update({});
 }

@@ -58,12 +58,28 @@ import { viewSize } from './viewsize.ts';
 const rng = defaultRng();
 const AUTO_DEAL_MS = 150;
 
-export const CATCH_PHRASES: string[] = catchPhrasesMd
-  .split('\n')
-  .map((l) => l.trim())
-  .filter((l) => l.startsWith('- '))
-  .map((l) => l.slice(2).trim())
-  .filter(Boolean);
+// 3.0.6 (CODE.md 9ar.1 I): the phrase file has two lists. "Everyone" is the 😂 sheet (and the computers' list too);
+// "Computer players only" is said by the computers. A reaction index runs over both, Everyone first, so the
+// sheet's index equals the wire index on every phone.
+function phraseSection(md: string, heading: 'everyone' | 'computer'): string[] {
+  const out: string[] = [];
+  let mode: 'everyone' | 'computer' | null = null;
+  for (const raw of md.split('\n')) {
+    const l = raw.trim();
+    if (/^##\s+Everyone\b/i.test(l)) { mode = 'everyone'; continue; }
+    if (/^##\s+Computer/i.test(l)) { mode = 'computer'; continue; }
+    if (l.startsWith('## ')) { mode = null; continue; }
+    if (mode === heading && l.startsWith('- ')) {
+      const text = l.slice(2).trim();
+      if (text) out.push(text);
+    }
+  }
+  return out;
+}
+/** The 😂 reactions sheet's phrases (the "Everyone" list). */
+export const SHEET_PHRASES: string[] = phraseSection(catchPhrasesMd, 'everyone');
+/** Both lists in the order a reaction index uses: Everyone first, then the computer-only phrases. */
+export const CATCH_PHRASES: string[] = [...SHEET_PHRASES, ...phraseSection(catchPhrasesMd, 'computer')];
 
 /**
  * 9ap.G (user 2026-11-18 19:07, 2.38.2): every pop-up closes by itself after this long, on every phone at the
@@ -451,15 +467,20 @@ function absorb(g: SavedGame, session: Session, events: readonly SessionEvent[],
   for (const [k, v] of Object.entries(g.notes ?? {})) notes[k] = v.slice();
   const note = (p: PlayerId, text: string): void => { (notes[p] ??= []).push(text); };
   const taken = new Set(events.filter((e) => e.type === 'cardsTaken').map((e) => e.type === 'cardsTaken' ? `${e.requester}>${e.target}` : ''));
+  // 3.0.6 (9ar.1 G): a phone with a seat gets the answer in its pop-up, so no note there. A shared phone
+  // keeps the note until the requester plays a card or the trick ends (it used to stay for the whole round).
+  const seated = ownSeat(g) !== null;
   for (const e of events) {
     if (e.type === 'roundStarted') for (const k of Object.keys(notes)) notes[k] = [];
-    if (e.type === 'takeAnswered' && !e.accepted) {
+    if (e.type === 'cardPlayed' || e.type === 'jokerPlayed') notes[e.player] = [];
+    if (e.type === 'trickResolved') for (const k of Object.keys(notes)) notes[k] = [];
+    if (e.type === 'takeAnswered' && !e.accepted && !seated) {
       const gaveTo = events.find((x) => x.type === 'cardsTaken' && x.target === e.target);
       note(e.requester, gaveTo && gaveTo.type === 'cardsTaken'
         ? `${nameOf(session, e.target)} gave their cards to ${nameOf(session, gaveTo.requester)} instead.`
         : `${nameOf(session, e.target)} said no to your take-cards request.`);
     }
-    if (e.type === 'takeAnswered' && e.accepted && !taken.has(`${e.requester}>${e.target}`)) {
+    if (e.type === 'takeAnswered' && e.accepted && !seated && !taken.has(`${e.requester}>${e.target}`)) {
       note(e.requester, `${nameOf(session, e.target)} agreed. You take their cards when this trick is over.`);
     }
     if (e.type === 'takeCancelled' && e.reason === 'notPossible') {
@@ -488,7 +509,7 @@ function absorb(g: SavedGame, session: Session, events: readonly SessionEvent[],
   // 9an.6 (F-1, 2.38): the session is the truth for the trick in progress; events only drive the animation.
   // A card missed in a gap (a full update has no events) still shows. Not while a trick is resolving.
   if (session.play && session.phase === 'playing' && !events.some((e) => e.type === 'trickResolved')) {
-    const want = trickFromPlay(session.play.trick.plays, trickLog.filter((t) => t.card === 'joker'));
+    const want = trickFromPlay(session.play.trick.plays, trickLog.filter((t) => t.card === 'joker'), session.play.trick.acted);
     const same = want.length === trickLog.length && want.every((w, i) => w.player === trickLog[i]?.player && w.card === trickLog[i]?.card);
     if (!same) trickLog = want;
   }
@@ -502,7 +523,8 @@ function absorb(g: SavedGame, session: Session, events: readonly SessionEvent[],
 
   // 9v.4 / 2.32.1: while Fast forward or Skip runs, only the round-over pop-up (and the game-over one) is shown.
   // The round-over one names the round's winner (1st in the finishing order).
-  const quiet = skipping() || instantSkipping();
+  // 3.0.6 (9ar.1 A): a joining phone is quiet too while the host skips (hostIsSkipping).
+  const quiet = skipping() || instantSkipping() || hostIsSkipping();
   const made: NoticeDraft[] = [];
   const fresh = popupsFor(session, events, seat ?? null, made)
     // 9ai.4: the asker doesn't get the vote alert (they already said YES).
@@ -1062,7 +1084,12 @@ function trickFinishStage(g: SavedGame, a: TrickAnim): Child {
     hand: handBlock(s, playerView(s, who), null, { head: false, fit: lay.handH, width: lay.handW }),
     // 9am.1 (2.37.2): while only computer players can move there is nothing to protect, so no block:
     // a finger reaches Stop fast forward, Fast forward / Skip and ☰ during the animations.
-    extra: tapToGo || (g.bots && botsOnlyFor(g)) ? null : h('div', { class: 'anim-block', 'aria-hidden': 'true' }),
+    // 3.0.6 (9ar.1 D): the take-cards sheet stays open while the last trick flies to the pile
+    // (the animation stage used to leave it out, so it vanished until the trick ended).
+    extra: [
+      getState().armed === 'take' ? takeControls(s, who) : null,
+      tapToGo || (g.bots && botsOnlyFor(g)) ? null : h('div', { class: 'anim-block', 'aria-hidden': 'true' }),
+    ],
   });
 }
 
@@ -1951,7 +1978,7 @@ export function reactionsLayer(inline = false): HTMLElement[] {
   // A sheet above the 😂 button: every phrase in a wrapping grid, scrolling up and down (2.11).
   const sheet = h('section', { class: opening ? 'reactions-sheet opening' : 'reactions-sheet', 'aria-label': 'Reactions', 'data-scroll': 'reactions' },
     h('button', { class: 'phrase-chip laugh-chip', 'aria-label': 'Laugh', onclick: (e) => react(-1, e as MouseEvent) }, '😂 Laugh'),
-    CATCH_PHRASES.map((ph, i) =>
+    SHEET_PHRASES.map((ph, i) =>
       h('button', { class: 'phrase-chip', onclick: (e) => react(i, e as MouseEvent) }, ph)),
   );
   return toggle ? [catcher, sheet, toggle] : [catcher, sheet];
